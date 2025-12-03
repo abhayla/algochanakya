@@ -44,3 +44,23 @@ Thumbs.db
 # Test files
 test_*.py
 *_test.py
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Environment files (all locations)
+.env
+.env.*
+!.env.example
+
+# Redis
+dump.rdb
+
+# Secrets
+*.pem
+*.key
+secrets/
+
+# Deployment
+deploy.sh
+*.bak
