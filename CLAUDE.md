@@ -10,6 +10,7 @@ AlgoChanakya is an options trading platform (similar to Sensibull) built with Fa
 - Backend: FastAPI + SQLAlchemy (async) + PostgreSQL + Redis
 - Frontend: Vue.js 3 + Vite + Pinia + Vue Router + Tailwind CSS
 - Broker Integration: Zerodha Kite Connect API
+- Testing: Playwright (E2E)
 
 ## Development Commands
 
@@ -61,6 +62,31 @@ npm run preview
 npm install <package>
 ```
 
+### Testing (Playwright)
+
+From project root:
+
+```bash
+# Run all tests
+npm test
+
+# Run specific test file
+npm run test:login
+npm run test:api
+npm run test:oauth
+npm run test:watchlist
+npm run test:ws
+
+# Run with UI
+npm run test:ui
+
+# Run headed (visible browser)
+npm run test:headed
+
+# Debug mode
+npm run test:debug
+```
+
 ## Architecture
 
 ### Authentication Flow
@@ -84,6 +110,34 @@ npm install <package>
    - Use `get_current_broker_connection` dependency for broker-specific operations
    - Frontend router guards check `authStore.isAuthenticated` before allowing access
 
+### WebSocket Live Prices
+
+The platform streams live market prices via WebSocket:
+
+1. **Connection Flow:**
+   - Frontend connects to `ws://localhost:8000/ws/ticks?token=<jwt>`
+   - Backend authenticates JWT and retrieves user's Kite access token
+   - KiteTickerService connects to Kite WebSocket (if not already connected)
+   - Client sends subscribe messages: `{"action": "subscribe", "tokens": [256265], "mode": "quote"}`
+
+2. **KiteTickerService (`app/services/kite_ticker.py`):**
+   - Singleton service managing Kite WebSocket connection
+   - Thread-safe async tick broadcasting using `asyncio.run_coroutine_threadsafe`
+   - Per-user subscription management (only sends ticks user subscribed to)
+   - Automatic reconnection on disconnect
+   - Caches latest ticks for immediate delivery on subscribe
+
+3. **Message Types:**
+   - `connected` - Initial connection confirmation
+   - `subscribed` - Subscription confirmation with tokens
+   - `ticks` - Live price data: `{type: "ticks", data: [{token, ltp, change, change_percent, ...}]}`
+   - `pong` - Keepalive response
+   - `error` - Error messages
+
+4. **Index Tokens:**
+   - NIFTY 50: `256265`
+   - NIFTY BANK: `260105`
+
 ### Database Models
 
 **User (`users` table):**
@@ -97,14 +151,31 @@ npm install <package>
 - `is_active` flag indicates current connection status
 - Multiple connections per user are supported
 
+**Watchlist (`watchlists` table):**
+- User-created watchlists with custom names
+- Links to instruments via `watchlist_instruments` junction table
+- Supports position ordering for instruments
+
+**Instrument (`instruments` table):**
+- Master instrument data (populated from Kite instruments dump)
+- Contains token, symbol, exchange, instrument type, etc.
+- Used for search and watchlist functionality
+
 ### Backend Structure
 
 - `app/main.py` - FastAPI app initialization, CORS, lifespan events
 - `app/config.py` - Pydantic Settings for environment variables
 - `app/database.py` - SQLAlchemy async engine, session factory, Redis pool
-- `app/models/` - SQLAlchemy ORM models (User, BrokerConnection)
+- `app/models/` - SQLAlchemy ORM models (User, BrokerConnection, Watchlist, Instrument)
 - `app/schemas/` - Pydantic schemas for request/response validation
 - `app/api/routes/` - FastAPI route handlers
+  - `auth.py` - Zerodha OAuth login/callback
+  - `watchlist.py` - Watchlist CRUD operations
+  - `instruments.py` - Instrument search
+  - `websocket.py` - WebSocket endpoint for live prices
+- `app/services/` - Business logic services
+  - `kite_ticker.py` - KiteTickerService for live price streaming
+  - `instruments.py` - Instrument data management
 - `app/utils/jwt.py` - JWT token creation and verification
 - `app/utils/dependencies.py` - FastAPI dependencies for authentication
 
@@ -112,9 +183,16 @@ npm install <package>
 
 - `src/router/index.js` - Vue Router with authentication guards
 - `src/stores/auth.js` - Pinia store for authentication state
+- `src/stores/watchlist.js` - Pinia store for watchlist and WebSocket management
 - `src/services/api.js` - Axios instance with interceptors for auth headers
 - `src/views/` - Vue components for pages
+  - `LoginView.vue` - Login page with Zerodha OAuth button
+  - `AuthCallbackView.vue` - OAuth callback handler
+  - `WatchlistView.vue` - Watchlist page with live prices
 - `src/components/` - Reusable Vue components
+  - `watchlist/IndexHeader.vue` - NIFTY/BANK NIFTY live prices header
+  - `watchlist/InstrumentRow.vue` - Individual instrument row with live data
+  - `watchlist/InstrumentSearch.vue` - Search and add instruments
 
 ### Database Connection
 
@@ -158,6 +236,7 @@ Backend requires `.env` file based on `backend/.env.example`:
 
 Frontend requires `.env` file:
 - `VITE_API_BASE_URL` - Backend API URL (defaults to http://localhost:8000)
+- `VITE_WS_URL` - WebSocket URL (defaults to localhost:8000)
 
 ## Key Dependencies
 
@@ -180,6 +259,24 @@ Frontend requires `.env` file:
 
 ## Testing
 
-No test framework is currently configured. When adding tests, consider:
-- Backend: pytest + pytest-asyncio for async tests
-- Frontend: Vitest (already compatible with Vite)
+**Playwright E2E Tests** (from project root):
+- `tests/e2e/login.spec.js` - Login page tests
+- `tests/e2e/api.spec.js` - API endpoint tests
+- `tests/e2e/oauth-flow.spec.js` - Full OAuth flow (requires manual Zerodha login)
+- `tests/e2e/watchlist.spec.js` - Watchlist functionality tests
+- `tests/e2e/websocket-verify.spec.js` - WebSocket live prices verification
+
+Test screenshots are saved to `tests/screenshots/` (gitignored).
+
+**Running Tests:**
+```bash
+# Install Playwright browsers (first time only)
+npx playwright install
+
+# Run all tests
+npm test
+
+# Run specific test with visible browser
+npm run test:ws  # WebSocket verification
+npm run test:oauth  # OAuth flow
+```
