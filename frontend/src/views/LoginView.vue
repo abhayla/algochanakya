@@ -11,12 +11,14 @@ const error = ref('')
 
 const handleLogin = async () => {
   error.value = ''
-  const result = await authStore.login({ broker: broker.value })
 
-  if (result.success) {
-    router.push('/dashboard')
+  if (broker.value === 'zerodha') {
+    const result = await authStore.initiateZerodhaLogin()
+    if (!result.success) {
+      error.value = result.error
+    }
   } else {
-    error.value = result.error
+    error.value = `${broker.value} integration coming soon!`
   }
 }
 </script>

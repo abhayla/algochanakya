@@ -51,8 +51,14 @@ async def get_db():
 
 async def init_db():
     """Initialize database tables."""
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+    except Exception as e:
+        print(f"[ERROR] Failed to initialize database: {str(e)}")
+        print(f"[INFO] Please check database connection settings in .env file")
+        print(f"[INFO] Current DATABASE_URL host: {settings.DATABASE_URL.split('@')[1].split(':')[0] if '@' in settings.DATABASE_URL else 'unknown'}")
+        raise
 
 
 async def close_db():

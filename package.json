@@ -1,0 +1,33 @@
+{
+  "name": "algochanakya",
+  "version": "1.0.0",
+  "description": "Options Trading Platform (like Sensibull) - A comprehensive platform for options trading strategies, market analysis, and portfolio management.",
+  "main": "index.js",
+  "scripts": {
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "test:headed": "playwright test --headed",
+    "test:debug": "playwright test --debug",
+    "test:login": "playwright test login.spec.js --headed",
+    "test:api": "playwright test api.spec.js",
+    "test:oauth": "playwright test oauth-flow.spec.js --headed",
+    "test:watchlist": "playwright test tests/e2e/watchlist.spec.js --headed --timeout=180000",
+    "test:verify": "playwright test watchlist-manual-verify.spec.js --headed --timeout=300000",
+    "test:ws": "playwright test tests/e2e/websocket-verify.spec.js --headed --timeout=300000"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/abhayla/algochanakya.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/abhayla/algochanakya/issues"
+  },
+  "homepage": "https://github.com/abhayla/algochanakya#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.57.0"
+  }
+}

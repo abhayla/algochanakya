@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 
 from app.config import settings
 from app.database import init_db, close_db
-from app.api.routes import health, auth
+from app.api.routes import health, auth, watchlist, instruments, websocket
 
 
 @asynccontextmanager
@@ -42,6 +42,9 @@ app.add_middleware(
 # Include routers
 app.include_router(health.router, prefix="/api", tags=["Health"])
 app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
+app.include_router(watchlist.router, prefix="/api/watchlists", tags=["Watchlists"])
+app.include_router(instruments.router, prefix="/api/instruments", tags=["Instruments"])
+app.include_router(websocket.router, tags=["WebSocket"])
 
 
 @app.get("/")

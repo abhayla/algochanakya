@@ -25,6 +25,47 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  async function initiateZerodhaLogin() {
+    loading.value = true
+    try {
+      const response = await api.get('/api/auth/zerodha/login')
+      const loginUrl = response.data.login_url
+      window.location.href = loginUrl
+      return { success: true }
+    } catch (error) {
+      loading.value = false
+      return {
+        success: false,
+        error: error.response?.data?.detail || 'Failed to initiate Zerodha login',
+      }
+    }
+  }
+
+  function setToken(token) {
+    localStorage.setItem('access_token', token)
+    isAuthenticated.value = true
+  }
+
+  async function fetchUser() {
+    loading.value = true
+    try {
+      const response = await api.get('/api/auth/me')
+      user.value = response.data.user
+      isAuthenticated.value = true
+      return { success: true }
+    } catch (error) {
+      user.value = null
+      isAuthenticated.value = false
+      localStorage.removeItem('access_token')
+      return {
+        success: false,
+        error: error.response?.data?.detail || 'Failed to fetch user',
+      }
+    } finally {
+      loading.value = false
+    }
+  }
+
   async function logout() {
     try {
       await api.post('/api/auth/logout')
@@ -40,7 +81,7 @@ export const useAuthStore = defineStore('auth', () => {
   async function checkAuth() {
     const token = localStorage.getItem('access_token')
     if (token) {
-      isAuthenticated.value = true
+      await fetchUser()
     }
   }
 
@@ -49,6 +90,9 @@ export const useAuthStore = defineStore('auth', () => {
     isAuthenticated,
     loading,
     login,
+    initiateZerodhaLogin,
+    setToken,
+    fetchUser,
     logout,
     checkAuth,
   }

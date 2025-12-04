@@ -47,6 +47,14 @@ test_*.py
 .pytest_cache/
 .coverage
 htmlcov/
+test-results/
+tests/screenshots/
+
+# Playwright
+node_modules/
+
+# Windows artifacts
+NUL
 
 # Environment files (all locations)
 .env

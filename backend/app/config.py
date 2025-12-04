@@ -14,13 +14,21 @@ class Settings(BaseSettings):
     # Redis
     REDIS_URL: str
 
-    # Security
-    SECRET_KEY: str = "your-secret-key-change-in-production"
-    ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    # JWT Security
+    JWT_SECRET: str
+    JWT_ALGORITHM: str = "HS256"
+    JWT_EXPIRY_HOURS: int = 24
+
+    # Kite Connect (Zerodha)
+    KITE_API_KEY: str
+    KITE_API_SECRET: str
+    KITE_REDIRECT_URL: str
+
+    # Frontend
+    FRONTEND_URL: str
 
     # CORS
-    CORS_ORIGINS: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
+    CORS_ORIGINS: list[str] = ["http://localhost:5173", "http://localhost:5174", "http://127.0.0.1:5173"]
 
     class Config:
         env_file = ".env"
