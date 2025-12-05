@@ -2,9 +2,15 @@
   <div class="bg-white shadow">
     <div class="container mx-auto px-4 py-3">
       <div class="flex flex-wrap items-center justify-between gap-4">
-        <!-- Title and Underlying -->
+        <!-- Navigation and Title -->
         <div class="flex items-center gap-4">
-          <h1 class="text-xl font-bold text-gray-900">Strategy Builder</h1>
+          <!-- Navigation Links -->
+          <div class="flex items-center gap-4 mr-4">
+            <router-link to="/watchlist" class="text-sm text-gray-600 hover:text-blue-600">Watchlist</router-link>
+            <router-link to="/optionchain" class="text-sm text-gray-600 hover:text-blue-600">Option Chain</router-link>
+            <router-link to="/strategy" class="text-sm text-blue-600 font-semibold">Strategy Builder</router-link>
+          </div>
+          <div class="h-6 border-l border-gray-300"></div>
           <div class="flex items-center gap-2">
             <button
               v-for="u in underlyings"

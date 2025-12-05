@@ -586,6 +586,29 @@ export const useStrategyStore = defineStore('strategy', () => {
     }
   }
 
+  // Add leg from Option Chain
+  function addLegFromOptionChain(leg) {
+    const newLeg = {
+      temp_id: generateTempId(),
+      expiry_date: leg.expiry_date,
+      contract_type: leg.contract_type,
+      transaction_type: 'SELL', // Default to SELL
+      strike_price: leg.strike_price,
+      lots: 1,
+      strategy_type: 'Custom',
+      entry_price: leg.entry_price,
+      exit_price: null,
+      instrument_token: leg.instrument_token,
+      tradingsymbol: leg.tradingsymbol || null
+    }
+    legs.value.push(newLeg)
+
+    // Fetch strikes for the expiry if not already fetched
+    if (leg.expiry_date && !strikes.value[leg.expiry_date]) {
+      fetchStrikes(leg.expiry_date)
+    }
+  }
+
   // Clear / Reset
   function clearStrategy() {
     currentStrategy.value = null
@@ -676,6 +699,7 @@ export const useStrategyStore = defineStore('strategy', () => {
     getLegTokens,
     getLegExitPnL,
     fetchLegLTP,
+    addLegFromOptionChain,
     clearStrategy,
     reset,
   }

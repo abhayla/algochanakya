@@ -37,6 +37,12 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/optionchain',
+      name: 'optionchain',
+      component: () => import('../views/OptionChainView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/strategy',
       name: 'strategy',
       component: () => import('../views/StrategyBuilderView.vue'),

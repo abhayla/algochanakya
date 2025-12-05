@@ -1,5 +1,14 @@
 <template>
   <div class="min-h-screen bg-white">
+    <!-- Navigation Bar -->
+    <div class="bg-gray-50 border-b border-gray-200 px-4 py-2">
+      <div class="flex items-center gap-4">
+        <router-link to="/watchlist" class="text-sm text-blue-600 font-semibold">Watchlist</router-link>
+        <router-link to="/optionchain" class="text-sm text-gray-600 hover:text-blue-600">Option Chain</router-link>
+        <router-link to="/strategy" class="text-sm text-gray-600 hover:text-blue-600">Strategy Builder</router-link>
+      </div>
+    </div>
+
     <!-- Index Header Bar -->
     <div class="bg-white border-b border-gray-200 px-4 py-2 flex items-center justify-between">
       <div class="flex items-center space-x-8">

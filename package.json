@@ -18,7 +18,8 @@
     "test:strategy-verify": "npx playwright test tests/e2e/strategy-builder-verify.spec.js --headed --timeout=300000 --workers=1",
     "test:watchlist-fix": "npx playwright test tests/e2e/watchlist-fix-verify.spec.js --headed --timeout=300000 --workers=1",
     "test:sb-complete": "npx playwright test tests/e2e/strategy-builder-complete.spec.js --headed --timeout=300000 --workers=1",
-    "test:iron-condor": "npx playwright test tests/e2e/strategy-iron-condor.spec.js --headed --timeout=600000 --workers=1"
+    "test:iron-condor": "npx playwright test tests/e2e/strategy-iron-condor.spec.js --headed --timeout=600000 --workers=1",
+    "test:optionchain": "npx playwright test tests/e2e/option-chain.spec.js --headed --timeout=300000 --workers=1"
   },
   "repository": {
     "type": "git",

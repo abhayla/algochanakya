@@ -5,7 +5,7 @@ from sqlalchemy import select, func
 
 from app.config import settings
 from app.database import init_db, close_db, AsyncSessionLocal
-from app.api.routes import health, auth, watchlist, instruments, websocket, options, strategy, orders
+from app.api.routes import health, auth, watchlist, instruments, websocket, options, strategy, orders, optionchain
 from app.models import Instrument
 
 
@@ -72,6 +72,7 @@ app.include_router(instruments.router, prefix="/api/instruments", tags=["Instrum
 app.include_router(options.router, prefix="/api/options", tags=["Options"])
 app.include_router(strategy.router, prefix="/api/strategies", tags=["Strategies"])
 app.include_router(orders.router, prefix="/api/orders", tags=["Orders"])
+app.include_router(optionchain.router, prefix="/api/optionchain", tags=["OptionChain"])
 app.include_router(websocket.router, tags=["WebSocket"])
 
 
