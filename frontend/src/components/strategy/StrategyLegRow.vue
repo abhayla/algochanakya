@@ -1,7 +1,7 @@
 <template>
   <tr :class="{ 'bg-blue-50': isSelected }">
     <!-- Checkbox -->
-    <td class="px-2 py-2">
+    <td class="px-2 py-2 w-10">
       <input
         type="checkbox"
         :checked="isSelected"
@@ -11,11 +11,11 @@
     </td>
 
     <!-- Expiry -->
-    <td class="px-3 py-2">
+    <td class="px-1 py-1" style="min-width: 100px;">
       <select
         :value="leg.expiry_date"
         @change="handleExpiryChange($event.target.value)"
-        class="w-full text-sm border rounded px-2 py-1"
+        class="w-full text-xs border rounded px-1 py-1"
       >
         <option value="">Select</option>
         <option v-for="exp in expiries" :key="exp" :value="exp">
@@ -25,12 +25,12 @@
     </td>
 
     <!-- Contract Type -->
-    <td class="px-3 py-2">
+    <td class="px-1 py-1" style="min-width: 80px;">
       <select
         :value="leg.contract_type"
         @change="$emit('update', { contract_type: $event.target.value })"
         :class="[
-          'w-full text-sm border rounded px-2 py-1 font-medium',
+          'w-full text-xs border rounded px-1 py-1 font-medium',
           leg.contract_type === 'CE' ? 'text-green-700' : 'text-red-700'
         ]"
       >
@@ -40,12 +40,12 @@
     </td>
 
     <!-- Transaction Type -->
-    <td class="px-3 py-2">
+    <td class="px-1 py-1" style="min-width: 70px;">
       <select
         :value="leg.transaction_type"
         @change="$emit('update', { transaction_type: $event.target.value })"
         :class="[
-          'w-full text-sm border rounded px-2 py-1 font-medium',
+          'w-full text-xs border rounded px-1 py-1 font-medium',
           leg.transaction_type === 'BUY' ? 'text-blue-700' : 'text-orange-700'
         ]"
       >
@@ -55,11 +55,11 @@
     </td>
 
     <!-- Strike Price -->
-    <td class="px-3 py-2">
+    <td class="px-1 py-1" style="min-width: 100px;">
       <select
         :value="leg.strike_price"
-        @change="$emit('update', { strike_price: parseFloat($event.target.value) })"
-        class="w-full text-sm border rounded px-2 py-1"
+        @change="handleStrikeChange($event.target.value)"
+        class="w-full text-xs border rounded px-1 py-1"
       >
         <option value="">Select</option>
         <option v-for="strike in strikes" :key="strike" :value="strike">
@@ -69,22 +69,22 @@
     </td>
 
     <!-- Lots -->
-    <td class="px-3 py-2">
+    <td class="px-1 py-1" style="min-width: 60px;">
       <select
         :value="leg.lots"
         @change="$emit('update', { lots: parseInt($event.target.value) })"
-        class="w-full text-sm border rounded px-2 py-1"
+        class="w-full text-xs border rounded px-1 py-1"
       >
         <option v-for="n in 50" :key="n" :value="n">{{ n }}</option>
       </select>
     </td>
 
     <!-- Strategy Type -->
-    <td class="px-3 py-2">
+    <td class="px-1 py-1" style="min-width: 110px;">
       <select
         :value="leg.strategy_type"
         @change="$emit('update', { strategy_type: $event.target.value })"
-        class="w-full text-sm border rounded px-2 py-1"
+        class="w-full text-xs border rounded px-1 py-1"
       >
         <option v-for="type in strategyTypes" :key="type" :value="type">
           {{ type }}
@@ -93,41 +93,56 @@
     </td>
 
     <!-- Entry Price -->
-    <td class="px-3 py-2">
+    <td class="px-1 py-1" style="min-width: 80px;">
       <input
         type="number"
         :value="leg.entry_price"
         @input="$emit('update', { entry_price: $event.target.value ? parseFloat($event.target.value) : null })"
         step="0.05"
-        class="w-20 text-sm border rounded px-2 py-1 text-right"
+        class="w-full text-xs border rounded px-1 py-1 text-right"
         placeholder="0.00"
       />
     </td>
 
-    <!-- Exit Price -->
-    <td class="px-3 py-2">
-      <input
-        type="number"
-        :value="leg.exit_price"
-        @input="$emit('update', { exit_price: $event.target.value ? parseFloat($event.target.value) : null })"
-        step="0.05"
-        class="w-20 text-sm border rounded px-2 py-1 text-right"
-        placeholder="0.00"
-      />
+    <!-- Exit Price - Shows calculated P/L when CMP available, click to override -->
+    <td class="px-1 py-1" style="min-width: 80px;">
+      <div class="relative">
+        <!-- Show calculated P/L if available and not editing -->
+        <span
+          v-if="exitPnL !== null && !isEditingExitPrice"
+          @click="isEditingExitPrice = true"
+          class="block w-full text-xs px-1 py-1 text-right cursor-pointer hover:bg-gray-100 rounded"
+          :class="exitPnL > 0 ? 'text-green-600 font-medium' : exitPnL < 0 ? 'text-red-600 font-medium' : 'text-gray-500'"
+          :title="'Click to override. Calculated: ' + formatPnL(exitPnL)"
+        >
+          {{ formatPnL(exitPnL) }}
+        </span>
+        <!-- Input for manual override or when no CMP -->
+        <input
+          v-else
+          type="number"
+          :value="leg.exit_price"
+          @input="$emit('update', { exit_price: $event.target.value ? parseFloat($event.target.value) : null })"
+          @blur="isEditingExitPrice = false"
+          step="0.05"
+          class="w-full text-xs border rounded px-1 py-1 text-right"
+          placeholder="0.00"
+        />
+      </div>
     </td>
 
     <!-- Qty -->
-    <td class="px-3 py-2 text-sm text-gray-900">
+    <td class="px-2 py-2 text-xs text-gray-900 text-right" style="min-width: 60px;">
       {{ leg.lots * lotSize }}
     </td>
 
     <!-- CMP -->
-    <td class="px-3 py-2 text-sm font-medium" :class="cmp ? 'text-gray-900' : 'text-gray-400'">
+    <td class="px-2 py-2 text-xs font-medium text-right" style="min-width: 70px;" :class="cmp ? 'text-gray-900' : 'text-gray-400'">
       {{ cmp ? cmp.toFixed(2) : '-' }}
     </td>
 
     <!-- P/L -->
-    <td class="px-3 py-2 text-sm font-medium" :class="pnlClass">
+    <td class="px-2 py-2 text-xs font-medium text-right" style="min-width: 80px;" :class="pnlClass">
       {{ formatPnL(legPnl) }}
     </td>
 
@@ -140,6 +155,7 @@
         getPnLCellClass(getPnLAtSpot(idx)),
         isCurrentSpotCol(spot) ? 'ring-2 ring-blue-400' : ''
       ]"
+      style="min-width: 70px;"
     >
       {{ formatPnL(getPnLAtSpot(idx)) }}
     </td>
@@ -147,7 +163,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 
 const props = defineProps({
   leg: {
@@ -202,6 +218,17 @@ const props = defineProps({
 
 const emit = defineEmits(['update', 'toggle-select', 'fetch-strikes'])
 
+// State for Exit Price editing
+const isEditingExitPrice = ref(false)
+
+// Calculated Exit P/L based on CMP
+const exitPnL = computed(() => {
+  if (!props.cmp || !props.leg.entry_price) return null
+  const qty = props.leg.lots * props.lotSize
+  const multiplier = props.leg.transaction_type === 'BUY' ? 1 : -1
+  return (props.cmp - parseFloat(props.leg.entry_price)) * qty * multiplier
+})
+
 const pnlClass = computed(() => {
   if (props.legPnl === null) return 'text-gray-400'
   if (props.legPnl > 0) return 'text-green-600'
@@ -228,10 +255,15 @@ function handleExpiryChange(expiry) {
   }
 }
 
+function handleStrikeChange(value) {
+  // Keep as string to match option values for proper binding
+  // The value will be like "23750.00" which matches the option values
+  emit('update', { strike_price: value || null })
+}
+
 function getPnLAtSpot(spotIndex) {
   if (!props.pnlValues || props.pnlValues.length === 0) return null
-  // Find matching index from full pnl values
-  // This assumes spotPrices are a subset of the full spot prices array
+  // pnlValues is now pre-interpolated to match spotPrices (displayedSpotPrices)
   return props.pnlValues[spotIndex] ?? null
 }
 
@@ -247,3 +279,21 @@ function getPnLCellClass(pnl) {
   return 'bg-gray-50'
 }
 </script>
+
+<style scoped>
+/* Ensure dropdowns show full text */
+select {
+  min-width: 0;
+  cursor: pointer;
+}
+
+/* Remove number input spinners for cleaner look */
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+</style>

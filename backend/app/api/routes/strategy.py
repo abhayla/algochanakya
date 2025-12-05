@@ -491,6 +491,10 @@ async def calculate_pnl(
     """
     Calculate P/L grid for strategy legs.
 
+    Uses two-pass calculation:
+    1. First pass on base spot range to determine breakeven points
+    2. Second pass with enhanced spot range including breakevens, strikes, and ATM
+
     Args:
         request: P/L calculation request with legs and mode
 
@@ -520,16 +524,34 @@ async def calculate_pnl(
                 "expiry_date": leg.expiry_date
             })
 
-        # Generate spot price range based on strikes
-        # Use average of strikes as current spot estimate if not available
-        current_spot = sum(strikes) / len(strikes) if strikes else 25000
-        spot_prices = generate_spot_range(strikes, current_spot)
+        # Use current_spot from request if provided, otherwise estimate from strikes
+        current_spot = request.current_spot if request.current_spot else (sum(strikes) / len(strikes) if strikes else 25000)
 
-        # Calculate P/L
+        # PASS 1: Calculate on base spot range to get breakeven points
+        base_spot_prices = generate_spot_range(strikes, current_spot, include_strikes=False)
         target_date = request.target_date or date.today()
+
+        first_pass = pnl_calculator.calculate_pnl_grid(
+            legs=legs,
+            spot_prices=base_spot_prices,
+            mode=request.mode.value,
+            target_date=target_date,
+            volatility=request.volatility or 0.15
+        )
+
+        # PASS 2: Regenerate spot range including breakevens, strikes, and ATM
+        breakevens = first_pass.get("breakeven", [])
+        final_spot_prices = generate_spot_range(
+            strikes,
+            current_spot,
+            breakevens=breakevens,
+            include_strikes=True
+        )
+
+        # Calculate final P/L on enhanced spot range
         result = pnl_calculator.calculate_pnl_grid(
             legs=legs,
-            spot_prices=spot_prices,
+            spot_prices=final_spot_prices,
             mode=request.mode.value,
             target_date=target_date,
             volatility=request.volatility or 0.15

@@ -78,6 +78,8 @@ npm run test:watchlist
 npm run test:ws
 npm run test:verify  # Manual watchlist verification
 npm run test:strategy  # Strategy builder tests
+npm run test:strategy-verify  # Strategy builder verification
+npm run test:watchlist-fix  # Watchlist fix verification
 
 # Run with UI
 npm run test:ui
@@ -185,26 +187,40 @@ The platform includes a comprehensive options Strategy Builder:
    - Returns max profit, max loss, and breakeven points
    - Lot sizes: NIFTY=75, BANKNIFTY=15, FINNIFTY=25
 
-2. **Options Data API (`app/api/routes/options.py`):**
+2. **P/L Grid Display (`src/views/StrategyBuilderView.vue`):**
+   - Dynamic columns showing P/L at different spot prices
+   - **Breakeven columns** - Breakeven points (e.g., 25758, 26242) are always included as separate columns
+   - **Strike price columns** - Strike prices from legs are included as columns
+   - **Current spot column** - Highlighted with blue ring
+   - **Linear interpolation** - P/L values for breakeven/strike columns are interpolated when not in backend's spot array
+   - Color coding: Green for profit zones, Red for loss zones
+
+3. **Live Data Columns:**
+   - **CMP (Current Market Price)** - Shows live option prices via WebSocket or LTP API fallback
+   - **Exit P/L** - Calculated as `(CMP - Entry) × Qty × BuySellMultiplier`, click to manually override
+   - **P/L per leg** - Shows current P/L for each leg based on CMP
+
+4. **Options Data API (`app/api/routes/options.py`):**
    - `GET /api/options/expiries` - Available expiry dates
    - `GET /api/options/strikes` - Strike prices for expiry
    - `GET /api/options/chain` - Full option chain
    - `GET /api/options/instrument` - Get instrument by parameters
 
-3. **Strategy API (`app/api/routes/strategy.py`):**
+5. **Strategy API (`app/api/routes/strategy.py`):**
    - CRUD operations for strategies and legs
    - `POST /api/strategies/calculate` - P/L grid calculation
    - `POST /api/strategies/{id}/share` - Generate share link
    - `GET /api/strategies/shared/{share_code}` - Public strategy access
 
-4. **Orders API (`app/api/routes/orders.py`):**
+6. **Orders API (`app/api/routes/orders.py`):**
    - `POST /api/orders/basket` - Place basket order via Kite
    - `GET /api/orders/positions` - Get positions from broker
    - `POST /api/orders/import-positions` - Import positions as strategy
+   - `GET /api/orders/ltp` - Get LTP for instruments (fallback when WebSocket unavailable)
 
-5. **Frontend Components (`src/components/strategy/`):**
+7. **Frontend Components (`src/components/strategy/`):**
    - `StrategyHeader.vue` - Underlying selector, P/L mode toggle
-   - `StrategyLegRow.vue` - Editable leg row with dropdowns
+   - `StrategyLegRow.vue` - Editable leg row with dropdowns, CMP display, Exit P/L calculation
    - `StrategyActions.vue` - Action buttons
    - `SaveStrategyModal.vue` - Save strategy dialog
    - `ShareStrategyModal.vue` - Share link dialog
@@ -323,6 +339,10 @@ Frontend requires `.env` file:
 - `tests/e2e/websocket-verify.spec.js` - WebSocket live prices verification
 - `tests/e2e/watchlist-manual-verify.spec.js` - Manual watchlist verification
 - `tests/e2e/strategy-builder.spec.js` - Strategy builder functionality tests
+- `tests/e2e/strategy-builder-verify.spec.js` - Strategy builder verification tests
+- `tests/e2e/strategy-builder-complete.spec.js` - Complete strategy builder test suite (22 tests)
+- `tests/e2e/strategy-iron-condor.spec.js` - Iron Condor strategy test (18 tests, verifies breakeven columns)
+- `tests/e2e/watchlist-fix-verify.spec.js` - Watchlist fix verification tests
 - `tests/e2e/helpers/auth.helper.js` - Auth helper utilities
 
 Test screenshots are saved to `tests/screenshots/` (gitignored).
@@ -338,4 +358,5 @@ npm test
 # Run specific test with visible browser
 npm run test:ws  # WebSocket verification
 npm run test:oauth  # OAuth flow
+npm run test:iron-condor  # Iron Condor strategy test (requires manual TOTP)
 ```

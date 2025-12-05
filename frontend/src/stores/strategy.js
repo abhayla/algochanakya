@@ -96,6 +96,12 @@ export const useStrategyStore = defineStore('strategy', () => {
     try {
       const response = await api.get(`/api/options/expiries?underlying=${underlying.value}`)
       expiries.value = response.data.expiries
+
+      // Pre-fetch strikes for the first expiry so they're ready when user adds a row
+      if (expiries.value.length > 0 && !strikes.value[expiries.value[0]]) {
+        await fetchStrikes(expiries.value[0])
+      }
+
       return { success: true }
     } catch (err) {
       error.value = err.response?.data?.detail || 'Failed to fetch expiries'
@@ -124,14 +130,18 @@ export const useStrategyStore = defineStore('strategy', () => {
           contract_type: contractType
         }
       })
-      return response.data.instrument_token
+      // Return full instrument data including tradingsymbol for LTP fetching
+      return {
+        instrument_token: response.data.instrument_token,
+        tradingsymbol: response.data.tradingsymbol
+      }
     } catch (err) {
       console.error('Failed to fetch instrument token:', err)
       return null
     }
   }
 
-  function addLeg(legData = null) {
+  async function addLeg(legData = null) {
     const defaultExpiry = expiries.value[0] || ''
     const newLeg = legData || {
       temp_id: generateTempId(),
@@ -144,12 +154,13 @@ export const useStrategyStore = defineStore('strategy', () => {
       entry_price: null,
       exit_price: null,
       instrument_token: null,
+      tradingsymbol: null,
     }
     legs.value.push(newLeg)
 
     // Fetch strikes for the expiry if not already fetched
     if (defaultExpiry && !strikes.value[defaultExpiry]) {
-      fetchStrikes(defaultExpiry)
+      await fetchStrikes(defaultExpiry)
     }
   }
 
@@ -162,14 +173,15 @@ export const useStrategyStore = defineStore('strategy', () => {
         fetchStrikes(updates.expiry_date)
       }
 
-      // If strike or contract type changed, update instrument token
+      // If strike or contract type changed, update instrument token and tradingsymbol
       if (updates.strike_price !== undefined || updates.contract_type !== undefined) {
         const leg = legs.value[index]
         if (leg.expiry_date && leg.strike_price && leg.contract_type) {
           fetchInstrumentToken(leg.expiry_date, leg.strike_price, leg.contract_type)
-            .then(token => {
-              if (token) {
-                legs.value[index].instrument_token = token
+            .then(data => {
+              if (data) {
+                legs.value[index].instrument_token = data.instrument_token
+                legs.value[index].tradingsymbol = data.tradingsymbol
               }
             })
         }
@@ -525,6 +537,55 @@ export const useStrategyStore = defineStore('strategy', () => {
     return (cmp - parseFloat(leg.entry_price)) * qty * multiplier
   }
 
+  // Get leg tokens for WebSocket subscription
+  function getLegTokens() {
+    return legs.value
+      .map(leg => leg.instrument_token)
+      .filter(token => token != null)
+  }
+
+  // Calculate Exit P/L for a leg based on CMP
+  function getLegExitPnL(leg) {
+    const cmp = getLegCMP(leg)
+    if (cmp === null || !leg.entry_price) return null
+
+    const qty = leg.lots * lotSize.value
+    const multiplier = leg.transaction_type === 'BUY' ? 1 : -1
+    return (cmp - parseFloat(leg.entry_price)) * qty * multiplier
+  }
+
+  // Fetch LTP from Kite API as fallback when WebSocket unavailable
+  async function fetchLegLTP(leg) {
+    if (!leg.instrument_token || !leg.tradingsymbol) return
+
+    // Skip if we already have live price for this token
+    if (livePrices.value[leg.instrument_token]?.ltp) return
+
+    try {
+      // Use /orders/ltp endpoint which calls Kite API
+      // Format: NFO:TRADINGSYMBOL (e.g., NFO:NIFTY25DEC23750PE)
+      const instrument = `NFO:${leg.tradingsymbol}`
+      const response = await api.get('/api/orders/ltp', {
+        params: {
+          instruments: instrument
+        }
+      })
+
+      // Response format: { "NFO:NIFTY25DEC23750PE": { "instrument_token": 123, "last_price": 100.5 } }
+      if (response.data && response.data[instrument]) {
+        const data = response.data[instrument]
+        livePrices.value[leg.instrument_token] = {
+          ltp: data.last_price,
+          change: 0,
+          change_percent: 0
+        }
+      }
+    } catch (e) {
+      // Silently fail - WebSocket is the primary source
+      console.debug('fetchLegLTP failed:', e.message)
+    }
+  }
+
   // Clear / Reset
   function clearStrategy() {
     currentStrategy.value = null
@@ -612,6 +673,9 @@ export const useStrategyStore = defineStore('strategy', () => {
     updateLivePrices,
     getLegCMP,
     getLegPnL,
+    getLegTokens,
+    getLegExitPnL,
+    fetchLegLTP,
     clearStrategy,
     reset,
   }

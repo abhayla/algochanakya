@@ -351,7 +351,9 @@ def generate_spot_range(
     strikes: List[float],
     current_spot: float,
     interval: int = 100,
-    padding: int = 700
+    padding: int = 700,
+    breakevens: Optional[List[float]] = None,
+    include_strikes: bool = True
 ) -> List[float]:
     """
     Generate spot price range for P/L columns.
@@ -361,6 +363,8 @@ def generate_spot_range(
         current_spot: Current spot price
         interval: Price interval between columns
         padding: Padding beyond min/max strikes
+        breakevens: List of breakeven points to include
+        include_strikes: Whether to include all strike prices in the range
 
     Returns:
         List of spot prices for P/L calculation
@@ -381,12 +385,30 @@ def generate_spot_range(
 
     spots = list(range(int(start), int(end), interval))
 
-    # Ensure current spot is included
+    # Ensure current spot is included (ATM)
     current_rounded = round(current_spot / interval) * interval
     if current_rounded not in spots:
         spots.append(int(current_rounded))
-        spots.sort()
 
+    # Add exact current spot if different from rounded
+    if int(current_spot) not in spots:
+        spots.append(int(current_spot))
+
+    # Include all strike prices
+    if include_strikes:
+        for strike in strikes:
+            strike_int = int(strike)
+            if strike_int not in spots:
+                spots.append(strike_int)
+
+    # Include breakeven points
+    if breakevens:
+        for be in breakevens:
+            be_rounded = round(be)
+            if be_rounded not in spots:
+                spots.append(be_rounded)
+
+    spots.sort()
     return [float(s) for s in spots]
 
 

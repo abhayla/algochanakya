@@ -147,6 +147,7 @@ class PnLCalculateRequest(BaseModel):
     mode: PnLMode = PnLMode.EXPIRY
     target_date: Optional[date] = None
     volatility: Optional[float] = Field(default=0.15, ge=0.01, le=1.0)
+    current_spot: Optional[float] = Field(default=None, description="Current spot price from live market data")
 
 
 class PnLCalculateResponse(BaseModel):
