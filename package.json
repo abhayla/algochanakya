@@ -13,7 +13,9 @@
     "test:oauth": "playwright test oauth-flow.spec.js --headed",
     "test:watchlist": "playwright test tests/e2e/watchlist.spec.js --headed --timeout=180000",
     "test:verify": "playwright test watchlist-manual-verify.spec.js --headed --timeout=300000",
-    "test:ws": "playwright test tests/e2e/websocket-verify.spec.js --headed --timeout=300000"
+    "test:ws": "playwright test tests/e2e/websocket-verify.spec.js --headed --timeout=300000",
+    "test:strategy": "npx playwright test tests/e2e/strategy-builder.spec.js --headed --timeout=300000",
+    "test:watchlist-fix": "npx playwright test tests/e2e/watchlist-fix-verify.spec.js --headed --timeout=300000 --workers=1"
   },
   "repository": {
     "type": "git",

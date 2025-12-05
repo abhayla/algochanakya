@@ -36,6 +36,24 @@ const router = createRouter({
       component: () => import('../views/DashboardView.vue'),
       meta: { requiresAuth: true },
     },
+    {
+      path: '/strategy',
+      name: 'strategy',
+      component: () => import('../views/StrategyBuilderView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/strategy/:id',
+      name: 'strategy-detail',
+      component: () => import('../views/StrategyBuilderView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/strategy/shared/:shareCode',
+      name: 'shared-strategy',
+      component: () => import('../views/StrategyBuilderView.vue'),
+      meta: { requiresAuth: false },  // Public access for shared strategies
+    },
   ],
 })
 

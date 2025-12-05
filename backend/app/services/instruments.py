@@ -90,26 +90,40 @@ class InstrumentService:
             if not instruments:
                 return 0
 
-            # Create insert statement with on conflict update
-            stmt = insert(Instrument).values(instruments)
-            stmt = stmt.on_conflict_do_update(
-                index_elements=['instrument_token'],
-                set_={
-                    'exchange_token': stmt.excluded.exchange_token,
-                    'tradingsymbol': stmt.excluded.tradingsymbol,
-                    'name': stmt.excluded.name,
-                    'exchange': stmt.excluded.exchange,
-                    'segment': stmt.excluded.segment,
-                    'instrument_type': stmt.excluded.instrument_type,
-                    'strike': stmt.excluded.strike,
-                    'expiry': stmt.excluded.expiry,
-                    'lot_size': stmt.excluded.lot_size,
-                    'tick_size': stmt.excluded.tick_size,
-                    'last_updated': datetime.utcnow(),
-                }
-            )
+            # Batch size to stay under PostgreSQL's 32767 param limit
+            # Each instrument has ~12 columns, so 2000 records = 24000 params
+            BATCH_SIZE = 2000
+            total_stored = 0
 
-            await db.execute(stmt)
+            for i in range(0, len(instruments), BATCH_SIZE):
+                batch = instruments[i:i + BATCH_SIZE]
+
+                # Create insert statement with on conflict update
+                stmt = insert(Instrument).values(batch)
+                stmt = stmt.on_conflict_do_update(
+                    index_elements=['instrument_token'],
+                    set_={
+                        'exchange_token': stmt.excluded.exchange_token,
+                        'tradingsymbol': stmt.excluded.tradingsymbol,
+                        'name': stmt.excluded.name,
+                        'exchange': stmt.excluded.exchange,
+                        'segment': stmt.excluded.segment,
+                        'instrument_type': stmt.excluded.instrument_type,
+                        'strike': stmt.excluded.strike,
+                        'expiry': stmt.excluded.expiry,
+                        'lot_size': stmt.excluded.lot_size,
+                        'tick_size': stmt.excluded.tick_size,
+                        'last_updated': datetime.utcnow(),
+                    }
+                )
+
+                await db.execute(stmt)
+                total_stored += len(batch)
+
+                # Log progress for large imports
+                if len(instruments) > BATCH_SIZE:
+                    logger.info(f"Stored batch {i // BATCH_SIZE + 1}: {total_stored}/{len(instruments)} instruments")
+
             await db.commit()
 
             # Update cache timestamp

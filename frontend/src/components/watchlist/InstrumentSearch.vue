@@ -12,7 +12,7 @@
           @click="close"
           class="text-gray-400 hover:text-gray-600 transition-colors"
         >
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-6 h-6" width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
@@ -58,6 +58,8 @@
         <div v-else-if="!searchQuery" class="text-center py-12 text-gray-500">
           <svg
             class="w-12 h-12 mx-auto mb-4 text-gray-400"
+            width="48"
+            height="48"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"

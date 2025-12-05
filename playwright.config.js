@@ -5,7 +5,7 @@ export default defineConfig({
   timeout: 180000, // 3 minutes for manual login
   retries: 0,
   use: {
-    baseURL: 'http://localhost:5174',
+    baseURL: 'http://localhost:5173',
     headless: false,
     screenshot: 'on',
     video: 'retain-on-failure',
@@ -20,7 +20,7 @@ export default defineConfig({
     },
     {
       command: 'cd frontend && npm run dev',
-      url: 'http://localhost:5174',
+      url: 'http://localhost:5173',
       reuseExistingServer: true,
       timeout: 30000,
     },

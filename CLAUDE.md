@@ -76,6 +76,8 @@ npm run test:api
 npm run test:oauth
 npm run test:watchlist
 npm run test:ws
+npm run test:verify  # Manual watchlist verification
+npm run test:strategy  # Strategy builder tests
 
 # Run with UI
 npm run test:ui
@@ -161,20 +163,72 @@ The platform streams live market prices via WebSocket:
 - Contains token, symbol, exchange, instrument type, etc.
 - Used for search and watchlist functionality
 
+**Strategy (`strategies` table):**
+- User-created options strategies with underlying (NIFTY/BANKNIFTY/FINNIFTY)
+- Supports shareable links via `share_code`
+- Status tracking (open/closed)
+
+**StrategyLeg (`strategy_legs` table):**
+- Individual legs of a strategy (strike, expiry, contract type)
+- Transaction type (BUY/SELL), lots, entry/exit prices
+- Links to instrument via `instrument_token`
+- Order tracking via `order_id` and `position_status`
+
+### Strategy Builder
+
+The platform includes a comprehensive options Strategy Builder:
+
+1. **P/L Calculation (`app/services/pnl_calculator.py`):**
+   - Two modes: "At Expiry" (intrinsic value) and "Current" (Black-Scholes)
+   - Uses scipy for accurate Black-Scholes pricing (with pure Python fallback)
+   - Calculates P/L grid across multiple spot prices
+   - Returns max profit, max loss, and breakeven points
+   - Lot sizes: NIFTY=75, BANKNIFTY=15, FINNIFTY=25
+
+2. **Options Data API (`app/api/routes/options.py`):**
+   - `GET /api/options/expiries` - Available expiry dates
+   - `GET /api/options/strikes` - Strike prices for expiry
+   - `GET /api/options/chain` - Full option chain
+   - `GET /api/options/instrument` - Get instrument by parameters
+
+3. **Strategy API (`app/api/routes/strategy.py`):**
+   - CRUD operations for strategies and legs
+   - `POST /api/strategies/calculate` - P/L grid calculation
+   - `POST /api/strategies/{id}/share` - Generate share link
+   - `GET /api/strategies/shared/{share_code}` - Public strategy access
+
+4. **Orders API (`app/api/routes/orders.py`):**
+   - `POST /api/orders/basket` - Place basket order via Kite
+   - `GET /api/orders/positions` - Get positions from broker
+   - `POST /api/orders/import-positions` - Import positions as strategy
+
+5. **Frontend Components (`src/components/strategy/`):**
+   - `StrategyHeader.vue` - Underlying selector, P/L mode toggle
+   - `StrategyLegRow.vue` - Editable leg row with dropdowns
+   - `StrategyActions.vue` - Action buttons
+   - `SaveStrategyModal.vue` - Save strategy dialog
+   - `ShareStrategyModal.vue` - Share link dialog
+   - `BasketOrderModal.vue` - Order confirmation
+
 ### Backend Structure
 
 - `app/main.py` - FastAPI app initialization, CORS, lifespan events
 - `app/config.py` - Pydantic Settings for environment variables
 - `app/database.py` - SQLAlchemy async engine, session factory, Redis pool
-- `app/models/` - SQLAlchemy ORM models (User, BrokerConnection, Watchlist, Instrument)
+- `app/models/` - SQLAlchemy ORM models (User, BrokerConnection, Watchlist, Instrument, Strategy, StrategyLeg)
 - `app/schemas/` - Pydantic schemas for request/response validation
 - `app/api/routes/` - FastAPI route handlers
   - `auth.py` - Zerodha OAuth login/callback
   - `watchlist.py` - Watchlist CRUD operations
   - `instruments.py` - Instrument search
+  - `options.py` - Options expiries, strikes, chain data
+  - `strategy.py` - Strategy CRUD, P/L calculation, sharing
+  - `orders.py` - Basket orders, positions, imports
   - `websocket.py` - WebSocket endpoint for live prices
 - `app/services/` - Business logic services
   - `kite_ticker.py` - KiteTickerService for live price streaming
+  - `kite_orders.py` - Basket orders via Kite API
+  - `pnl_calculator.py` - Black-Scholes P/L calculations
   - `instruments.py` - Instrument data management
 - `app/utils/jwt.py` - JWT token creation and verification
 - `app/utils/dependencies.py` - FastAPI dependencies for authentication
@@ -184,15 +238,16 @@ The platform streams live market prices via WebSocket:
 - `src/router/index.js` - Vue Router with authentication guards
 - `src/stores/auth.js` - Pinia store for authentication state
 - `src/stores/watchlist.js` - Pinia store for watchlist and WebSocket management
+- `src/stores/strategy.js` - Pinia store for strategy builder state
 - `src/services/api.js` - Axios instance with interceptors for auth headers
 - `src/views/` - Vue components for pages
   - `LoginView.vue` - Login page with Zerodha OAuth button
   - `AuthCallbackView.vue` - OAuth callback handler
   - `WatchlistView.vue` - Watchlist page with live prices
+  - `StrategyBuilderView.vue` - Options strategy builder with P/L grid
 - `src/components/` - Reusable Vue components
-  - `watchlist/IndexHeader.vue` - NIFTY/BANK NIFTY live prices header
-  - `watchlist/InstrumentRow.vue` - Individual instrument row with live data
-  - `watchlist/InstrumentSearch.vue` - Search and add instruments
+  - `watchlist/` - Watchlist components (IndexHeader, InstrumentRow, InstrumentSearch)
+  - `strategy/` - Strategy builder components (StrategyHeader, StrategyLegRow, StrategyActions, modals)
 
 ### Database Connection
 
@@ -249,6 +304,7 @@ Frontend requires `.env` file:
 - `pydantic-settings` - Settings management
 - `kiteconnect` - Zerodha API client
 - `PyJWT` - JWT token handling
+- `scipy` - Black-Scholes calculations for P/L
 
 **Frontend:**
 - `vue` - UI framework
@@ -265,6 +321,9 @@ Frontend requires `.env` file:
 - `tests/e2e/oauth-flow.spec.js` - Full OAuth flow (requires manual Zerodha login)
 - `tests/e2e/watchlist.spec.js` - Watchlist functionality tests
 - `tests/e2e/websocket-verify.spec.js` - WebSocket live prices verification
+- `tests/e2e/watchlist-manual-verify.spec.js` - Manual watchlist verification
+- `tests/e2e/strategy-builder.spec.js` - Strategy builder functionality tests
+- `tests/e2e/helpers/auth.helper.js` - Auth helper utilities
 
 Test screenshots are saved to `tests/screenshots/` (gitignored).
 
