@@ -71,163 +71,254 @@
       </div>
     </div>
 
-    <!-- Main Content Area -->
-    <div class="flex-1 flex flex-col overflow-hidden">
+    <!-- Main Scrollable Content -->
+    <div class="flex-1 overflow-y-auto p-4">
       <!-- Error Alert -->
-      <div v-if="strategyStore.error" class="mx-4 mt-2 p-3 bg-red-100 border border-red-400 text-red-700 rounded flex-shrink-0">
+      <div v-if="strategyStore.error" class="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
         {{ strategyStore.error }}
         <button @click="strategyStore.error = null" class="ml-4 text-red-500 hover:text-red-700">&times;</button>
       </div>
 
-      <!-- Strategy Table Container with Horizontal Scroll -->
-      <div class="flex-1 overflow-auto mx-4 mt-2 bg-white rounded-lg shadow">
-        <table class="min-w-max border-collapse text-sm w-full">
-          <thead class="bg-gray-50 sticky top-0 z-10">
-            <tr>
-              <th class="border-b border-gray-200 px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-10 bg-gray-50">
-                <input
-                  type="checkbox"
-                  :checked="allLegsSelected"
-                  @change="toggleSelectAll"
-                  class="h-4 w-4 text-blue-600 rounded"
+      <!-- FULL WIDTH STRATEGY TABLE -->
+      <div class="bg-white rounded-xl border border-gray-200 shadow-sm mb-4 overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full border-collapse text-sm">
+            <thead class="bg-gray-50 border-b border-gray-200">
+              <tr>
+                <th class="px-3 py-3 text-center w-10 border-r border-gray-200">
+                  <input
+                    type="checkbox"
+                    :checked="allLegsSelected"
+                    @change="toggleSelectAll"
+                    class="h-4 w-4 text-blue-600 rounded"
+                  />
+                </th>
+                <th class="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase border-r border-gray-200" style="min-width: 100px;">Expiry</th>
+                <th class="px-3 py-3 text-center text-xs font-semibold text-gray-600 uppercase border-r border-gray-200" style="min-width: 70px;">Type</th>
+                <th class="px-3 py-3 text-center text-xs font-semibold text-gray-600 uppercase border-r border-gray-200" style="min-width: 60px;">B/S</th>
+                <th class="px-3 py-3 text-center text-xs font-semibold text-gray-600 uppercase border-r border-gray-200" style="min-width: 100px;">Strike</th>
+                <th class="px-3 py-3 text-center text-xs font-semibold text-gray-600 uppercase border-r border-gray-200" style="min-width: 60px;">Lots</th>
+                <th class="px-3 py-3 text-center text-xs font-semibold text-gray-600 uppercase border-r border-gray-200" style="min-width: 80px;">Entry</th>
+                <th class="px-3 py-3 text-center text-xs font-semibold text-gray-600 uppercase border-r border-gray-200" style="min-width: 60px;">Qty</th>
+                <th class="px-3 py-3 text-center text-xs font-semibold text-gray-600 uppercase border-r border-gray-200" style="min-width: 70px;">CMP</th>
+                <th class="px-3 py-3 text-center text-xs font-semibold text-gray-600 uppercase border-r border-gray-200" style="min-width: 80px;">Exit P/L</th>
+                <!-- Dynamic P/L Columns -->
+                <th
+                  v-for="spot in displayedSpotPrices"
+                  :key="spot"
+                  :class="[
+                    'px-2 py-3 text-center text-xs font-semibold uppercase whitespace-nowrap border-r border-gray-200',
+                    isCurrentSpot(spot) ? 'bg-yellow-200 text-yellow-900' : 'text-gray-600'
+                  ]"
+                  style="min-width: 70px;"
+                >
+                  <div v-if="isCurrentSpot(spot)" class="text-[10px] text-yellow-700 font-bold">SPOT</div>
+                  {{ spot }}
+                </th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+              <!-- Strategy Leg Rows -->
+              <tr
+                v-for="(leg, index) in filteredLegs"
+                :key="leg.temp_id || leg.id"
+                :class="[
+                  'transition-colors border-l-4',
+                  leg.transaction_type === 'BUY'
+                    ? 'bg-blue-50 hover:bg-blue-100 border-l-blue-500'
+                    : 'bg-amber-50 hover:bg-amber-100 border-l-amber-500'
+                ]"
+              >
+                <td class="px-3 py-2 text-center border-r border-gray-200">
+                  <input
+                    type="checkbox"
+                    :checked="strategyStore.selectedLegIndices.includes(index)"
+                    @change="strategyStore.toggleLegSelection(index)"
+                    class="h-4 w-4 text-blue-600 rounded"
+                  />
+                </td>
+                <td class="px-2 py-2 border-r border-gray-200">
+                  <select
+                    :value="leg.expiry_date"
+                    @change="handleLegUpdate(index, 'expiry_date', $event.target.value)"
+                    class="w-full px-2 py-1.5 text-sm border border-gray-300 rounded"
+                  >
+                    <option value="">Select</option>
+                    <option v-for="exp in strategyStore.expiries" :key="exp" :value="exp">
+                      {{ formatDate(exp) }}
+                    </option>
+                  </select>
+                </td>
+                <td class="px-2 py-2 text-center border-r border-gray-200">
+                  <select
+                    :value="leg.contract_type"
+                    @change="handleLegUpdate(index, 'contract_type', $event.target.value)"
+                    :class="[
+                      'w-full px-2 py-1.5 text-xs font-bold rounded border',
+                      leg.contract_type === 'CE' ? 'bg-green-100 text-green-800 border-green-300' : 'bg-rose-100 text-rose-800 border-rose-300'
+                    ]"
+                  >
+                    <option value="CE">CE</option>
+                    <option value="PE">PE</option>
+                  </select>
+                </td>
+                <td class="px-2 py-2 text-center border-r border-gray-200">
+                  <select
+                    :value="leg.transaction_type"
+                    @change="handleLegUpdate(index, 'transaction_type', $event.target.value)"
+                    :class="[
+                      'w-full px-2 py-1.5 text-xs font-bold rounded border',
+                      leg.transaction_type === 'BUY' ? 'bg-blue-100 text-blue-800 border-blue-300' : 'bg-amber-100 text-amber-800 border-amber-300'
+                    ]"
+                  >
+                    <option value="BUY">BUY</option>
+                    <option value="SELL">SELL</option>
+                  </select>
+                </td>
+                <td class="px-2 py-2 border-r border-gray-200">
+                  <select
+                    :value="leg.strike_price"
+                    @change="handleLegUpdate(index, 'strike_price', $event.target.value)"
+                    class="w-full px-2 py-1.5 text-sm border border-gray-300 rounded"
+                  >
+                    <option value="">Select</option>
+                    <option v-for="s in getStrikesForExpiry(leg.expiry_date)" :key="s" :value="s">
+                      {{ s }}
+                    </option>
+                  </select>
+                </td>
+                <td class="px-2 py-2 border-r border-gray-200">
+                  <input
+                    type="number"
+                    :value="leg.lots"
+                    @input="handleLegUpdate(index, 'lots', parseInt($event.target.value) || 1)"
+                    min="1"
+                    class="w-full px-2 py-1.5 text-sm border border-gray-300 rounded text-center"
+                  />
+                </td>
+                <td class="px-2 py-2 border-r border-gray-200">
+                  <input
+                    type="number"
+                    :value="leg.entry_price"
+                    @input="handleLegUpdate(index, 'entry_price', parseFloat($event.target.value))"
+                    @blur="handleLegUpdate(index, 'entry_price', parseFloat($event.target.value))"
+                    step="0.05"
+                    placeholder="Entry"
+                    class="w-full px-2 py-1.5 text-sm border border-gray-300 rounded text-right"
+                  />
+                </td>
+                <td class="px-3 py-2 text-center font-semibold border-r border-gray-200">
+                  {{ leg.lots * strategyStore.lotSize }}
+                </td>
+                <td class="px-3 py-2 text-right font-medium border-r border-gray-200">
+                  <span v-if="strategyStore.getLegCMP(leg)" class="text-blue-600">
+                    {{ formatPrice(strategyStore.getLegCMP(leg)) }}
+                  </span>
+                  <span v-else class="text-gray-400">-</span>
+                </td>
+                <td class="px-3 py-2 text-right font-semibold border-r border-gray-200">
+                  <span :class="getPnLClass(strategyStore.getLegPnL(leg))">
+                    {{ formatPnL(strategyStore.getLegPnL(leg)) }}
+                  </span>
+                </td>
+                <!-- Dynamic P/L Cells -->
+                <PnLCell
+                  v-for="(spot, spotIdx) in displayedSpotPrices"
+                  :key="'cell-' + index + '-' + spot"
+                  :value="getLegPnLValues(index)[spotIdx]"
+                  :max-profit="strategyStore.maxProfit"
+                  :max-loss="strategyStore.maxLoss"
+                  :is-spot-column="isCurrentSpot(spot)"
                 />
-              </th>
-              <th class="border-b border-gray-200 px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50" style="min-width: 100px;">Expiry</th>
-              <th class="border-b border-gray-200 px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50" style="min-width: 80px;">Contract</th>
-              <th class="border-b border-gray-200 px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50" style="min-width: 70px;">Trans</th>
-              <th class="border-b border-gray-200 px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50" style="min-width: 100px;">Strike</th>
-              <th class="border-b border-gray-200 px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50" style="min-width: 60px;">Lots</th>
-              <th class="border-b border-gray-200 px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50" style="min-width: 110px;">Strategy</th>
-              <th class="border-b border-gray-200 px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50" style="min-width: 80px;">Entry</th>
-              <th class="border-b border-gray-200 px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50" style="min-width: 80px;">Exit</th>
-              <th class="border-b border-gray-200 px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50" style="min-width: 60px;">Qty</th>
-              <th class="border-b border-gray-200 px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50" style="min-width: 70px;">CMP</th>
-              <th class="border-b border-gray-200 px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50" style="min-width: 80px;">P/L</th>
-              <!-- Dynamic P/L Columns -->
-              <th
-                v-for="spot in displayedSpotPrices"
-                :key="spot"
-                :class="[
-                  'border-b border-gray-200 px-2 py-3 text-center text-xs font-medium uppercase tracking-wider bg-gray-50',
-                  isCurrentSpot(spot) ? 'bg-blue-100 text-blue-800' : 'text-gray-500'
-                ]"
-                style="min-width: 70px;"
-              >
-                {{ spot }}
-              </th>
-            </tr>
-          </thead>
-          <tbody class="bg-white divide-y divide-gray-200">
-            <!-- Leg Rows -->
-            <StrategyLegRow
-              v-for="(leg, index) in filteredLegs"
-              :key="leg.temp_id || leg.id"
-              :leg="leg"
-              :index="index"
-              :expiries="strategyStore.expiries"
-              :strikes="getStrikesForExpiry(leg.expiry_date)"
-              :strategy-types="strategyStore.strategyTypes"
-              :lot-size="strategyStore.lotSize"
-              :is-selected="strategyStore.selectedLegIndices.includes(index)"
-              :spot-prices="displayedSpotPrices"
-              :pnl-values="getLegPnLValues(index)"
-              :current-spot="strategyStore.currentSpot"
-              :cmp="strategyStore.getLegCMP(leg)"
-              :leg-pnl="strategyStore.getLegPnL(leg)"
-              @update="(updates) => strategyStore.updateLeg(index, updates)"
-              @toggle-select="strategyStore.toggleLegSelection(index)"
-              @fetch-strikes="strategyStore.fetchStrikes"
-            />
+              </tr>
 
-            <!-- Empty State -->
-            <tr v-if="strategyStore.legs.length === 0">
-              <td colspan="100" class="px-6 py-8 text-center text-gray-500">
-                No legs added. Click "+ Add Row" to add a new leg.
-              </td>
-            </tr>
+              <!-- Empty State -->
+              <tr v-if="strategyStore.legs.length === 0">
+                <td colspan="100" class="px-6 py-12 text-center text-gray-500">
+                  No legs added. Click "+ Add Row" to start building your strategy.
+                </td>
+              </tr>
 
-            <!-- Summary Row -->
-            <tr v-if="strategyStore.legs.length > 0" class="bg-gray-100 font-semibold">
-              <td colspan="9" class="px-3 py-2 text-right text-sm">Total:</td>
-              <td class="px-3 py-2 text-sm">{{ strategyStore.totalQty }}</td>
-              <td class="px-3 py-2 text-sm">-</td>
-              <td class="px-3 py-2 text-sm" :class="totalPnLClass">{{ formatPnL(totalCurrentPnL) }}</td>
-              <!-- Summary P/L Columns -->
-              <td
-                v-for="(spot, idx) in displayedSpotPrices"
-                :key="'sum-' + spot"
-                :class="[
-                  'px-2 py-2 text-center text-sm',
-                  getPnLCellClass(getTotalPnLAtSpot(idx)),
-                  isCurrentSpot(spot) ? 'ring-2 ring-blue-400' : ''
-                ]"
-              >
-                {{ formatPnL(getTotalPnLAtSpot(idx)) }}
-              </td>
-            </tr>
-          </tbody>
-        </table>
+              <!-- Total Row -->
+              <tr v-if="strategyStore.legs.length > 0" class="bg-gray-100 border-t-2 border-gray-300 font-semibold">
+                <td colspan="7" class="px-4 py-3 text-right text-gray-700 border-r border-gray-200">Total:</td>
+                <td class="px-3 py-3 text-center font-bold border-r border-gray-200">{{ strategyStore.totalQty }}</td>
+                <td class="px-3 py-3 text-center text-gray-400 border-r border-gray-200">-</td>
+                <td class="px-3 py-3 text-right font-bold border-r border-gray-200" :class="getPnLClass(totalCurrentPnL)">
+                  {{ formatPnL(totalCurrentPnL) }}
+                </td>
+                <!-- Total P/L Cells -->
+                <PnLCell
+                  v-for="(spot, idx) in displayedSpotPrices"
+                  :key="'total-' + spot"
+                  :value="getTotalPnLAtSpot(idx)"
+                  :max-profit="strategyStore.maxProfit"
+                  :max-loss="strategyStore.maxLoss"
+                  :is-spot-column="isCurrentSpot(spot)"
+                  :is-total="true"
+                />
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      <!-- Actions Bar -->
-      <div class="bg-white border-t border-gray-200 px-4 py-2 flex-shrink-0 mx-4 mb-2 rounded-b-lg shadow">
+      <!-- ACTION BUTTONS -->
+      <div class="bg-white rounded-xl border border-gray-200 shadow-sm mb-4 px-4 py-3">
         <div class="flex items-center justify-between">
-          <!-- Left Buttons -->
           <div class="flex items-center space-x-2">
             <button
               @click="strategyStore.removeSelectedLegs()"
               :disabled="strategyStore.selectedLegIndices.length === 0"
-              class="px-3 py-1.5 text-sm font-medium border border-gray-300 rounded bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              class="px-3 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
             >
               Delete
             </button>
             <button
               @click="strategyStore.addLeg()"
-              class="px-3 py-1.5 text-sm font-medium border border-blue-600 rounded bg-blue-600 text-white hover:bg-blue-700"
+              class="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100"
             >
               + Add Row
             </button>
             <button
               @click="handleRecalculate"
               :disabled="strategyStore.legs.length === 0 || strategyStore.isLoading"
-              class="px-3 py-1.5 text-sm font-medium border border-gray-300 rounded bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              class="px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
             >
               {{ strategyStore.isLoading ? 'Calculating...' : 'ReCalculate' }}
             </button>
           </div>
-
-          <!-- Right Buttons -->
           <div class="flex items-center space-x-2">
             <button
               @click="strategyStore.importPositions()"
-              class="px-3 py-1.5 text-sm font-medium border border-gray-300 rounded bg-white text-gray-700 hover:bg-gray-50"
+              class="px-3 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
             >
               Import Positions
             </button>
             <button
               @click="strategyStore.updateFromPositions()"
-              class="px-3 py-1.5 text-sm font-medium border border-gray-300 rounded bg-white text-gray-700 hover:bg-gray-50"
+              class="px-3 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
             >
               Update Positions
             </button>
             <button
               @click="handleSaveStrategy"
               :disabled="strategyStore.legs.length === 0 || !strategyName || isSaving"
-              class="px-3 py-1.5 text-sm font-medium border border-green-600 rounded bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
+              class="px-4 py-2 text-sm font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50"
             >
               {{ isSaving ? 'Saving...' : 'Save' }}
             </button>
             <button
               @click="handleShare"
               :disabled="!strategyStore.currentStrategy"
-              class="px-3 py-1.5 text-sm font-medium border border-purple-600 rounded bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50"
+              class="px-3 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
             >
               Share
             </button>
             <button
               @click="showOrderModal = true"
               :disabled="strategyStore.legs.length === 0 || !allLegsComplete"
-              class="px-3 py-1.5 text-sm font-medium border border-orange-600 rounded bg-orange-600 text-white hover:bg-orange-700 disabled:opacity-50"
+              class="px-4 py-2 text-sm font-semibold text-white bg-orange-500 rounded-lg hover:bg-orange-600 disabled:opacity-50"
             >
               Buy Basket Order
             </button>
@@ -235,40 +326,101 @@
         </div>
       </div>
 
-      <!-- Summary Stats -->
-      <div v-if="strategyStore.pnlGrid" class="mx-4 mb-2 grid grid-cols-2 md:grid-cols-5 gap-3 flex-shrink-0">
-        <div class="bg-white rounded-lg shadow p-3">
-          <div class="text-xs text-gray-500">Max Profit</div>
-          <div class="text-lg font-bold text-green-600">{{ formatPnL(strategyStore.maxProfit) }}</div>
-        </div>
-        <div class="bg-white rounded-lg shadow p-3">
-          <div class="text-xs text-gray-500">Max Loss</div>
-          <div class="text-lg font-bold text-red-600">{{ formatPnL(strategyStore.maxLoss) }}</div>
-        </div>
-        <div class="bg-white rounded-lg shadow p-3">
-          <div class="text-xs text-gray-500">Breakeven</div>
-          <div class="text-lg font-bold">
-            {{ strategyStore.breakevens.length > 0 ? strategyStore.breakevens.join(', ') : '-' }}
+      <!-- PAYOFF CHART (FULL WIDTH, BELOW TABLE) -->
+      <div class="bg-white rounded-xl border border-gray-200 shadow-sm mb-4 p-4" v-if="displayedSpotPrices.length > 0">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-lg font-semibold text-gray-800">Payoff Diagram</h3>
+          <div class="flex gap-4 text-sm">
+            <span class="flex items-center text-green-600">
+              <span class="w-4 h-1 bg-green-500 mr-2 rounded"></span> Profit Zone
+            </span>
+            <span class="flex items-center text-red-600">
+              <span class="w-4 h-1 bg-red-500 mr-2 rounded"></span> Loss Zone
+            </span>
+            <span class="flex items-center text-yellow-600">
+              <span class="w-3 h-3 bg-yellow-400 mr-2 rounded-full"></span> Current Spot
+            </span>
           </div>
         </div>
-        <div class="bg-white rounded-lg shadow p-3">
-          <div class="text-xs text-gray-500">Risk/Reward</div>
-          <div class="text-lg font-bold">{{ riskRewardRatio }}</div>
-        </div>
-        <div class="bg-white rounded-lg shadow p-3">
-          <div class="text-xs text-gray-500">Current Spot</div>
-          <div class="text-lg font-bold">{{ formatPrice(strategyStore.currentSpot) }}</div>
+        <div class="h-56">
+          <PayoffChart
+            :spot-prices="chartSpotPrices"
+            :total-pnl="chartTotalPnl"
+            :current-spot="strategyStore.currentSpot"
+          />
         </div>
       </div>
 
-      <!-- Footer -->
-      <StrategyFooter
-        :last-updated="strategyStore.lastUpdated"
-        :current-spot="strategyStore.currentSpot"
-        :underlying="strategyStore.underlying"
-        class="flex-shrink-0"
-      />
-    </div>
+      <!-- SUMMARY CARDS (FULL WIDTH, 5 COLUMNS) -->
+      <div class="grid grid-cols-5 gap-4">
+        <!-- Max Profit Card -->
+        <div class="bg-white rounded-xl border border-green-200 p-4 shadow-sm">
+          <div class="flex items-center gap-2 mb-2">
+            <div class="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
+              <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+              </svg>
+            </div>
+            <span class="text-xs font-semibold text-gray-500 uppercase">Max Profit</span>
+          </div>
+          <div class="text-2xl font-bold text-green-600">{{ formatNumber(strategyStore.maxProfit) }}</div>
+        </div>
+
+        <!-- Max Loss Card -->
+        <div class="bg-white rounded-xl border border-red-200 p-4 shadow-sm">
+          <div class="flex items-center gap-2 mb-2">
+            <div class="w-10 h-10 rounded-lg bg-red-100 flex items-center justify-center">
+              <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"/>
+              </svg>
+            </div>
+            <span class="text-xs font-semibold text-gray-500 uppercase">Max Loss</span>
+          </div>
+          <div class="text-2xl font-bold text-red-600">{{ formatNumber(strategyStore.maxLoss) }}</div>
+        </div>
+
+        <!-- Breakeven Card -->
+        <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+          <div class="flex items-center gap-2 mb-2">
+            <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
+              <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"/>
+              </svg>
+            </div>
+            <span class="text-xs font-semibold text-gray-500 uppercase">Breakeven</span>
+          </div>
+          <div class="text-lg font-bold text-gray-800">
+            {{ strategyStore.breakevens.length >= 2 ? formatNumber(strategyStore.breakevens[0]) + ' - ' + formatNumber(strategyStore.breakevens[1]) : (strategyStore.breakevens.length === 1 ? formatNumber(strategyStore.breakevens[0]) : '-') }}
+          </div>
+        </div>
+
+        <!-- Risk/Reward Card -->
+        <div class="bg-white rounded-xl border border-blue-200 p-4 shadow-sm">
+          <div class="flex items-center gap-2 mb-2">
+            <div class="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+              <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+              </svg>
+            </div>
+            <span class="text-xs font-semibold text-gray-500 uppercase">Risk/Reward</span>
+          </div>
+          <div class="text-2xl font-bold text-blue-600">{{ riskRewardRatio }}</div>
+        </div>
+
+        <!-- Current Spot Card -->
+        <div class="bg-gradient-to-br from-yellow-50 to-amber-100 rounded-xl border-2 border-yellow-400 p-4 shadow-sm">
+          <div class="flex items-center gap-2 mb-2">
+            <div class="w-10 h-10 rounded-lg bg-yellow-200 flex items-center justify-center">
+              <div class="w-3 h-3 rounded-full bg-yellow-500 animate-pulse"></div>
+            </div>
+            <span class="text-xs font-semibold text-yellow-700 uppercase">{{ strategyStore.underlying }} Spot</span>
+          </div>
+          <div class="text-2xl font-bold text-yellow-700">{{ formatNumber(strategyStore.currentSpot) }}</div>
+          <div class="text-xs text-yellow-600 mt-1">{{ strategyStore.lastUpdated }}</div>
+        </div>
+      </div>
+
+    </div><!-- End Main Scrollable Content -->
 
     <!-- Save Success Toast -->
     <div
@@ -305,10 +457,10 @@ import { useRoute } from 'vue-router'
 import { useStrategyStore } from '../stores/strategy'
 import { useWatchlistStore } from '../stores/watchlist'
 import StrategyHeader from '../components/strategy/StrategyHeader.vue'
-import StrategyLegRow from '../components/strategy/StrategyLegRow.vue'
-import StrategyFooter from '../components/strategy/StrategyFooter.vue'
 import ShareStrategyModal from '../components/strategy/ShareStrategyModal.vue'
 import BasketOrderModal from '../components/strategy/BasketOrderModal.vue'
+import PayoffChart from '../components/strategy/PayoffChart.vue'
+import PnLCell from '../components/strategy/PnLCell.vue'
 
 const route = useRoute()
 const strategyStore = useStrategyStore()
@@ -406,17 +558,22 @@ const displayedSpotPrices = computed(() => {
   return [...new Set(result)].sort((a, b) => a - b)
 })
 
+// Chart data computed properties
+const chartSpotPrices = computed(() => {
+  if (!strategyStore.pnlGrid) return []
+  return strategyStore.pnlGrid.spot_prices
+})
+
+const chartTotalPnl = computed(() => {
+  if (!strategyStore.pnlGrid) return []
+  return strategyStore.pnlGrid.total_pnl
+})
+
 const totalCurrentPnL = computed(() => {
   return strategyStore.legs.reduce((sum, leg) => {
     const pnl = strategyStore.getLegPnL(leg)
     return sum + (pnl || 0)
   }, 0)
-})
-
-const totalPnLClass = computed(() => {
-  if (totalCurrentPnL.value > 0) return 'text-green-600'
-  if (totalCurrentPnL.value < 0) return 'text-red-600'
-  return 'text-gray-600'
 })
 
 const riskRewardRatio = computed(() => {
@@ -443,8 +600,29 @@ function formatPrice(value) {
   return value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
+function formatNumber(num) {
+  if (!num && num !== 0) return '-'
+  return new Intl.NumberFormat('en-IN').format(Math.round(num))
+}
+
+function getPnLClass(value) {
+  if (value > 0) return 'text-green-600'
+  if (value < 0) return 'text-red-600'
+  return 'text-gray-600'
+}
+
 function getStrikesForExpiry(expiry) {
   return strategyStore.strikes[expiry] || []
+}
+
+function handleLegUpdate(index, field, value) {
+  const updates = { [field]: value }
+  strategyStore.updateLeg(index, updates)
+
+  // Fetch strikes when expiry changes
+  if (field === 'expiry_date' && value) {
+    strategyStore.fetchStrikes(value)
+  }
 }
 
 function getLegPnLValues(legIndex) {
@@ -537,13 +715,6 @@ function getTotalPnLAtSpot(spotIndex) {
 function isCurrentSpot(spot) {
   if (!strategyStore.currentSpot) return false
   return Math.abs(spot - strategyStore.currentSpot) < 50
-}
-
-function getPnLCellClass(pnl) {
-  if (pnl === null || pnl === undefined) return 'bg-gray-50'
-  if (pnl < 0) return 'bg-red-100 text-red-800'
-  if (pnl > 0) return 'bg-green-50 text-green-800'
-  return 'bg-gray-50'
 }
 
 function toggleSelectAll() {
@@ -740,13 +911,8 @@ watch(
 </script>
 
 <style scoped>
-/* Ensure the main container doesn't cause browser horizontal scroll */
-.overflow-hidden {
-  overflow: hidden;
-}
-
-/* Only the table container should scroll horizontally */
-.overflow-auto {
-  overflow: auto;
+/* Smooth scrolling for P/L grid */
+.overflow-x-auto {
+  scroll-behavior: smooth;
 }
 </style>

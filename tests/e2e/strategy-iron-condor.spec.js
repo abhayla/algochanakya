@@ -198,8 +198,8 @@ test.describe('Iron Condor Strategy - Complete Test', () => {
       console.log('  ✓ Selected strike: 25600 (by value)');
     }
 
-    // Enter Entry Price: 15
-    const entryInput = legRow.locator('input[type="number"]').first();
+    // Enter Entry Price: 15 (second number input - first is LOTS)
+    const entryInput = legRow.locator('input[type="number"]').nth(1);
     await entryInput.fill('15');
     console.log('  ✓ Entry price: 15');
 
@@ -251,8 +251,8 @@ test.describe('Iron Condor Strategy - Complete Test', () => {
     }
     console.log('  ✓ Selected strike: 25800');
 
-    // Enter Entry Price: 35
-    const entryInput = legRow.locator('input[type="number"]').first();
+    // Enter Entry Price: 35 (second number input - first is LOTS)
+    const entryInput = legRow.locator('input[type="number"]').nth(1);
     await entryInput.fill('35');
     console.log('  ✓ Entry price: 35');
 
@@ -304,8 +304,8 @@ test.describe('Iron Condor Strategy - Complete Test', () => {
     }
     console.log('  ✓ Selected strike: 26200');
 
-    // Enter Entry Price: 40
-    const entryInput = legRow.locator('input[type="number"]').first();
+    // Enter Entry Price: 40 (second number input - first is LOTS)
+    const entryInput = legRow.locator('input[type="number"]').nth(1);
     await entryInput.fill('40');
     console.log('  ✓ Entry price: 40');
 
@@ -357,8 +357,8 @@ test.describe('Iron Condor Strategy - Complete Test', () => {
     }
     console.log('  ✓ Selected strike: 26400');
 
-    // Enter Entry Price: 18
-    const entryInput = legRow.locator('input[type="number"]').first();
+    // Enter Entry Price: 18 (second number input - first is LOTS)
+    const entryInput = legRow.locator('input[type="number"]').nth(1);
     await entryInput.fill('18');
     console.log('  ✓ Entry price: 18');
 
@@ -373,12 +373,12 @@ test.describe('Iron Condor Strategy - Complete Test', () => {
 
     await page.screenshot({ path: 'tests/screenshots/ic-08-all-legs.png', fullPage: true });
 
-    // Count legs
-    const legCount = await page.locator('tbody tr').filter({ has: page.locator('select') }).count();
+    // Count legs from table (single unified table layout)
+    const legCount = await page.locator('table tbody tr').filter({ has: page.locator('select') }).count();
     console.log('✓ Total legs:', legCount);
 
     // Verify each leg
-    const rows = await page.locator('tbody tr').filter({ has: page.locator('select') }).all();
+    const rows = await page.locator('table tbody tr').filter({ has: page.locator('select') }).all();
 
     console.log('\nLeg Configuration:');
     console.log('-'.repeat(60));
@@ -388,9 +388,10 @@ test.describe('Iron Condor Strategy - Complete Test', () => {
       const contract = await row.locator('select').nth(1).inputValue();
       const trans = await row.locator('select').nth(2).inputValue();
       const strike = await row.locator('select').nth(3).inputValue();
-      const entry = await row.locator('input[type="number"]').first().inputValue();
+      const lots = await row.locator('input[type="number"]').first().inputValue();
+      const entry = await row.locator('input[type="number"]').nth(1).inputValue();
 
-      console.log(`Leg ${i + 1}: ${contract} ${trans} ${strike} @ ${entry}`);
+      console.log(`Leg ${i + 1}: ${contract} ${trans} ${strike} - Lots: ${lots}, Entry: ${entry}`);
     }
     console.log('-'.repeat(60));
 
@@ -412,8 +413,9 @@ test.describe('Iron Condor Strategy - Complete Test', () => {
 
     await page.screenshot({ path: 'tests/screenshots/ic-09-after-recalculate.png', fullPage: true });
 
-    // Check if P/L columns appeared
-    const headerText = await page.locator('thead').innerText();
+    // Check if P/L columns appeared (single unified table)
+    const pnlGridHeader = page.locator('thead');
+    const headerText = await pnlGridHeader.innerText();
     const dynamicColumns = headerText.match(/\d{5}/g) || [];
     console.log('✓ Dynamic P/L columns generated:', dynamicColumns.length);
     console.log('  Sample columns:', dynamicColumns.slice(0, 8).join(', '));
@@ -428,8 +430,8 @@ test.describe('Iron Condor Strategy - Complete Test', () => {
     // Wait for LTP data to load
     await page.waitForTimeout(3000);
 
-    // Get all leg rows
-    const rows = await page.locator('tbody tr').filter({ has: page.locator('select') }).all();
+    // Get all leg rows from the table (single unified table)
+    const rows = await page.locator('table tbody tr').filter({ has: page.locator('select') }).all();
 
     console.log('\nLeg CMP and Exit Values:');
     console.log('-'.repeat(60));
@@ -437,19 +439,15 @@ test.describe('Iron Condor Strategy - Complete Test', () => {
     let cmpFound = 0;
     let exitPnLFound = 0;
 
+    // New column layout: checkbox(0), expiry(1), type(2), B/S(3), strike(4), lots(5), entry(6), qty(7), CMP(8), Exit P/L(9)
     for (let i = 0; i < Math.min(rows.length, 4); i++) {
       const row = rows[i];
       const rowText = await row.innerText();
-      const cells = rowText.split('\t');
 
-      // CMP is typically column 10 (index 9)
-      // QTY is column 9 (index 8)
-      // Exit is column 8 (index 7)
-      // Get all cells for analysis
       console.log(`Leg ${i + 1} row text: ${rowText.substring(0, 100)}...`);
 
-      // Check CMP column - should have numeric value (not "-")
-      const cmpCell = await row.locator('td').nth(10).innerText();
+      // Check CMP column - column index 8 in new layout
+      const cmpCell = await row.locator('td').nth(8).innerText();
       const cmpValue = parseFloat(cmpCell.replace(/,/g, ''));
       if (!isNaN(cmpValue) && cmpValue > 0) {
         cmpFound++;
@@ -458,8 +456,8 @@ test.describe('Iron Condor Strategy - Complete Test', () => {
         console.log(`  Leg ${i + 1} CMP: ${cmpCell} (waiting for LTP)`);
       }
 
-      // Check Exit column - should show calculated P/L (not input field)
-      const exitCell = await row.locator('td').nth(8);
+      // Check Exit P/L column - column index 9 in new layout
+      const exitCell = await row.locator('td').nth(9);
       const exitText = await exitCell.innerText();
       // Exit P/L should be a number (positive or negative)
       const exitValue = parseFloat(exitText.replace(/,/g, ''));
@@ -515,8 +513,9 @@ test.describe('Iron Condor Strategy - Complete Test', () => {
   test('Step 10.5: Verify breakeven columns in P/L grid', async () => {
     console.log('\n--- STEP 10.5: VERIFY BREAKEVEN COLUMNS ---');
 
-    // Get the header row for P/L columns
-    const headerText = await page.locator('thead').innerText();
+    // Get the header row for P/L columns (single unified table)
+    const pnlGridHeader = page.locator('thead');
+    const headerText = await pnlGridHeader.innerText();
     console.log('Header text (truncated):', headerText.substring(0, 200));
 
     // Get all column headers
