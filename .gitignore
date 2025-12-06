@@ -77,3 +77,7 @@ deploy.sh
 
 # Temporary images/screenshots
 images/
+
+# Root logo files (copies in frontend/src/assets/)
+AngelOne Logo.png
+Kite Logo.png
