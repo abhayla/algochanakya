@@ -31,6 +31,10 @@ test.describe('Strategy Builder Complete Tests', () => {
     const context = await browser.newContext();
     sharedPage = await context.newPage();
 
+    // Set viewport to full screen (1920x1080) for testing
+    await sharedPage.setViewportSize({ width: 1920, height: 1080 });
+    console.log('✓ Set viewport to 1920x1080 (full screen)');
+
     console.log('\n' + '='.repeat(60));
     console.log('ZERODHA LOGIN - ONE TIME ONLY');
     console.log('='.repeat(60));
@@ -539,15 +543,20 @@ test.describe('Strategy Builder Complete Tests', () => {
   // TEST 17: Verify action buttons exist
   // ============================================
   test('17. Verify action buttons', async () => {
-    const buttons = ['Delete', 'Add', 'ReCalculate', 'Save', 'Update Positions', 'Buy Basket'];
+    // Action bar buttons
+    const actionButtons = ['Add', 'ReCalculate', 'Save', 'Update Positions', 'Buy Basket'];
 
     console.log('\nTest 17: Action buttons:');
 
-    for (const btnText of buttons) {
+    for (const btnText of actionButtons) {
       const btn = sharedPage.locator('button').filter({ hasText: new RegExp(btnText, 'i') }).first();
       const exists = await btn.isVisible().catch(() => false);
       console.log(`  ${btnText}:`, exists ? '✓' : '✗');
     }
+
+    // Check for Delete buttons (there are now 2: one for legs, one for strategy)
+    const deleteButtons = await sharedPage.locator('button').filter({ hasText: /Delete/i }).count();
+    console.log(`  Delete buttons: ${deleteButtons} (expect 2: legs + strategy)`);
 
     await sharedPage.screenshot({ path: 'tests/screenshots/sb-17-buttons.png' });
   });

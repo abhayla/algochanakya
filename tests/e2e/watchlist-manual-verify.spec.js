@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-const FRONTEND_URL = 'http://localhost:5174';
+const FRONTEND_URL = 'http://localhost:5173';
 
 test.describe('Watchlist Manual Verification', () => {
 
@@ -38,7 +38,7 @@ test.describe('Watchlist Manual Verification', () => {
     console.log('\nWaiting up to 2 minutes for login...\n');
 
     // Wait for redirect back to app
-    await page.waitForURL(/localhost:5174/, { timeout: 120000 });
+    await page.waitForURL(/localhost:5173/, { timeout: 120000 });
     await page.waitForTimeout(3000); // Wait for auth to complete
     await page.screenshot({ path: 'tests/screenshots/verify-03-after-login.png' });
     console.log('✓ Login successful! Redirected back to app.');
@@ -79,9 +79,28 @@ test.describe('Watchlist Manual Verification', () => {
     const niftyBankVisible = await niftyBank.isVisible().catch(() => false);
     console.log('NIFTY BANK in header:', niftyBankVisible ? '✓ VISIBLE' : '✗ NOT FOUND');
 
-    // Try to get header prices
-    const headerText = await page.locator('header, [class*="header"], [class*="index"]').first().innerText().catch(() => '');
+    // Try to get header prices - support both old and Kite-styled header
+    const headerText = await page.locator('header, [class*="header"], [class*="index"], .kite-header, .index-prices').first().innerText().catch(() => '');
     console.log('Header content:', headerText.substring(0, 200));
+
+    // Check for actual price numbers (not "--")
+    const niftyPriceMatch = headerText.match(/NIFTY\s*50[^\d]*(\d{2,6}[\d,.]*)/i);
+    const bankPriceMatch = headerText.match(/NIFTY\s*BANK[^\d]*(\d{2,6}[\d,.]*)/i);
+    const hasLivePrices = niftyPriceMatch && bankPriceMatch;
+    console.log('Live NIFTY price:', niftyPriceMatch ? niftyPriceMatch[1] : '-- (missing)');
+    console.log('Live NIFTY BANK price:', bankPriceMatch ? bankPriceMatch[1] : '-- (missing)');
+    console.log('Index prices showing live data:', hasLivePrices ? '✓ YES' : '✗ NO (showing --)');
+
+    // Verify user avatar circle (initials in blue circle)
+    const userAvatar = page.locator('.user-avatar');
+    const hasAvatar = await userAvatar.isVisible().catch(() => false);
+    const avatarText = hasAvatar ? await userAvatar.innerText().catch(() => '') : '';
+    console.log('User avatar circle:', hasAvatar ? `✓ (${avatarText})` : '✗ NOT FOUND');
+
+    // Verify header icons (cart/orders and bell/notifications)
+    const headerIcons = page.locator('.header-icons .icon-btn, .icon-btn');
+    const iconCount = await headerIcons.count();
+    console.log('Header icons (cart, bell):', iconCount >= 2 ? `✓ (${iconCount})` : `✗ (${iconCount})`);
 
     await page.screenshot({ path: 'tests/screenshots/verify-05-index-header.png' });
 

@@ -1,6 +1,7 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import './style.css'
+import './assets/styles/kite-theme.css'
 import App from './App.vue'
 import router from './router'
 

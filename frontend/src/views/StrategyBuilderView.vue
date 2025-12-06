@@ -1,147 +1,180 @@
 <template>
-  <div class="h-screen flex flex-col bg-gray-100 overflow-hidden">
-    <!-- Header -->
-    <StrategyHeader
-      :underlying="strategyStore.underlying"
-      :pnl-mode="strategyStore.pnlMode"
-      :is-loading="strategyStore.isLoading"
-      @update:underlying="strategyStore.setUnderlying"
-      @toggle-mode="strategyStore.togglePnLMode"
-    />
-
-    <!-- Strategy Selector Bar -->
-    <div class="bg-white border-b border-gray-200 px-4 py-2 flex-shrink-0">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center space-x-4">
-          <!-- Strategy Dropdown -->
-          <div class="flex items-center space-x-2">
-            <label class="text-sm text-gray-600">Strategy:</label>
-            <select
-              v-model="selectedStrategyId"
-              @change="handleStrategyChange"
-              class="px-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+  <KiteLayout>
+    <div class="strategy-page">
+      <div class="strategy-container">
+        <!-- Underlying Selector + P/L Mode Toggle -->
+        <div class="strategy-toolbar">
+          <div class="toolbar-left">
+            <div class="underlying-tabs">
+              <button
+                v-for="u in ['NIFTY', 'BANKNIFTY', 'FINNIFTY']"
+                :key="u"
+                :class="['underlying-tab', { active: strategyStore.underlying === u }]"
+                @click="strategyStore.setUnderlying(u)"
+              >
+                {{ u }}
+              </button>
+            </div>
+          </div>
+          <div class="toolbar-right">
+            <span class="mode-label">P/L Mode:</span>
+            <button
+              :class="['mode-btn', { active: strategyStore.pnlMode === 'expiry' }]"
+              @click="strategyStore.pnlMode !== 'expiry' && strategyStore.togglePnLMode()"
             >
-              <option value="">New Strategy</option>
-              <option v-for="s in savedStrategies" :key="s.id" :value="s.id">
-                {{ s.name }} ({{ s.underlying }})
-              </option>
-            </select>
-          </div>
-
-          <!-- Strategy Name Input -->
-          <div class="flex items-center space-x-2">
-            <label class="text-sm text-gray-600">Name:</label>
-            <input
-              v-model="strategyName"
-              type="text"
-              placeholder="Enter strategy name"
-              class="px-3 py-1.5 text-sm border border-gray-300 rounded w-48 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
+              At Expiry
+            </button>
+            <button
+              :class="['mode-btn', { active: strategyStore.pnlMode === 'current' }]"
+              @click="strategyStore.pnlMode !== 'current' && strategyStore.togglePnLMode()"
+            >
+              Current
+            </button>
+            <span v-if="strategyStore.isLoading" class="loading-indicator">Loading...</span>
           </div>
         </div>
 
-        <!-- Filter Dropdowns -->
-        <div class="flex items-center space-x-3">
-          <div class="flex items-center space-x-1">
-            <label class="text-xs text-gray-500">Expiry:</label>
-            <select v-model="filters.expiry" class="px-2 py-1 text-xs border border-gray-300 rounded">
-              <option value="">All</option>
-              <option v-for="exp in strategyStore.expiries" :key="exp" :value="exp">
-                {{ formatDate(exp) }}
-              </option>
-            </select>
-          </div>
-          <div class="flex items-center space-x-1">
-            <label class="text-xs text-gray-500">Contract:</label>
-            <select v-model="filters.contractType" class="px-2 py-1 text-xs border border-gray-300 rounded">
-              <option value="">All</option>
-              <option value="CE">CE</option>
-              <option value="PE">PE</option>
-            </select>
-          </div>
-          <div class="flex items-center space-x-1">
-            <label class="text-xs text-gray-500">Status:</label>
-            <select v-model="filters.status" class="px-2 py-1 text-xs border border-gray-300 rounded">
-              <option value="">All</option>
-              <option value="open">Open</option>
-              <option value="closed">Closed</option>
-            </select>
+        <!-- Strategy Selector Bar -->
+        <div class="strategy-selector-bar">
+          <div class="selector-row">
+            <div class="selector-left">
+              <!-- Strategy Dropdown -->
+              <div class="form-group">
+                <label class="form-label">Strategy:</label>
+                <select
+                  v-model="selectedStrategyId"
+                  @change="handleStrategyChange"
+                  class="strategy-select"
+                >
+                  <option value="">New Strategy</option>
+                  <option v-for="s in savedStrategies" :key="s.id" :value="s.id">
+                    {{ s.name }} ({{ s.underlying }})
+                  </option>
+                </select>
+              </div>
+
+              <!-- Strategy Name Input -->
+              <div class="form-group">
+                <label class="form-label">Name:</label>
+                <input
+                  v-model="strategyName"
+                  type="text"
+                  placeholder="Enter strategy name"
+                  class="strategy-input"
+                  style="width: 200px;"
+                />
+              </div>
+
+              <!-- Save and Delete Buttons -->
+              <div class="form-group" style="display: flex; gap: 8px; align-items: center;">
+                <button
+                  @click="handleSaveStrategy"
+                  :disabled="strategyStore.legs.length === 0 || !strategyName || isSaving"
+                  class="strategy-btn strategy-btn-success"
+                >
+                  {{ isSaving ? 'Saving...' : 'Save' }}
+                </button>
+                <button
+                  @click="handleDeleteStrategy"
+                  :disabled="!selectedStrategyId"
+                  class="strategy-btn strategy-btn-danger"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+
+            <!-- Filter Dropdowns -->
+            <div class="selector-right">
+              <div class="form-group compact">
+                <label class="form-label-sm">Expiry:</label>
+                <select v-model="filters.expiry" class="strategy-select compact">
+                  <option value="">All</option>
+                  <option v-for="exp in strategyStore.expiries" :key="exp" :value="exp">
+                    {{ formatDate(exp) }}
+                  </option>
+                </select>
+              </div>
+              <div class="form-group compact">
+                <label class="form-label-sm">Contract:</label>
+                <select v-model="filters.contractType" class="strategy-select compact">
+                  <option value="">All</option>
+                  <option value="CE">CE</option>
+                  <option value="PE">PE</option>
+                </select>
+              </div>
+              <div class="form-group compact">
+                <label class="form-label-sm">Status:</label>
+                <select v-model="filters.status" class="strategy-select compact">
+                  <option value="">All</option>
+                  <option value="open">Open</option>
+                  <option value="closed">Closed</option>
+                </select>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
-    </div>
 
-    <!-- Main Scrollable Content -->
-    <div class="flex-1 overflow-y-auto p-4">
-      <!-- Error Alert -->
-      <div v-if="strategyStore.error" class="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-        {{ strategyStore.error }}
-        <button @click="strategyStore.error = null" class="ml-4 text-red-500 hover:text-red-700">&times;</button>
-      </div>
+        <!-- Error Alert -->
+        <div v-if="strategyStore.error" class="error-alert">
+          {{ strategyStore.error }}
+          <button @click="strategyStore.error = null" class="error-close">&times;</button>
+        </div>
 
-      <!-- FULL WIDTH STRATEGY TABLE -->
-      <div class="bg-white rounded-xl border border-gray-200 shadow-sm mb-4 overflow-hidden">
-        <div class="overflow-x-auto">
-          <table class="w-full border-collapse text-sm">
-            <thead class="bg-gray-50 border-b border-gray-200">
+        <!-- Strategy Table -->
+        <div class="strategy-table-wrapper">
+          <!-- Scroll Indicators -->
+          <div v-if="canScrollLeft" class="scroll-indicator scroll-indicator-left"></div>
+          <div class="table-scroll" ref="tableScrollRef">
+            <table class="strategy-table">
+              <thead>
               <tr>
-                <th class="px-3 py-3 text-center w-10 border-r border-gray-200">
+                <th class="th-checkbox">
                   <input
                     type="checkbox"
                     :checked="allLegsSelected"
                     @change="toggleSelectAll"
-                    class="h-4 w-4 text-blue-600 rounded"
                   />
                 </th>
-                <th class="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase border-r border-gray-200" style="min-width: 100px;">Expiry</th>
-                <th class="px-3 py-3 text-center text-xs font-semibold text-gray-600 uppercase border-r border-gray-200" style="min-width: 70px;">Type</th>
-                <th class="px-3 py-3 text-center text-xs font-semibold text-gray-600 uppercase border-r border-gray-200" style="min-width: 60px;">B/S</th>
-                <th class="px-3 py-3 text-center text-xs font-semibold text-gray-600 uppercase border-r border-gray-200" style="min-width: 100px;">Strike</th>
-                <th class="px-3 py-3 text-center text-xs font-semibold text-gray-600 uppercase border-r border-gray-200" style="min-width: 60px;">Lots</th>
-                <th class="px-3 py-3 text-center text-xs font-semibold text-gray-600 uppercase border-r border-gray-200" style="min-width: 80px;">Entry</th>
-                <th class="px-3 py-3 text-center text-xs font-semibold text-gray-600 uppercase border-r border-gray-200" style="min-width: 60px;">Qty</th>
-                <th class="px-3 py-3 text-center text-xs font-semibold text-gray-600 uppercase border-r border-gray-200" style="min-width: 70px;">CMP</th>
-                <th class="px-3 py-3 text-center text-xs font-semibold text-gray-600 uppercase border-r border-gray-200" style="min-width: 80px;">Exit P/L</th>
+                <th>Expiry</th>
+                <th>Type</th>
+                <th>B/S</th>
+                <th>Strike</th>
+                <th>Lots</th>
+                <th>Entry</th>
+                <th>Qty</th>
+                <th>CMP</th>
+                <th>Exit P/L</th>
                 <!-- Dynamic P/L Columns -->
                 <th
                   v-for="spot in displayedSpotPrices"
                   :key="spot"
-                  :class="[
-                    'px-2 py-3 text-center text-xs font-semibold uppercase whitespace-nowrap border-r border-gray-200',
-                    isCurrentSpot(spot) ? 'bg-yellow-200 text-yellow-900' : 'text-gray-600'
-                  ]"
-                  style="min-width: 70px;"
+                  :class="['th-spot', { 'th-current-spot': isCurrentSpot(spot) }]"
                 >
-                  <div v-if="isCurrentSpot(spot)" class="text-[10px] text-yellow-700 font-bold">SPOT</div>
-                  {{ spot }}
+                  <div v-if="isCurrentSpot(spot)" class="spot-label">SPOT</div>
+                  {{ formatSpotHeader(spot) }}
                 </th>
               </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-100">
+              </thead>
+            <tbody>
               <!-- Strategy Leg Rows -->
               <tr
                 v-for="(leg, index) in filteredLegs"
                 :key="leg.temp_id || leg.id"
-                :class="[
-                  'transition-colors border-l-4',
-                  leg.transaction_type === 'BUY'
-                    ? 'bg-blue-50 hover:bg-blue-100 border-l-blue-500'
-                    : 'bg-amber-50 hover:bg-amber-100 border-l-amber-500'
-                ]"
+                :class="['leg-row', leg.transaction_type === 'BUY' ? 'leg-buy' : 'leg-sell']"
               >
-                <td class="px-3 py-2 text-center border-r border-gray-200">
+                <td class="td-checkbox">
                   <input
                     type="checkbox"
                     :checked="strategyStore.selectedLegIndices.includes(index)"
                     @change="strategyStore.toggleLegSelection(index)"
-                    class="h-4 w-4 text-blue-600 rounded"
                   />
                 </td>
-                <td class="px-2 py-2 border-r border-gray-200">
+                <td>
                   <select
                     :value="leg.expiry_date"
                     @change="handleLegUpdate(index, 'expiry_date', $event.target.value)"
-                    class="w-full px-2 py-1.5 text-sm border border-gray-300 rounded"
+                    class="strategy-select compact"
                   >
                     <option value="">Select</option>
                     <option v-for="exp in strategyStore.expiries" :key="exp" :value="exp">
@@ -149,37 +182,31 @@
                     </option>
                   </select>
                 </td>
-                <td class="px-2 py-2 text-center border-r border-gray-200">
+                <td>
                   <select
                     :value="leg.contract_type"
                     @change="handleLegUpdate(index, 'contract_type', $event.target.value)"
-                    :class="[
-                      'w-full px-2 py-1.5 text-xs font-bold rounded border',
-                      leg.contract_type === 'CE' ? 'bg-green-100 text-green-800 border-green-300' : 'bg-rose-100 text-rose-800 border-rose-300'
-                    ]"
+                    :class="['tag-select', leg.contract_type === 'CE' ? 'tag-ce' : 'tag-pe']"
                   >
                     <option value="CE">CE</option>
                     <option value="PE">PE</option>
                   </select>
                 </td>
-                <td class="px-2 py-2 text-center border-r border-gray-200">
+                <td>
                   <select
                     :value="leg.transaction_type"
                     @change="handleLegUpdate(index, 'transaction_type', $event.target.value)"
-                    :class="[
-                      'w-full px-2 py-1.5 text-xs font-bold rounded border',
-                      leg.transaction_type === 'BUY' ? 'bg-blue-100 text-blue-800 border-blue-300' : 'bg-amber-100 text-amber-800 border-amber-300'
-                    ]"
+                    :class="['tag-select', leg.transaction_type === 'BUY' ? 'tag-buy' : 'tag-sell']"
                   >
                     <option value="BUY">BUY</option>
                     <option value="SELL">SELL</option>
                   </select>
                 </td>
-                <td class="px-2 py-2 border-r border-gray-200">
+                <td>
                   <select
                     :value="leg.strike_price"
                     @change="handleLegUpdate(index, 'strike_price', $event.target.value)"
-                    class="w-full px-2 py-1.5 text-sm border border-gray-300 rounded"
+                    class="strategy-select compact"
                   >
                     <option value="">Select</option>
                     <option v-for="s in getStrikesForExpiry(leg.expiry_date)" :key="s" :value="s">
@@ -187,16 +214,17 @@
                     </option>
                   </select>
                 </td>
-                <td class="px-2 py-2 border-r border-gray-200">
+                <td>
                   <input
                     type="number"
                     :value="leg.lots"
                     @input="handleLegUpdate(index, 'lots', parseInt($event.target.value) || 1)"
                     min="1"
-                    class="w-full px-2 py-1.5 text-sm border border-gray-300 rounded text-center"
+                    class="strategy-input compact text-center"
+                    style="width: 60px;"
                   />
                 </td>
-                <td class="px-2 py-2 border-r border-gray-200">
+                <td class="relative">
                   <input
                     type="number"
                     :value="leg.entry_price"
@@ -204,19 +232,28 @@
                     @blur="handleLegUpdate(index, 'entry_price', parseFloat($event.target.value))"
                     step="0.05"
                     placeholder="Entry"
-                    class="w-full px-2 py-1.5 text-sm border border-gray-300 rounded text-right"
+                    class="strategy-input compact text-right"
+                    style="width: 80px;"
                   />
+                  <!-- CMP indicator - shows when using CMP as entry price for calculation -->
+                  <span
+                    v-if="strategyStore.isLegUsingCMPEntry(leg)"
+                    class="cmp-entry-indicator"
+                    title="Using CMP as entry price for calculation"
+                  >
+                    ?
+                  </span>
                 </td>
-                <td class="px-3 py-2 text-center font-semibold border-r border-gray-200">
+                <td class="text-center font-semibold">
                   {{ leg.lots * strategyStore.lotSize }}
                 </td>
-                <td class="px-3 py-2 text-right font-medium border-r border-gray-200">
-                  <span v-if="strategyStore.getLegCMP(leg)" class="text-blue-600">
+                <td class="text-right">
+                  <span v-if="strategyStore.getLegCMP(leg)" class="cmp-value">
                     {{ formatPrice(strategyStore.getLegCMP(leg)) }}
                   </span>
-                  <span v-else class="text-gray-400">-</span>
+                  <span v-else class="no-value">-</span>
                 </td>
-                <td class="px-3 py-2 text-right font-semibold border-r border-gray-200">
+                <td class="text-right font-semibold">
                   <span :class="getPnLClass(strategyStore.getLegPnL(leg))">
                     {{ formatPnL(strategyStore.getLegPnL(leg)) }}
                   </span>
@@ -233,18 +270,18 @@
               </tr>
 
               <!-- Empty State -->
-              <tr v-if="strategyStore.legs.length === 0">
-                <td colspan="100" class="px-6 py-12 text-center text-gray-500">
+              <tr v-if="strategyStore.legs.length === 0" class="empty-state">
+                <td colspan="100">
                   No legs added. Click "+ Add Row" to start building your strategy.
                 </td>
               </tr>
 
               <!-- Total Row -->
-              <tr v-if="strategyStore.legs.length > 0" class="bg-gray-100 border-t-2 border-gray-300 font-semibold">
-                <td colspan="7" class="px-4 py-3 text-right text-gray-700 border-r border-gray-200">Total:</td>
-                <td class="px-3 py-3 text-center font-bold border-r border-gray-200">{{ strategyStore.totalQty }}</td>
-                <td class="px-3 py-3 text-center text-gray-400 border-r border-gray-200">-</td>
-                <td class="px-3 py-3 text-right font-bold border-r border-gray-200" :class="getPnLClass(totalCurrentPnL)">
+              <tr v-if="strategyStore.legs.length > 0" class="total-row">
+                <td colspan="7" class="text-right">Total:</td>
+                <td class="text-center font-bold">{{ strategyStore.totalQty }}</td>
+                <td class="text-center">-</td>
+                <td class="text-right font-bold" :class="getPnLClass(totalCurrentPnL)">
                   {{ formatPnL(totalCurrentPnL) }}
                 </td>
                 <!-- Total P/L Cells -->
@@ -259,204 +296,202 @@
                 />
               </tr>
             </tbody>
-          </table>
+            </table>
+          </div>
+          <div v-if="canScrollRight" class="scroll-indicator scroll-indicator-right"></div>
         </div>
-      </div>
 
-      <!-- ACTION BUTTONS -->
-      <div class="bg-white rounded-xl border border-gray-200 shadow-sm mb-4 px-4 py-3">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center space-x-2">
+        <!-- Action Buttons -->
+        <div class="action-bar">
+          <div class="action-left">
             <button
               @click="strategyStore.removeSelectedLegs()"
               :disabled="strategyStore.selectedLegIndices.length === 0"
-              class="px-3 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+              class="strategy-btn strategy-btn-outline"
             >
               Delete
             </button>
             <button
               @click="strategyStore.addLeg()"
-              class="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100"
+              class="strategy-btn strategy-btn-outline"
+              style="color: var(--kite-blue);"
             >
               + Add Row
             </button>
             <button
               @click="handleRecalculate"
               :disabled="strategyStore.legs.length === 0 || strategyStore.isLoading"
-              class="px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              class="strategy-btn strategy-btn-primary"
             >
               {{ strategyStore.isLoading ? 'Calculating...' : 'ReCalculate' }}
             </button>
           </div>
-          <div class="flex items-center space-x-2">
+          <div class="action-right">
             <button
               @click="strategyStore.importPositions()"
-              class="px-3 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+              class="strategy-btn strategy-btn-outline"
             >
               Import Positions
             </button>
             <button
               @click="strategyStore.updateFromPositions()"
-              class="px-3 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+              class="strategy-btn strategy-btn-outline"
             >
               Update Positions
             </button>
             <button
               @click="handleSaveStrategy"
               :disabled="strategyStore.legs.length === 0 || !strategyName || isSaving"
-              class="px-4 py-2 text-sm font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50"
+              class="strategy-btn strategy-btn-success"
             >
               {{ isSaving ? 'Saving...' : 'Save' }}
             </button>
             <button
               @click="handleShare"
               :disabled="!strategyStore.currentStrategy"
-              class="px-3 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+              class="strategy-btn strategy-btn-outline"
             >
               Share
             </button>
             <button
               @click="showOrderModal = true"
               :disabled="strategyStore.legs.length === 0 || !allLegsComplete"
-              class="px-4 py-2 text-sm font-semibold text-white bg-orange-500 rounded-lg hover:bg-orange-600 disabled:opacity-50"
+              class="strategy-btn strategy-btn-primary"
             >
               Buy Basket Order
             </button>
           </div>
         </div>
+
+        <!-- Payoff Chart -->
+        <div class="payoff-section" v-if="displayedSpotPrices.length > 0">
+          <div class="payoff-header">
+            <h3 class="section-title">Payoff Diagram</h3>
+            <div class="payoff-legend">
+              <span class="legend-item profit">
+                <span class="legend-line"></span> Profit Zone
+              </span>
+              <span class="legend-item loss">
+                <span class="legend-line"></span> Loss Zone
+              </span>
+              <span class="legend-item spot">
+                <span class="legend-dot"></span> Current Spot
+              </span>
+            </div>
+          </div>
+          <div class="payoff-chart">
+            <PayoffChart
+              :spot-prices="chartSpotPrices"
+              :total-pnl="chartTotalPnl"
+              :current-spot="strategyStore.currentSpot"
+            />
+          </div>
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="summary-grid">
+          <!-- Max Profit Card -->
+          <div class="strategy-summary-card profit">
+            <div class="card-header">
+              <div class="card-icon profit">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                </svg>
+              </div>
+              <span class="label">Max Profit</span>
+            </div>
+            <div class="value">{{ formatNumber(strategyStore.maxProfit) }}</div>
+          </div>
+
+          <!-- Max Loss Card -->
+          <div class="strategy-summary-card loss">
+            <div class="card-header">
+              <div class="card-icon loss">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"/>
+                </svg>
+              </div>
+              <span class="label">Max Loss</span>
+            </div>
+            <div class="value">{{ formatNumber(strategyStore.maxLoss) }}</div>
+          </div>
+
+          <!-- Breakeven Card -->
+          <div class="strategy-summary-card">
+            <div class="card-header">
+              <div class="card-icon">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"/>
+                </svg>
+              </div>
+              <span class="label">Breakeven</span>
+            </div>
+            <div class="value" style="font-size: 18px;">
+              {{ strategyStore.breakevens.length >= 2 ? formatNumber(strategyStore.breakevens[0]) + ' - ' + formatNumber(strategyStore.breakevens[1]) : (strategyStore.breakevens.length === 1 ? formatNumber(strategyStore.breakevens[0]) : '-') }}
+            </div>
+          </div>
+
+          <!-- Risk/Reward Card -->
+          <div class="strategy-summary-card">
+            <div class="card-header">
+              <div class="card-icon" style="background: var(--kite-blue-light); color: var(--kite-blue);">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                </svg>
+              </div>
+              <span class="label">Risk/Reward</span>
+            </div>
+            <div class="value" style="color: var(--kite-blue);">{{ riskRewardRatio }}</div>
+          </div>
+
+          <!-- Current Spot Card -->
+          <div class="strategy-summary-card spot">
+            <div class="card-header">
+              <div class="card-icon spot">
+                <div class="pulse-dot"></div>
+              </div>
+              <span class="label">{{ strategyStore.underlying }} Spot</span>
+            </div>
+            <div class="value">{{ formatNumber(strategyStore.currentSpot) }}</div>
+            <div class="timestamp">{{ strategyStore.lastUpdated }}</div>
+          </div>
+        </div>
+
+      </div><!-- End strategy-container -->
+
+      <!-- Save Success Toast -->
+      <div v-if="showSaveSuccess" class="toast-success">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+        </svg>
+        <span>Strategy saved successfully!</span>
       </div>
 
-      <!-- PAYOFF CHART (FULL WIDTH, BELOW TABLE) -->
-      <div class="bg-white rounded-xl border border-gray-200 shadow-sm mb-4 p-4" v-if="displayedSpotPrices.length > 0">
-        <div class="flex items-center justify-between mb-3">
-          <h3 class="text-lg font-semibold text-gray-800">Payoff Diagram</h3>
-          <div class="flex gap-4 text-sm">
-            <span class="flex items-center text-green-600">
-              <span class="w-4 h-1 bg-green-500 mr-2 rounded"></span> Profit Zone
-            </span>
-            <span class="flex items-center text-red-600">
-              <span class="w-4 h-1 bg-red-500 mr-2 rounded"></span> Loss Zone
-            </span>
-            <span class="flex items-center text-yellow-600">
-              <span class="w-3 h-3 bg-yellow-400 mr-2 rounded-full"></span> Current Spot
-            </span>
-          </div>
-        </div>
-        <div class="h-56">
-          <PayoffChart
-            :spot-prices="chartSpotPrices"
-            :total-pnl="chartTotalPnl"
-            :current-spot="strategyStore.currentSpot"
-          />
-        </div>
-      </div>
+      <!-- Modals -->
+      <ShareStrategyModal
+        v-if="showShareModal"
+        :share-url="shareUrl"
+        @close="showShareModal = false"
+      />
 
-      <!-- SUMMARY CARDS (FULL WIDTH, 5 COLUMNS) -->
-      <div class="grid grid-cols-5 gap-4">
-        <!-- Max Profit Card -->
-        <div class="bg-white rounded-xl border border-green-200 p-4 shadow-sm">
-          <div class="flex items-center gap-2 mb-2">
-            <div class="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
-              <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
-              </svg>
-            </div>
-            <span class="text-xs font-semibold text-gray-500 uppercase">Max Profit</span>
-          </div>
-          <div class="text-2xl font-bold text-green-600">{{ formatNumber(strategyStore.maxProfit) }}</div>
-        </div>
-
-        <!-- Max Loss Card -->
-        <div class="bg-white rounded-xl border border-red-200 p-4 shadow-sm">
-          <div class="flex items-center gap-2 mb-2">
-            <div class="w-10 h-10 rounded-lg bg-red-100 flex items-center justify-center">
-              <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"/>
-              </svg>
-            </div>
-            <span class="text-xs font-semibold text-gray-500 uppercase">Max Loss</span>
-          </div>
-          <div class="text-2xl font-bold text-red-600">{{ formatNumber(strategyStore.maxLoss) }}</div>
-        </div>
-
-        <!-- Breakeven Card -->
-        <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
-          <div class="flex items-center gap-2 mb-2">
-            <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
-              <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"/>
-              </svg>
-            </div>
-            <span class="text-xs font-semibold text-gray-500 uppercase">Breakeven</span>
-          </div>
-          <div class="text-lg font-bold text-gray-800">
-            {{ strategyStore.breakevens.length >= 2 ? formatNumber(strategyStore.breakevens[0]) + ' - ' + formatNumber(strategyStore.breakevens[1]) : (strategyStore.breakevens.length === 1 ? formatNumber(strategyStore.breakevens[0]) : '-') }}
-          </div>
-        </div>
-
-        <!-- Risk/Reward Card -->
-        <div class="bg-white rounded-xl border border-blue-200 p-4 shadow-sm">
-          <div class="flex items-center gap-2 mb-2">
-            <div class="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
-              <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-              </svg>
-            </div>
-            <span class="text-xs font-semibold text-gray-500 uppercase">Risk/Reward</span>
-          </div>
-          <div class="text-2xl font-bold text-blue-600">{{ riskRewardRatio }}</div>
-        </div>
-
-        <!-- Current Spot Card -->
-        <div class="bg-gradient-to-br from-yellow-50 to-amber-100 rounded-xl border-2 border-yellow-400 p-4 shadow-sm">
-          <div class="flex items-center gap-2 mb-2">
-            <div class="w-10 h-10 rounded-lg bg-yellow-200 flex items-center justify-center">
-              <div class="w-3 h-3 rounded-full bg-yellow-500 animate-pulse"></div>
-            </div>
-            <span class="text-xs font-semibold text-yellow-700 uppercase">{{ strategyStore.underlying }} Spot</span>
-          </div>
-          <div class="text-2xl font-bold text-yellow-700">{{ formatNumber(strategyStore.currentSpot) }}</div>
-          <div class="text-xs text-yellow-600 mt-1">{{ strategyStore.lastUpdated }}</div>
-        </div>
-      </div>
-
-    </div><!-- End Main Scrollable Content -->
-
-    <!-- Save Success Toast -->
-    <div
-      v-if="showSaveSuccess"
-      class="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded-lg shadow-lg flex items-center space-x-2 z-50"
-    >
-      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-      </svg>
-      <span>Strategy saved successfully!</span>
-    </div>
-
-    <!-- Modals -->
-    <ShareStrategyModal
-      v-if="showShareModal"
-      :share-url="shareUrl"
-      @close="showShareModal = false"
-    />
-
-    <BasketOrderModal
-      v-if="showOrderModal"
-      :legs="strategyStore.legs"
-      :lot-size="strategyStore.lotSize"
-      :is-loading="strategyStore.isLoading"
-      @confirm="handlePlaceOrder"
-      @close="showOrderModal = false"
-    />
-  </div>
+      <BasketOrderModal
+        v-if="showOrderModal"
+        :legs="strategyStore.legs"
+        :lot-size="strategyStore.lotSize"
+        :is-loading="strategyStore.isLoading"
+        @confirm="handlePlaceOrder"
+        @close="showOrderModal = false"
+      />
+    </div><!-- End strategy-page -->
+  </KiteLayout>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { useStrategyStore } from '../stores/strategy'
 import { useWatchlistStore } from '../stores/watchlist'
-import StrategyHeader from '../components/strategy/StrategyHeader.vue'
+import KiteLayout from '../components/layout/KiteLayout.vue'
 import ShareStrategyModal from '../components/strategy/ShareStrategyModal.vue'
 import BasketOrderModal from '../components/strategy/BasketOrderModal.vue'
 import PayoffChart from '../components/strategy/PayoffChart.vue'
@@ -484,6 +519,11 @@ const filters = ref({
 const showShareModal = ref(false)
 const showOrderModal = ref(false)
 const shareUrl = ref('')
+
+// Table scroll refs
+const tableScrollRef = ref(null)
+const canScrollLeft = ref(false)
+const canScrollRight = ref(false)
 
 // Computed
 const filteredLegs = computed(() => {
@@ -531,11 +571,12 @@ const displayedSpotPrices = computed(() => {
     result = spots.filter((spot, i) => i % step === 0)
   }
 
-  // ALWAYS add breakeven values as columns (they are important for the strategy)
+  // ALWAYS add breakeven values as columns (keep exact values for P/L = 0)
   breakevens.forEach(be => {
-    const rounded = Math.round(be)
-    if (!result.includes(rounded)) {
-      result.push(rounded)
+    // Keep exact breakeven value, not rounded, so P/L calculates to exactly 0
+    // Use tolerance check for duplicates since we're dealing with floats
+    if (!result.some(s => Math.abs(s - be) < 0.1)) {
+      result.push(be)
     }
   })
 
@@ -616,7 +657,9 @@ function getStrikesForExpiry(expiry) {
 }
 
 function handleLegUpdate(index, field, value) {
-  const updates = { [field]: value }
+  // Parse strike_price as number for consistent matching with dropdown options
+  const parsedValue = field === 'strike_price' && value ? parseFloat(value) : value
+  const updates = { [field]: parsedValue }
   strategyStore.updateLeg(index, updates)
 
   // Fetch strikes when expiry changes
@@ -635,8 +678,8 @@ function getLegPnLValues(legIndex) {
 
   // Map displayedSpotPrices to corresponding P/L values with interpolation
   return displayedSpotPrices.value.map(spot => {
-    // First try exact match
-    const exactIndex = spots.indexOf(spot)
+    // First try exact match (use tolerance for floating point breakeven values)
+    const exactIndex = spots.findIndex(s => Math.abs(s - spot) < 0.01)
     if (exactIndex !== -1) {
       return legPnL[exactIndex]
     }
@@ -677,8 +720,8 @@ function getTotalPnLAtSpot(spotIndex) {
   const spots = strategyStore.pnlGrid.spot_prices
   const pnlValues = strategyStore.pnlGrid.total_pnl
 
-  // First try exact match
-  const fullIndex = spots.indexOf(spot)
+  // First try exact match (use tolerance for floating point breakeven values)
+  const fullIndex = spots.findIndex(s => Math.abs(s - spot) < 0.01)
   if (fullIndex !== -1) {
     return pnlValues[fullIndex]
   }
@@ -717,6 +760,42 @@ function isCurrentSpot(spot) {
   return Math.abs(spot - strategyStore.currentSpot) < 50
 }
 
+// Format spot value for column header display
+// Rounds decimals (breakevens) but keeps integers as-is
+function formatSpotHeader(spot) {
+  return Number.isInteger(spot) ? spot : Math.round(spot)
+}
+
+// Scroll indicator functions
+function updateScrollIndicators() {
+  const container = tableScrollRef.value
+  if (!container) return
+
+  canScrollLeft.value = container.scrollLeft > 0
+  canScrollRight.value = container.scrollLeft < (container.scrollWidth - container.clientWidth - 1)
+}
+
+function scrollToCurrentSpot() {
+  nextTick(() => {
+    const container = tableScrollRef.value
+    if (!container) return
+
+    const spotColumn = container.querySelector('.th-current-spot')
+    if (spotColumn) {
+      const containerWidth = container.clientWidth
+      const columnLeft = spotColumn.offsetLeft
+      const columnWidth = spotColumn.offsetWidth
+
+      // Center the current spot column in view
+      const scrollPosition = columnLeft - (containerWidth / 2) + (columnWidth / 2)
+      container.scrollTo({ left: scrollPosition, behavior: 'smooth' })
+    }
+
+    // Update scroll indicators after scrolling
+    setTimeout(updateScrollIndicators, 300)
+  })
+}
+
 function toggleSelectAll() {
   if (allLegsSelected.value) {
     strategyStore.deselectAllLegs()
@@ -752,6 +831,8 @@ async function handleStrategyChange() {
 
 async function handleRecalculate() {
   await strategyStore.calculatePnL()
+  // Auto-scroll to center current spot after calculation
+  scrollToCurrentSpot()
 }
 
 async function handleSaveStrategy() {
@@ -802,6 +883,21 @@ async function handleSaveStrategy() {
   }
 }
 
+async function handleDeleteStrategy() {
+  if (!selectedStrategyId.value) return
+
+  if (!confirm('Are you sure you want to delete this strategy?')) return
+
+  const result = await strategyStore.deleteStrategy(selectedStrategyId.value)
+  if (result.success) {
+    // Reset to new strategy state
+    selectedStrategyId.value = ''
+    strategyName.value = ''
+    strategyStore.clearLegs()
+    await loadSavedStrategies()
+  }
+}
+
 async function handleShare() {
   const result = await strategyStore.shareStrategy()
   if (result.success) {
@@ -832,6 +928,11 @@ onMounted(async () => {
     selectedStrategyId.value = route.params.id
   } else {
     await strategyStore.fetchExpiries()
+
+    // Auto-calculate if legs exist (e.g., from Option Chain navigation)
+    if (strategyStore.legs.length > 0) {
+      await strategyStore.calculatePnL()
+    }
   }
 
   // Load saved strategies for dropdown
@@ -849,10 +950,22 @@ onMounted(async () => {
       watchlistStore.subscribeToTokens([token], 'quote')
     }
   }
+
+  // Setup scroll event listener for indicators
+  nextTick(() => {
+    if (tableScrollRef.value) {
+      tableScrollRef.value.addEventListener('scroll', updateScrollIndicators)
+      updateScrollIndicators()
+    }
+  })
 })
 
 onUnmounted(() => {
   strategyStore.clearStrategy()
+  // Cleanup scroll event listener
+  if (tableScrollRef.value) {
+    tableScrollRef.value.removeEventListener('scroll', updateScrollIndicators)
+  }
 })
 
 // Watch for underlying changes to update subscriptions
@@ -911,8 +1024,544 @@ watch(
 </script>
 
 <style scoped>
-/* Smooth scrolling for P/L grid */
-.overflow-x-auto {
+/* ===== Strategy Page Layout ===== */
+.strategy-page {
+  min-height: calc(100vh - 48px);
+  background: var(--kite-body-bg, #ffffff);
+}
+
+.strategy-container {
+  width: 100%;
+  max-width: 100%;
+  padding: 20px 24px;
+}
+
+/* ===== Toolbar ===== */
+.strategy-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 12px 20px;
+  background: white;
+  border: 1px solid var(--kite-border-light);
+  border-radius: 4px;
+}
+
+.toolbar-left, .toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.underlying-tabs {
+  display: flex;
+  gap: 4px;
+}
+
+.underlying-tab {
+  padding: 8px 20px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--kite-text-secondary);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.underlying-tab:hover {
+  color: var(--kite-text-primary);
+}
+
+.underlying-tab.active {
+  color: var(--kite-blue);
+  border-bottom-color: var(--kite-blue);
+  background: transparent;
+}
+
+.mode-label {
+  font-size: 12px;
+  color: var(--kite-text-secondary);
+}
+
+.mode-btn {
+  padding: 6px 12px;
+  font-size: 12px;
+  color: var(--kite-text-secondary);
+  background: transparent;
+  border: 1px solid var(--kite-border);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.mode-btn.active {
+  background: var(--kite-blue-light);
+  color: var(--kite-blue);
+  border-color: var(--kite-blue);
+}
+
+.loading-indicator {
+  font-size: 12px;
+  color: var(--kite-text-muted);
+}
+
+/* ===== Selector Bar ===== */
+.strategy-selector-bar {
+  background: white;
+  border: 1px solid var(--kite-border-light);
+  border-radius: 4px;
+  padding: 12px 20px;
+  margin-bottom: 16px;
+}
+
+.selector-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.selector-left, .selector-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.form-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.form-group.compact {
+  gap: 4px;
+}
+
+.form-label {
+  font-size: 13px;
+  color: var(--kite-text-secondary);
+  font-weight: 500;
+}
+
+.form-label-sm {
+  font-size: 11px;
+  color: var(--kite-text-muted);
+}
+
+/* ===== Strategy Table ===== */
+.strategy-table-wrapper {
+  background: white;
+  border: 1px solid var(--kite-border-light);
+  border-radius: 4px;
+  margin-bottom: 16px;
+  max-width: 100%;
+  position: relative;
+  overflow: hidden;  /* Prevent wrapper from overflowing container */
+}
+
+.table-scroll {
+  overflow-x: auto;
   scroll-behavior: smooth;
+}
+
+/* Scroll Indicators */
+.scroll-indicator {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 40px;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.scroll-indicator-left {
+  left: 0;
+  background: linear-gradient(to right, rgba(255, 255, 255, 0.95), transparent);
+  border-radius: 4px 0 0 4px;
+}
+
+.scroll-indicator-right {
+  right: 0;
+  background: linear-gradient(to left, rgba(255, 255, 255, 0.95), transparent);
+  border-radius: 0 4px 4px 0;
+}
+
+.strategy-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.strategy-table thead {
+  background: var(--kite-table-header-bg);
+}
+
+.strategy-table th {
+  padding: 8px 10px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--kite-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  text-align: center;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--kite-border);
+}
+
+.strategy-table td {
+  padding: 6px 10px;
+  font-size: 12px;
+  color: var(--kite-text-primary);
+  vertical-align: middle;
+}
+
+.strategy-table tbody tr {
+  border-bottom: 1px solid var(--kite-border-light);
+  transition: background 0.15s ease;
+}
+
+.strategy-table tbody tr:hover {
+  background: var(--kite-table-hover, #f5f8fa);
+}
+
+.leg-row.leg-buy {
+  background: #f8fbff;
+  border-left: 3px solid var(--kite-blue);
+}
+
+.leg-row.leg-sell {
+  background: #fffbf8;
+  border-left: 3px solid var(--kite-orange, #ff9800);
+}
+
+.th-checkbox, .td-checkbox {
+  width: 40px;
+  text-align: center;
+}
+
+.th-spot {
+  min-width: 70px;
+}
+
+.th-current-spot {
+  background: #fff3cd !important;
+  color: #856404;
+}
+
+.spot-label {
+  font-size: 9px;
+  font-weight: 700;
+  color: #856404;
+}
+
+.total-row {
+  background: var(--kite-table-header-bg);
+  font-weight: 600;
+  border-top: 2px solid var(--kite-border);
+}
+
+.empty-state td {
+  padding: 48px;
+  text-align: center;
+  color: var(--kite-text-muted);
+}
+
+/* ===== Tags ===== */
+.tag {
+  display: inline-block;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 4px;
+}
+
+.tag-select {
+  appearance: none;
+  -webkit-appearance: none;
+  border: none;
+  background: transparent;
+  font-weight: 600;
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: center;
+}
+
+.tag-select.tag-ce {
+  background: var(--kite-blue-light, #e3f2fd);
+  color: var(--kite-blue, #1976d2);
+}
+
+.tag-select.tag-pe {
+  background: var(--kite-red-light, #ffebee);
+  color: var(--kite-red, #d32f2f);
+}
+
+.tag-select.tag-buy {
+  background: var(--kite-blue-light, #e3f2fd);
+  color: var(--kite-blue, #1976d2);
+}
+
+.tag-select.tag-sell {
+  background: var(--kite-orange-light, #fff3e0);
+  color: var(--kite-orange, #f57c00);
+}
+
+/* ===== Values ===== */
+.cmp-value {
+  color: var(--kite-blue);
+  font-weight: 500;
+}
+
+.cmp-entry-indicator {
+  position: absolute;
+  top: -2px;
+  right: -6px;
+  width: 14px;
+  height: 14px;
+  background: var(--kite-blue, #2962ff);
+  color: white;
+  font-size: 10px;
+  font-weight: bold;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: help;
+}
+
+.no-value {
+  color: var(--kite-text-muted);
+}
+
+/* ===== Form Controls ===== */
+.strategy-select.compact,
+.strategy-input.compact {
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+/* ===== Action Bar ===== */
+.action-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: white;
+  border: 1px solid var(--kite-border-light);
+  border-radius: 4px;
+  padding: 12px 20px;
+  margin-bottom: 16px;
+}
+
+.action-left, .action-right {
+  display: flex;
+  gap: 8px;
+}
+
+/* ===== Error Alert ===== */
+.error-alert {
+  background: var(--kite-red-light);
+  border: 1px solid var(--kite-red);
+  color: #c62828;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.error-close {
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: #c62828;
+  cursor: pointer;
+}
+
+/* ===== Payoff Section ===== */
+.payoff-section {
+  background: white;
+  border: 1px solid var(--kite-border-light);
+  border-radius: 4px;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+}
+
+.payoff-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.section-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--kite-text-primary);
+}
+
+.payoff-legend {
+  display: flex;
+  gap: 20px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.legend-item.profit { color: var(--kite-green); }
+.legend-item.loss { color: var(--kite-red); }
+.legend-item.spot { color: #f0ad4e; }
+
+.legend-line {
+  width: 16px;
+  height: 3px;
+  border-radius: 2px;
+}
+
+.legend-item.profit .legend-line { background: var(--kite-green); }
+.legend-item.loss .legend-line { background: var(--kite-red); }
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #f0ad4e;
+}
+
+.payoff-chart {
+  height: 220px;
+}
+
+/* ===== Summary Grid ===== */
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 16px;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.card-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--kite-text-muted);
+}
+
+.card-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.card-icon.profit {
+  background: transparent;
+  color: var(--kite-green);
+}
+
+.card-icon.loss {
+  background: transparent;
+  color: var(--kite-red);
+}
+
+.card-icon.spot {
+  background: transparent;
+}
+
+.pulse-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #f0ad4e;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(0.9); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+.strategy-summary-card.spot {
+  background: #fffdf5;
+  border-color: var(--kite-border);
+}
+
+.strategy-summary-card.spot .label {
+  color: var(--kite-text-secondary);
+}
+
+.strategy-summary-card.spot .value {
+  color: var(--kite-text-primary);
+}
+
+.timestamp {
+  font-size: 11px;
+  color: var(--kite-text-muted);
+  margin-top: 4px;
+}
+
+/* ===== Toast ===== */
+.toast-success {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: var(--kite-green);
+  color: white;
+  padding: 12px 20px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: var(--kite-shadow-lg);
+  z-index: 1000;
+}
+
+.toast-success svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 1200px) {
+  .summary-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .strategy-toolbar {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .selector-row {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .summary-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .action-bar {
+    flex-direction: column;
+    gap: 12px;
+  }
 }
 </style>

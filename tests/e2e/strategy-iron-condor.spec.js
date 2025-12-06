@@ -4,8 +4,8 @@ const FRONTEND_URL = 'http://localhost:5173';
 const ZERODHA_USER_ID = 'DA1707';
 const ZERODHA_PASSWORD = 'Infosys@123';
 
-// Iron Condor Strategy Configuration
-const STRATEGY_NAME = 'Iron Condor Test ' + new Date().toISOString().slice(0, 10);
+// Iron Condor Strategy Configuration - unique name for each test run
+const STRATEGY_NAME = 'Iron Condor ' + Date.now();
 const UNDERLYING = 'NIFTY';
 const LOT_SIZE = 75;
 
@@ -31,6 +31,10 @@ test.describe('Iron Condor Strategy - Complete Test', () => {
     const context = await browser.newContext();
     page = await context.newPage();
 
+    // Set viewport to full screen (1920x1080) for testing
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    console.log('✓ Set viewport to 1920x1080 (full screen)');
+
     console.log('\n' + '='.repeat(70));
     console.log('IRON CONDOR STRATEGY TEST');
     console.log('='.repeat(70));
@@ -46,7 +50,7 @@ test.describe('Iron Condor Strategy - Complete Test', () => {
     console.log('Close the browser when done.\n');
 
     // Keep browser open indefinitely for manual inspection
-    await page.waitForTimeout(60000); // 1 minute
+    await page.waitForTimeout(600000); // 10 minutes
   });
 
   // ============================================
@@ -109,9 +113,43 @@ test.describe('Iron Condor Strategy - Complete Test', () => {
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(2000);
 
-    // Verify page loaded
-    const title = await page.locator('text=Strategy Builder').first().isVisible();
+    // Verify page loaded - check for underlying tabs or P/L Mode
+    const pageLoaded = await page.locator('text=P/L Mode').first().isVisible() ||
+                       await page.locator('button:has-text("NIFTY")').first().isVisible();
     console.log('✓ Strategy Builder page loaded');
+
+    // Verify KiteLayout header is present
+    const header = page.locator('.kite-header, header').first();
+    const hasHeader = await header.isVisible().catch(() => false);
+    console.log('✓ KiteHeader visible:', hasHeader ? 'Yes' : 'No');
+
+    // Verify index prices in header (should show actual numbers, not "--")
+    const headerText = await header.innerText().catch(() => '');
+    const hasNifty50 = /NIFTY\s*50/i.test(headerText);
+    const hasNiftyBank = /NIFTY\s*BANK/i.test(headerText);
+    // Check for actual price numbers (not "--")
+    const niftyPriceMatch = headerText.match(/NIFTY\s*50[^\d]*(\d{2,6}[\d,.]*)/i);
+    const bankPriceMatch = headerText.match(/NIFTY\s*BANK[^\d]*(\d{2,6}[\d,.]*)/i);
+    const hasLivePrices = niftyPriceMatch && bankPriceMatch;
+    console.log('  Index prices: NIFTY 50:', hasNifty50 ? '✓' : '✗', '| NIFTY BANK:', hasNiftyBank ? '✓' : '✗');
+    console.log('  Live values: NIFTY:', niftyPriceMatch ? niftyPriceMatch[1] : '--', '| BANK:', bankPriceMatch ? bankPriceMatch[1] : '--');
+    console.log('  Index prices showing live data:', hasLivePrices ? '✓ YES' : '✗ NO (showing --)');
+
+    // Verify user avatar circle (initials in blue circle)
+    const userAvatar = page.locator('.user-avatar');
+    const hasAvatar = await userAvatar.isVisible().catch(() => false);
+    const avatarText = hasAvatar ? await userAvatar.innerText().catch(() => '') : '';
+    console.log('  User avatar circle:', hasAvatar ? `✓ (${avatarText})` : '✗');
+
+    // Verify header icons (cart/orders and bell/notifications)
+    const headerIcons = page.locator('.header-icons .icon-btn, .icon-btn');
+    const iconCount = await headerIcons.count();
+    console.log('  Header icons:', iconCount >= 2 ? `✓ (${iconCount} icons)` : `✗ (${iconCount} icons)`);
+
+    // Verify user ID is displayed (not "Guest")
+    const hasGuest = headerText.toLowerCase().includes('guest');
+    const hasUserId = /[A-Z]{2}\d{4}/.test(headerText);
+    console.log('  User display: Shows Guest:', hasGuest ? '✗ (BAD)' : '✓ (GOOD)', '| Shows user ID:', hasUserId ? '✓' : '✗');
 
     // Verify NIFTY is selected (or select it)
     const niftyBtn = page.locator('button').filter({ hasText: /^NIFTY$/ }).first();
@@ -121,9 +159,36 @@ test.describe('Iron Condor Strategy - Complete Test', () => {
       console.log('✓ NIFTY underlying selected');
     }
 
+    // ALWAYS start fresh - select "New Strategy" from dropdown
+    const strategySelect = page.locator('select').filter({ has: page.locator('option:has-text("New Strategy")') }).first();
+    if (await strategySelect.isVisible()) {
+      await strategySelect.selectOption({ index: 0 }); // "New Strategy" is first option
+      await page.waitForTimeout(500);
+      console.log('✓ Selected "New Strategy" (fresh start)');
+    }
+
+    // Clear any existing legs by selecting all and deleting
+    const existingRows = await page.locator('tbody tr').filter({ has: page.locator('select') }).count();
+    if (existingRows > 0) {
+      console.log(`  Clearing ${existingRows} existing leg(s)...`);
+      // Select all checkboxes
+      const checkboxes = page.locator('tbody tr input[type="checkbox"]');
+      const checkboxCount = await checkboxes.count();
+      for (let i = 0; i < checkboxCount; i++) {
+        await checkboxes.nth(i).check();
+      }
+      // Click Delete button in action bar (not the strategy delete button)
+      const deleteBtn = page.locator('.action-bar button, .action-left button').filter({ hasText: /Delete/i }).first();
+      if (await deleteBtn.isEnabled()) {
+        await deleteBtn.click();
+        await page.waitForTimeout(500);
+        console.log('✓ Cleared existing legs');
+      }
+    }
+
     await page.screenshot({ path: 'tests/screenshots/ic-02-strategy-page.png' });
 
-    expect(title).toBeTruthy();
+    expect(pageLoaded).toBeTruthy();
   });
 
   // ============================================
@@ -675,13 +740,117 @@ test.describe('Iron Condor Strategy - Complete Test', () => {
   });
 
   // ============================================
+  // STEP 14.5: Reload Strategy and Verify Strikes Persist
+  // ============================================
+  test('Step 14.5: Reload strategy and verify strikes persist', async () => {
+    console.log('\n--- STEP 14.5: RELOAD AND VERIFY STRIKES ---');
+
+    // Reload the page
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(2000);
+    console.log('✓ Page reloaded');
+
+    // Select the Iron Condor strategy we just saved
+    const strategySelect = page.locator('select').filter({ has: page.locator('option:has-text("New Strategy")') }).first();
+
+    if (await strategySelect.isVisible()) {
+      const options = await strategySelect.locator('option').allInnerTexts();
+
+      // Find our Iron Condor strategy
+      const ironCondorOption = options.find(opt => opt.includes('Iron Condor'));
+      if (ironCondorOption) {
+        await strategySelect.selectOption({ label: ironCondorOption });
+        console.log('✓ Selected:', ironCondorOption);
+        await page.waitForTimeout(4000); // Wait for strikes to be fetched
+
+        // Verify all 4 leg strikes are populated (not blank)
+        const legRows = page.locator('tbody tr').filter({ has: page.locator('select') });
+        const legCount = await legRows.count();
+        console.log('Legs loaded:', legCount);
+
+        let strikesPopulated = 0;
+        const expectedStrikes = ['25600', '25800', '26200', '26400'];
+
+        for (let i = 0; i < Math.min(legCount, 4); i++) {
+          const legRow = legRows.nth(i);
+          const strikeSelect = legRow.locator('select').nth(3);
+
+          // Get selected value
+          const selectedValue = await strikeSelect.inputValue();
+
+          // Check if strike is selected (not empty)
+          if (selectedValue && selectedValue !== '') {
+            strikesPopulated++;
+            const matchesExpected = expectedStrikes.includes(selectedValue);
+            console.log(`  Leg ${i + 1} strike: ${selectedValue} ${matchesExpected ? '✓ matches' : '(different expiry?)'}`);
+          } else {
+            // Check if options are available
+            const strikeOptions = await strikeSelect.locator('option').allInnerTexts();
+            console.log(`  Leg ${i + 1} strike: BLANK ✗ (options count: ${strikeOptions.length})`);
+          }
+        }
+
+        console.log(`\nStrikes populated: ${strikesPopulated}/${legCount}`);
+
+        await page.screenshot({ path: 'tests/screenshots/ic-14b-reloaded-strikes.png' });
+
+        // BUG FIX VERIFICATION: All strikes should be populated after loading
+        expect(strikesPopulated).toBe(legCount);
+      } else {
+        console.log('Iron Condor strategy not found in dropdown');
+      }
+    }
+  });
+
+  // ============================================
+  // STEP 14.6: ReCalculate and verify strike columns appear
+  // ============================================
+  test('Step 14.6: ReCalculate and verify strike columns appear', async () => {
+    console.log('\n--- STEP 14.6: VERIFY STRIKE COLUMNS ---');
+
+    // Click ReCalculate
+    const recalcBtn = page.locator('button').filter({ hasText: /ReCalculate/i }).first();
+    await recalcBtn.click();
+    console.log('✓ Clicked ReCalculate');
+    await page.waitForTimeout(3000);
+
+    // Get P/L column headers
+    const headerText = await page.locator('thead').innerText();
+    const dynamicColumns = headerText.match(/\d{5}/g) || [];
+    console.log('P/L columns:', dynamicColumns.join(', '));
+
+    // Check for strike columns (25600, 25800, 26200, 26400)
+    const expectedStrikes = ['25600', '25800', '26200', '26400'];
+    let strikeColumnsFound = 0;
+
+    expectedStrikes.forEach(strike => {
+      const found = dynamicColumns.includes(strike);
+      if (found) {
+        strikeColumnsFound++;
+        console.log(`  Strike ${strike}: ✓ FOUND in columns`);
+      } else {
+        console.log(`  Strike ${strike}: ✗ NOT FOUND`);
+      }
+    });
+
+    console.log(`\nStrike columns: ${strikeColumnsFound}/${expectedStrikes.length}`);
+
+    await page.screenshot({ path: 'tests/screenshots/ic-14c-strike-columns.png', fullPage: true });
+
+    // All strike values should appear as columns
+    expect(strikeColumnsFound).toBe(expectedStrikes.length);
+  });
+
+  // ============================================
   // STEP 15: Color Coding Verification
   // ============================================
   test('Step 15: Verify color coding', async () => {
     console.log('\n--- STEP 15: COLOR CODING ---');
 
-    const greenCells = await page.locator('.bg-green-100, [class*="bg-green"]').count();
-    const redCells = await page.locator('.bg-red-100, [class*="bg-red"]').count();
+    // Support both Tailwind classes and Kite theme classes
+    const greenCells = await page.locator('.bg-green-100, [class*="bg-green"], .text-green-600, .text-green, [class*="green"]').count();
+    const redCells = await page.locator('.bg-red-100, [class*="bg-red"], .text-red-600, .text-red, [class*="red"]').count();
 
     console.log('Green (profit) cells:', greenCells);
     console.log('Red (loss) cells:', redCells);
@@ -711,12 +880,17 @@ test.describe('Iron Condor Strategy - Complete Test', () => {
     console.log('  Max Profit Range: 25800 - 26200');
     console.log('  Max Loss: If NIFTY < 25600 or > 26400');
 
+    console.log('\n✓ Bug Fix Verification:');
+    console.log('  - Strike dropdowns populate on strategy load');
+    console.log('  - Breakeven columns appear in P/L grid');
+    console.log('  - Strike columns appear in P/L grid');
+
     console.log('\n✓ All Screenshots saved in tests/screenshots/ic-*.png');
 
     await page.screenshot({ path: 'tests/screenshots/ic-16-final.png', fullPage: true });
 
     console.log('\n' + '='.repeat(70));
-    console.log('TEST PASSED - Iron Condor strategy validated');
+    console.log('TEST PASSED - Iron Condor strategy validated (20 tests)');
     console.log('='.repeat(70) + '\n');
   });
 });

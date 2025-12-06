@@ -74,3 +74,6 @@ secrets/
 # Deployment
 deploy.sh
 *.bak
+
+# Temporary images/screenshots
+images/

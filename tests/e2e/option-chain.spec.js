@@ -72,8 +72,46 @@ test.describe('Option Chain - Complete Tests', () => {
     const title = await page.locator('text=Option Chain').first().isVisible();
     console.log('✓ Option Chain page loaded:', title ? 'Yes' : 'No');
 
+    // Verify KiteLayout header is present
+    const header = page.locator('.kite-header, header').first();
+    const hasHeader = await header.isVisible().catch(() => false);
+    console.log('✓ KiteHeader visible:', hasHeader ? 'Yes' : 'No');
+
+    // Verify index prices in header (should show actual numbers, not "--")
+    const headerText = await header.innerText().catch(() => '');
+    const hasNifty50 = /NIFTY\s*50/i.test(headerText);
+    const hasNiftyBank = /NIFTY\s*BANK/i.test(headerText);
+    // Check for actual price numbers (not "--")
+    const niftyPriceMatch = headerText.match(/NIFTY\s*50[^\d]*(\d{2,6}[\d,.]*)/i);
+    const bankPriceMatch = headerText.match(/NIFTY\s*BANK[^\d]*(\d{2,6}[\d,.]*)/i);
+    const hasLivePrices = niftyPriceMatch && bankPriceMatch;
+    console.log('  Header NIFTY 50:', hasNifty50 ? '✓' : '✗');
+    console.log('  Header NIFTY BANK:', hasNiftyBank ? '✓' : '✗');
+    console.log('  Live prices: NIFTY:', niftyPriceMatch ? niftyPriceMatch[1] : '--', '| BANK:', bankPriceMatch ? bankPriceMatch[1] : '--');
+    console.log('  Index prices live (not "--"):', hasLivePrices ? '✓' : '✗');
+
+    // Verify user avatar circle (initials in blue circle)
+    const userAvatar = page.locator('.user-avatar');
+    const hasAvatar = await userAvatar.isVisible().catch(() => false);
+    const avatarText = hasAvatar ? await userAvatar.innerText().catch(() => '') : '';
+    console.log('  User avatar circle:', hasAvatar ? `✓ (${avatarText})` : '✗');
+
+    // Verify header icons (cart/orders and bell/notifications)
+    const headerIcons = page.locator('.header-icons .icon-btn, .icon-btn');
+    const iconCount = await headerIcons.count();
+    console.log('  Header icons (cart, bell):', iconCount >= 2 ? `✓ (${iconCount})` : `✗ (${iconCount})`);
+
+    // Verify navigation links
+    const navLinks = await page.locator('.main-nav a, nav a').count();
+    console.log('  Navigation links:', navLinks);
+
+    // Verify user ID (not Guest)
+    const hasGuest = headerText.toLowerCase().includes('guest');
+    console.log('  Shows Guest:', hasGuest ? '✗ (BAD)' : '✓ NO');
+
     await page.screenshot({ path: 'tests/screenshots/oc-01-page-load.png', fullPage: true });
     expect(title).toBeTruthy();
+    expect(hasHeader).toBeTruthy();
   });
 
   // ============================================
@@ -216,15 +254,16 @@ test.describe('Option Chain - Complete Tests', () => {
   test('8. Verify ATM strike is highlighted', async () => {
     console.log('\n--- TEST 8: ATM Highlight ---');
 
-    // Look for ATM text or yellow highlighted row
+    // Look for ATM text or highlighted row (supports both Tailwind and Kite styling)
     const atmText = page.locator('text=ATM');
-    const yellowRow = page.locator('tr.bg-yellow-50, tr[class*="yellow"]');
+    // Support both Tailwind (bg-yellow-50) and Kite (.atm-row) styling
+    const highlightedRow = page.locator('tr.bg-yellow-50, tr[class*="yellow"], tr.atm-row');
 
     const hasATMText = await atmText.first().isVisible().catch(() => false);
-    const hasYellowRow = await yellowRow.first().isVisible().catch(() => false);
+    const hasHighlightedRow = await highlightedRow.first().isVisible().catch(() => false);
 
     console.log('  ATM label visible:', hasATMText ? '✓' : '✗');
-    console.log('  Yellow highlight:', hasYellowRow ? '✓' : '✗');
+    console.log('  ATM row highlighted:', hasHighlightedRow ? '✓' : '✗');
 
     await page.screenshot({ path: 'tests/screenshots/oc-08-atm.png' });
   });
@@ -240,8 +279,8 @@ test.describe('Option Chain - Complete Tests', () => {
     // Look for OI values (K, L, Cr suffixes or large numbers)
     const hasOI = /\d+\.?\d*[KLCr]|\d{4,}/.test(pageText);
 
-    // Look for OI bars (visual elements)
-    const oiBars = await page.locator('[class*="bg-red"], [class*="bg-green"]').count();
+    // Look for OI bars - support both Tailwind (bg-red/bg-green) and Kite (.oi-bar.ce/.oi-bar.pe)
+    const oiBars = await page.locator('[class*="bg-red"], [class*="bg-green"], .oi-bar.ce, .oi-bar.pe, .oi-bar').count();
 
     console.log('  OI values present:', hasOI ? '✓' : '✗');
     console.log('  OI bars visible:', oiBars > 0 ? `✓ (${oiBars})` : '✗');
@@ -334,26 +373,27 @@ test.describe('Option Chain - Complete Tests', () => {
   test('14. Change strikes range filter', async () => {
     console.log('\n--- TEST 14: Strikes Range ---');
 
-    const rangeSelect = page.locator('select').filter({ has: page.locator('option:has-text("±10")') }).first();
+    // Support both old (±10) and new (10 Strikes) option format
+    const rangeSelect = page.locator('select').filter({ has: page.locator('option:has-text("10")') }).first();
 
     if (await rangeSelect.isVisible()) {
       // Get initial row count
       const initialRows = await page.locator('tbody tr').count();
       console.log('  Initial rows:', initialRows);
 
-      // Change to ±10
+      // Change to 10 strikes
       await rangeSelect.selectOption('10');
       await page.waitForTimeout(500);
 
       const reducedRows = await page.locator('tbody tr').count();
-      console.log('  After ±10:', reducedRows);
+      console.log('  After 10 strikes:', reducedRows);
 
-      // Change to ±30
+      // Change to 30 strikes
       await rangeSelect.selectOption('30');
       await page.waitForTimeout(500);
 
       const expandedRows = await page.locator('tbody tr').count();
-      console.log('  After ±30:', expandedRows);
+      console.log('  After 30 strikes:', expandedRows);
     }
 
     await page.screenshot({ path: 'tests/screenshots/oc-14-range.png' });
@@ -538,12 +578,14 @@ test.describe('Option Chain - Complete Tests', () => {
   test('23. Verify ITM/OTM color coding', async () => {
     console.log('\n--- TEST 23: ITM/OTM Colors ---');
 
-    // Look for ITM background colors
-    const redBg = await page.locator('tr[class*="red"], td[class*="red"]').count();
-    const greenBg = await page.locator('tr[class*="green"], td[class*="green"]').count();
+    // Look for ITM background colors - support both Tailwind and Kite styling
+    // Tailwind: tr[class*="red"], td[class*="red"]
+    // Kite: .itm-ce (red for CE ITM), .itm-pe (green for PE ITM), .ce-col, .pe-col
+    const redBg = await page.locator('tr[class*="red"], td[class*="red"], tr.itm-ce, .ce-col').count();
+    const greenBg = await page.locator('tr[class*="green"], td[class*="green"], tr.itm-pe, .pe-col').count();
 
-    console.log('  Red (ITM CE) elements:', redBg);
-    console.log('  Green (ITM PE) elements:', greenBg);
+    console.log('  CE (red-tinted) elements:', redBg);
+    console.log('  PE (green-tinted) elements:', greenBg);
 
     await page.screenshot({ path: 'tests/screenshots/oc-23-itm-otm.png' });
   });

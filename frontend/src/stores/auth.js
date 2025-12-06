@@ -50,7 +50,17 @@ export const useAuthStore = defineStore('auth', () => {
     loading.value = true
     try {
       const response = await api.get('/api/auth/me')
-      user.value = response.data.user
+      // Combine user data with broker connection info
+      const userData = response.data.user
+      const brokerConnections = response.data.broker_connections || []
+      const activeBroker = brokerConnections.find(bc => bc.is_active) || brokerConnections[0]
+
+      user.value = {
+        ...userData,
+        broker_user_id: activeBroker?.broker_user_id || null,
+        broker: activeBroker?.broker || null,
+        broker_connections: brokerConnections
+      }
       isAuthenticated.value = true
       return { success: true }
     } catch (error) {

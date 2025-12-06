@@ -528,7 +528,9 @@ async def calculate_pnl(
         current_spot = request.current_spot if request.current_spot else (sum(strikes) / len(strikes) if strikes else 25000)
 
         # PASS 1: Calculate on base spot range to get breakeven points
-        base_spot_prices = generate_spot_range(strikes, current_spot, include_strikes=False)
+        # IMPORTANT: Include strikes so P/L is linear between consecutive spots
+        # This ensures breakeven interpolation is accurate
+        base_spot_prices = generate_spot_range(strikes, current_spot, include_strikes=True)
         target_date = request.target_date or date.today()
 
         first_pass = pnl_calculator.calculate_pnl_grid(
@@ -557,6 +559,8 @@ async def calculate_pnl(
             volatility=request.volatility or 0.15
         )
 
+        # Use PASS 1's breakevens - these are the exact values in spot_prices
+        # This ensures P/L at breakeven columns is exactly 0
         return PnLCalculateResponse(
             spot_prices=result["spot_prices"],
             leg_pnl=result["leg_pnl"],
@@ -564,7 +568,7 @@ async def calculate_pnl(
             current_spot=current_spot,
             max_profit=result["max_profit"],
             max_loss=result["max_loss"],
-            breakeven=result["breakeven"]
+            breakeven=breakevens  # Use PASS 1's breakevens, not PASS 2's
         )
 
     except HTTPException:

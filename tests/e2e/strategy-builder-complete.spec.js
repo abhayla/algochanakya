@@ -14,6 +14,10 @@ test.describe('Strategy Builder Complete Tests', () => {
     const context = await browser.newContext();
     sharedPage = await context.newPage();
 
+    // Set viewport to full screen (1920x1080) for testing
+    await sharedPage.setViewportSize({ width: 1920, height: 1080 });
+    console.log('✓ Set viewport to 1920x1080 (full screen)');
+
     console.log('\n' + '='.repeat(60));
     console.log('ZERODHA LOGIN');
     console.log('='.repeat(60));
@@ -52,9 +56,9 @@ test.describe('Strategy Builder Complete Tests', () => {
   });
 
   // ============================================
-  // TEST 1: Page loads correctly
+  // TEST 1: Page loads correctly with KiteLayout
   // ============================================
-  test('1. Strategy Builder page loads', async () => {
+  test('1. Strategy Builder page loads with KiteLayout', async () => {
     await sharedPage.goto(`${FRONTEND_URL}/strategy`);
     await sharedPage.waitForLoadState('networkidle');
     await sharedPage.waitForTimeout(2000);
@@ -62,8 +66,61 @@ test.describe('Strategy Builder Complete Tests', () => {
     const title = await sharedPage.locator('text=Strategy Builder').first().isVisible();
     console.log('Test 1: Page loaded:', title ? 'PASS' : 'FAIL');
 
+    // Verify KiteLayout header is present
+    const header = sharedPage.locator('.kite-header, header').first();
+    const hasHeader = await header.isVisible().catch(() => false);
+    console.log('  KiteHeader visible:', hasHeader ? 'PASS' : 'FAIL');
+
+    // Verify index prices in header (should show actual numbers, not "--")
+    const headerText = await header.innerText().catch(() => '');
+    const hasNifty50 = /NIFTY\s*50/i.test(headerText);
+    const hasNiftyBank = /NIFTY\s*BANK/i.test(headerText);
+    // Check for actual price numbers (not "--")
+    const niftyPriceMatch = headerText.match(/NIFTY\s*50[^\d]*(\d{2,6}[\d,.]*)/i);
+    const bankPriceMatch = headerText.match(/NIFTY\s*BANK[^\d]*(\d{2,6}[\d,.]*)/i);
+    const hasLivePrices = niftyPriceMatch && bankPriceMatch;
+    console.log('  NIFTY 50 in header:', hasNifty50 ? 'PASS' : 'FAIL');
+    console.log('  NIFTY BANK in header:', hasNiftyBank ? 'PASS' : 'FAIL');
+    console.log('  Live prices: NIFTY:', niftyPriceMatch ? niftyPriceMatch[1] : '--', '| BANK:', bankPriceMatch ? bankPriceMatch[1] : '--');
+    console.log('  Index prices live (not "--"):', hasLivePrices ? 'PASS' : 'FAIL');
+
+    // Verify user avatar circle (initials in blue circle)
+    const userAvatar = sharedPage.locator('.user-avatar');
+    const hasAvatar = await userAvatar.isVisible().catch(() => false);
+    const avatarText = hasAvatar ? await userAvatar.innerText().catch(() => '') : '';
+    console.log('  User avatar circle:', hasAvatar ? `PASS (${avatarText})` : 'FAIL');
+
+    // Verify header icons (cart/orders and bell/notifications)
+    const headerIcons = sharedPage.locator('.header-icons .icon-btn, .icon-btn');
+    const iconCount = await headerIcons.count();
+    console.log('  Header icons (cart, bell):', iconCount >= 2 ? `PASS (${iconCount})` : `FAIL (${iconCount})`);
+
+    // Verify navigation links
+    const dashboardLink = sharedPage.locator('a[href="/dashboard"], a:has-text("Dashboard")');
+    const optionChainLink = sharedPage.locator('a[href="/optionchain"], a:has-text("Option Chain")');
+    const strategyLink = sharedPage.locator('a[href="/strategy"], a:has-text("Strategy")');
+    const watchlistLink = sharedPage.locator('a[href="/watchlist"], a:has-text("Watchlist")');
+
+    const hasDashboard = await dashboardLink.isVisible().catch(() => false);
+    const hasOptionChain = await optionChainLink.isVisible().catch(() => false);
+    const hasStrategy = await strategyLink.isVisible().catch(() => false);
+    const hasWatchlist = await watchlistLink.isVisible().catch(() => false);
+
+    console.log('  Navigation links: Dashboard:', hasDashboard ? '✓' : '✗',
+      '| Option Chain:', hasOptionChain ? '✓' : '✗',
+      '| Strategy:', hasStrategy ? '✓' : '✗',
+      '| Watchlist:', hasWatchlist ? '✓' : '✗');
+
+    // Verify user ID is displayed (not "Guest")
+    const hasGuest = headerText.toLowerCase().includes('guest');
+    const hasUserId = /[A-Z]{2}\d{4}/.test(headerText);
+    console.log('  Shows "Guest":', hasGuest ? 'FAIL (BAD)' : 'PASS');
+    console.log('  Shows user ID:', hasUserId ? 'PASS' : 'FAIL');
+
     await sharedPage.screenshot({ path: 'tests/screenshots/sb-complete-01.png', fullPage: true });
     expect(title).toBeTruthy();
+    expect(hasHeader).toBeTruthy();
+    expect(hasGuest).toBeFalsy();
   });
 
   // ============================================
@@ -314,8 +371,8 @@ test.describe('Strategy Builder Complete Tests', () => {
     const firstCheckbox = sharedPage.locator('tbody tr').first().locator('input[type="checkbox"]');
     await firstCheckbox.check();
 
-    // Click delete
-    const deleteBtn = sharedPage.locator('button').filter({ hasText: /Delete/i }).first();
+    // Click delete - use action-bar to avoid selecting strategy Delete button
+    const deleteBtn = sharedPage.locator('.action-bar button, .action-left button').filter({ hasText: /Delete/i }).first();
     await deleteBtn.click();
     await sharedPage.waitForTimeout(500);
 
@@ -396,6 +453,164 @@ test.describe('Strategy Builder Complete Tests', () => {
     }
 
     await sharedPage.screenshot({ path: 'tests/screenshots/sb-complete-15.png' });
+  });
+
+  // ============================================
+  // TEST 15.5: Load saved strategy and verify strikes populated
+  // ============================================
+  test('15.5. Load saved strategy - strikes should be populated', async () => {
+    console.log('\n--- TEST 15.5: LOAD SAVED STRATEGY ---');
+
+    const strategySelect = sharedPage.locator('select').filter({ has: sharedPage.locator('option:has-text("New Strategy")') }).first();
+
+    if (await strategySelect.isVisible()) {
+      const options = await strategySelect.locator('option').allInnerTexts();
+
+      // Find a saved strategy (not "New Strategy")
+      if (options.length > 1) {
+        await strategySelect.selectOption({ index: 1 });
+        console.log('Selected strategy:', options[1]);
+        await sharedPage.waitForTimeout(3000); // Wait for strikes to be fetched
+
+        // Get all leg rows
+        const legRows = sharedPage.locator('tbody tr').filter({ has: sharedPage.locator('select') });
+        const legCount = await legRows.count();
+        console.log('Legs loaded:', legCount);
+
+        // Check each leg's strike dropdown has a value selected (not blank)
+        let strikesPopulated = 0;
+        for (let i = 0; i < Math.min(legCount, 4); i++) {
+          const legRow = legRows.nth(i);
+          const strikeSelect = legRow.locator('select').nth(3);
+
+          // Get selected value
+          const selectedValue = await strikeSelect.inputValue();
+          const strikeOptions = await strikeSelect.locator('option').allInnerTexts();
+
+          // Check if strike is selected (not empty or "Select")
+          const hasStrikeValue = selectedValue && selectedValue !== '' && !selectedValue.includes('Select');
+
+          if (hasStrikeValue) {
+            strikesPopulated++;
+            console.log(`  Leg ${i + 1} strike: ${selectedValue} ✓`);
+          } else {
+            console.log(`  Leg ${i + 1} strike: BLANK ✗ (options: ${strikeOptions.slice(0, 5).join(', ')})`);
+          }
+        }
+
+        console.log(`\nStrikes populated: ${strikesPopulated}/${legCount}`);
+        await sharedPage.screenshot({ path: 'tests/screenshots/sb-complete-15b-strikes-loaded.png' });
+
+        // All strikes should be populated after loading
+        expect(strikesPopulated).toBe(legCount);
+      } else {
+        console.log('No saved strategies to test');
+      }
+    }
+  });
+
+  // ============================================
+  // TEST 15.6: ReCalculate loaded strategy and verify breakeven columns
+  // ============================================
+  test('15.6. ReCalculate and verify breakeven columns', async () => {
+    console.log('\n--- TEST 15.6: VERIFY BREAKEVEN COLUMNS ---');
+
+    // Click ReCalculate
+    const recalcBtn = sharedPage.locator('button').filter({ hasText: /ReCalculate/i }).first();
+    await recalcBtn.click();
+    console.log('Clicked ReCalculate');
+    await sharedPage.waitForTimeout(3000);
+
+    // Get breakeven values from summary
+    const pageText = await sharedPage.locator('body').innerText();
+    const breakevenMatch = pageText.match(/Breakeven[:\s]*([\d,.\s-]+)/i);
+
+    if (breakevenMatch) {
+      const breakevenStr = breakevenMatch[1].trim();
+      console.log('Breakeven from summary:', breakevenStr);
+
+      // Parse breakeven values
+      const breakevenValues = breakevenStr.match(/\d{5}/g) || [];
+      console.log('Parsed breakevens:', breakevenValues.join(', '));
+
+      // Get all column headers
+      const headerText = await sharedPage.locator('thead').innerText();
+      const dynamicColumns = headerText.match(/\d{5}/g) || [];
+      console.log('P/L columns:', dynamicColumns.slice(0, 15).join(', '));
+
+      // Check if breakeven values appear as columns
+      let breakevenColumnsFound = 0;
+      breakevenValues.forEach(be => {
+        const found = dynamicColumns.includes(be);
+        if (found) {
+          breakevenColumnsFound++;
+          console.log(`  Breakeven ${be} in columns: ✓ FOUND`);
+        } else {
+          console.log(`  Breakeven ${be} in columns: ✗ NOT FOUND`);
+        }
+      });
+
+      console.log(`\nBreakeven columns: ${breakevenColumnsFound}/${breakevenValues.length}`);
+
+      await sharedPage.screenshot({ path: 'tests/screenshots/sb-complete-15c-breakeven-columns.png' });
+
+      // All breakeven values should appear as columns
+      if (breakevenValues.length > 0) {
+        expect(breakevenColumnsFound).toBe(breakevenValues.length);
+      }
+    } else {
+      console.log('No breakeven found (strategy may have unlimited profit/loss)');
+    }
+  });
+
+  // ============================================
+  // TEST 15.7: Verify strike columns in P/L grid
+  // ============================================
+  test('15.7. Verify strike columns in P/L grid', async () => {
+    console.log('\n--- TEST 15.7: VERIFY STRIKE COLUMNS ---');
+
+    // Get strikes from the leg rows
+    const legRows = sharedPage.locator('tbody tr').filter({ has: sharedPage.locator('select') });
+    const legCount = await legRows.count();
+
+    const strikes = [];
+    for (let i = 0; i < Math.min(legCount, 4); i++) {
+      const strikeSelect = legRows.nth(i).locator('select').nth(3);
+      const strikeValue = await strikeSelect.inputValue();
+      if (strikeValue && !isNaN(parseFloat(strikeValue))) {
+        const roundedStrike = Math.round(parseFloat(strikeValue)).toString();
+        if (!strikes.includes(roundedStrike)) {
+          strikes.push(roundedStrike);
+        }
+      }
+    }
+    console.log('Leg strikes:', strikes.join(', '));
+
+    // Get P/L column headers
+    const headerText = await sharedPage.locator('thead').innerText();
+    const dynamicColumns = headerText.match(/\d{5}/g) || [];
+    console.log('P/L columns:', dynamicColumns.slice(0, 15).join(', '));
+
+    // Check if strike values appear as columns
+    let strikeColumnsFound = 0;
+    strikes.forEach(strike => {
+      const found = dynamicColumns.includes(strike);
+      if (found) {
+        strikeColumnsFound++;
+        console.log(`  Strike ${strike} in columns: ✓ FOUND`);
+      } else {
+        console.log(`  Strike ${strike} in columns: ✗ NOT FOUND`);
+      }
+    });
+
+    console.log(`\nStrike columns: ${strikeColumnsFound}/${strikes.length}`);
+
+    await sharedPage.screenshot({ path: 'tests/screenshots/sb-complete-15d-strike-columns.png' });
+
+    // All strike values should appear as columns
+    if (strikes.length > 0) {
+      expect(strikeColumnsFound).toBe(strikes.length);
+    }
   });
 
   // ============================================
@@ -492,8 +707,9 @@ test.describe('Strategy Builder Complete Tests', () => {
   // TEST 19: Color coding works
   // ============================================
   test('19. P/L color coding (red/green)', async () => {
-    const greenCells = await sharedPage.locator('.bg-green-100, .bg-green-50, .text-green-600, .text-green-800').count();
-    const redCells = await sharedPage.locator('.bg-red-100, .text-red-600, .text-red-800').count();
+    // Support both Tailwind classes and Kite theme classes
+    const greenCells = await sharedPage.locator('.bg-green-100, .bg-green-50, .text-green-600, .text-green-800, .text-green, [class*="green"]').count();
+    const redCells = await sharedPage.locator('.bg-red-100, .text-red-600, .text-red-800, .text-red, [class*="red"]').count();
 
     console.log('\nTest 19: Color coding:');
     console.log('  Green cells:', greenCells);
@@ -543,10 +759,40 @@ test.describe('Strategy Builder Complete Tests', () => {
   });
 
   // ============================================
-  // TEST 22: Final summary
+  // TEST 22: Delete Strategy button
   // ============================================
-  test('22. Final state verification', async () => {
-    await sharedPage.screenshot({ path: 'tests/screenshots/sb-complete-22-final.png', fullPage: true });
+  test('22. Delete Strategy button works', async () => {
+    // First ensure we have a saved strategy selected
+    const strategySelect = sharedPage.locator('select').filter({ has: sharedPage.locator('option:has-text("New Strategy")') }).first();
+
+    if (await strategySelect.isVisible()) {
+      const options = await strategySelect.locator('option').allInnerTexts();
+
+      // Select a saved strategy (not "New Strategy")
+      if (options.length > 1) {
+        await strategySelect.selectOption({ index: 1 });
+        await sharedPage.waitForTimeout(1000);
+        console.log('\nTest 22: Selected strategy:', options[1]);
+      }
+    }
+
+    // Find Delete strategy button (in selector area, not action bar)
+    const deleteStrategyBtn = sharedPage.locator('.selector-left button, .form-group button').filter({ hasText: /^Delete$/i }).first();
+
+    const isVisible = await deleteStrategyBtn.isVisible().catch(() => false);
+    const isEnabled = await deleteStrategyBtn.isEnabled().catch(() => false);
+
+    console.log('  Delete Strategy button visible:', isVisible ? 'PASS' : 'FAIL');
+    console.log('  Delete Strategy button enabled:', isEnabled ? 'PASS' : 'DISABLED');
+
+    await sharedPage.screenshot({ path: 'tests/screenshots/sb-complete-22.png' });
+  });
+
+  // ============================================
+  // TEST 23: Final summary
+  // ============================================
+  test('23. Final state verification', async () => {
+    await sharedPage.screenshot({ path: 'tests/screenshots/sb-complete-23-final.png', fullPage: true });
 
     console.log('\n' + '='.repeat(60));
     console.log('STRATEGY BUILDER TEST SUMMARY');

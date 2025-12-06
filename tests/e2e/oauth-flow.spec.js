@@ -37,7 +37,7 @@ test.describe('Zerodha OAuth Flow', () => {
     console.log('========================================\n');
 
     // Wait for redirect back to our app (up to 2 minutes for manual login)
-    await page.waitForURL(/localhost:5174/, { timeout: 120000 });
+    await page.waitForURL(/localhost:5173/, { timeout: 120000 });
     console.log('✓ Redirected back to AlgoChanakya');
     console.log('  Current URL:', page.url());
 
@@ -90,6 +90,28 @@ test.describe('Zerodha OAuth Flow', () => {
       expect(zerodhaConnection.is_active).toBe(true);
       console.log('✓ Zerodha broker connection active');
       console.log('  Broker User ID:', zerodhaConnection.broker_user_id);
+
+      // Step 11: Verify user ID displays in header (not "Guest")
+      console.log('\n========================================');
+      console.log('STEP 11: Verify user ID in header');
+      console.log('========================================');
+
+      // Navigate to a page with KiteLayout header
+      await page.goto('/watchlist');
+      await page.waitForLoadState('networkidle');
+      await page.waitForTimeout(2000);
+
+      // Check header displays broker user ID (not "Guest")
+      const headerText = await page.locator('.kite-header, header').first().innerText();
+      const hasUserId = headerText.includes(zerodhaConnection.broker_user_id);
+      const hasGuest = headerText.includes('Guest');
+
+      console.log('  Header contains broker user ID:', hasUserId ? '✓ YES' : '✗ NO');
+      console.log('  Header shows "Guest":', hasGuest ? '✗ YES (BAD)' : '✓ NO (GOOD)');
+
+      expect(hasUserId).toBeTruthy();
+      expect(hasGuest).toBeFalsy();
+      console.log('✓ User ID displays correctly in header');
     }
 
     console.log('\n========================================');

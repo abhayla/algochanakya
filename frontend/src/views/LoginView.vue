@@ -62,7 +62,7 @@ const handleLogin = async () => {
         <button
           @click="handleLogin"
           :disabled="authStore.loading"
-          class="w-full bg-primary-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-primary-700 focus:ring-4 focus:ring-primary-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          class="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <span v-if="!authStore.loading">Connect to {{ broker }}</span>
           <span v-else class="flex items-center justify-center">
@@ -85,19 +85,19 @@ const handleLogin = async () => {
         <h3 class="text-sm font-semibold text-gray-700 mb-3">Features</h3>
         <div class="space-y-2 text-sm text-gray-600">
           <div class="flex items-center">
-            <svg class="w-4 h-4 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+            <svg class="text-green-500 mr-2 flex-shrink-0" width="16" height="16" fill="currentColor" viewBox="0 0 20 20">
               <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
             </svg>
             Options strategy builder
           </div>
           <div class="flex items-center">
-            <svg class="w-4 h-4 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+            <svg class="text-green-500 mr-2 flex-shrink-0" width="16" height="16" fill="currentColor" viewBox="0 0 20 20">
               <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
             </svg>
             Real-time market data
           </div>
           <div class="flex items-center">
-            <svg class="w-4 h-4 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+            <svg class="text-green-500 mr-2 flex-shrink-0" width="16" height="16" fill="currentColor" viewBox="0 0 20 20">
               <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
             </svg>
             Advanced analytics

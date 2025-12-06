@@ -1,345 +1,239 @@
 <template>
-  <div class="h-screen flex flex-col bg-gray-100 overflow-hidden">
+  <KiteLayout>
+    <div class="optionchain-page">
 
-    <!-- Header -->
-    <header class="bg-white border-b border-gray-200 shadow-sm px-6 py-4 flex-shrink-0">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-6">
-          <!-- Navigation Links -->
-          <div class="flex items-center gap-4 mr-4">
-            <router-link to="/watchlist" class="text-sm text-gray-600 hover:text-blue-600">Watchlist</router-link>
-            <router-link to="/optionchain" class="text-sm text-blue-600 font-semibold">Option Chain</router-link>
-            <router-link to="/strategy" class="text-sm text-gray-600 hover:text-blue-600">Strategy Builder</router-link>
-          </div>
+      <!-- Page Header -->
+      <div class="page-header">
+        <div class="header-left">
+          <h1 class="page-title">Option Chain</h1>
 
-          <div class="h-6 border-l border-gray-300"></div>
-
-          <!-- Underlying Selector -->
-          <div class="flex gap-1 p-1 bg-gray-100 rounded-lg">
+          <!-- Underlying Tabs -->
+          <div class="underlying-tabs">
             <button
               v-for="ul in ['NIFTY', 'BANKNIFTY', 'FINNIFTY']"
               :key="ul"
+              :class="['tab-btn', { active: store.underlying === ul }]"
               @click="handleUnderlyingChange(ul)"
-              :class="[
-                'px-4 py-2 text-sm font-semibold rounded-md transition-all',
-                store.underlying === ul
-                  ? 'bg-white text-blue-600 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              ]"
             >
               {{ ul }}
             </button>
           </div>
 
-          <!-- Expiry Selector -->
-          <div class="flex items-center gap-2">
-            <label class="text-sm text-gray-600">Expiry:</label>
-            <select
-              v-model="store.expiry"
-              @change="handleExpiryChange"
-              class="px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option v-for="exp in store.expiries" :key="exp" :value="exp">{{ formatExpiry(exp) }}</option>
-            </select>
-          </div>
+          <!-- Expiry Select -->
+          <select v-model="store.expiry" @change="handleExpiryChange" class="expiry-select">
+            <option v-for="exp in store.expiries" :key="exp" :value="exp">{{ formatExpiry(exp) }}</option>
+          </select>
         </div>
 
-        <!-- Spot Price & Controls -->
-        <div class="flex items-center gap-6">
-          <!-- Spot Price -->
-          <div class="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg border border-blue-200">
-            <span class="text-sm text-blue-600">Spot:</span>
-            <span class="text-xl font-bold text-blue-700">{{ formatNumber(store.spotPrice) }}</span>
+        <div class="header-right">
+          <!-- Spot Price Box -->
+          <div class="spot-box">
+            <span class="spot-label">Spot</span>
+            <span class="spot-price">{{ formatNumber(store.spotPrice) }}</span>
           </div>
 
-          <!-- Days to Expiry -->
-          <div class="flex items-center gap-2 px-3 py-2 bg-gray-100 rounded-lg">
-            <span class="text-sm text-gray-600">DTE:</span>
-            <span class="font-semibold text-gray-800">{{ store.daysToExpiry }}</span>
+          <!-- DTE -->
+          <div class="dte-box">
+            <span class="dte-label">DTE</span>
+            <span class="dte-value">{{ store.daysToExpiry }}</span>
           </div>
 
-          <!-- Toggle Greeks -->
-          <label class="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" v-model="store.showGreeks" class="w-4 h-4 rounded text-blue-600 focus:ring-blue-500"/>
-            <span class="text-sm text-gray-600">Greeks</span>
+          <!-- Greeks Toggle -->
+          <label class="toggle-label">
+            <input type="checkbox" v-model="store.showGreeks" />
+            <span>Greeks</span>
           </label>
 
           <!-- Refresh -->
-          <button
-            @click="store.fetchOptionChain()"
-            :disabled="store.isLoading"
-            class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
-          >
-            <span v-if="store.isLoading">Loading...</span>
-            <span v-else>Refresh</span>
+          <button @click="store.fetchOptionChain()" class="refresh-btn" :disabled="store.isLoading">
+            {{ store.isLoading ? 'Loading...' : 'Refresh' }}
           </button>
         </div>
       </div>
-    </header>
 
-    <!-- Summary Bar -->
-    <div class="bg-white border-b border-gray-200 px-6 py-3 flex-shrink-0">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-8">
-          <!-- PCR -->
-          <div class="flex items-center gap-2">
-            <span class="text-sm text-gray-500">PCR:</span>
-            <span :class="[
-              'text-lg font-bold',
-              store.summary.pcr > 1 ? 'text-green-600' : store.summary.pcr < 0.7 ? 'text-red-600' : 'text-gray-800'
-            ]">{{ store.summary.pcr }}</span>
-          </div>
-
-          <!-- Max Pain -->
-          <div class="flex items-center gap-2">
-            <span class="text-sm text-gray-500">Max Pain:</span>
-            <span class="text-lg font-bold text-purple-600">{{ formatNumber(store.summary.max_pain) }}</span>
-          </div>
-
-          <!-- Total CE OI -->
-          <div class="flex items-center gap-2">
-            <span class="text-sm text-gray-500">CE OI:</span>
-            <span class="text-lg font-semibold text-red-600">{{ formatOI(store.summary.total_ce_oi) }}</span>
-          </div>
-
-          <!-- Total PE OI -->
-          <div class="flex items-center gap-2">
-            <span class="text-sm text-gray-500">PE OI:</span>
-            <span class="text-lg font-semibold text-green-600">{{ formatOI(store.summary.total_pe_oi) }}</span>
-          </div>
+      <!-- Summary Bar -->
+      <div class="summary-bar">
+        <div class="summary-item">
+          <span class="label">PCR</span>
+          <span :class="['value', store.summary.pcr > 1 ? 'text-green' : 'text-red']">
+            {{ store.summary.pcr }}
+          </span>
+        </div>
+        <div class="summary-item">
+          <span class="label">Max Pain</span>
+          <span class="value text-purple">{{ formatNumber(store.summary.max_pain) }}</span>
+        </div>
+        <div class="summary-item">
+          <span class="label">CE OI</span>
+          <span class="value text-red">{{ formatOI(store.summary.total_ce_oi) }}</span>
+        </div>
+        <div class="summary-item">
+          <span class="label">PE OI</span>
+          <span class="value text-green">{{ formatOI(store.summary.total_pe_oi) }}</span>
+        </div>
+        <div class="summary-item">
+          <span class="label">Lot Size</span>
+          <span class="value">{{ store.lotSize }}</span>
         </div>
 
-        <!-- Strikes Range -->
-        <div class="flex items-center gap-2">
-          <span class="text-sm text-gray-500">Strikes:</span>
-          <select v-model="store.strikesRange" class="px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option :value="10">±10</option>
-            <option :value="15">±15</option>
-            <option :value="20">±20</option>
-            <option :value="30">±30</option>
-            <option :value="50">All</option>
+        <div class="summary-right">
+          <select v-model="store.strikesRange" class="range-select">
+            <option :value="10">10 Strikes</option>
+            <option :value="15">15 Strikes</option>
+            <option :value="20">20 Strikes</option>
+            <option :value="30">30 Strikes</option>
+            <option :value="50">All Strikes</option>
           </select>
         </div>
       </div>
-    </div>
 
-    <!-- Error Alert -->
-    <div v-if="store.error" class="mx-6 mt-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg flex items-center justify-between">
-      <span>{{ store.error }}</span>
-      <button @click="store.error = null" class="text-red-500 hover:text-red-700 text-xl font-bold">&times;</button>
-    </div>
-
-    <!-- Loading State -->
-    <div v-if="store.isLoading && store.chain.length === 0" class="flex-1 flex items-center justify-center">
-      <div class="text-center">
-        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-        <p class="text-gray-500">Loading option chain...</p>
+      <!-- Error Alert -->
+      <div v-if="store.error" class="error-alert">
+        <span>{{ store.error }}</span>
+        <button @click="store.error = null" class="close-btn">&times;</button>
       </div>
-    </div>
 
-    <!-- Main Content: Option Chain Table -->
-    <div v-else class="flex-1 overflow-auto p-4">
-      <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        <table class="w-full text-sm">
-          <thead class="bg-gray-50 sticky top-0 z-10">
+      <!-- Loading State -->
+      <div v-if="store.isLoading && store.chain.length === 0" class="loading-state">
+        <div class="spinner"></div>
+        <p>Loading option chain...</p>
+      </div>
+
+      <!-- Option Chain Table -->
+      <div v-else class="chain-table-container">
+        <table class="chain-table">
+          <thead>
             <tr>
-              <!-- CE Headers -->
-              <th class="px-2 py-3 text-center text-xs font-semibold text-red-600 bg-red-50 w-10">+</th>
-              <th class="px-2 py-3 text-right text-xs font-semibold text-gray-600 bg-red-50 w-20">OI</th>
-              <th class="px-2 py-3 text-right text-xs font-semibold text-gray-600 bg-red-50 w-16">Vol</th>
-              <th class="px-2 py-3 text-right text-xs font-semibold text-gray-600 bg-red-50 w-12">IV</th>
-              <th v-if="store.showGreeks" class="px-2 py-3 text-right text-xs font-semibold text-gray-600 bg-red-50 w-14">Delta</th>
-              <th class="px-2 py-3 text-right text-xs font-semibold text-gray-600 bg-red-50 w-16">LTP</th>
-              <th class="px-2 py-3 text-right text-xs font-semibold text-gray-600 bg-red-50 w-14">Chg%</th>
+              <!-- CE Side -->
+              <th class="ce-col add-col"></th>
+              <th class="ce-col">OI</th>
+              <th class="ce-col">Chg</th>
+              <th class="ce-col">Vol</th>
+              <th class="ce-col">IV</th>
+              <th v-if="store.showGreeks" class="ce-col greek-col">Delta</th>
+              <th class="ce-col">LTP</th>
+              <th class="ce-col">Chg%</th>
 
               <!-- Strike -->
-              <th class="px-4 py-3 text-center text-xs font-bold text-gray-800 bg-gray-200 w-20">STRIKE</th>
+              <th class="strike-col">STRIKE</th>
 
-              <!-- PE Headers -->
-              <th class="px-2 py-3 text-left text-xs font-semibold text-gray-600 bg-green-50 w-14">Chg%</th>
-              <th class="px-2 py-3 text-left text-xs font-semibold text-gray-600 bg-green-50 w-16">LTP</th>
-              <th v-if="store.showGreeks" class="px-2 py-3 text-left text-xs font-semibold text-gray-600 bg-green-50 w-14">Delta</th>
-              <th class="px-2 py-3 text-left text-xs font-semibold text-gray-600 bg-green-50 w-12">IV</th>
-              <th class="px-2 py-3 text-left text-xs font-semibold text-gray-600 bg-green-50 w-16">Vol</th>
-              <th class="px-2 py-3 text-left text-xs font-semibold text-gray-600 bg-green-50 w-20">OI</th>
-              <th class="px-2 py-3 text-center text-xs font-semibold text-green-600 bg-green-50 w-10">+</th>
+              <!-- PE Side -->
+              <th class="pe-col">Chg%</th>
+              <th class="pe-col">LTP</th>
+              <th v-if="store.showGreeks" class="pe-col greek-col">Delta</th>
+              <th class="pe-col">IV</th>
+              <th class="pe-col">Vol</th>
+              <th class="pe-col">Chg</th>
+              <th class="pe-col">OI</th>
+              <th class="pe-col add-col"></th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-gray-100">
+          <tbody>
             <tr
               v-for="row in store.filteredChain"
               :key="row.strike"
               :class="[
-                'transition-colors hover:bg-gray-50',
-                row.is_atm ? 'bg-yellow-50 border-y-2 border-yellow-400' : '',
-                !row.is_atm && row.is_itm_ce ? 'bg-red-50/30' : '',
-                !row.is_atm && row.is_itm_pe ? 'bg-green-50/30' : ''
+                'chain-row',
+                { 'atm-row': row.is_atm },
+                { 'itm-ce': row.is_itm_ce && !row.is_atm },
+                { 'itm-pe': row.is_itm_pe && !row.is_atm }
               ]"
             >
-              <!-- CE Add Button -->
-              <td class="px-2 py-2 text-center">
+              <!-- CE Add -->
+              <td class="ce-col add-col">
                 <button
                   v-if="row.ce"
                   @click="toggleStrike(row.strike, 'CE')"
-                  :class="[
-                    'w-6 h-6 rounded-full text-xs font-bold transition-colors',
-                    store.isStrikeSelected(row.strike, 'CE')
-                      ? 'bg-red-500 text-white'
-                      : 'bg-red-100 hover:bg-red-200 text-red-600'
-                  ]"
-                >{{ store.isStrikeSelected(row.strike, 'CE') ? '✓' : '+' }}</button>
+                  :class="['add-btn', 'ce', { selected: store.isStrikeSelected(row.strike, 'CE') }]"
+                >
+                  {{ store.isStrikeSelected(row.strike, 'CE') ? '&#10003;' : '+' }}
+                </button>
               </td>
 
-              <!-- CE OI -->
-              <td class="px-2 py-2 text-right">
-                <div class="flex items-center justify-end gap-1">
-                  <div
-                    class="h-2 bg-red-400 rounded-full"
-                    :style="{ width: store.getOIBarWidth(row.ce?.oi, 'ce') + 'px' }"
-                  ></div>
-                  <span class="text-xs font-medium text-gray-700 w-12 text-right">{{ formatOI(row.ce?.oi) }}</span>
+              <!-- CE Data -->
+              <td class="ce-col oi-col">
+                <div class="oi-cell">
+                  <div class="oi-bar ce" :style="{ width: store.getOIBarWidth(row.ce?.oi, 'ce') + 'px' }"></div>
+                  <span>{{ formatOI(row.ce?.oi) }}</span>
+                </div>
+              </td>
+              <td class="ce-col" :class="getChangeClass(row.ce?.oi_change)">{{ formatOIChange(row.ce?.oi_change) }}</td>
+              <td class="ce-col text-muted">{{ formatOI(row.ce?.volume) }}</td>
+              <td class="ce-col">{{ row.ce?.iv || '-' }}</td>
+              <td v-if="store.showGreeks" class="ce-col text-muted">{{ row.ce?.delta?.toFixed(2) || '-' }}</td>
+              <td class="ce-col ltp-col" :class="{ 'itm': row.is_itm_ce }">{{ formatPrice(row.ce?.ltp) }}</td>
+              <td class="ce-col" :class="getChangeClass(row.ce?.change)">{{ formatPct(row.ce?.change_pct) }}</td>
+
+              <!-- Strike -->
+              <td class="strike-col">
+                <span class="strike-value">{{ row.strike }}</span>
+                <span v-if="row.is_atm" class="atm-badge">ATM</span>
+              </td>
+
+              <!-- PE Data -->
+              <td class="pe-col" :class="getChangeClass(row.pe?.change)">{{ formatPct(row.pe?.change_pct) }}</td>
+              <td class="pe-col ltp-col" :class="{ 'itm': row.is_itm_pe }">{{ formatPrice(row.pe?.ltp) }}</td>
+              <td v-if="store.showGreeks" class="pe-col text-muted">{{ row.pe?.delta?.toFixed(2) || '-' }}</td>
+              <td class="pe-col">{{ row.pe?.iv || '-' }}</td>
+              <td class="pe-col text-muted">{{ formatOI(row.pe?.volume) }}</td>
+              <td class="pe-col" :class="getChangeClass(row.pe?.oi_change)">{{ formatOIChange(row.pe?.oi_change) }}</td>
+              <td class="pe-col oi-col">
+                <div class="oi-cell reverse">
+                  <span>{{ formatOI(row.pe?.oi) }}</span>
+                  <div class="oi-bar pe" :style="{ width: store.getOIBarWidth(row.pe?.oi, 'pe') + 'px' }"></div>
                 </div>
               </td>
 
-              <!-- CE Volume -->
-              <td class="px-2 py-2 text-right text-xs text-gray-600">
-                {{ formatOI(row.ce?.volume) }}
-              </td>
-
-              <!-- CE IV -->
-              <td class="px-2 py-2 text-right text-xs font-medium text-gray-700">
-                {{ row.ce?.iv || '-' }}
-              </td>
-
-              <!-- CE Delta -->
-              <td v-if="store.showGreeks" class="px-2 py-2 text-right text-xs text-gray-600">
-                {{ row.ce?.delta?.toFixed(2) || '-' }}
-              </td>
-
-              <!-- CE LTP -->
-              <td class="px-2 py-2 text-right">
-                <span class="font-semibold" :class="row.is_itm_ce ? 'text-red-700' : 'text-gray-900'">
-                  {{ formatPrice(row.ce?.ltp) }}
-                </span>
-              </td>
-
-              <!-- CE Change % -->
-              <td class="px-2 py-2 text-right text-xs" :class="getChangeClass(row.ce?.change)">
-                {{ formatChange(row.ce?.change_pct) }}
-              </td>
-
-              <!-- STRIKE -->
-              <td class="px-4 py-2 text-center bg-gray-50">
-                <span :class="[
-                  'font-bold text-sm',
-                  row.is_atm ? 'text-yellow-700 text-base' : 'text-gray-900'
-                ]">
-                  {{ row.strike }}
-                </span>
-                <span v-if="row.is_atm" class="ml-1 text-[10px] text-yellow-600 font-medium">ATM</span>
-              </td>
-
-              <!-- PE Change % -->
-              <td class="px-2 py-2 text-left text-xs" :class="getChangeClass(row.pe?.change)">
-                {{ formatChange(row.pe?.change_pct) }}
-              </td>
-
-              <!-- PE LTP -->
-              <td class="px-2 py-2 text-left">
-                <span class="font-semibold" :class="row.is_itm_pe ? 'text-green-700' : 'text-gray-900'">
-                  {{ formatPrice(row.pe?.ltp) }}
-                </span>
-              </td>
-
-              <!-- PE Delta -->
-              <td v-if="store.showGreeks" class="px-2 py-2 text-left text-xs text-gray-600">
-                {{ row.pe?.delta?.toFixed(2) || '-' }}
-              </td>
-
-              <!-- PE IV -->
-              <td class="px-2 py-2 text-left text-xs font-medium text-gray-700">
-                {{ row.pe?.iv || '-' }}
-              </td>
-
-              <!-- PE Volume -->
-              <td class="px-2 py-2 text-left text-xs text-gray-600">
-                {{ formatOI(row.pe?.volume) }}
-              </td>
-
-              <!-- PE OI -->
-              <td class="px-2 py-2 text-left">
-                <div class="flex items-center gap-1">
-                  <span class="text-xs font-medium text-gray-700 w-12">{{ formatOI(row.pe?.oi) }}</span>
-                  <div
-                    class="h-2 bg-green-400 rounded-full"
-                    :style="{ width: store.getOIBarWidth(row.pe?.oi, 'pe') + 'px' }"
-                  ></div>
-                </div>
-              </td>
-
-              <!-- PE Add Button -->
-              <td class="px-2 py-2 text-center">
+              <!-- PE Add -->
+              <td class="pe-col add-col">
                 <button
                   v-if="row.pe"
                   @click="toggleStrike(row.strike, 'PE')"
-                  :class="[
-                    'w-6 h-6 rounded-full text-xs font-bold transition-colors',
-                    store.isStrikeSelected(row.strike, 'PE')
-                      ? 'bg-green-500 text-white'
-                      : 'bg-green-100 hover:bg-green-200 text-green-600'
-                  ]"
-                >{{ store.isStrikeSelected(row.strike, 'PE') ? '✓' : '+' }}</button>
+                  :class="['add-btn', 'pe', { selected: store.isStrikeSelected(row.strike, 'PE') }]"
+                >
+                  {{ store.isStrikeSelected(row.strike, 'PE') ? '&#10003;' : '+' }}
+                </button>
               </td>
             </tr>
           </tbody>
         </table>
 
         <!-- Empty State -->
-        <div v-if="store.chain.length === 0 && !store.isLoading" class="py-20 text-center text-gray-500">
-          <p class="text-lg">No option chain data</p>
-          <p class="text-sm mt-2">Select an expiry to view option chain</p>
+        <div v-if="store.chain.length === 0 && !store.isLoading" class="empty-state">
+          <p>No option chain data</p>
+          <p class="hint">Select an expiry to view option chain</p>
         </div>
       </div>
-    </div>
 
-    <!-- Selected Strikes Bar (if any selected) -->
-    <div v-if="store.selectedStrikes.length > 0" class="bg-white border-t border-gray-200 px-6 py-3 flex-shrink-0 shadow-lg">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-2 flex-wrap">
-          <span class="text-sm text-gray-600 font-medium">Selected:</span>
+      <!-- Selected Bar -->
+      <div v-if="store.selectedStrikes.length > 0" class="selected-bar">
+        <div class="selected-items">
+          <span class="selected-label">Selected:</span>
           <span
             v-for="s in store.selectedStrikes"
             :key="s.key"
-            class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium"
-            :class="s.type === 'CE' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'"
+            :class="['selected-chip', s.type.toLowerCase()]"
           >
             {{ s.type }} {{ s.strike }} @ {{ s.ltp?.toFixed(2) }}
-            <button @click="store.toggleStrikeSelection(s.strike, s.type)" class="ml-1 hover:text-gray-900 font-bold">&times;</button>
+            <button @click="store.toggleStrikeSelection(s.strike, s.type)" class="chip-remove">&times;</button>
           </span>
         </div>
-        <div class="flex items-center gap-3">
-          <button @click="store.clearSelection()" class="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 transition-colors">
-            Clear
-          </button>
-          <button
-            @click="goToStrategy()"
-            class="px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-          >
-            Add to Strategy Builder
-            <span>&rarr;</span>
-          </button>
+        <div class="selected-actions">
+          <button @click="store.clearSelection()" class="btn-clear">Clear</button>
+          <button @click="goToStrategy()" class="btn-add-strategy">Add to Strategy</button>
         </div>
       </div>
-    </div>
 
-  </div>
+    </div>
+  </KiteLayout>
 </template>
 
 <script setup>
 import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useOptionChainStore } from '../stores/optionchain'
-import { useStrategyStore } from '../stores/strategy'
+import KiteLayout from '@/components/layout/KiteLayout.vue'
+import { useOptionChainStore } from '@/stores/optionchain'
+import { useStrategyStore } from '@/stores/strategy'
 
 const store = useOptionChainStore()
 const strategyStore = useStrategyStore()
@@ -364,10 +258,14 @@ const formatOI = (oi) => {
   return oi.toString()
 }
 
-const formatChange = (pct) => {
+const formatOIChange = (change) => {
+  if (!change) return '-'
+  return (change > 0 ? '+' : '') + formatOI(change)
+}
+
+const formatPct = (pct) => {
   if (!pct && pct !== 0) return '-'
-  const prefix = pct > 0 ? '+' : ''
-  return prefix + pct.toFixed(2) + '%'
+  return (pct > 0 ? '+' : '') + pct.toFixed(2) + '%'
 }
 
 const formatExpiry = (dateStr) => {
@@ -381,10 +279,10 @@ const formatExpiry = (dateStr) => {
 }
 
 const getChangeClass = (value) => {
-  if (!value && value !== 0) return 'text-gray-400'
-  if (value > 0) return 'text-green-600'
-  if (value < 0) return 'text-red-600'
-  return 'text-gray-600'
+  if (!value && value !== 0) return 'text-muted'
+  if (value > 0) return 'text-green'
+  if (value < 0) return 'text-red'
+  return 'text-muted'
 }
 
 // Actions
@@ -428,3 +326,520 @@ onMounted(async () => {
   }
 })
 </script>
+
+<style scoped>
+.optionchain-page {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 48px - 32px);
+}
+
+/* Page Header */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  margin-bottom: 12px;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.page-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #212529;
+  margin: 0;
+}
+
+.underlying-tabs {
+  display: flex;
+  gap: 2px;
+  background: #f0f0f0;
+  padding: 2px;
+  border-radius: 4px;
+}
+
+.tab-btn {
+  padding: 6px 16px;
+  font-size: 12px;
+  font-weight: 500;
+  background: transparent;
+  border: none;
+  color: #6c757d;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: all 0.15s ease;
+}
+
+.tab-btn:hover {
+  color: #212529;
+}
+
+.tab-btn.active {
+  background: white;
+  color: #212529;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.expiry-select {
+  padding: 6px 12px;
+  font-size: 12px;
+  border: 1px solid #e0e0e0;
+  border-radius: 3px;
+  background: white;
+  cursor: pointer;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.spot-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+  border-radius: 4px;
+}
+
+.spot-label {
+  font-size: 11px;
+  color: #1976d2;
+  text-transform: uppercase;
+}
+
+.spot-price {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1565c0;
+}
+
+.dte-box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: #f5f5f5;
+  border-radius: 4px;
+}
+
+.dte-label {
+  font-size: 11px;
+  color: #6c757d;
+}
+
+.dte-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: #212529;
+}
+
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #6c757d;
+  cursor: pointer;
+}
+
+.toggle-label input {
+  width: 14px;
+  height: 14px;
+  accent-color: #2196f3;
+}
+
+.refresh-btn {
+  padding: 6px 16px;
+  font-size: 12px;
+  font-weight: 500;
+  background: #2196f3;
+  color: white;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.refresh-btn:hover {
+  background: #1976d2;
+}
+
+.refresh-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Summary Bar */
+.summary-bar {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 10px 16px;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  margin-bottom: 12px;
+}
+
+.summary-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.summary-item .label {
+  font-size: 11px;
+  color: #6c757d;
+  text-transform: uppercase;
+}
+
+.summary-item .value {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.text-green { color: #00b386; }
+.text-red { color: #e74c3c; }
+.text-purple { color: #9c27b0; }
+.text-muted { color: #adb5bd; }
+
+.summary-right {
+  margin-left: auto;
+}
+
+.range-select {
+  padding: 4px 8px;
+  font-size: 11px;
+  border: 1px solid #e0e0e0;
+  border-radius: 3px;
+  background: white;
+}
+
+/* Error Alert */
+.error-alert {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  background: #fdeaea;
+  border: 1px solid #e74c3c;
+  border-radius: 4px;
+  margin-bottom: 12px;
+  color: #c62828;
+  font-size: 13px;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  color: #c62828;
+}
+
+/* Loading State */
+.loading-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  color: #6c757d;
+}
+
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #e0e0e0;
+  border-top-color: #2196f3;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Chain Table */
+.chain-table-container {
+  flex: 1;
+  overflow: auto;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+}
+
+.chain-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.chain-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.chain-table th {
+  padding: 8px 10px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.ce-col {
+  background: #fff5f5;
+  text-align: right;
+}
+
+.pe-col {
+  background: #f0fff4;
+  text-align: left;
+}
+
+.strike-col {
+  background: #fafafa;
+  text-align: center;
+  font-weight: 600;
+  border-left: 2px solid #e0e0e0;
+  border-right: 2px solid #e0e0e0;
+  min-width: 80px;
+}
+
+.chain-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.chain-row:hover {
+  background: #fafafa;
+}
+
+.chain-row:hover .ce-col { background: #ffebee; }
+.chain-row:hover .pe-col { background: #e8f5e9; }
+
+.atm-row {
+  background: #fffde7 !important;
+}
+.atm-row .ce-col { background: #fff8e1 !important; }
+.atm-row .pe-col { background: #fff8e1 !important; }
+.atm-row .strike-col { background: #ffeb3b !important; }
+
+.itm-ce .ce-col { background: #ffcdd2; }
+.itm-pe .pe-col { background: #c8e6c9; }
+
+.strike-value {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.atm-badge {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 1px 4px;
+  font-size: 9px;
+  font-weight: 600;
+  background: #ffc107;
+  color: #212529;
+  border-radius: 2px;
+}
+
+.ltp-col {
+  font-weight: 600;
+}
+
+.ltp-col.itm {
+  color: #c62828;
+}
+
+.pe-col.ltp-col.itm {
+  color: #2e7d32;
+}
+
+/* OI Bar */
+.oi-col {
+  min-width: 90px;
+}
+
+.oi-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.oi-cell.reverse {
+  flex-direction: row-reverse;
+}
+
+.oi-bar {
+  height: 6px;
+  border-radius: 2px;
+  max-width: 40px;
+  min-width: 2px;
+}
+
+.oi-bar.ce { background: #ef9a9a; }
+.oi-bar.pe { background: #a5d6a7; }
+
+/* Add Button */
+.add-col {
+  width: 32px;
+  padding: 4px !important;
+}
+
+.add-btn {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: none;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.add-btn.ce {
+  background: #ffcdd2;
+  color: #c62828;
+}
+
+.add-btn.ce:hover,
+.add-btn.ce.selected {
+  background: #e74c3c;
+  color: white;
+}
+
+.add-btn.pe {
+  background: #c8e6c9;
+  color: #2e7d32;
+}
+
+.add-btn.pe:hover,
+.add-btn.pe.selected {
+  background: #00b386;
+  color: white;
+}
+
+/* Empty State */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  color: #6c757d;
+  font-size: 14px;
+}
+
+.empty-state .hint {
+  font-size: 12px;
+  color: #adb5bd;
+  margin-top: 8px;
+}
+
+/* Selected Bar */
+.selected-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  margin-top: 12px;
+}
+
+.selected-items {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.selected-label {
+  font-size: 12px;
+  color: #6c757d;
+}
+
+.selected-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  border-radius: 3px;
+}
+
+.selected-chip.ce {
+  background: #ffcdd2;
+  color: #c62828;
+}
+
+.selected-chip.pe {
+  background: #c8e6c9;
+  color: #2e7d32;
+}
+
+.chip-remove {
+  background: none;
+  border: none;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.selected-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-clear {
+  padding: 6px 12px;
+  font-size: 12px;
+  background: transparent;
+  border: none;
+  color: #6c757d;
+  cursor: pointer;
+}
+
+.btn-clear:hover {
+  color: #212529;
+}
+
+.btn-add-strategy {
+  padding: 6px 16px;
+  font-size: 12px;
+  font-weight: 500;
+  background: #00b386;
+  color: white;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.btn-add-strategy:hover {
+  background: #009973;
+}
+
+.greek-col {
+  min-width: 50px;
+}
+</style>

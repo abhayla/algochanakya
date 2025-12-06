@@ -80,6 +80,7 @@ npm run test:verify  # Manual watchlist verification
 npm run test:strategy  # Strategy builder tests
 npm run test:strategy-verify  # Strategy builder verification
 npm run test:watchlist-fix  # Watchlist fix verification
+npm run test:optionchain  # Option chain tests
 
 # Run with UI
 npm run test:ui
@@ -141,6 +142,30 @@ The platform streams live market prices via WebSocket:
 4. **Index Tokens:**
    - NIFTY 50: `256265`
    - NIFTY BANK: `260105`
+   - FINNIFTY: `257801`
+
+### Option Chain
+
+Full option chain with OI, IV, Greeks, and live prices:
+
+1. **Option Chain API (`app/api/routes/optionchain.py`):**
+   - `GET /api/optionchain/chain` - Complete option chain with all data
+   - `GET /api/optionchain/oi-analysis` - OI data for charts
+   - Calculates IV using Newton-Raphson method
+   - Calculates Greeks (Delta, Gamma, Theta, Vega) using Black-Scholes
+   - Calculates Max Pain and PCR (Put-Call Ratio)
+
+2. **Frontend (`src/views/OptionChainView.vue`):**
+   - Displays CE/PE data mirrored around ATM strike
+   - OI bars visualization with color coding
+   - ITM highlighting (green for CE, red for PE)
+   - Greeks toggle for detailed view
+   - Auto-refresh with live data via store
+
+3. **Store (`src/stores/optionchain.js`):**
+   - Manages underlying, expiry, chain data
+   - Fetches expiries and option chain from API
+   - Integrates with Strategy Builder for adding legs
 
 ### Database Models
 
@@ -238,6 +263,7 @@ The platform includes a comprehensive options Strategy Builder:
   - `watchlist.py` - Watchlist CRUD operations
   - `instruments.py` - Instrument search
   - `options.py` - Options expiries, strikes, chain data
+  - `optionchain.py` - Full option chain with OI, IV, Greeks
   - `strategy.py` - Strategy CRUD, P/L calculation, sharing
   - `orders.py` - Basket orders, positions, imports
   - `websocket.py` - WebSocket endpoint for live prices
@@ -255,11 +281,13 @@ The platform includes a comprehensive options Strategy Builder:
 - `src/stores/auth.js` - Pinia store for authentication state
 - `src/stores/watchlist.js` - Pinia store for watchlist and WebSocket management
 - `src/stores/strategy.js` - Pinia store for strategy builder state
+- `src/stores/optionchain.js` - Pinia store for option chain data
 - `src/services/api.js` - Axios instance with interceptors for auth headers
 - `src/views/` - Vue components for pages
   - `LoginView.vue` - Login page with Zerodha OAuth button
   - `AuthCallbackView.vue` - OAuth callback handler
   - `WatchlistView.vue` - Watchlist page with live prices
+  - `OptionChainView.vue` - Option chain with OI, IV, Greeks
   - `StrategyBuilderView.vue` - Options strategy builder with P/L grid
 - `src/components/` - Reusable Vue components
   - `watchlist/` - Watchlist components (IndexHeader, InstrumentRow, InstrumentSearch)
@@ -343,6 +371,7 @@ Frontend requires `.env` file:
 - `tests/e2e/strategy-builder-complete.spec.js` - Complete strategy builder test suite (22 tests)
 - `tests/e2e/strategy-iron-condor.spec.js` - Iron Condor strategy test (18 tests, verifies breakeven columns)
 - `tests/e2e/watchlist-fix-verify.spec.js` - Watchlist fix verification tests
+- `tests/e2e/option-chain.spec.js` - Option chain tests
 - `tests/e2e/helpers/auth.helper.js` - Auth helper utilities
 
 Test screenshots are saved to `tests/screenshots/` (gitignored).

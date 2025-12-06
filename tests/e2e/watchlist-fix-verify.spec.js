@@ -298,12 +298,72 @@ test.describe('Watchlist Complete Tests', () => {
 
     console.log('Test 10: Live indicator:', isVisible ? '✓' : '✗');
 
-    // Also check for green pulse dot
-    const pulseDot = sharedPage.locator('[class*="animate-pulse"], [class*="bg-green"]');
+    // Also check for green pulse dot (status-dot.connected)
+    const pulseDot = sharedPage.locator('.status-dot.connected, [class*="animate-pulse"], [class*="bg-green"]');
     const hasPulse = await pulseDot.first().isVisible().catch(() => false);
 
-    console.log('Test 10: Pulse indicator:', hasPulse ? '✓' : '✗');
+    console.log('Test 10: Connection status indicator:', hasPulse ? '✓' : '✗');
 
     await sharedPage.screenshot({ path: 'tests/screenshots/wl-10-live.png' });
+  });
+
+  // ============================================
+  // TEST 11: KiteLayout header has all elements
+  // ============================================
+  test('11. KiteLayout header has navigation and user menu', async () => {
+    // Check for KiteHeader elements
+    const header = sharedPage.locator('.kite-header, header').first();
+    const headerVisible = await header.isVisible().catch(() => false);
+
+    console.log('Test 11: KiteHeader visible:', headerVisible ? '✓' : '✗');
+
+    // Check navigation links
+    const dashboardLink = sharedPage.locator('a[href="/dashboard"], a:has-text("Dashboard")');
+    const optionChainLink = sharedPage.locator('a[href="/optionchain"], a:has-text("Option Chain")');
+    const strategyLink = sharedPage.locator('a[href="/strategy"], a:has-text("Strategy")');
+    const watchlistLink = sharedPage.locator('a[href="/watchlist"], a:has-text("Watchlist")');
+
+    const hasDashboard = await dashboardLink.isVisible().catch(() => false);
+    const hasOptionChain = await optionChainLink.isVisible().catch(() => false);
+    const hasStrategy = await strategyLink.isVisible().catch(() => false);
+    const hasWatchlist = await watchlistLink.isVisible().catch(() => false);
+
+    console.log('Test 11: Dashboard nav:', hasDashboard ? '✓' : '✗');
+    console.log('Test 11: Option Chain nav:', hasOptionChain ? '✓' : '✗');
+    console.log('Test 11: Strategy nav:', hasStrategy ? '✓' : '✗');
+    console.log('Test 11: Watchlist nav:', hasWatchlist ? '✓' : '✗');
+
+    // Check user menu exists
+    const userMenu = sharedPage.locator('.user-menu, [class*="user"]');
+    const hasUserMenu = await userMenu.first().isVisible().catch(() => false);
+
+    console.log('Test 11: User menu:', hasUserMenu ? '✓' : '✗');
+
+    await sharedPage.screenshot({ path: 'tests/screenshots/wl-11-header.png' });
+
+    expect(headerVisible).toBeTruthy();
+    expect(hasDashboard || hasOptionChain || hasStrategy || hasWatchlist).toBeTruthy();
+  });
+
+  // ============================================
+  // TEST 12: User ID displayed (not "Guest")
+  // ============================================
+  test('12. User ID is displayed (not Guest)', async () => {
+    const headerText = await sharedPage.locator('.kite-header, header').first().innerText().catch(() => '');
+
+    // Check for "Guest" text
+    const hasGuest = headerText.toLowerCase().includes('guest');
+
+    // Check for user ID pattern (alphanumeric like DA1707)
+    const hasUserId = /[A-Z]{2}\d{4}/.test(headerText);
+
+    console.log('Test 12: Shows "Guest":', hasGuest ? '✗ YES (BAD)' : '✓ NO');
+    console.log('Test 12: Shows user ID:', hasUserId ? '✓ YES' : '✗ NO');
+
+    await sharedPage.screenshot({ path: 'tests/screenshots/wl-12-userid.png' });
+
+    // User ID should be displayed, not "Guest"
+    expect(hasGuest).toBeFalsy();
+    expect(hasUserId).toBeTruthy();
   });
 });

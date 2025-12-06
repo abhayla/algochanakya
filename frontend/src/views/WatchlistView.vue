@@ -1,46 +1,8 @@
 <template>
-  <div class="min-h-screen bg-white">
-    <!-- Navigation Bar -->
-    <div class="bg-gray-50 border-b border-gray-200 px-4 py-2">
-      <div class="flex items-center gap-4">
-        <router-link to="/watchlist" class="text-sm text-blue-600 font-semibold">Watchlist</router-link>
-        <router-link to="/optionchain" class="text-sm text-gray-600 hover:text-blue-600">Option Chain</router-link>
-        <router-link to="/strategy" class="text-sm text-gray-600 hover:text-blue-600">Strategy Builder</router-link>
-      </div>
-    </div>
-
-    <!-- Index Header Bar -->
-    <div class="bg-white border-b border-gray-200 px-4 py-2 flex items-center justify-between">
-      <div class="flex items-center space-x-8">
-        <!-- NIFTY 50 -->
-        <div class="flex items-center space-x-2">
-          <span class="text-gray-600 font-medium text-sm">NIFTY 50</span>
-          <span :class="niftyClass" class="font-semibold">{{ formatPrice(niftyLtp) }}</span>
-          <span :class="niftyClass" class="text-sm">{{ formatChange(niftyChange) }}</span>
-          <span :class="niftyClass" class="text-sm">({{ formatPercent(niftyChangePct) }})</span>
-        </div>
-
-        <!-- NIFTY BANK -->
-        <div class="flex items-center space-x-2">
-          <span class="text-gray-600 font-medium text-sm">NIFTY BANK</span>
-          <span :class="bankNiftyClass" class="font-semibold">{{ formatPrice(bankNiftyLtp) }}</span>
-          <span :class="bankNiftyClass" class="text-sm">{{ formatChange(bankNiftyChange) }}</span>
-          <span :class="bankNiftyClass" class="text-sm">({{ formatPercent(bankNiftyChangePct) }})</span>
-        </div>
-      </div>
-
-      <div class="flex items-center space-x-2">
-        <span class="text-xs text-gray-400">{{ isConnected ? 'Live' : 'Disconnected' }}</span>
-        <span
-          class="w-2 h-2 rounded-full"
-          :class="isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'"
-        ></span>
-      </div>
-    </div>
-
-    <div class="flex">
+  <KiteLayout>
+    <div class="flex h-full">
       <!-- Left Panel: Watchlist -->
-      <div class="w-80 border-r border-gray-200 flex flex-col" style="height: calc(100vh - 50px);">
+      <div class="w-80 border-r border-gray-200 flex flex-col" style="height: calc(100vh - 48px);">
 
         <!-- Search Box -->
         <div class="p-3 border-b border-gray-200 relative">
@@ -65,7 +27,7 @@
               v-for="item in searchResults"
               :key="item.instrument_token"
               @click="addToWatchlist(item)"
-              class="px-3 py-2 hover:bg-blue-50 cursor-pointer flex justify-between items-center text-sm"
+              class="px-2 py-1.5 hover:bg-blue-50 cursor-pointer flex justify-between items-center text-xs"
             >
               <div>
                 <span class="font-medium">{{ item.tradingsymbol }}</span>
@@ -134,21 +96,21 @@
             <div
               v-for="inst in instruments"
               :key="inst.token"
-              class="px-3 py-2.5 border-b border-gray-100 hover:bg-gray-50 cursor-pointer group"
+              class="px-2 py-1.5 border-b border-gray-100 hover:bg-gray-50 cursor-pointer group"
             >
               <div class="flex items-center justify-between">
                 <!-- Symbol -->
                 <div class="flex items-center">
-                  <span :class="[getChangeColor(inst.token), 'font-medium text-sm']">
+                  <span :class="[getChangeColor(inst.token), 'font-medium text-xs']">
                     {{ inst.symbol || inst.tradingsymbol }}
                   </span>
-                  <span class="ml-2 text-xs text-gray-400 bg-gray-100 px-1 rounded">
+                  <span class="ml-1.5 text-xs text-gray-400 bg-gray-100 px-1 rounded">
                     {{ inst.exchange }}
                   </span>
                 </div>
 
                 <!-- Price Info -->
-                <div class="flex items-center space-x-3 text-sm">
+                <div class="flex items-center space-x-2 text-xs">
                   <span :class="getChangeColor(inst.token)">
                     {{ formatChange(getChange(inst.token)) }}
                   </span>
@@ -157,16 +119,16 @@
                     <span v-if="getChange(inst.token) > 0" class="ml-0.5">↑</span>
                     <span v-else-if="getChange(inst.token) < 0" class="ml-0.5">↓</span>
                   </span>
-                  <span :class="[getChangeColor(inst.token), 'font-semibold w-20 text-right']">
+                  <span :class="[getChangeColor(inst.token), 'font-semibold w-16 text-right']">
                     {{ formatPrice(getLtp(inst.token)) }}
                   </span>
 
                   <!-- Remove button -->
                   <button
                     @click.stop="removeFromWatchlist(inst.token)"
-                    class="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-500 transition-opacity"
+                    class="opacity-0 group-hover:opacity-100 p-0.5 text-gray-400 hover:text-red-500 transition-opacity"
                   >
-                    <svg class="w-4 h-4" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                     </svg>
                   </button>
@@ -195,7 +157,7 @@
       </div>
 
       <!-- Right Panel: Content Area -->
-      <div class="flex-1 flex items-center justify-center bg-gray-50" style="height: calc(100vh - 50px);">
+      <div class="flex-1 flex items-center justify-center bg-gray-50" style="height: calc(100vh - 48px);">
         <div class="text-center text-gray-400">
           <div class="w-16 h-16 mx-auto mb-4 flex items-center justify-center rounded-full bg-gray-100">
             <svg class="w-8 h-8 text-gray-400" width="32" height="32" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -225,12 +187,13 @@
         </div>
       </div>
     </div>
-  </div>
+  </KiteLayout>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useWatchlistStore } from '../stores/watchlist'
+import KiteLayout from '../components/layout/KiteLayout.vue'
 
 const store = useWatchlistStore()
 
@@ -249,25 +212,6 @@ const instruments = computed(() => store.activeInstruments || [])
 const ticks = computed(() => store.ticks)
 const isLoading = computed(() => store.isLoading)
 const isConnected = computed(() => store.isConnected)
-
-// Index prices
-const niftyLtp = computed(() => ticks.value[256265]?.ltp || 0)
-const niftyChange = computed(() => ticks.value[256265]?.change || 0)
-const niftyChangePct = computed(() => {
-  const tick = ticks.value[256265]
-  if (tick?.ltp && tick?.close) return ((tick.ltp - tick.close) / tick.close) * 100
-  return tick?.change_percent || 0
-})
-const niftyClass = computed(() => niftyChange.value >= 0 ? 'text-green-600' : 'text-red-600')
-
-const bankNiftyLtp = computed(() => ticks.value[260105]?.ltp || 0)
-const bankNiftyChange = computed(() => ticks.value[260105]?.change || 0)
-const bankNiftyChangePct = computed(() => {
-  const tick = ticks.value[260105]
-  if (tick?.ltp && tick?.close) return ((tick.ltp - tick.close) / tick.close) * 100
-  return tick?.change_percent || 0
-})
-const bankNiftyClass = computed(() => bankNiftyChange.value >= 0 ? 'text-green-600' : 'text-red-600')
 
 // Methods
 const getLtp = (token) => ticks.value[token]?.ltp || 0

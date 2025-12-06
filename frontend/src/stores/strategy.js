@@ -112,8 +112,10 @@ export const useStrategyStore = defineStore('strategy', () => {
   async function fetchStrikes(expiry) {
     try {
       const response = await api.get(`/api/options/strikes?underlying=${underlying.value}&expiry=${expiry}`)
-      strikes.value[expiry] = response.data.strikes
-      return { success: true, data: response.data.strikes }
+      // Convert Decimal strings to numbers for consistent matching with leg.strike_price
+      const normalizedStrikes = response.data.strikes.map(s => parseFloat(s))
+      strikes.value[expiry] = normalizedStrikes
+      return { success: true, data: normalizedStrikes }
     } catch (err) {
       error.value = err.response?.data?.detail || 'Failed to fetch strikes'
       return { success: false, error: error.value }
@@ -166,6 +168,11 @@ export const useStrategyStore = defineStore('strategy', () => {
 
   function updateLeg(index, updates) {
     if (index >= 0 && index < legs.value.length) {
+      // Auto-set position_status based on exit_price
+      if ('exit_price' in updates) {
+        updates.position_status = updates.exit_price ? 'closed' : 'open'
+      }
+
       legs.value[index] = { ...legs.value[index], ...updates }
 
       // If expiry changed, fetch strikes for new expiry
@@ -233,13 +240,27 @@ export const useStrategyStore = defineStore('strategy', () => {
       return { success: false, error: 'No legs to calculate' }
     }
 
-    // Validate legs have required data
+    // Validate legs have required data (entry_price no longer required - use CMP as fallback)
     const validLegs = legs.value.filter(leg =>
-      leg.strike_price && leg.entry_price && leg.expiry_date
+      leg.strike_price && leg.expiry_date && leg.instrument_token
     )
 
     if (validLegs.length === 0) {
-      return { success: false, error: 'Legs must have strike price and entry price' }
+      return { success: false, error: 'Legs must have strike price and instrument token' }
+    }
+
+    // Build legs with CMP fallback for missing entry prices
+    const legsWithEntry = validLegs.map(leg => {
+      const cmp = getLegCMP(leg)
+      const effectiveEntry = leg.entry_price || cmp
+      return {
+        ...leg,
+        effective_entry: effectiveEntry
+      }
+    }).filter(leg => leg.effective_entry != null)  // Still need SOME entry value
+
+    if (legsWithEntry.length === 0) {
+      return { success: false, error: 'No valid entry prices or CMP available for calculation' }
     }
 
     isLoading.value = true
@@ -248,13 +269,13 @@ export const useStrategyStore = defineStore('strategy', () => {
     try {
       const response = await api.post('/api/strategies/calculate', {
         underlying: underlying.value,
-        legs: validLegs.map(leg => ({
+        legs: legsWithEntry.map(leg => ({
           strike: parseFloat(leg.strike_price),
           contract_type: leg.contract_type,
           transaction_type: leg.transaction_type,
           lots: leg.lots,
           lot_size: lotSize.value,
-          entry_price: parseFloat(leg.entry_price),
+          entry_price: parseFloat(leg.effective_entry),
           expiry_date: leg.expiry_date,
         })),
         mode: pnlMode.value,
@@ -352,6 +373,17 @@ export const useStrategyStore = defineStore('strategy', () => {
 
       // Fetch expiries and calculate P/L
       await fetchExpiries()
+
+      // Fetch strikes for ALL unique expiry dates from loaded legs
+      const uniqueExpiries = [...new Set(
+        legs.value.map(leg => leg.expiry_date).filter(exp => exp != null)
+      )]
+      await Promise.all(
+        uniqueExpiries.map(expiry =>
+          !strikes.value[expiry] ? fetchStrikes(expiry) : Promise.resolve()
+        )
+      )
+
       await calculatePnL()
 
       return { success: true }
@@ -424,6 +456,17 @@ export const useStrategyStore = defineStore('strategy', () => {
       }))
 
       await fetchExpiries()
+
+      // Fetch strikes for ALL unique expiry dates from loaded legs
+      const uniqueExpiries = [...new Set(
+        legs.value.map(leg => leg.expiry_date).filter(exp => exp != null)
+      )]
+      await Promise.all(
+        uniqueExpiries.map(expiry =>
+          !strikes.value[expiry] ? fetchStrikes(expiry) : Promise.resolve()
+        )
+      )
+
       await calculatePnL()
 
       return { success: true }
@@ -489,6 +532,16 @@ export const useStrategyStore = defineStore('strategy', () => {
         })
       })
 
+      // Fetch strikes for ALL unique expiry dates from imported legs
+      const uniqueExpiries = [...new Set(
+        response.data.legs.map(leg => leg.expiry_date).filter(exp => exp != null)
+      )]
+      await Promise.all(
+        uniqueExpiries.map(expiry =>
+          !strikes.value[expiry] ? fetchStrikes(expiry) : Promise.resolve()
+        )
+      )
+
       await calculatePnL()
 
       return { success: true, data: response.data }
@@ -528,13 +581,20 @@ export const useStrategyStore = defineStore('strategy', () => {
     return livePrices.value[leg.instrument_token]?.ltp || null
   }
 
+  // Check if leg is using CMP as entry price (for UI indicator)
+  function isLegUsingCMPEntry(leg) {
+    return !leg.entry_price && getLegCMP(leg) != null
+  }
+
   function getLegPnL(leg) {
     const cmp = getLegCMP(leg)
-    if (cmp === null || !leg.entry_price) return null
+    if (cmp === null) return null
 
+    // Use entry_price if available, otherwise use CMP as entry (Exit P/L = 0 when using CMP)
+    const entryPrice = leg.entry_price || cmp
     const qty = leg.lots * lotSize.value
     const multiplier = leg.transaction_type === 'BUY' ? 1 : -1
-    return (cmp - parseFloat(leg.entry_price)) * qty * multiplier
+    return (cmp - parseFloat(entryPrice)) * qty * multiplier
   }
 
   // Get leg tokens for WebSocket subscription
@@ -547,11 +607,13 @@ export const useStrategyStore = defineStore('strategy', () => {
   // Calculate Exit P/L for a leg based on CMP
   function getLegExitPnL(leg) {
     const cmp = getLegCMP(leg)
-    if (cmp === null || !leg.entry_price) return null
+    if (cmp === null) return null
 
+    // Use entry_price if available, otherwise use CMP as entry (Exit P/L = 0 when using CMP)
+    const entryPrice = leg.entry_price || cmp
     const qty = leg.lots * lotSize.value
     const multiplier = leg.transaction_type === 'BUY' ? 1 : -1
-    return (cmp - parseFloat(leg.entry_price)) * qty * multiplier
+    return (cmp - parseFloat(entryPrice)) * qty * multiplier
   }
 
   // Fetch LTP from Kite API as fallback when WebSocket unavailable
@@ -698,6 +760,7 @@ export const useStrategyStore = defineStore('strategy', () => {
     getLegPnL,
     getLegTokens,
     getLegExitPnL,
+    isLegUsingCMPEntry,
     fetchLegLTP,
     addLegFromOptionChain,
     clearStrategy,

@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-const FRONTEND_URL = 'http://localhost:5174';
+const FRONTEND_URL = 'http://localhost:5173';
 const API_BASE = 'http://localhost:8000';
 
 test.describe('Kite WebSocket Live Prices Verification', () => {
@@ -37,7 +37,7 @@ test.describe('Kite WebSocket Live Prices Verification', () => {
     console.log('\nWaiting up to 2 minutes for login...\n');
 
     // Wait for redirect back to app
-    await page.waitForURL(/localhost:5174/, { timeout: 120000 });
+    await page.waitForURL(/localhost:5173/, { timeout: 120000 });
     await page.waitForTimeout(3000);
     console.log('✓ Login successful!');
 
@@ -218,19 +218,34 @@ test.describe('Kite WebSocket Live Prices Verification', () => {
     console.log('STEP 8: CHECK INDEX HEADER PRICES');
     console.log('='.repeat(60));
 
-    // Look for NIFTY 50 price in header
-    const headerArea = page.locator('header, [class*="header"], [class*="index"]').first();
+    // Look for NIFTY 50 price in header - support both old and Kite-styled header
+    const headerArea = page.locator('header, [class*="header"], [class*="index"], .kite-header, .index-prices').first();
     const headerText = await headerArea.innerText().catch(() => 'Header not found');
 
     console.log('Header content:');
     console.log(headerText.substring(0, 300));
 
-    // Check if header has actual numbers
+    // Check if header has actual numbers (not "--")
+    const niftyPriceMatch = headerText.match(/NIFTY\s*50[^\d]*(\d{2,6}[\d,.]*)/i);
+    const bankPriceMatch = headerText.match(/NIFTY\s*BANK[^\d]*(\d{2,6}[\d,.]*)/i);
     const headerHasNumbers = /\d{4,6}/.test(headerText);
     const headerHasPlaceholder = headerText.includes('--');
 
     console.log('\nHeader has price numbers:', headerHasNumbers ? '✓ YES' : '❌ NO');
     console.log('Header has placeholders:', headerHasPlaceholder ? '❌ YES' : '✓ NO');
+    console.log('Live NIFTY price:', niftyPriceMatch ? niftyPriceMatch[1] : '-- (missing)');
+    console.log('Live NIFTY BANK price:', bankPriceMatch ? bankPriceMatch[1] : '-- (missing)');
+
+    // Verify user avatar circle
+    const userAvatar = page.locator('.user-avatar');
+    const hasAvatar = await userAvatar.isVisible().catch(() => false);
+    const avatarText = hasAvatar ? await userAvatar.innerText().catch(() => '') : '';
+    console.log('User avatar circle:', hasAvatar ? `✓ (${avatarText})` : '❌ missing');
+
+    // Verify header icons (cart/orders and bell/notifications)
+    const headerIcons = page.locator('.header-icons .icon-btn, .icon-btn');
+    const iconCount = await headerIcons.count();
+    console.log('Header icons:', iconCount >= 2 ? `✓ (${iconCount})` : `❌ (${iconCount})`);
 
     // ========================================
     // STEP 9: TEST WEBSOCKET MESSAGE FLOW

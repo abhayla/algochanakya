@@ -1,0 +1,448 @@
+:root {
+  /* ===== KITE COLOR PALETTE ===== */
+
+  /* Primary Colors - Changed to Blue like Kite */
+  --kite-primary: #387ed1;           /* Kite Blue */
+  --kite-primary-dark: #2c6cb8;
+  --kite-primary-light: #e8f1fb;
+
+  /* Background Colors */
+  --kite-header-bg: #ffffff;         /* White header like Kite */
+  --kite-sidebar-bg: #ffffff;
+  --kite-body-bg: #ffffff;           /* Pure white background like Kite */
+  --kite-card-bg: #ffffff;
+
+  /* Text Colors - Lighter weights */
+  --kite-text-primary: #394046;      /* Softer black */
+  --kite-text-secondary: #6c757d;
+  --kite-text-muted: #9aa3ad;
+  --kite-text-light: #ffffff;
+
+  /* Semantic Colors */
+  --kite-green: #00b386;             /* Profit Green */
+  --kite-green-light: #e6f9f4;
+  --kite-red: #e53935;               /* Loss Red */
+  --kite-red-light: #ffebee;
+  --kite-blue: #387ed1;              /* Primary Blue */
+  --kite-blue-light: #e8f1fb;
+  --kite-yellow: #f0ad4e;
+  --kite-orange: #ff9800;
+
+  /* Border Colors - Lighter */
+  --kite-border: #e8e8e8;
+  --kite-border-light: #f5f5f5;
+
+  /* Shadows - Subtler */
+  --kite-shadow-sm: 0 1px 3px rgba(0,0,0,0.04);
+  --kite-shadow: 0 2px 6px rgba(0,0,0,0.06);
+  --kite-shadow-lg: 0 4px 16px rgba(0,0,0,0.08);
+
+  /* Spacing */
+  --kite-header-height: 48px;
+  --kite-sidebar-width: 400px;
+
+  /* Typography - Lighter weights */
+  --kite-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --kite-font-size-xs: 11px;
+  --kite-font-size-sm: 12px;
+  --kite-font-size-base: 13px;
+  --kite-font-size-lg: 15px;
+  --kite-font-size-xl: 18px;
+  --kite-font-size-2xl: 24px;
+  --kite-font-weight-light: 400;
+  --kite-font-weight-normal: 450;
+  --kite-font-weight-medium: 500;
+  --kite-font-weight-semibold: 600;
+
+  /* ===== STRATEGY BUILDER SPECIFIC ===== */
+
+  /* Table styling - Compact like Kite */
+  --kite-table-row-height: 36px;
+  --kite-table-cell-padding: 8px 12px;
+  --kite-table-header-bg: #fafbfc;
+  --kite-table-alt-row: #fcfcfd;
+  --kite-table-hover: #f5f8fa;
+
+  /* Form controls */
+  --kite-select-radius: 3px;
+  --kite-select-padding: 8px 12px;
+  --kite-input-focus-color: #387ed1;
+
+  /* Buttons - Smaller radius like Kite */
+  --kite-btn-radius: 3px;
+  --kite-btn-padding: 8px 16px;
+}
+
+/* ===== GLOBAL STYLES ===== */
+
+body {
+  font-family: var(--kite-font-family);
+  font-size: var(--kite-font-size-base);
+  color: var(--kite-text-primary);
+  background-color: var(--kite-body-bg);
+  margin: 0;
+  padding: 0;
+}
+
+/* Utility Classes */
+.text-green { color: var(--kite-green) !important; }
+.text-red { color: var(--kite-red) !important; }
+.text-muted { color: var(--kite-text-muted) !important; }
+.text-secondary { color: var(--kite-text-secondary) !important; }
+
+.bg-green { background-color: var(--kite-green) !important; }
+.bg-green-light { background-color: var(--kite-green-light) !important; }
+.bg-red { background-color: var(--kite-red) !important; }
+.bg-red-light { background-color: var(--kite-red-light) !important; }
+
+/* Price Display */
+.price-up {
+  color: var(--kite-green);
+}
+.price-down {
+  color: var(--kite-red);
+}
+.price-neutral {
+  color: var(--kite-text-secondary);
+}
+
+/* Card Styles */
+.kite-card {
+  background: var(--kite-card-bg);
+  border: 1px solid var(--kite-border);
+  border-radius: 4px;
+  box-shadow: var(--kite-shadow-sm);
+}
+
+/* Table Styles */
+.kite-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--kite-font-size-sm);
+}
+
+.kite-table th {
+  background: #fafafa;
+  border-bottom: 1px solid var(--kite-border);
+  padding: 8px 12px;
+  text-align: left;
+  font-weight: 600;
+  color: var(--kite-text-secondary);
+  text-transform: uppercase;
+  font-size: var(--kite-font-size-xs);
+  letter-spacing: 0.5px;
+}
+
+.kite-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--kite-border-light);
+}
+
+.kite-table tbody tr:hover {
+  background: #fafafa;
+}
+
+/* Button Styles */
+.kite-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 12px;
+  font-size: var(--kite-font-size-sm);
+  font-weight: 500;
+  border-radius: 3px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.kite-btn-primary {
+  background: var(--kite-blue);
+  color: white;
+}
+.kite-btn-primary:hover {
+  background: #1976d2;
+}
+
+.kite-btn-success {
+  background: var(--kite-green);
+  color: white;
+}
+.kite-btn-success:hover {
+  background: #009973;
+}
+
+.kite-btn-danger {
+  background: var(--kite-red);
+  color: white;
+}
+.kite-btn-danger:hover {
+  background: var(--kite-primary-dark);
+}
+
+.kite-btn-outline {
+  background: white;
+  border: 1px solid var(--kite-border);
+  color: var(--kite-text-primary);
+}
+.kite-btn-outline:hover {
+  background: #f5f5f5;
+}
+
+/* Input Styles */
+.kite-input {
+  padding: 6px 10px;
+  font-size: var(--kite-font-size-sm);
+  border: 1px solid var(--kite-border);
+  border-radius: 3px;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+.kite-input:focus {
+  border-color: var(--kite-blue);
+}
+
+.kite-select {
+  padding: 6px 10px;
+  font-size: var(--kite-font-size-sm);
+  border: 1px solid var(--kite-border);
+  border-radius: 3px;
+  background: white;
+  cursor: pointer;
+}
+
+/* Scrollbar Styles */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* ===== STRATEGY BUILDER STYLES ===== */
+
+.strategy-page {
+  background: var(--kite-body-bg);
+  min-height: 100vh;
+}
+
+.strategy-container {
+  width: 100%;
+  padding: 20px 24px;
+}
+
+/* Strategy Table */
+.strategy-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: var(--kite-shadow-sm);
+}
+
+.strategy-table th {
+  background: var(--kite-table-header-bg);
+  padding: var(--kite-table-cell-padding);
+  text-align: left;
+  font-weight: 600;
+  font-size: var(--kite-font-size-xs);
+  color: var(--kite-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--kite-border);
+  white-space: nowrap;
+}
+
+.strategy-table td {
+  padding: var(--kite-table-cell-padding);
+  font-size: var(--kite-font-size-base);
+  color: var(--kite-text-primary);
+  border-bottom: 1px solid var(--kite-border-light);
+  height: var(--kite-table-row-height);
+  vertical-align: middle;
+}
+
+.strategy-table tbody tr:nth-child(even) {
+  background: var(--kite-table-alt-row);
+}
+
+.strategy-table tbody tr:hover {
+  background: #f0f4f8;
+}
+
+/* Strategy Form Controls */
+.strategy-select {
+  padding: var(--kite-select-padding);
+  font-size: var(--kite-font-size-base);
+  border: 1px solid var(--kite-border);
+  border-radius: var(--kite-select-radius);
+  background: white;
+  color: var(--kite-text-primary);
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236c757d' d='M2 4l4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 32px;
+}
+
+.strategy-select:focus {
+  outline: none;
+  border-color: var(--kite-input-focus-color);
+  box-shadow: 0 0 0 2px rgba(56, 126, 209, 0.15);
+}
+
+.strategy-input {
+  padding: var(--kite-select-padding);
+  font-size: var(--kite-font-size-base);
+  border: 1px solid var(--kite-border);
+  border-radius: var(--kite-select-radius);
+  background: white;
+  color: var(--kite-text-primary);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.strategy-input:focus {
+  outline: none;
+  border-color: var(--kite-input-focus-color);
+  box-shadow: 0 0 0 2px rgba(56, 126, 209, 0.15);
+}
+
+/* Strategy Buttons */
+.strategy-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: var(--kite-btn-padding);
+  font-size: var(--kite-font-size-base);
+  font-weight: 500;
+  border-radius: var(--kite-btn-radius);
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.strategy-btn-primary {
+  background: var(--kite-primary);
+  color: white;
+}
+
+.strategy-btn-primary:hover {
+  background: var(--kite-primary-dark);
+}
+
+.strategy-btn-success {
+  background: var(--kite-green);
+  color: white;
+}
+
+.strategy-btn-success:hover {
+  background: #009973;
+}
+
+.strategy-btn-outline {
+  background: white;
+  border: 1px solid var(--kite-border);
+  color: var(--kite-text-primary);
+}
+
+.strategy-btn-outline:hover {
+  background: #f5f5f5;
+  border-color: #d0d0d0;
+}
+
+.strategy-btn-danger {
+  background: var(--kite-red);
+  color: white;
+}
+
+.strategy-btn-danger:hover {
+  background: #cc3333;
+}
+
+.strategy-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Summary Cards */
+.strategy-summary-card {
+  background: white;
+  border-radius: 4px;
+  padding: 16px 20px;
+  border: 1px solid var(--kite-border-light);
+}
+
+.strategy-summary-card .label {
+  font-size: var(--kite-font-size-xs);
+  font-weight: 600;
+  color: var(--kite-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.strategy-summary-card .value {
+  font-size: var(--kite-font-size-2xl);
+  font-weight: 700;
+  color: var(--kite-text-primary);
+}
+
+.strategy-summary-card.profit .value {
+  color: var(--kite-green);
+}
+
+.strategy-summary-card.loss .value {
+  color: var(--kite-red);
+}
+
+/* Buy/Sell Tags */
+.tag-buy {
+  background: #e3f2fd;
+  color: #1565c0;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: var(--kite-font-size-sm);
+  font-weight: 600;
+}
+
+.tag-sell {
+  background: #fff3e0;
+  color: #e65100;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: var(--kite-font-size-sm);
+  font-weight: 600;
+}
+
+.tag-ce {
+  background: var(--kite-green-light);
+  color: #00875a;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: var(--kite-font-size-sm);
+  font-weight: 600;
+}
+
+.tag-pe {
+  background: var(--kite-red-light);
+  color: #c62828;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: var(--kite-font-size-sm);
+  font-weight: 600;
+}

@@ -123,26 +123,55 @@ test.describe('Login Page', () => {
     expect(hasZerodha).toBeTruthy();
   });
 
-  test('should show features section', async ({ page }) => {
+  test('should show features section with properly sized icons', async ({ page }) => {
     await page.goto('/login');
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(2000);
 
-    // Wait for any content to be visible
-    const body = page.locator('body');
-    await expect(body).toBeVisible();
+    // Check for features section
+    const featuresHeading = page.locator('h3:has-text("Features")');
+    await expect(featuresHeading).toBeVisible();
 
-    // Check for features section or any descriptive text
+    // Check for feature items
     const bodyText = await page.textContent('body');
+    expect(bodyText).toContain('Options strategy builder');
+    expect(bodyText).toContain('Real-time market data');
+    expect(bodyText).toContain('Advanced analytics');
 
-    // Basic check that page has meaningful content
-    expect(bodyText).toBeTruthy();
-    expect(bodyText.trim().length).toBeGreaterThan(0);
+    // Verify SVG icons are properly sized (not oversized)
+    const featureSvgs = page.locator('svg[width="16"][height="16"]');
+    const svgCount = await featureSvgs.count();
+    expect(svgCount).toBeGreaterThanOrEqual(3);
+    console.log(`✓ Found ${svgCount} properly sized feature icons (16x16)`);
 
-    console.log(`✓ Page loaded with ${bodyText.trim().length} characters of content`);
+    // Verify no oversized SVGs on page
+    const oversizedSvgs = await page.locator('svg').evaluateAll(svgs => {
+      return svgs.filter(svg => {
+        const rect = svg.getBoundingClientRect();
+        return rect.width > 100 || rect.height > 100;
+      }).length;
+    });
+    expect(oversizedSvgs).toBe(0);
+    console.log('✓ No oversized SVGs on login page');
+  });
 
-    // Test passes if we got this far
-    expect(true).toBeTruthy();
+  test('should have blue login button', async ({ page }) => {
+    await page.goto('/login');
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(2000);
+
+    // Find the login button
+    const loginButton = page.locator('button:has-text("Connect")').first();
+    await expect(loginButton).toBeVisible();
+
+    // Check it has the blue background class
+    const hasBlueClass = await loginButton.evaluate(btn => {
+      return btn.classList.contains('bg-blue-600') ||
+             getComputedStyle(btn).backgroundColor.includes('37') || // rgb values for blue-600
+             getComputedStyle(btn).backgroundColor.includes('99');
+    });
+    expect(hasBlueClass).toBeTruthy();
+    console.log('✓ Login button has blue styling');
   });
 
 });

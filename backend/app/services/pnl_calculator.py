@@ -401,12 +401,13 @@ def generate_spot_range(
             if strike_int not in spots:
                 spots.append(strike_int)
 
-    # Include breakeven points
+    # Include breakeven points (keep exact values for P/L = 0)
     if breakevens:
         for be in breakevens:
-            be_rounded = round(be)
-            if be_rounded not in spots:
-                spots.append(be_rounded)
+            # Keep exact breakeven value, not rounded, so P/L calculates to exactly 0
+            # Check if a close value already exists (within 0.1 tolerance)
+            if not any(abs(s - be) < 0.1 for s in spots):
+                spots.append(be)
 
     spots.sort()
     return [float(s) for s in spots]
