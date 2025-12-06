@@ -79,6 +79,8 @@ npm run test:ws
 npm run test:verify  # Manual watchlist verification
 npm run test:strategy  # Strategy builder tests
 npm run test:strategy-verify  # Strategy builder verification
+npm run test:sb-complete  # Complete strategy builder test suite
+npm run test:iron-condor  # Iron Condor strategy test
 npm run test:watchlist-fix  # Watchlist fix verification
 npm run test:optionchain  # Option chain tests
 
@@ -372,6 +374,7 @@ Frontend requires `.env` file:
 - `tests/e2e/strategy-iron-condor.spec.js` - Iron Condor strategy test (18 tests, verifies breakeven columns)
 - `tests/e2e/watchlist-fix-verify.spec.js` - Watchlist fix verification tests
 - `tests/e2e/option-chain.spec.js` - Option chain tests
+- `tests/e2e/debug.spec.js` - Debug utilities for testing
 - `tests/e2e/helpers/auth.helper.js` - Auth helper utilities
 
 Test screenshots are saved to `tests/screenshots/` (gitignored).

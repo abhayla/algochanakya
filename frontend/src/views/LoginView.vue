@@ -21,54 +21,44 @@ const handleAngelOneLogin = async () => {
   error.value = 'Angel One integration coming soon!'
 }
 
-const navigateToLogin = () => {
-  // Already on login page, just show a message or do nothing
+const scrollToLogin = () => {
+  document.querySelector('.login-card')?.scrollIntoView({
+    behavior: 'smooth',
+    block: 'center'
+  })
 }
 </script>
 
 <template>
   <div class="min-h-screen bg-gray-50 text-gray-900">
-    <!-- Header Navigation -->
-    <header class="bg-white border-b border-gray-200">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between items-center h-16">
-          <!-- Logo -->
-          <div class="flex items-center">
-            <router-link to="/" class="flex items-center space-x-2">
-              <div class="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
-                <svg class="w-5 h-5 text-white" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                </svg>
-              </div>
-              <span class="text-xl font-bold text-gray-900">AlgoChanakya</span>
-            </router-link>
+    <!-- Header Navigation (identical to KiteHeader) -->
+    <header class="kite-header">
+      <!-- Left: Logo -->
+      <div class="header-left">
+        <router-link to="/" class="logo">
+          <div class="logo-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+              <path d="M2 17l10 5 10-5"/>
+              <path d="M2 12l10 5 10-5"/>
+            </svg>
           </div>
+          <span class="logo-text">AlgoChanakya</span>
+        </router-link>
+      </div>
 
-          <!-- Navigation Links -->
-          <nav class="header-nav">
-            <button @click="navigateToLogin" class="nav-link">
-              Dashboard
-            </button>
-            <button @click="navigateToLogin" class="nav-link">
-              Option Chain
-            </button>
-            <button @click="navigateToLogin" class="nav-link">
-              Strategy
-            </button>
-            <button @click="navigateToLogin" class="nav-link">
-              Watchlist
-            </button>
-          </nav>
+      <!-- Right: Navigation + Login Button -->
+      <div class="header-right">
+        <!-- Main Navigation -->
+        <nav class="main-nav">
+          <button @click="scrollToLogin" class="nav-item">Dashboard</button>
+          <button @click="scrollToLogin" class="nav-item">Option Chain</button>
+          <button @click="scrollToLogin" class="nav-item">Strategy</button>
+          <button @click="scrollToLogin" class="nav-item">Watchlist</button>
+        </nav>
 
-          <!-- User Menu Placeholder -->
-          <div class="flex items-center">
-            <div class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
-              <svg class="w-5 h-5 text-gray-500" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-            </div>
-          </div>
-        </div>
+        <!-- Login Button -->
+        <button @click="scrollToLogin" class="login-btn">Login</button>
       </div>
     </header>
 
@@ -156,10 +146,11 @@ const navigateToLogin = () => {
             <button
               @click="handleZerodhaLogin"
               :disabled="authStore.loading"
-              class="w-full bg-white hover:bg-orange-50 border border-orange-200 text-gray-700 py-3 px-6 rounded-lg font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-3 mb-3"
+              class="w-full text-gray-700 text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-3 mb-3"
+              style="height: 48px; background-color: #f5f9ff; border: 0.8px solid #bfd7f2; border-radius: 8px; padding: 11px 12px 11px 16px;"
             >
               <!-- Kite Logo -->
-              <img src="../assets/kite-logo.png" alt="Kite" style="height: 20px; width: auto;" class="flex-shrink-0" />
+              <img src="../assets/kite-logo.png" alt="Kite" style="height: 24px; width: auto;" class="flex-shrink-0" />
               <span v-if="!authStore.loading">Login with Zerodha</span>
               <span v-else class="flex items-center">
                 <svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-gray-500" width="20" height="20" fill="none" viewBox="0 0 24 24">
@@ -186,10 +177,11 @@ const navigateToLogin = () => {
             <!-- Angel One Login Button -->
             <button
               @click="handleAngelOneLogin"
-              class="w-full bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 py-3 px-6 rounded-lg font-medium transition-all flex items-center justify-center space-x-3 mb-3"
+              class="w-full text-gray-700 text-sm font-medium transition-all flex items-center justify-center space-x-3 mb-3"
+              style="height: 44px; background-color: #ffffff; border: 0.8px solid #d8dce3; border-radius: 6px; padding: 11px 15px;"
             >
               <!-- Angel One Logo -->
-              <img src="../assets/angelone-logo.png" alt="Angel One" style="height: 20px; width: auto;" class="flex-shrink-0" />
+              <img src="../assets/angelone-logo.png" alt="Angel One" style="height: 24px; width: auto;" class="flex-shrink-0" />
               <span>Angel One</span>
             </button>
             <p class="text-center text-sm text-gray-500 mb-6">
@@ -235,45 +227,118 @@ const navigateToLogin = () => {
 </template>
 
 <style scoped>
+/* KiteHeader-style header */
+.kite-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 48px;
+  background: #ffffff;
+  border-bottom: 1px solid #e0e0e0;
+  padding: 0 16px;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+/* Logo */
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+}
+
+.logo-icon {
+  width: 24px;
+  height: 24px;
+  color: #387ed1;
+}
+
+.logo-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.logo-text {
+  font-size: 15px;
+  font-weight: 600;
+  color: #212529;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+/* Navigation */
+.main-nav {
+  display: none;
+  gap: 4px;
+}
+
+@media (min-width: 768px) {
+  .main-nav {
+    display: flex;
+  }
+}
+
+.nav-item {
+  padding: 8px 16px;
+  font-size: 13px;
+  color: #6c757d;
+  text-decoration: none;
+  border-radius: 3px;
+  transition: all 0.15s ease;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.nav-item:hover {
+  color: #212529;
+  background: #f5f5f5;
+}
+
+/* Login Button */
+.login-btn {
+  padding: 6px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #ffffff;
+  background: #387ed1;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.login-btn:hover {
+  background: #2d6ab8;
+}
+
 /* Force two-column layout at lg breakpoint since Tailwind JIT isn't generating responsive classes */
 .login-grid {
   display: grid;
   grid-template-columns: 1fr;
   gap: 3rem;
   align-items: center;
-  min-height: calc(100vh - 200px);
+  min-height: calc(100vh - 48px - 6rem); /* Account for header and padding */
 }
 
 @media (min-width: 1024px) {
   .login-grid {
     grid-template-columns: 1fr 1fr;
   }
-}
-
-/* Header navigation - visible at md breakpoint */
-.header-nav {
-  display: none;
-  align-items: center;
-  gap: 2rem;
-}
-
-@media (min-width: 768px) {
-  .header-nav {
-    display: flex;
-  }
-}
-
-.nav-link {
-  color: #6b7280;
-  transition: color 0.2s;
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 1rem;
-}
-
-.nav-link:hover {
-  color: #111827;
 }
 
 /* Feature icon gradient backgrounds */
@@ -318,6 +383,7 @@ const navigateToLogin = () => {
   margin-left: auto;
   margin-right: auto;
   padding: 3rem 1rem;
+  padding-top: calc(48px + 3rem); /* Account for fixed header */
 }
 
 @media (min-width: 640px) {

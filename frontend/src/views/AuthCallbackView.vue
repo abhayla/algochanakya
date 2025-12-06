@@ -61,7 +61,7 @@ onMounted(async () => {
     const result = await authStore.fetchUser()
 
     if (result.success) {
-      router.push('/watchlist')
+      router.push('/dashboard')
     } else {
       error.value = true
       errorMessage.value = result.error || 'Failed to fetch user information.'
