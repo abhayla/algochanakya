@@ -67,8 +67,9 @@ onMounted(() => {
 
 .kite-content {
   flex: 1;
+  min-width: 0;  /* KEY: Allow flex item to shrink below content size */
   padding: 0;  /* Removed - child components handle their own padding */
-  overflow-x: hidden;  /* Prevent horizontal overflow */
+  overflow-x: hidden;  /* Prevent horizontal page scroll */
   overflow-y: auto;
   max-width: 100%;
 }

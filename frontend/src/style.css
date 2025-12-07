@@ -7,14 +7,80 @@
   box-sizing: border-box;
 }
 
-html, body, #app {
+html, body {
   width: 100%;
-  max-width: 100vw;
   margin: 0;
   padding: 0;
-  overflow-x: hidden;
+}
+
+#app {
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden; /* Only hide at app level to prevent body scroll */
 }
 
 body {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
+
+/* ===========================================
+   GLOBAL OVERFLOW FIX - Prevents horizontal overflow
+   =========================================== */
+
+/* Apply min-width: 0 to flex items to allow shrinking below content size */
+.flex, [class*="flex-"] {
+  min-width: 0;
+}
+
+/* Page containers - ensure they never exceed viewport */
+[class*="-page"], [class*="-view"] {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+/* Table containers - allow horizontal scroll */
+[class*="table-container"], [class*="-table-wrapper"] {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+}
+
+/* ===========================================
+   SCROLLABLE CONTAINER - With edge shadow indicators
+   =========================================== */
+.scrollable-container {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.scrollable-container::before,
+.scrollable-container::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  width: 30px;
+  height: 100%;
+  pointer-events: none;
+  z-index: 10;
+  transition: opacity 0.2s;
+}
+
+.scrollable-container::before {
+  left: 0;
+  background: linear-gradient(to right, rgba(0,0,0,0.06), transparent);
+  opacity: 0;
+}
+
+.scrollable-container::after {
+  right: 0;
+  background: linear-gradient(to left, rgba(0,0,0,0.06), transparent);
+  opacity: 0;
+}
+
+.scrollable-container.can-scroll-left::before { opacity: 1; }
+.scrollable-container.can-scroll-right::after { opacity: 1; }

@@ -1,0 +1,317 @@
+# Troubleshooting Guide
+
+Common issues and their solutions when working with AlgoChanakya.
+
+## Authentication Issues
+
+### Zerodha Token Expired
+
+**Symptoms:**
+- API calls return 401 Unauthorized
+- "Token expired" error in console
+- Redirected to login page
+
+**Solution:**
+1. Zerodha access tokens expire at 6:00 AM IST daily
+2. User must re-login through Zerodha OAuth
+3. Clear localStorage: `localStorage.removeItem('token')`
+
+**Prevention:**
+- Check token expiry before market hours
+- Handle 401 errors with automatic redirect to login
+
+### OAuth Callback Failed
+
+**Symptoms:**
+- Stuck on callback page
+- "Invalid request token" error
+
+**Solution:**
+1. Check `KITE_API_KEY` and `KITE_API_SECRET` in `.env`
+2. Verify `FRONTEND_URL` matches your frontend URL
+3. Check Kite Connect app settings for correct redirect URL
+
+### CORS Errors
+
+**Symptoms:**
+- "Access-Control-Allow-Origin" error in browser console
+- API calls blocked
+
+**Solution:**
+1. Verify `FRONTEND_URL` in backend `.env`
+2. Check CORS configuration in `app/main.py`:
+   ```python
+   app.add_middleware(
+       CORSMiddleware,
+       allow_origins=[settings.FRONTEND_URL],
+       allow_credentials=True,
+       allow_methods=["*"],
+       allow_headers=["*"],
+   )
+   ```
+3. For development, ensure frontend runs on expected port (5173)
+
+## Database Issues
+
+### Connection Refused
+
+**Symptoms:**
+- "Connection refused" error on startup
+- Health check fails for database
+
+**Solution:**
+1. Verify PostgreSQL is running:
+   ```bash
+   # Windows
+   pg_isready -h localhost -p 5432
+
+   # Linux
+   sudo systemctl status postgresql
+   ```
+2. Check `DATABASE_URL` in `.env`
+3. Verify PostgreSQL accepts connections (pg_hba.conf)
+
+### Migration Errors
+
+**Symptoms:**
+- `alembic upgrade head` fails
+- "Relation already exists" error
+
+**Solution:**
+1. Check current revision:
+   ```bash
+   alembic current
+   ```
+2. View migration history:
+   ```bash
+   alembic history
+   ```
+3. If stuck, manually fix `alembic_version` table
+4. For fresh start:
+   ```bash
+   alembic downgrade base
+   alembic upgrade head
+   ```
+
+### asyncpg vs psycopg2
+
+**Symptoms:**
+- "asyncpg" errors during migration
+- Alembic can't connect
+
+**Solution:**
+- Alembic uses `psycopg2` (sync driver)
+- `alembic/env.py` auto-converts URL
+- Ensure both drivers are installed:
+  ```bash
+  pip install asyncpg psycopg2-binary
+  ```
+
+## Redis Issues
+
+### Connection Failed
+
+**Symptoms:**
+- "Connection refused" for Redis
+- Session storage not working
+
+**Solution:**
+1. Verify Redis is running:
+   ```bash
+   redis-cli ping  # Should return PONG
+   ```
+2. Check `REDIS_URL` in `.env`
+3. For remote Redis, check firewall rules
+
+### Session Lost
+
+**Symptoms:**
+- Users logged out unexpectedly
+- JWT validation fails
+
+**Solution:**
+1. Check Redis memory usage: `redis-cli info memory`
+2. Verify `JWT_EXPIRY_HOURS` setting
+3. Check Redis persistence configuration
+
+## WebSocket Issues
+
+### Connection Drops
+
+**Symptoms:**
+- "WebSocket closed" in console
+- Prices stop updating
+
+**Solution:**
+1. Check network stability
+2. Verify backend WebSocket endpoint is reachable
+3. KiteTickerService auto-reconnects, wait 5 seconds
+4. Fallback to HTTP `/api/orders/ltp` endpoint
+
+### No Tick Data
+
+**Symptoms:**
+- Connected but no prices
+- "subscribed" message received but no ticks
+
+**Solution:**
+1. Verify instrument tokens are correct
+2. Check market hours (9:15 AM - 3:30 PM IST)
+3. Ensure Kite access token is valid
+4. Check Kite WebSocket status on Zerodha
+
+### "Invalid mode" Error
+
+**Symptoms:**
+- Subscription fails with mode error
+
+**Solution:**
+- Valid modes: `"ltp"`, `"quote"`, `"full"`
+- Check message format:
+  ```json
+  {"action": "subscribe", "tokens": [256265], "mode": "quote"}
+  ```
+
+## Frontend Issues
+
+### Blank Page After Login
+
+**Symptoms:**
+- OAuth succeeds but page is blank
+- Console shows errors
+
+**Solution:**
+1. Check browser console for errors
+2. Verify token is stored: `localStorage.getItem('token')`
+3. Check Vue devtools for store state
+4. Clear cache and retry
+
+### API Base URL Wrong
+
+**Symptoms:**
+- "Network Error" on all API calls
+- Wrong URL in network tab
+
+**Solution:**
+1. Check `VITE_API_BASE_URL` in frontend `.env`
+2. Restart Vite dev server after `.env` changes
+3. For production, check built config
+
+### Horizontal Overflow
+
+**Symptoms:**
+- Page scrolls horizontally
+- Content extends beyond viewport
+
+**Solution:**
+1. Run overflow test: `npm run test:overflow`
+2. Check for elements with fixed widths
+3. Use `overflow-x-hidden` on container
+4. Ensure Tailwind classes use responsive breakpoints
+
+## Strategy Builder Issues
+
+### P/L Calculation Wrong
+
+**Symptoms:**
+- Incorrect max profit/loss
+- Breakeven points off
+
+**Solution:**
+1. Verify lot sizes: NIFTY=75, BANKNIFTY=15, FINNIFTY=25
+2. Check entry prices are correct
+3. Verify P/L mode (At Expiry vs Current)
+4. Check scipy is installed for accurate Black-Scholes
+
+### CMP Not Loading
+
+**Symptoms:**
+- CMP shows "-" or loading
+- Exit P/L not calculated
+
+**Solution:**
+1. Check WebSocket connection
+2. Fallback to LTP API:
+   ```http
+   GET /api/orders/ltp?instruments=NFO:NIFTY24DEC24500CE
+   ```
+3. Verify instrument token is correct
+
+## Option Chain Issues
+
+### Greeks Not Showing
+
+**Symptoms:**
+- IV, Delta, Gamma columns empty
+- Greeks toggle does nothing
+
+**Solution:**
+1. IV calculation needs valid LTP and spot price
+2. Check if market is open
+3. Verify scipy is installed
+4. Check console for calculation errors
+
+### OI Data Missing
+
+**Symptoms:**
+- OI bars not displaying
+- Zero OI values
+
+**Solution:**
+1. OI updates every 3 minutes
+2. Check Kite API for OI availability
+3. Verify option chain endpoint works:
+   ```http
+   GET /api/optionchain/chain?underlying=NIFTY&expiry=2024-12-26
+   ```
+
+## Environment Issues
+
+### Module Not Found
+
+**Symptoms:**
+- `ModuleNotFoundError` on startup
+- Missing package errors
+
+**Solution:**
+```bash
+# Backend
+cd backend
+pip install -r requirements.txt
+
+# Frontend
+cd frontend
+npm install
+```
+
+### Port Already in Use
+
+**Symptoms:**
+- "Address already in use" error
+- Server won't start
+
+**Solution:**
+```bash
+# Find process using port (Windows)
+netstat -ano | findstr :8000
+
+# Kill process
+taskkill /PID <pid> /F
+
+# Linux/Mac
+lsof -i :8000
+kill -9 <pid>
+```
+
+## Getting Help
+
+1. Check browser console and terminal for errors
+2. Search existing issues on GitHub
+3. Provide error messages and steps to reproduce
+4. Include environment details (OS, Python/Node versions)
+
+## Related Documentation
+
+- [Database Setup](database-setup.md) - Configuration guide
+- [Architecture Overview](../architecture/overview.md) - System design
+- [WebSocket](../architecture/websocket.md) - Live price streaming

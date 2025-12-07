@@ -60,6 +60,12 @@ const router = createRouter({
       component: () => import('../views/StrategyBuilderView.vue'),
       meta: { requiresAuth: false },  // Public access for shared strategies
     },
+    {
+      path: '/positions',
+      name: 'positions',
+      component: () => import('../views/PositionsView.vue'),
+      meta: { requiresAuth: true },
+    },
   ],
 })
 

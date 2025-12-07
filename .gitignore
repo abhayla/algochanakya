@@ -49,6 +49,9 @@ test_*.py
 htmlcov/
 test-results/
 tests/screenshots/
+tests/config/credentials.js
+tests/config/.auth-token
+tests/config/.auth-state.json
 
 # Playwright
 node_modules/

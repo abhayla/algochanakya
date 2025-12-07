@@ -1,6 +1,6 @@
 <template>
   <KiteLayout>
-    <div class="flex h-full">
+    <div class="flex h-full w-full max-w-full min-w-0 overflow-x-hidden" data-testid="watchlist-page">
       <!-- Left Panel: Watchlist -->
       <div class="w-80 border-r border-gray-200 flex flex-col" style="height: calc(100vh - 48px);">
 
@@ -14,6 +14,7 @@
               class="w-full pl-8 pr-4 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500"
               @input="handleSearch"
               @focus="showDropdown = true"
+              data-testid="watchlist-search-input"
             />
             <svg class="absolute left-2.5 top-2.5 w-4 h-4 text-gray-400" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
@@ -22,12 +23,14 @@
 
           <!-- Search Results Dropdown -->
           <div v-if="showDropdown && searchQuery.length >= 2 && searchResults.length > 0"
-               class="absolute z-50 left-3 right-3 mt-1 bg-white border border-gray-200 rounded shadow-lg max-h-60 overflow-y-auto">
+               class="absolute z-50 left-3 right-3 mt-1 bg-white border border-gray-200 rounded shadow-lg max-h-60 overflow-y-auto"
+               data-testid="watchlist-search-dropdown">
             <div
               v-for="item in searchResults"
               :key="item.instrument_token"
               @click="addToWatchlist(item)"
               class="px-2 py-1.5 hover:bg-blue-50 cursor-pointer flex justify-between items-center text-xs"
+              :data-testid="'watchlist-search-result-' + item.instrument_token"
             >
               <div>
                 <span class="font-medium">{{ item.tradingsymbol }}</span>
@@ -40,21 +43,22 @@
 
           <!-- No results -->
           <div v-if="showDropdown && searchQuery.length >= 2 && searchResults.length === 0 && !isSearching"
-               class="absolute z-50 left-3 right-3 mt-1 bg-white border border-gray-200 rounded shadow-lg p-4 text-center text-gray-500 text-sm">
+               class="absolute z-50 left-3 right-3 mt-1 bg-white border border-gray-200 rounded shadow-lg p-4 text-center text-gray-500 text-sm"
+               data-testid="watchlist-no-results">
             No instruments found
           </div>
         </div>
 
         <!-- Watchlist Header -->
-        <div class="px-3 py-2 border-b border-gray-200 flex items-center justify-between bg-gray-50">
-          <span class="text-sm font-medium text-gray-700">{{ activeWatchlist?.name || 'Watchlist' }} ({{ instruments.length }}/100)</span>
-          <button @click="showCreateModal = true" class="text-sm text-blue-600 hover:text-blue-700 font-medium">
+        <div class="px-3 py-2 border-b border-gray-200 flex items-center justify-between bg-gray-50" data-testid="watchlist-header">
+          <span class="text-sm font-medium text-gray-700" data-testid="watchlist-count">{{ activeWatchlist?.name || 'Watchlist' }} ({{ instruments.length }}/100)</span>
+          <button @click="showCreateModal = true" class="text-sm text-blue-600 hover:text-blue-700 font-medium" data-testid="watchlist-new-group-button">
             + New group
           </button>
         </div>
 
         <!-- Watchlist Tabs -->
-        <div class="flex border-b border-gray-200 bg-white overflow-x-auto">
+        <div class="flex border-b border-gray-200 bg-white overflow-x-auto" data-testid="watchlist-tabs">
           <button
             v-for="wl in watchlists"
             :key="wl.id"
@@ -65,23 +69,24 @@
                 ? 'border-blue-500 text-blue-600 font-medium bg-blue-50'
                 : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
             ]"
+            :data-testid="'watchlist-tab-' + wl.id"
           >
             {{ wl.name }}
           </button>
-          <button @click="showCreateModal = true" class="px-3 py-2 text-gray-400 hover:text-gray-600 text-lg">
+          <button @click="showCreateModal = true" class="px-3 py-2 text-gray-400 hover:text-gray-600 text-lg" data-testid="watchlist-add-tab-button">
             +
           </button>
         </div>
 
         <!-- Loading State -->
-        <div v-if="isLoading" class="flex justify-center items-center py-20 flex-1">
+        <div v-if="isLoading" class="flex justify-center items-center py-20 flex-1" data-testid="watchlist-loading">
           <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
         </div>
 
         <!-- Instruments List -->
-        <div v-else class="flex-1 overflow-y-auto">
+        <div v-else class="flex-1 overflow-y-auto" data-testid="watchlist-instruments-list">
           <!-- Empty State -->
-          <div v-if="instruments.length === 0" class="flex flex-col items-center justify-center h-full text-gray-400 p-4">
+          <div v-if="instruments.length === 0" class="flex flex-col items-center justify-center h-full text-gray-400 p-4" data-testid="watchlist-empty-state">
             <div class="w-16 h-16 mb-4 flex items-center justify-center rounded-full bg-gray-100">
               <svg class="w-8 h-8 text-gray-300" width="32" height="32" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
@@ -92,11 +97,12 @@
           </div>
 
           <!-- Instrument Rows -->
-          <div v-else>
+          <div v-else data-testid="watchlist-instruments">
             <div
               v-for="inst in instruments"
               :key="inst.token"
               class="px-2 py-1.5 border-b border-gray-100 hover:bg-gray-50 cursor-pointer group"
+              :data-testid="'watchlist-instrument-row-' + inst.token"
             >
               <div class="flex items-center justify-between">
                 <!-- Symbol -->
@@ -127,6 +133,7 @@
                   <button
                     @click.stop="removeFromWatchlist(inst.token)"
                     class="opacity-0 group-hover:opacity-100 p-0.5 text-gray-400 hover:text-red-500 transition-opacity"
+                    :data-testid="'watchlist-remove-button-' + inst.token"
                   >
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -171,8 +178,8 @@
     </div>
 
     <!-- Create Watchlist Modal -->
-    <div v-if="showCreateModal" class="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50" @click.self="showCreateModal = false">
-      <div class="bg-white rounded-lg shadow-xl p-6 w-80">
+    <div v-if="showCreateModal" class="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50" @click.self="showCreateModal = false" data-testid="watchlist-create-modal">
+      <div class="bg-white rounded-lg shadow-xl p-6 w-80" data-testid="watchlist-create-modal-content">
         <h3 class="text-lg font-semibold mb-4">Create New Watchlist</h3>
         <input
           v-model="newWatchlistName"
@@ -180,10 +187,11 @@
           placeholder="Enter watchlist name"
           class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500"
           @keyup.enter="createWatchlist"
+          data-testid="watchlist-create-input"
         />
         <div class="mt-4 flex justify-end space-x-2">
-          <button @click="showCreateModal = false" class="px-4 py-2 text-gray-600 hover:text-gray-800">Cancel</button>
-          <button @click="createWatchlist" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Create</button>
+          <button @click="showCreateModal = false" class="px-4 py-2 text-gray-600 hover:text-gray-800" data-testid="watchlist-create-cancel">Cancel</button>
+          <button @click="createWatchlist" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700" data-testid="watchlist-create-submit">Create</button>
         </div>
       </div>
     </div>

@@ -10,88 +10,69 @@ AlgoChanakya is an options trading platform (similar to Sensibull) built with Fa
 - Backend: FastAPI + SQLAlchemy (async) + PostgreSQL + Redis
 - Frontend: Vue.js 3 + Vite + Pinia + Vue Router + Tailwind CSS
 - Broker Integration: Zerodha Kite Connect API
-- Testing: Playwright (E2E)
+- Testing: Playwright (E2E with 160 tests)
+
+**Detailed Documentation:** See [docs/](docs/README.md) for comprehensive documentation including:
+- [Architecture](docs/architecture/) - System design, auth, WebSocket, database
+- [API Reference](docs/api/) - Endpoint documentation
+- [Guides](docs/guides/) - Setup and troubleshooting
+- [Testing](docs/testing/) - E2E test architecture
 
 ## Development Commands
 
-### Backend
-
-From `backend/` directory:
+### Backend (from `backend/` directory)
 
 ```bash
 # Activate virtual environment
-# Windows:
-venv\Scripts\activate
-# Linux/Mac:
-source venv/bin/activate
+venv\Scripts\activate    # Windows
+source venv/bin/activate # Linux/Mac
 
-# Start development server (preferred)
+# Start development server
 python run.py
-
-# Or with uvicorn directly
-uvicorn app.main:app --reload
-
-# Install new dependency
-pip install <package>
-pip freeze > requirements.txt
 
 # Database migrations (Alembic)
 alembic revision --autogenerate -m "description"
 alembic upgrade head
-alembic downgrade -1
-
-# Run specific migration
-alembic upgrade <revision>
 ```
 
-### Frontend
-
-From `frontend/` directory:
+### Frontend (from `frontend/` directory)
 
 ```bash
-# Start development server
-npm run dev
-
-# Build for production
-npm run build
-
-# Preview production build
-npm run preview
-
-# Install new dependency
-npm install <package>
+npm run dev      # Start development server
+npm run build    # Build for production
 ```
 
-### Testing (Playwright)
-
-From project root:
+### Testing (from project root)
 
 ```bash
-# Run all tests
+# Run all tests (single browser, login once with TOTP)
 npm test
 
-# Run specific test file
-npm run test:login
-npm run test:api
-npm run test:oauth
-npm run test:watchlist
-npm run test:ws
-npm run test:verify  # Manual watchlist verification
-npm run test:strategy  # Strategy builder tests
-npm run test:strategy-verify  # Strategy builder verification
-npm run test:sb-complete  # Complete strategy builder test suite
-npm run test:iron-condor  # Iron Condor strategy test
-npm run test:watchlist-fix  # Watchlist fix verification
-npm run test:optionchain  # Option chain tests
+# Run by screen
+npm run test:specs:login
+npm run test:specs:dashboard
+npm run test:specs:positions
+npm run test:specs:watchlist
+npm run test:specs:optionchain
+npm run test:specs:strategy
 
-# Run with UI
-npm run test:ui
+# Run by category
+npm run test:happy      # All happy path tests
+npm run test:edge       # All edge case tests
+npm run test:visual     # All visual regression tests
+npm run test:api:new    # All API tests
 
-# Run headed (visible browser)
-npm run test:headed
+# Legacy individual tests
+npm run test:positions      # F&O positions tests
+npm run test:optionchain    # Option chain tests
+npm run test:iron-condor    # Iron Condor strategy test
+npm run test:overflow       # All screens horizontal overflow test
 
-# Debug mode
-npm run test:debug
+# Utilities
+npm run test:headed         # Run with visible browser
+npm run test:debug          # Debug mode
+npm run test:visual:update  # Update visual baselines
+npm run generate:test -- --screen MyScreen --path /mypath  # Generate test scaffold
 ```
 
 ## Architecture
@@ -168,6 +149,35 @@ Full option chain with OI, IV, Greeks, and live prices:
    - Manages underlying, expiry, chain data
    - Fetches expiries and option chain from API
    - Integrates with Strategy Builder for adding legs
+
+### Positions
+
+Live F&O positions view with real-time P&L:
+
+1. **Positions API (`app/api/routes/positions.py`):**
+   - `GET /api/positions/` - Get all F&O positions with live P&L (day/net toggle)
+   - `POST /api/positions/exit` - Exit a position (place opposite order)
+   - `POST /api/positions/add` - Add to existing position
+   - `POST /api/positions/exit-all` - Exit all open positions at market
+   - `GET /api/positions/grouped` - Positions grouped by underlying or expiry
+
+2. **Frontend (`src/views/PositionsView.vue`):**
+   - Day/Net position toggle
+   - Total P&L summary box with color coding
+   - Summary bar: positions count, quantity, realized/unrealized P&L, margin
+   - Positions table with instrument, qty, avg price, LTP, day change, P&L
+   - Exit modal (Market/Limit order type)
+   - Add modal (Buy/Sell at limit price)
+   - Exit All confirmation dialog
+   - Auto-refresh toggle (5 second interval)
+   - Empty state with link to Option Chain
+
+3. **Store (`src/stores/positions.js`):**
+   - Manages positions list and summary data
+   - Day/Net position type toggle
+   - Exit and Add modal state
+   - Auto-refresh functionality
+   - API calls for exit, add, exit-all operations
 
 ### Database Models
 
@@ -261,6 +271,7 @@ The platform includes a comprehensive options Strategy Builder:
 - `app/models/` - SQLAlchemy ORM models (User, BrokerConnection, Watchlist, Instrument, Strategy, StrategyLeg)
 - `app/schemas/` - Pydantic schemas for request/response validation
 - `app/api/routes/` - FastAPI route handlers
+  - `health.py` - Health check endpoint (DB + Redis connectivity)
   - `auth.py` - Zerodha OAuth login/callback
   - `watchlist.py` - Watchlist CRUD operations
   - `instruments.py` - Instrument search
@@ -268,6 +279,7 @@ The platform includes a comprehensive options Strategy Builder:
   - `optionchain.py` - Full option chain with OI, IV, Greeks
   - `strategy.py` - Strategy CRUD, P/L calculation, sharing
   - `orders.py` - Basket orders, positions, imports
+  - `positions.py` - F&O positions with live P&L, exit/add orders
   - `websocket.py` - WebSocket endpoint for live prices
 - `app/services/` - Business logic services
   - `kite_ticker.py` - KiteTickerService for live price streaming
@@ -280,20 +292,14 @@ The platform includes a comprehensive options Strategy Builder:
 ### Frontend Structure
 
 - `src/router/index.js` - Vue Router with authentication guards
-- `src/stores/auth.js` - Pinia store for authentication state
-- `src/stores/watchlist.js` - Pinia store for watchlist and WebSocket management
-- `src/stores/strategy.js` - Pinia store for strategy builder state
-- `src/stores/optionchain.js` - Pinia store for option chain data
+- `src/stores/` - Pinia stores (auth, watchlist, strategy, optionchain, positions)
+- `src/composables/` - Vue composables for reusable logic
 - `src/services/api.js` - Axios instance with interceptors for auth headers
-- `src/views/` - Vue components for pages
-  - `LoginView.vue` - Login page with Zerodha OAuth button
-  - `AuthCallbackView.vue` - OAuth callback handler
-  - `WatchlistView.vue` - Watchlist page with live prices
-  - `OptionChainView.vue` - Option chain with OI, IV, Greeks
-  - `StrategyBuilderView.vue` - Options strategy builder with P/L grid
-- `src/components/` - Reusable Vue components
-  - `watchlist/` - Watchlist components (IndexHeader, InstrumentRow, InstrumentSearch)
-  - `strategy/` - Strategy builder components (StrategyHeader, StrategyLegRow, StrategyActions, modals)
+- `src/views/` - Page components (Login, Dashboard, Watchlist, OptionChain, StrategyBuilder, Positions)
+- `src/components/` - Reusable components
+  - `layout/` - KiteLayout, KiteHeader, WatchlistSidebar
+  - `watchlist/` - IndexHeader, InstrumentRow, InstrumentSearch
+  - `strategy/` - StrategyHeader, StrategyLegRow, StrategyActions, modals
 
 ### Database Connection
 
@@ -325,6 +331,14 @@ The platform includes a comprehensive options Strategy Builder:
 1. Define route in `frontend/src/router/index.js`
 2. Set `meta: { requiresAuth: true/false }` for auth protection
 3. Create corresponding view component in `frontend/src/views/`
+
+### Route Patterns
+
+- `/` redirects to `/watchlist` (default landing page)
+- `/dashboard` - Dashboard with navigation cards
+- `/positions` - F&O positions view
+- `/strategy/:id` - Load saved strategy by ID
+- `/strategy/shared/:shareCode` - Public access for shared strategies (no auth required)
 
 ### Environment Variables
 
@@ -361,34 +375,29 @@ Frontend requires `.env` file:
 
 ## Testing
 
-**Playwright E2E Tests** (from project root):
-- `tests/e2e/login.spec.js` - Login page tests
-- `tests/e2e/api.spec.js` - API endpoint tests
-- `tests/e2e/oauth-flow.spec.js` - Full OAuth flow (requires manual Zerodha login)
-- `tests/e2e/watchlist.spec.js` - Watchlist functionality tests
-- `tests/e2e/websocket-verify.spec.js` - WebSocket live prices verification
-- `tests/e2e/watchlist-manual-verify.spec.js` - Manual watchlist verification
-- `tests/e2e/strategy-builder.spec.js` - Strategy builder functionality tests
-- `tests/e2e/strategy-builder-verify.spec.js` - Strategy builder verification tests
-- `tests/e2e/strategy-builder-complete.spec.js` - Complete strategy builder test suite (22 tests)
-- `tests/e2e/strategy-iron-condor.spec.js` - Iron Condor strategy test (18 tests, verifies breakeven columns)
-- `tests/e2e/watchlist-fix-verify.spec.js` - Watchlist fix verification tests
-- `tests/e2e/option-chain.spec.js` - Option chain tests
-- `tests/e2e/debug.spec.js` - Debug utilities for testing
-- `tests/e2e/helpers/auth.helper.js` - Auth helper utilities
+**See [docs/testing/README.md](docs/testing/README.md) for complete documentation.**
 
-Test screenshots are saved to `tests/screenshots/` (gitignored).
+160 tests across 24 spec files covering all 7 screens. Test commands are in the Development Commands section above.
 
-**Running Tests:**
-```bash
-# Install Playwright browsers (first time only)
-npx playwright install
+**Test Architecture:**
+- **Page Object Model** - `tests/e2e/pages/` with BasePage.js and 6 screen-specific POMs
+- **Auth Fixture** - `tests/e2e/fixtures/auth.fixture.js` for token injection (bypasses OAuth)
+- **Single Browser Window** - Login once with TOTP, reuse auth for all tests
+- **Self-Healing Selectors** - All Vue components use `data-testid` attributes
+- **Organized Specs** - `tests/e2e/specs/{screen}/` with happy, edge, visual, api tests
 
-# Run all tests
-npm test
+**Test Categories:**
+- `*.happy.spec.js` - Happy path tests (57 total)
+- `*.edge.spec.js` - Edge case tests (40 total)
+- `*.visual.spec.js` - Visual regression tests (30 total)
+- `*.api.spec.js` / `*.websocket.spec.js` - API/WebSocket tests (33 total)
 
-# Run specific test with visible browser
-npm run test:ws  # WebSocket verification
-npm run test:oauth  # OAuth flow
-npm run test:iron-condor  # Iron Condor strategy test (requires manual TOTP)
+**data-testid Convention:**
+```
+data-testid="[screen]-[component]-[element]"
+Examples:
+  data-testid="login-zerodha-button"
+  data-testid="strategy-add-row-button"
+  data-testid="positions-exit-modal"
+  data-testid="optionchain-strike-row-24500"
 ```

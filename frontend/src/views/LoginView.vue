@@ -30,7 +30,7 @@ const scrollToLogin = () => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-gray-50 text-gray-900">
+  <div class="min-h-screen bg-gray-50 text-gray-900 w-full max-w-full overflow-x-hidden" data-testid="login-page">
     <!-- Header Navigation (identical to KiteHeader) -->
     <header class="kite-header">
       <!-- Left: Logo -->
@@ -138,6 +138,7 @@ const scrollToLogin = () => {
             <div
               v-if="error"
               class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6"
+              data-testid="login-error-message"
             >
               {{ error }}
             </div>
@@ -148,6 +149,7 @@ const scrollToLogin = () => {
               :disabled="authStore.loading"
               class="w-full text-gray-700 text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-3 mb-3"
               style="height: 48px; background-color: #f5f9ff; border: 0.8px solid #bfd7f2; border-radius: 8px; padding: 11px 12px 11px 16px;"
+              data-testid="login-zerodha-button"
             >
               <!-- Kite Logo -->
               <img src="../assets/kite-logo.png" alt="Kite" style="height: 24px; width: auto;" class="flex-shrink-0" />
@@ -179,6 +181,7 @@ const scrollToLogin = () => {
               @click="handleAngelOneLogin"
               class="w-full text-gray-700 text-sm font-medium transition-all flex items-center justify-center space-x-3 mb-3"
               style="height: 44px; background-color: #ffffff; border: 0.8px solid #d8dce3; border-radius: 6px; padding: 11px 15px;"
+              data-testid="login-angelone-button"
             >
               <!-- Angel One Logo -->
               <img src="../assets/angelone-logo.png" alt="Angel One" style="height: 24px; width: auto;" class="flex-shrink-0" />
@@ -196,6 +199,7 @@ const scrollToLogin = () => {
               <button
                 @click="showSafetyInfo = !showSafetyInfo"
                 class="text-blue-600 hover:text-blue-700 text-sm flex items-center justify-center space-x-1 mx-auto"
+                data-testid="login-safety-toggle"
               >
                 <svg class="w-4 h-4 flex-shrink-0" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />

@@ -1,16 +1,17 @@
 <template>
   <KiteLayout>
-    <div class="strategy-page">
+    <div class="strategy-page" data-testid="strategy-page">
       <div class="strategy-container">
         <!-- Underlying Selector + P/L Mode Toggle -->
-        <div class="strategy-toolbar">
+        <div class="strategy-toolbar" data-testid="strategy-toolbar">
           <div class="toolbar-left">
-            <div class="underlying-tabs">
+            <div class="underlying-tabs" data-testid="strategy-underlying-tabs">
               <button
                 v-for="u in ['NIFTY', 'BANKNIFTY', 'FINNIFTY']"
                 :key="u"
                 :class="['underlying-tab', { active: strategyStore.underlying === u }]"
                 @click="strategyStore.setUnderlying(u)"
+                :data-testid="'strategy-underlying-' + u.toLowerCase()"
               >
                 {{ u }}
               </button>
@@ -21,21 +22,23 @@
             <button
               :class="['mode-btn', { active: strategyStore.pnlMode === 'expiry' }]"
               @click="strategyStore.pnlMode !== 'expiry' && strategyStore.togglePnLMode()"
+              data-testid="strategy-pnl-mode-expiry"
             >
               At Expiry
             </button>
             <button
               :class="['mode-btn', { active: strategyStore.pnlMode === 'current' }]"
               @click="strategyStore.pnlMode !== 'current' && strategyStore.togglePnLMode()"
+              data-testid="strategy-pnl-mode-current"
             >
               Current
             </button>
-            <span v-if="strategyStore.isLoading" class="loading-indicator">Loading...</span>
+            <span v-if="strategyStore.isLoading" class="loading-indicator" data-testid="strategy-loading">Loading...</span>
           </div>
         </div>
 
         <!-- Strategy Selector Bar -->
-        <div class="strategy-selector-bar">
+        <div class="strategy-selector-bar" data-testid="strategy-selector-bar">
           <div class="selector-row">
             <div class="selector-left">
               <!-- Strategy Dropdown -->
@@ -45,6 +48,7 @@
                   v-model="selectedStrategyId"
                   @change="handleStrategyChange"
                   class="strategy-select"
+                  data-testid="strategy-select"
                 >
                   <option value="">New Strategy</option>
                   <option v-for="s in savedStrategies" :key="s.id" :value="s.id">
@@ -62,6 +66,7 @@
                   placeholder="Enter strategy name"
                   class="strategy-input"
                   style="width: 200px;"
+                  data-testid="strategy-name-input"
                 />
               </div>
 
@@ -71,6 +76,7 @@
                   @click="handleSaveStrategy"
                   :disabled="strategyStore.legs.length === 0 || !strategyName || isSaving"
                   class="strategy-btn strategy-btn-success"
+                  data-testid="strategy-save-button"
                 >
                   {{ isSaving ? 'Saving...' : 'Save' }}
                 </button>
@@ -78,6 +84,7 @@
                   @click="handleDeleteStrategy"
                   :disabled="!selectedStrategyId"
                   class="strategy-btn strategy-btn-danger"
+                  data-testid="strategy-delete-button"
                 >
                   Delete
                 </button>
@@ -116,17 +123,17 @@
         </div>
 
         <!-- Error Alert -->
-        <div v-if="strategyStore.error" class="error-alert">
+        <div v-if="strategyStore.error" class="error-alert" data-testid="strategy-error">
           {{ strategyStore.error }}
           <button @click="strategyStore.error = null" class="error-close">&times;</button>
         </div>
 
         <!-- Strategy Table -->
-        <div class="strategy-table-wrapper">
+        <div class="strategy-table-wrapper" data-testid="strategy-table-wrapper">
           <!-- Scroll Indicators -->
           <div v-if="canScrollLeft" class="scroll-indicator scroll-indicator-left"></div>
           <div class="table-scroll" ref="tableScrollRef">
-            <table class="strategy-table">
+            <table class="strategy-table" data-testid="strategy-table">
               <thead>
               <tr>
                 <th class="th-checkbox">
@@ -270,14 +277,14 @@
               </tr>
 
               <!-- Empty State -->
-              <tr v-if="strategyStore.legs.length === 0" class="empty-state">
+              <tr v-if="strategyStore.legs.length === 0" class="empty-state" data-testid="strategy-empty-state">
                 <td colspan="100">
                   No legs added. Click "+ Add Row" to start building your strategy.
                 </td>
               </tr>
 
               <!-- Total Row -->
-              <tr v-if="strategyStore.legs.length > 0" class="total-row">
+              <tr v-if="strategyStore.legs.length > 0" class="total-row" data-testid="strategy-total-row">
                 <td colspan="7" class="text-right">Total:</td>
                 <td class="text-center font-bold">{{ strategyStore.totalQty }}</td>
                 <td class="text-center">-</td>
@@ -302,12 +309,13 @@
         </div>
 
         <!-- Action Buttons -->
-        <div class="action-bar">
+        <div class="action-bar" data-testid="strategy-action-bar">
           <div class="action-left">
             <button
               @click="strategyStore.removeSelectedLegs()"
               :disabled="strategyStore.selectedLegIndices.length === 0"
               class="strategy-btn strategy-btn-outline"
+              data-testid="strategy-delete-legs-button"
             >
               Delete
             </button>
@@ -315,6 +323,7 @@
               @click="strategyStore.addLeg()"
               class="strategy-btn strategy-btn-outline"
               style="color: var(--kite-blue);"
+              data-testid="strategy-add-row-button"
             >
               + Add Row
             </button>
@@ -322,6 +331,7 @@
               @click="handleRecalculate"
               :disabled="strategyStore.legs.length === 0 || strategyStore.isLoading"
               class="strategy-btn strategy-btn-primary"
+              data-testid="strategy-recalculate-button"
             >
               {{ strategyStore.isLoading ? 'Calculating...' : 'ReCalculate' }}
             </button>
@@ -330,12 +340,14 @@
             <button
               @click="strategyStore.importPositions()"
               class="strategy-btn strategy-btn-outline"
+              data-testid="strategy-import-positions-button"
             >
               Import Positions
             </button>
             <button
               @click="strategyStore.updateFromPositions()"
               class="strategy-btn strategy-btn-outline"
+              data-testid="strategy-update-positions-button"
             >
               Update Positions
             </button>
@@ -343,6 +355,7 @@
               @click="handleSaveStrategy"
               :disabled="strategyStore.legs.length === 0 || !strategyName || isSaving"
               class="strategy-btn strategy-btn-success"
+              data-testid="strategy-save-button-bottom"
             >
               {{ isSaving ? 'Saving...' : 'Save' }}
             </button>
@@ -350,6 +363,7 @@
               @click="handleShare"
               :disabled="!strategyStore.currentStrategy"
               class="strategy-btn strategy-btn-outline"
+              data-testid="strategy-share-button"
             >
               Share
             </button>
@@ -357,6 +371,7 @@
               @click="showOrderModal = true"
               :disabled="strategyStore.legs.length === 0 || !allLegsComplete"
               class="strategy-btn strategy-btn-primary"
+              data-testid="strategy-basket-order-button"
             >
               Buy Basket Order
             </button>
@@ -364,7 +379,7 @@
         </div>
 
         <!-- Payoff Chart -->
-        <div class="payoff-section" v-if="displayedSpotPrices.length > 0">
+        <div class="payoff-section" v-if="displayedSpotPrices.length > 0" data-testid="strategy-payoff-section">
           <div class="payoff-header">
             <h3 class="section-title">Payoff Diagram</h3>
             <div class="payoff-legend">
@@ -389,9 +404,9 @@
         </div>
 
         <!-- Summary Cards -->
-        <div class="summary-grid">
+        <div class="summary-grid" data-testid="strategy-summary-grid">
           <!-- Max Profit Card -->
-          <div class="strategy-summary-card profit">
+          <div class="strategy-summary-card profit" data-testid="strategy-max-profit-card">
             <div class="card-header">
               <div class="card-icon profit">
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -404,7 +419,7 @@
           </div>
 
           <!-- Max Loss Card -->
-          <div class="strategy-summary-card loss">
+          <div class="strategy-summary-card loss" data-testid="strategy-max-loss-card">
             <div class="card-header">
               <div class="card-icon loss">
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -417,7 +432,7 @@
           </div>
 
           <!-- Breakeven Card -->
-          <div class="strategy-summary-card">
+          <div class="strategy-summary-card" data-testid="strategy-breakeven-card">
             <div class="card-header">
               <div class="card-icon">
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -432,7 +447,7 @@
           </div>
 
           <!-- Risk/Reward Card -->
-          <div class="strategy-summary-card">
+          <div class="strategy-summary-card" data-testid="strategy-risk-reward-card">
             <div class="card-header">
               <div class="card-icon" style="background: var(--kite-blue-light); color: var(--kite-blue);">
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -445,7 +460,7 @@
           </div>
 
           <!-- Current Spot Card -->
-          <div class="strategy-summary-card spot">
+          <div class="strategy-summary-card spot" data-testid="strategy-spot-card">
             <div class="card-header">
               <div class="card-icon spot">
                 <div class="pulse-dot"></div>
@@ -1028,11 +1043,16 @@ watch(
 .strategy-page {
   min-height: calc(100vh - 48px);
   background: var(--kite-body-bg, #ffffff);
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
 }
 
 .strategy-container {
   width: 100%;
   max-width: 100%;
+  min-width: 0;
   padding: 20px 24px;
 }
 
@@ -1052,6 +1072,8 @@ watch(
   display: flex;
   align-items: center;
   gap: 12px;
+  min-width: 0;
+  flex-shrink: 1;
 }
 
 .underlying-tabs {
@@ -1156,7 +1178,9 @@ watch(
   border: 1px solid var(--kite-border-light);
   border-radius: 4px;
   margin-bottom: 16px;
+  width: 100%;
   max-width: 100%;
+  min-width: 0;
   position: relative;
   overflow: hidden;  /* Prevent wrapper from overflowing container */
 }

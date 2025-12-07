@@ -1,9 +1,9 @@
 <template>
-  <header class="kite-header">
+  <header class="kite-header" data-testid="kite-header">
     <!-- Left: Logo + Index Prices -->
     <div class="header-left">
       <!-- Logo -->
-      <router-link to="/" class="logo">
+      <router-link to="/" class="logo" data-testid="kite-header-logo">
         <div class="logo-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M12 2L2 7l10 5 10-5-10-5z"/>
@@ -15,19 +15,19 @@
       </router-link>
 
       <!-- Index Prices -->
-      <div class="index-prices">
-        <div class="index-item">
+      <div class="index-prices" data-testid="kite-header-index-prices">
+        <div class="index-item" data-testid="kite-header-index-nifty50">
           <span class="index-name">NIFTY 50</span>
-          <span :class="['index-price', (indexTicks.nifty50?.change || 0) >= 0 ? 'up' : 'down']">
+          <span :class="['index-price', (indexTicks.nifty50?.change || 0) >= 0 ? 'up' : 'down']" data-testid="kite-header-index-value-nifty50">
             {{ formatNumber(indexTicks.nifty50?.ltp) }}
           </span>
           <span :class="['index-change', (indexTicks.nifty50?.change || 0) >= 0 ? 'up' : 'down']">
             {{ formatChange(indexTicks.nifty50?.change) }} ({{ formatPct(indexTicks.nifty50?.change_percent) }})
           </span>
         </div>
-        <div class="index-item">
+        <div class="index-item" data-testid="kite-header-index-niftybank">
           <span class="index-name">NIFTY BANK</span>
-          <span :class="['index-price', (indexTicks.niftyBank?.change || 0) >= 0 ? 'up' : 'down']">
+          <span :class="['index-price', (indexTicks.niftyBank?.change || 0) >= 0 ? 'up' : 'down']" data-testid="kite-header-index-value-niftybank">
             {{ formatNumber(indexTicks.niftyBank?.ltp) }}
           </span>
           <span :class="['index-change', (indexTicks.niftyBank?.change || 0) >= 0 ? 'up' : 'down']">
@@ -40,12 +40,13 @@
     <!-- Right: Navigation + User -->
     <div class="header-right">
       <!-- Main Navigation -->
-      <nav class="main-nav">
+      <nav class="main-nav" data-testid="kite-header-nav">
         <router-link
           v-for="item in navItems"
           :key="item.path"
           :to="item.path"
           :class="['nav-item', { active: isActive(item.path) }]"
+          :data-testid="`kite-header-nav-${item.path.slice(1)}`"
         >
           {{ item.label }}
         </router-link>
@@ -54,7 +55,7 @@
       <!-- Actions -->
       <div class="header-actions">
         <!-- Connection Status -->
-        <div :class="['status-dot', { connected: watchlistStore.isConnected }]" :title="watchlistStore.isConnected ? 'Live' : 'Disconnected'"></div>
+        <div :class="['status-dot', { connected: watchlistStore.isConnected }]" :title="watchlistStore.isConnected ? 'Live' : 'Disconnected'" data-testid="kite-header-connection-status"></div>
 
         <!-- Header Icons -->
         <div class="header-icons">
@@ -73,8 +74,8 @@
         </div>
 
         <!-- User Menu -->
-        <div class="user-menu" @click="toggleUserDropdown">
-          <div class="user-avatar">
+        <div class="user-menu" @click="toggleUserDropdown" data-testid="kite-header-user-menu">
+          <div class="user-avatar" data-testid="kite-header-user-avatar">
             {{ userInitials }}
           </div>
           <span class="user-id">{{ userId }}</span>
@@ -84,13 +85,13 @@
         </div>
 
         <!-- User Dropdown -->
-        <div v-if="showUserDropdown" class="user-dropdown">
+        <div v-if="showUserDropdown" class="user-dropdown" data-testid="kite-header-user-dropdown">
           <div class="dropdown-item user-info">
-            <span class="user-name">{{ userName }}</span>
+            <span class="user-name" data-testid="kite-header-user-name">{{ userName }}</span>
             <span class="user-broker">Zerodha</span>
           </div>
           <div class="dropdown-divider"></div>
-          <button class="dropdown-item" @click="logout">
+          <button class="dropdown-item" @click="logout" data-testid="kite-header-logout-button">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
               <polyline points="16,17 21,12 16,7"/>
@@ -121,6 +122,7 @@ const navItems = [
   { path: '/dashboard', label: 'Dashboard' },
   { path: '/optionchain', label: 'Option Chain' },
   { path: '/strategy', label: 'Strategy' },
+  { path: '/positions', label: 'Positions' },
   { path: '/watchlist', label: 'Watchlist' },
 ];
 
@@ -202,12 +204,18 @@ onUnmounted(() => {
   left: 0;
   right: 0;
   z-index: 1000;
+  width: 100%;
+  max-width: 100vw;
+  min-width: 0;
+  overflow-x: hidden;
 }
 
 .header-left {
   display: flex;
   align-items: center;
   gap: 24px;
+  min-width: 0;
+  flex-shrink: 1;
 }
 
 /* Logo */
@@ -280,6 +288,8 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 24px;
+  min-width: 0;
+  flex-shrink: 1;
 }
 
 /* Navigation */

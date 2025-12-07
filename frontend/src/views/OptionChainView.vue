@@ -1,83 +1,84 @@
 <template>
   <KiteLayout>
-    <div class="optionchain-page">
+    <div class="optionchain-page" data-testid="optionchain-page">
 
       <!-- Page Header -->
-      <div class="page-header">
+      <div class="page-header" data-testid="optionchain-header">
         <div class="header-left">
           <h1 class="page-title">Option Chain</h1>
 
           <!-- Underlying Tabs -->
-          <div class="underlying-tabs">
+          <div class="underlying-tabs" data-testid="optionchain-underlying-tabs">
             <button
               v-for="ul in ['NIFTY', 'BANKNIFTY', 'FINNIFTY']"
               :key="ul"
               :class="['tab-btn', { active: store.underlying === ul }]"
               @click="handleUnderlyingChange(ul)"
+              :data-testid="'optionchain-underlying-' + ul.toLowerCase()"
             >
               {{ ul }}
             </button>
           </div>
 
           <!-- Expiry Select -->
-          <select v-model="store.expiry" @change="handleExpiryChange" class="expiry-select">
+          <select v-model="store.expiry" @change="handleExpiryChange" class="expiry-select" data-testid="optionchain-expiry-select">
             <option v-for="exp in store.expiries" :key="exp" :value="exp">{{ formatExpiry(exp) }}</option>
           </select>
         </div>
 
         <div class="header-right">
           <!-- Spot Price Box -->
-          <div class="spot-box">
+          <div class="spot-box" data-testid="optionchain-spot-box">
             <span class="spot-label">Spot</span>
-            <span class="spot-price">{{ formatNumber(store.spotPrice) }}</span>
+            <span class="spot-price" data-testid="optionchain-spot-price">{{ formatNumber(store.spotPrice) }}</span>
           </div>
 
           <!-- DTE -->
-          <div class="dte-box">
+          <div class="dte-box" data-testid="optionchain-dte-box">
             <span class="dte-label">DTE</span>
-            <span class="dte-value">{{ store.daysToExpiry }}</span>
+            <span class="dte-value" data-testid="optionchain-dte-value">{{ store.daysToExpiry }}</span>
           </div>
 
           <!-- Greeks Toggle -->
-          <label class="toggle-label">
+          <label class="toggle-label" data-testid="optionchain-greeks-toggle">
             <input type="checkbox" v-model="store.showGreeks" />
             <span>Greeks</span>
           </label>
 
           <!-- Refresh -->
-          <button @click="store.fetchOptionChain()" class="refresh-btn" :disabled="store.isLoading">
+          <button @click="store.fetchOptionChain()" class="refresh-btn" :disabled="store.isLoading" data-testid="optionchain-refresh-button">
             {{ store.isLoading ? 'Loading...' : 'Refresh' }}
           </button>
         </div>
       </div>
 
       <!-- Summary Bar -->
-      <div class="summary-bar">
-        <div class="summary-item">
+      <div class="summary-bar" data-testid="optionchain-summary-bar">
+        <div class="summary-item" data-testid="optionchain-pcr">
           <span class="label">PCR</span>
           <span :class="['value', store.summary.pcr > 1 ? 'text-green' : 'text-red']">
             {{ store.summary.pcr }}
           </span>
         </div>
-        <div class="summary-item">
+        <div class="summary-item" data-testid="optionchain-max-pain">
           <span class="label">Max Pain</span>
           <span class="value text-purple">{{ formatNumber(store.summary.max_pain) }}</span>
         </div>
-        <div class="summary-item">
+        <div class="summary-item" data-testid="optionchain-ce-oi">
           <span class="label">CE OI</span>
           <span class="value text-red">{{ formatOI(store.summary.total_ce_oi) }}</span>
         </div>
-        <div class="summary-item">
+        <div class="summary-item" data-testid="optionchain-pe-oi">
           <span class="label">PE OI</span>
           <span class="value text-green">{{ formatOI(store.summary.total_pe_oi) }}</span>
         </div>
-        <div class="summary-item">
+        <div class="summary-item" data-testid="optionchain-lot-size">
           <span class="label">Lot Size</span>
           <span class="value">{{ store.lotSize }}</span>
         </div>
 
         <div class="summary-right">
-          <select v-model="store.strikesRange" class="range-select">
+          <select v-model="store.strikesRange" class="range-select" data-testid="optionchain-strikes-range">
             <option :value="10">10 Strikes</option>
             <option :value="15">15 Strikes</option>
             <option :value="20">20 Strikes</option>
@@ -88,20 +89,20 @@
       </div>
 
       <!-- Error Alert -->
-      <div v-if="store.error" class="error-alert">
+      <div v-if="store.error" class="error-alert" data-testid="optionchain-error">
         <span>{{ store.error }}</span>
         <button @click="store.error = null" class="close-btn">&times;</button>
       </div>
 
       <!-- Loading State -->
-      <div v-if="store.isLoading && store.chain.length === 0" class="loading-state">
+      <div v-if="store.isLoading && store.chain.length === 0" class="loading-state" data-testid="optionchain-loading">
         <div class="spinner"></div>
         <p>Loading option chain...</p>
       </div>
 
       <!-- Option Chain Table -->
-      <div v-else class="chain-table-container">
-        <table class="chain-table">
+      <div v-else class="chain-table-container scrollable-container" ref="tableContainer" data-testid="optionchain-table-container">
+        <table class="chain-table" data-testid="optionchain-table">
           <thead>
             <tr>
               <!-- CE Side -->
@@ -138,6 +139,7 @@
                 { 'itm-ce': row.is_itm_ce && !row.is_atm },
                 { 'itm-pe': row.is_itm_pe && !row.is_atm }
               ]"
+              :data-testid="'optionchain-strike-row-' + row.strike"
             >
               <!-- CE Add -->
               <td class="ce-col add-col">
@@ -145,6 +147,7 @@
                   v-if="row.ce"
                   @click="toggleStrike(row.strike, 'CE')"
                   :class="['add-btn', 'ce', { selected: store.isStrikeSelected(row.strike, 'CE') }]"
+                  :data-testid="'optionchain-ce-add-' + row.strike"
                 >
                   {{ store.isStrikeSelected(row.strike, 'CE') ? '&#10003;' : '+' }}
                 </button>
@@ -190,6 +193,7 @@
                   v-if="row.pe"
                   @click="toggleStrike(row.strike, 'PE')"
                   :class="['add-btn', 'pe', { selected: store.isStrikeSelected(row.strike, 'PE') }]"
+                  :data-testid="'optionchain-pe-add-' + row.strike"
                 >
                   {{ store.isStrikeSelected(row.strike, 'PE') ? '&#10003;' : '+' }}
                 </button>
@@ -199,28 +203,29 @@
         </table>
 
         <!-- Empty State -->
-        <div v-if="store.chain.length === 0 && !store.isLoading" class="empty-state">
+        <div v-if="store.chain.length === 0 && !store.isLoading" class="empty-state" data-testid="optionchain-empty-state">
           <p>No option chain data</p>
           <p class="hint">Select an expiry to view option chain</p>
         </div>
       </div>
 
       <!-- Selected Bar -->
-      <div v-if="store.selectedStrikes.length > 0" class="selected-bar">
+      <div v-if="store.selectedStrikes.length > 0" class="selected-bar" data-testid="optionchain-selected-bar">
         <div class="selected-items">
           <span class="selected-label">Selected:</span>
           <span
             v-for="s in store.selectedStrikes"
             :key="s.key"
             :class="['selected-chip', s.type.toLowerCase()]"
+            :data-testid="'optionchain-selected-chip-' + s.strike + '-' + s.type"
           >
             {{ s.type }} {{ s.strike }} @ {{ s.ltp?.toFixed(2) }}
             <button @click="store.toggleStrikeSelection(s.strike, s.type)" class="chip-remove">&times;</button>
           </span>
         </div>
         <div class="selected-actions">
-          <button @click="store.clearSelection()" class="btn-clear">Clear</button>
-          <button @click="goToStrategy()" class="btn-add-strategy">Add to Strategy</button>
+          <button @click="store.clearSelection()" class="btn-clear" data-testid="optionchain-clear-selection">Clear</button>
+          <button @click="goToStrategy()" class="btn-add-strategy" data-testid="optionchain-add-to-strategy">Add to Strategy</button>
         </div>
       </div>
 
@@ -229,15 +234,20 @@
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import KiteLayout from '@/components/layout/KiteLayout.vue'
 import { useOptionChainStore } from '@/stores/optionchain'
 import { useStrategyStore } from '@/stores/strategy'
+import { useScrollIndicator } from '@/composables/useScrollIndicator'
 
 const store = useOptionChainStore()
 const strategyStore = useStrategyStore()
 const router = useRouter()
+
+// Table scroll indicator
+const tableContainer = ref(null)
+useScrollIndicator(tableContainer)
 
 // Format helpers
 const formatNumber = (num) => {
@@ -332,6 +342,11 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   height: calc(100vh - 48px - 32px);
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+  padding: 0 16px;
 }
 
 /* Page Header */
@@ -341,12 +356,17 @@ onMounted(async () => {
   align-items: center;
   padding: 12px 0;
   margin-bottom: 12px;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 
 .header-left {
   display: flex;
   align-items: center;
   gap: 16px;
+  min-width: 0;
+  flex-shrink: 1;
 }
 
 .page-title {
@@ -399,6 +419,9 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   gap: 16px;
+  min-width: 0;
+  flex-shrink: 1;
+  flex-wrap: wrap;
 }
 
 .spot-box {

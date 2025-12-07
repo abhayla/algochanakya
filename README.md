@@ -2,6 +2,15 @@
 
 Options Trading Platform (like Sensibull) - A comprehensive platform for options trading strategies, market analysis, and portfolio management.
 
+## Documentation
+
+Comprehensive documentation is available in the [docs/](docs/README.md) folder:
+
+- **[Architecture](docs/architecture/)** - System design, authentication, WebSocket, database
+- **[API Reference](docs/api/)** - Endpoint documentation and OpenAPI spec
+- **[Guides](docs/guides/)** - Setup, database configuration, troubleshooting
+- **[Testing](docs/testing/)** - E2E test architecture (160 tests)
+
 ## Tech Stack
 
 - **Frontend**: Vue.js 3 + Vite + Tailwind CSS + Pinia + Vue Router
@@ -14,6 +23,13 @@ Options Trading Platform (like Sensibull) - A comprehensive platform for options
 
 ```
 algochanakya/
+├── docs/               # Documentation
+│   ├── architecture/   # System design docs
+│   ├── api/            # API reference
+│   ├── guides/         # Setup guides
+│   ├── features/       # Feature documentation
+│   ├── testing/        # Test architecture
+│   └── decisions/      # Architecture Decision Records
 ├── frontend/           # Vue.js 3 frontend application
 │   ├── src/
 │   │   ├── components/
@@ -24,14 +40,15 @@ algochanakya/
 │   └── package.json
 ├── backend/            # FastAPI backend application
 │   ├── app/
-│   │   ├── api/
+│   │   ├── api/routes/
 │   │   ├── models/
 │   │   ├── schemas/
-│   │   ├── config.py
-│   │   ├── database.py
+│   │   ├── services/
 │   │   └── main.py
-│   ├── requirements.txt
-│   └── run.py
+│   ├── alembic/        # Database migrations
+│   └── requirements.txt
+├── tests/              # Playwright E2E tests
+├── CHANGELOG.md        # Version history
 └── README.md
 ```
 
@@ -142,16 +159,22 @@ npm run build
 npm run preview
 ```
 
-## Features (Planned)
+## Features
 
-- Broker authentication (Zerodha, Upstox, Angel One, Fyers)
-- Options chain visualization
-- Strategy builder (Straddle, Strangle, Iron Condor, etc.)
-- Real-time market data
-- Portfolio tracking
-- P&L analysis
-- Risk management tools
+### Implemented
+
+- **Broker Authentication** - Zerodha Kite Connect OAuth
+- **Watchlist** - Real-time price streaming via WebSocket
+- **Option Chain** - Full chain with OI, IV, Greeks, Max Pain
+- **Strategy Builder** - P/L calculator, payoff charts, breakeven analysis
+- **Positions** - Live F&O positions with P&L tracking
+- **Order Placement** - Basket orders via Kite API
+
+### Planned
+
+- Additional brokers (Upstox, Angel One, Fyers)
 - Backtesting capabilities
+- Advanced risk management tools
 
 ## Contributing
 
