@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../../fixtures/auth.fixture.js';
 import StrategyBuilderPage from '../../pages/StrategyBuilderPage.js';
 
 /**
@@ -8,8 +8,8 @@ import StrategyBuilderPage from '../../pages/StrategyBuilderPage.js';
 test.describe('Strategy Builder - Happy Path @happy', () => {
   let strategyPage;
 
-  test.beforeEach(async ({ page }) => {
-    strategyPage = new StrategyBuilderPage(page);
+  test.beforeEach(async ({ authenticatedPage }) => {
+    strategyPage = new StrategyBuilderPage(authenticatedPage);
     await strategyPage.navigate();
   });
 

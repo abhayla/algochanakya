@@ -1,31 +1,49 @@
 # Comprehensive Test Architecture for AlgoChanakya
 
 ## Overview
-A complete, auto-updating test suite for all 7 screens with full coverage (happy path + edge cases + visual regression + API/WebSocket validation).
+A complete, auto-updating test suite for all 8 screens with full coverage (happy path + edge cases + visual regression + API/WebSocket validation), plus comprehensive backend unit and integration tests.
 
 ## Status: ✅ FULLY IMPLEMENTED
 
 ## Key Features
 - **Self-Healing Selectors**: All tests use `data-testid` attributes
 - **Visual Regression**: Screenshot comparison with dynamic content masking
+- **Style & Accessibility Audits**: CSS validation and WCAG 2.1 AA compliance using axe-core
+- **Maximized Browser Window**: All tests run in maximized window (`--start-maximized`)
 - **Single Browser Window**: No flickering, login once with TOTP
-- **Credential Storage**: Kite credentials stored locally (gitignored)
+- **Credential Storage**: Kite credentials stored locally (gitignored), auto-filled during login
 - **Page Object Model**: Clean separation of selectors and actions
+- **Backend Tests**: pytest-based unit, API, validation, and integration tests
 
 ---
 
 ## Test Count Summary (Actual)
 
-| Screen | Happy | Edge | Visual | API/WS | Total |
-|--------|-------|------|--------|--------|-------|
-| Login | 6 | 5 | 5 | 3 | **19** |
-| Dashboard | 8 | 3 | 2 | - | **13** |
-| Positions | 11 | 6 | 4 | 5 | **26** |
-| Watchlist | 10 | 9 | 6 | 6 | **31** |
-| Option Chain | 11 | 7 | 5 | 7 | **30** |
-| Strategy | 11 | 10 | 8 | 9 | **38** |
-| Integration | - | - | - | 3 | **3** |
-| **Total** | **57** | **40** | **30** | **33** | **160** |
+### Frontend E2E Tests (Playwright)
+
+| Screen | Happy | Edge | Visual | API/WS | Audit | Total |
+|--------|-------|------|--------|--------|-------|-------|
+| Login | 6 | 5 | 5 | 3 | 5 | **24** |
+| Dashboard | 8 | 3 | 2 | - | 6 | **19** |
+| Positions | 11 | 6 | 4 | 5 | 7 | **33** |
+| Watchlist | 10 | 9 | 6 | 6 | 7 | **38** |
+| Option Chain | 11 | 7 | 5 | 7 | 7 | **37** |
+| Strategy Builder | 11 | 10 | 8 | 9 | 9 | **47** |
+| Strategy Library | 25 | 20 | 15 | 20 | 9 | **89** |
+| Integration | - | - | - | 3 | - | **3** |
+| **Frontend Total** | **82** | **60** | **45** | **53** | **50** | **290** |
+
+### Backend Tests (pytest)
+
+| Test File | Tests | Description |
+|-----------|-------|-------------|
+| `test_strategy_templates.py` | ~15 | Model CRUD, constraints, JSON legs, defaults |
+| `test_strategy_wizard_api.py` | ~35 | API endpoints: templates, wizard, deploy, compare |
+| `test_strategy_validation.py` | ~15 | Legs config, strategy characteristics, win probs |
+| `test_strategy_integration.py` | ~5 | Full flows, concurrent requests, mocked Kite |
+| **Backend Total** | | **~70** |
+
+### Grand Total: **~360 tests**
 
 ---
 
@@ -33,15 +51,16 @@ A complete, auto-updating test suite for all 7 screens with full coverage (happy
 
 ### Infrastructure ✅
 - [x] Directory structure (fixtures, helpers, pages, specs, scripts)
-- [x] `auth.fixture.js` - Token injection fixture
+- [x] `auth.fixture.js` - Token injection fixture + `auditablePage` fixture
 - [x] `BasePage.js` - Base page object class with common methods
-- [x] `visual.helper.js` - Screenshot masking utilities
+- [x] `visual.helper.js` - Screenshot masking utilities + viewport consistency
+- [x] `style-audit.helper.js` - StyleAudit class with axe-core for accessibility
 - [x] `generate-test.js` - Test scaffold generator
 - [x] `kite-login.helper.js` - Automated Kite login (only TOTP manual)
 - [x] `global-setup.js` - One-time login before all tests
 - [x] `credentials.js` - Stored Kite credentials (gitignored)
-- [x] Updated `playwright.config.js` for single browser window
-- [x] Updated `package.json` with 20+ npm scripts
+- [x] Updated `playwright.config.js` for maximized browser window
+- [x] Updated `package.json` with 25+ npm scripts
 
 ### Vue Components with data-testid ✅
 - [x] `KiteHeader.vue` - 8 selectors (logo, nav items, user menu)
@@ -51,6 +70,7 @@ A complete, auto-updating test suite for all 7 screens with full coverage (happy
 - [x] `WatchlistView.vue` - 18 selectors (search, tabs, instruments, modal)
 - [x] `OptionChainView.vue` - 25 selectors (tabs, summary, table, selection)
 - [x] `StrategyBuilderView.vue` - 28 selectors (toolbar, table, actions, summary)
+- [x] `StrategyLibraryView.vue` - 40+ selectors (categories, cards, wizard, modals)
 
 ### Page Objects ✅
 - [x] `BasePage.js` - Common navigation, selectors, assertions
@@ -60,15 +80,24 @@ A complete, auto-updating test suite for all 7 screens with full coverage (happy
 - [x] `WatchlistPage.js` - Search, tabs, instruments, create modal
 - [x] `OptionChainPage.js` - Underlying, expiry, strikes, selection
 - [x] `StrategyBuilderPage.js` - Legs, calculations, summary cards
+- [x] `StrategyLibraryPage.js` - Categories, wizard, cards, deploy modal
 
-### Spec Files (24 files) ✅
-- [x] Login: happy (6), edge (5), visual (5), api (3)
-- [x] Dashboard: happy (8), edge (3), visual (2)
-- [x] Positions: happy (11), edge (6), visual (4), api (5)
-- [x] Watchlist: happy (10), edge (9), visual (6), websocket (6)
-- [x] Option Chain: happy (11), edge (7), visual (5), api (7)
-- [x] Strategy: happy (11), edge (10), visual (8), api (9)
+### Spec Files (35 files) ✅
+- [x] Login: isolated (6), edge (5), visual (5), api (3), audit (5)
+- [x] Dashboard: happy (8), edge (3), visual (2), audit (6)
+- [x] Positions: happy (11), edge (6), visual (4), api (5), audit (7)
+- [x] Watchlist: happy (10), edge (9), visual (6), websocket (6), audit (7)
+- [x] Option Chain: happy (11), edge (7), visual (5), api (7), audit (7)
+- [x] Strategy Builder: happy (11), edge (10), visual (8), api (9), audit (9)
+- [x] Strategy Library: happy (25), edge (20), visual (15), api (20), audit (9)
 - [x] Integration: oauth-full-flow (3)
+
+### Backend Test Files ✅
+- [x] `conftest.py` - Fixtures: db_session, mock templates, mock Kite client
+- [x] `test_strategy_templates.py` - Model CRUD and constraints
+- [x] `test_strategy_wizard_api.py` - All wizard API endpoints
+- [x] `test_strategy_validation.py` - Legs config validation
+- [x] `test_strategy_integration.py` - End-to-end flows
 
 ---
 
@@ -118,24 +147,57 @@ export default defineConfig({
   use: {
     storageState: './tests/config/.auth-state.json',  // Reuse auth
   },
+  projects: [
+    { name: 'setup', testMatch: /global-setup\.spec\.js/ },
+    { name: 'chromium', dependencies: ['setup'], testIgnore: /.*\.isolated\.spec\.js/ },
+    { name: 'isolated', testMatch: /.*\.isolated\.spec\.js/, use: { storageState: undefined } },
+  ],
 });
 ```
+
+**Projects:**
+- **chromium** - Main tests using saved auth state (single browser window)
+- **isolated** - Tests needing fresh browser context (login page tests, OAuth tests)
 
 **Benefits:**
 - No browser flickering (one window throughout)
 - Login happens once, not per-test
 - Faster test execution
 - Less load on Kite API
+- Cleanup hooks prevent state pollution between tests
+
+---
+
+## Isolated Tests
+
+Some tests require a fresh browser context without any saved authentication:
+- **Login page tests** - Need to verify unauthenticated state
+- **OAuth flow tests** - Need to test the full login flow
+
+**File naming:** `*.isolated.spec.js`
+
+**Running isolated tests:**
+```bash
+npm run test:isolated
+```
+
+**How it works:**
+1. Tests matching `*.isolated.spec.js` are skipped by the main `chromium` project
+2. They run in the `isolated` project with `storageState: undefined`
+3. Each isolated test gets a fresh browser context
 
 ---
 
 ## Directory Structure
+
+### Frontend Tests (Playwright)
 
 ```
 tests/e2e/
   fixtures/
     auth.fixture.js              # Token injection fixture
     visual.fixture.js            # Visual regression setup
+    strategy-library.fixture.js  # Strategy library mock data
 
   helpers/
     auth.helper.js               # EXISTING - Enhanced
@@ -149,6 +211,7 @@ tests/e2e/
     WatchlistPage.js
     OptionChainPage.js
     StrategyBuilderPage.js
+    StrategyLibraryPage.js       # NEW - Strategy Library POM
     PositionsPage.js
     components/
       KiteHeader.js
@@ -156,7 +219,7 @@ tests/e2e/
 
   specs/
     login/
-      login.happy.spec.js
+      login.isolated.spec.js   # Fresh browser context (no auth)
       login.edge.spec.js
       login.visual.spec.js
       login.api.spec.js
@@ -179,6 +242,11 @@ tests/e2e/
       strategy.edge.spec.js
       strategy.visual.spec.js
       strategy.api.spec.js
+    strategylibrary/              # NEW - Strategy Library specs
+      strategylibrary.happy.spec.js
+      strategylibrary.edge.spec.js
+      strategylibrary.visual.spec.js
+      strategylibrary.api.spec.js
     positions/
       positions.happy.spec.js
       positions.edge.spec.js
@@ -192,6 +260,18 @@ tests/e2e/
     generate-test.js             # Test scaffold generator
 
   visual-baselines/              # Screenshot baselines
+```
+
+### Backend Tests (pytest)
+
+```
+backend/tests/
+  __init__.py
+  conftest.py                    # Fixtures: db_session, templates, mock Kite
+  test_strategy_templates.py     # Model CRUD, constraints, JSON legs
+  test_strategy_wizard_api.py    # All API endpoints
+  test_strategy_validation.py    # Legs config, strategy characteristics
+  test_strategy_integration.py   # Full flows, concurrent requests
 ```
 
 ---
@@ -232,6 +312,8 @@ export class BasePage {
 - Token validation via `/api/auth/me`
 - Environment variable support (`TEST_AUTH_TOKEN`)
 - Cached token reuse within session
+- **Cleanup hooks** - Close modals and reset state after each test
+- Fixtures: `authenticatedPage`, `auditablePage`, `styleAudit`
 
 #### 1.4 Add data-testid to KiteHeader.vue
 **File: `frontend/src/components/layout/KiteHeader.vue`**
@@ -493,24 +575,58 @@ Keep all 16 existing test files in `tests/e2e/` as reference/fallback until new 
 
 ## Running Tests
 
+### Frontend E2E Tests (Playwright)
+
 ```bash
 # Run all tests for a specific screen
-npm run test:login
-npm run test:dashboard
-npm run test:watchlist
-npm run test:optionchain
-npm run test:strategy
-npm run test:positions
+npm run test:specs:login
+npm run test:specs:dashboard
+npm run test:specs:watchlist
+npm run test:specs:optionchain
+npm run test:specs:strategy
+npm run test:specs:positions
+npm run test:specs:strategylibrary   # NEW
 
 # Run tests by type
-npm run test:happy        # All happy path tests
-npm run test:edge         # All edge case tests
-npm run test:visual       # All visual regression tests
-npm run test:api          # All API validation tests
+npm run test:happy        # All happy path tests (@happy)
+npm run test:edge         # All edge case tests (@edge)
+npm run test:visual       # All visual regression tests (@visual)
+npm run test:api:new      # All API validation tests (@api)
+npm run test:audit        # All style & accessibility audits (@audit)
+npm run test:isolated     # Tests needing fresh browser context (login, OAuth)
 
 # Update visual baselines
 npm run test:visual:update
 
+# Run with visible browser
+npx playwright test tests/e2e/specs/strategylibrary/ --headed
+
 # Generate tests for new screen
 npm run generate:test -- --screen MyNewScreen --path /mynewscreen
+```
+
+### Backend Tests (pytest)
+
+```bash
+cd backend
+
+# Run all strategy tests
+pytest tests/test_strategy*.py -v
+
+# Run individual test files
+pytest tests/test_strategy_templates.py -v      # Model tests
+pytest tests/test_strategy_wizard_api.py -v     # API endpoint tests
+pytest tests/test_strategy_validation.py -v     # Validation tests
+pytest tests/test_strategy_integration.py -v    # Integration tests
+
+# Run with coverage
+pytest tests/test_strategy*.py -v \
+  --cov=app/api/routes/strategy_wizard \
+  --cov=app/models/strategy_templates
+
+# Run with HTML report
+pytest tests/test_strategy*.py -v --html=reports/strategy-tests.html
+
+# Run specific test by name
+pytest tests/test_strategy_wizard_api.py::TestWizard::test_wizard_returns_top_5 -v
 ```

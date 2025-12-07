@@ -14,12 +14,16 @@
     "test:specs:optionchain": "playwright test tests/e2e/specs/optionchain/",
     "test:specs:strategy": "playwright test tests/e2e/specs/strategy/",
     "test:specs:positions": "playwright test tests/e2e/specs/positions/",
+    "test:specs:strategylibrary": "playwright test tests/e2e/specs/strategylibrary/",
     "test:specs:legacy": "playwright test tests/e2e/specs/legacy/",
     "test:happy": "playwright test --grep @happy",
     "test:edge": "playwright test --grep @edge",
     "test:visual": "playwright test --grep @visual",
     "test:api:new": "playwright test --grep @api",
     "test:visual:update": "playwright test --grep @visual --update-snapshots",
+    "test:audit": "playwright test --grep @audit",
+    "test:a11y": "playwright test --grep @audit",
+    "test:isolated": "playwright test --project=isolated",
     "test:login": "playwright test tests/e2e/specs/legacy/login.spec.js --headed",
     "test:api": "playwright test tests/e2e/specs/legacy/api.spec.js",
     "test:oauth": "playwright test tests/e2e/specs/legacy/oauth-flow.spec.js --headed",
@@ -50,6 +54,7 @@
   },
   "homepage": "https://github.com/abhayla/algochanakya#readme",
   "devDependencies": {
+    "@axe-core/playwright": "^4.11.0",
     "@playwright/test": "^1.57.0"
   }
 }

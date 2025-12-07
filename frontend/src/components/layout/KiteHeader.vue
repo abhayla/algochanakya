@@ -123,6 +123,7 @@ const navItems = [
   { path: '/optionchain', label: 'Option Chain' },
   { path: '/strategy', label: 'Strategy' },
   { path: '/positions', label: 'Positions' },
+  { path: '/strategies', label: 'Strategies' },
   { path: '/watchlist', label: 'Watchlist' },
 ];
 

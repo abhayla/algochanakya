@@ -19,6 +19,12 @@ export default defineConfig({
     video: 'retain-on-failure',
     trace: 'on-first-retry',
 
+    // Maximized browser window (viewport: null uses actual window size)
+    viewport: null,
+    launchOptions: {
+      args: ['--start-maximized'],
+    },
+
     // Reuse auth state from global setup
     storageState: './tests/config/.auth-state.json',
   },
@@ -50,8 +56,22 @@ export default defineConfig({
     // Main tests - use saved auth state
     {
       name: 'chromium',
-      use: { browserName: 'chromium' },
+      use: {
+        browserName: 'chromium',
+        viewport: null, // Ensure maximized window is not overridden
+      },
       dependencies: ['setup'], // Wait for setup to complete
+      testIgnore: /.*\.isolated\.spec\.js/, // Skip isolated tests (they need fresh context)
+    },
+    // Isolated tests - fresh browser context (no auth state)
+    {
+      name: 'isolated',
+      testMatch: /.*\.isolated\.spec\.js/,
+      use: {
+        browserName: 'chromium',
+        viewport: null,
+        storageState: undefined, // Fresh context, no saved auth
+      },
     },
   ],
 });

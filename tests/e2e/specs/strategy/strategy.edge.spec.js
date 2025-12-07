@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../../fixtures/auth.fixture.js';
 import StrategyBuilderPage from '../../pages/StrategyBuilderPage.js';
 
 /**
@@ -8,8 +8,8 @@ import StrategyBuilderPage from '../../pages/StrategyBuilderPage.js';
 test.describe('Strategy Builder - Edge Cases @edge', () => {
   let strategyPage;
 
-  test.beforeEach(async ({ page }) => {
-    strategyPage = new StrategyBuilderPage(page);
+  test.beforeEach(async ({ authenticatedPage }) => {
+    strategyPage = new StrategyBuilderPage(authenticatedPage);
     await strategyPage.navigate();
   });
 
@@ -87,12 +87,12 @@ test.describe('Strategy Builder - Edge Cases @edge', () => {
     await strategyPage.assertPageVisible();
   });
 
-  test('should maintain state after page refresh', async ({ page }) => {
+  test('should maintain state after page refresh', async ({ authenticatedPage }) => {
     await strategyPage.addRow();
     await strategyPage.enterStrategyName('Test Strategy');
 
     // Refresh page
-    await page.reload();
+    await authenticatedPage.reload();
 
     // Page should load (state may or may not persist)
     await strategyPage.assertPageVisible();

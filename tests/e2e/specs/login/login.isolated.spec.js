@@ -1,7 +1,9 @@
 /**
- * Login Happy Path Tests
+ * Login Isolated Tests
  *
- * Tests for normal user flows and expected behavior.
+ * Tests for login page that need fresh browser context (no auth state).
+ * These tests run in the "isolated" project with a fresh browser session.
+ * Tag: @isolated
  */
 
 import { test, expect } from '@playwright/test';
@@ -9,7 +11,7 @@ import { LoginPage } from '../../pages/LoginPage.js';
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 
-test.describe('Login - Happy Path @happy', () => {
+test.describe('Login - Isolated Tests @isolated', () => {
   let loginPage;
 
   test.beforeEach(async ({ page }) => {

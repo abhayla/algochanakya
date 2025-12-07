@@ -10,7 +10,7 @@ AlgoChanakya is an options trading platform (similar to Sensibull) built with Fa
 - Backend: FastAPI + SQLAlchemy (async) + PostgreSQL + Redis
 - Frontend: Vue.js 3 + Vite + Pinia + Vue Router + Tailwind CSS
 - Broker Integration: Zerodha Kite Connect API
-- Testing: Playwright (E2E with 160 tests)
+- Testing: Playwright (E2E ~240 tests) + pytest (backend ~70 tests)
 
 **Detailed Documentation:** See [docs/](docs/README.md) for comprehensive documentation including:
 - [Architecture](docs/architecture/) - System design, auth, WebSocket, database
@@ -55,18 +55,24 @@ npm run test:specs:positions
 npm run test:specs:watchlist
 npm run test:specs:optionchain
 npm run test:specs:strategy
+npm run test:specs:strategylibrary
 
 # Run by category
 npm run test:happy      # All happy path tests
 npm run test:edge       # All edge case tests
 npm run test:visual     # All visual regression tests
 npm run test:api:new    # All API tests
+npm run test:audit      # All style & accessibility audits
+npm run test:a11y       # Alias for audit tests
 
 # Legacy individual tests
 npm run test:positions      # F&O positions tests
 npm run test:optionchain    # Option chain tests
 npm run test:iron-condor    # Iron Condor strategy test
 npm run test:overflow       # All screens horizontal overflow test
+
+# Run a single test file
+npx playwright test tests/e2e/specs/positions/positions.happy.spec.js
 
 # Utilities
 npm run test:headed         # Run with visible browser
@@ -181,37 +187,12 @@ Live F&O positions view with real-time P&L:
 
 ### Database Models
 
-**User (`users` table):**
-- Stores user account information
-- Can have multiple broker connections
-- Email is optional (supports broker-only users)
+Models in `backend/app/models/`: User, BrokerConnection, Watchlist, Instrument, Strategy, StrategyLeg, StrategyTemplate
 
-**BrokerConnection (`broker_connections` table):**
-- Links users to broker accounts (Zerodha, Upstox, etc.)
-- Stores broker access tokens and metadata
-- `is_active` flag indicates current connection status
-- Multiple connections per user are supported
-
-**Watchlist (`watchlists` table):**
-- User-created watchlists with custom names
-- Links to instruments via `watchlist_instruments` junction table
-- Supports position ordering for instruments
-
-**Instrument (`instruments` table):**
-- Master instrument data (populated from Kite instruments dump)
-- Contains token, symbol, exchange, instrument type, etc.
-- Used for search and watchlist functionality
-
-**Strategy (`strategies` table):**
-- User-created options strategies with underlying (NIFTY/BANKNIFTY/FINNIFTY)
-- Supports shareable links via `share_code`
-- Status tracking (open/closed)
-
-**StrategyLeg (`strategy_legs` table):**
-- Individual legs of a strategy (strike, expiry, contract type)
-- Transaction type (BUY/SELL), lots, entry/exit prices
-- Links to instrument via `instrument_token`
-- Order tracking via `order_id` and `position_status`
+Key relationships:
+- User → BrokerConnection (one-to-many)
+- User → Watchlist → Instruments (via junction table `watchlist_instruments`)
+- User → Strategy → StrategyLeg (strategy legs linked to instruments)
 
 ### Strategy Builder
 
@@ -255,51 +236,49 @@ The platform includes a comprehensive options Strategy Builder:
    - `POST /api/orders/import-positions` - Import positions as strategy
    - `GET /api/orders/ltp` - Get LTP for instruments (fallback when WebSocket unavailable)
 
-7. **Frontend Components (`src/components/strategy/`):**
-   - `StrategyHeader.vue` - Underlying selector, P/L mode toggle
-   - `StrategyLegRow.vue` - Editable leg row with dropdowns, CMP display, Exit P/L calculation
-   - `StrategyActions.vue` - Action buttons
-   - `SaveStrategyModal.vue` - Save strategy dialog
-   - `ShareStrategyModal.vue` - Share link dialog
-   - `BasketOrderModal.vue` - Order confirmation
+7. **Frontend Components:** `src/components/strategy/` - StrategyHeader, StrategyLegRow, StrategyActions, modals
 
-### Backend Structure
+### Strategy Templates & Wizard
+
+Pre-built strategy templates with AI-powered recommendations:
+
+1. **Strategy Template Model (`app/models/strategy_templates.py`):**
+   - 20+ pre-defined option strategies with educational content
+   - Categories: bullish, bearish, neutral, volatile, income, advanced
+   - Legs configuration (JSON), risk/reward characteristics, Greeks exposure
+   - Educational fields: when_to_use, pros, cons, common_mistakes, exit_rules
+
+2. **Strategy Wizard API (`app/api/routes/strategy_wizard.py`):**
+   - `GET /api/strategy-wizard/templates` - List all templates with filters
+   - `GET /api/strategy-wizard/templates/categories` - Category counts
+   - `POST /api/strategy-wizard/wizard` - AI recommendation based on outlook/volatility/risk
+   - `POST /api/strategy-wizard/deploy` - Deploy template with live prices
+   - `POST /api/strategy-wizard/compare` - Compare multiple strategies
+   - `GET /api/strategy-wizard/popular` - Most popular strategies
+
+3. **Frontend (`src/views/StrategyLibraryView.vue`, `src/stores/strategyLibrary.js`):**
+   - Category-based browsing with search
+   - Strategy wizard modal (3-question flow)
+   - One-click deploy to Strategy Builder
+   - Strategy comparison tool
+   - Details modal with educational content
+
+4. **Seeding Templates:** `backend/scripts/seed_strategies.py` - Seeds 20+ strategy templates
+
+### Key Backend Files
 
 - `app/main.py` - FastAPI app initialization, CORS, lifespan events
 - `app/config.py` - Pydantic Settings for environment variables
 - `app/database.py` - SQLAlchemy async engine, session factory, Redis pool
-- `app/models/` - SQLAlchemy ORM models (User, BrokerConnection, Watchlist, Instrument, Strategy, StrategyLeg)
-- `app/schemas/` - Pydantic schemas for request/response validation
-- `app/api/routes/` - FastAPI route handlers
-  - `health.py` - Health check endpoint (DB + Redis connectivity)
-  - `auth.py` - Zerodha OAuth login/callback
-  - `watchlist.py` - Watchlist CRUD operations
-  - `instruments.py` - Instrument search
-  - `options.py` - Options expiries, strikes, chain data
-  - `optionchain.py` - Full option chain with OI, IV, Greeks
-  - `strategy.py` - Strategy CRUD, P/L calculation, sharing
-  - `orders.py` - Basket orders, positions, imports
-  - `positions.py` - F&O positions with live P&L, exit/add orders
-  - `websocket.py` - WebSocket endpoint for live prices
-- `app/services/` - Business logic services
-  - `kite_ticker.py` - KiteTickerService for live price streaming
-  - `kite_orders.py` - Basket orders via Kite API
-  - `pnl_calculator.py` - Black-Scholes P/L calculations
-  - `instruments.py` - Instrument data management
-- `app/utils/jwt.py` - JWT token creation and verification
-- `app/utils/dependencies.py` - FastAPI dependencies for authentication
+- `app/services/kite_ticker.py` - Singleton WebSocket service for live price streaming
+- `app/services/pnl_calculator.py` - Black-Scholes P/L calculations
+- `app/utils/dependencies.py` - `get_current_user` and `get_current_broker_connection` dependencies
 
-### Frontend Structure
+### Key Frontend Files
 
 - `src/router/index.js` - Vue Router with authentication guards
+- `src/services/api.js` - Axios instance with auth header interceptor
 - `src/stores/` - Pinia stores (auth, watchlist, strategy, optionchain, positions)
-- `src/composables/` - Vue composables for reusable logic
-- `src/services/api.js` - Axios instance with interceptors for auth headers
-- `src/views/` - Page components (Login, Dashboard, Watchlist, OptionChain, StrategyBuilder, Positions)
-- `src/components/` - Reusable components
-  - `layout/` - KiteLayout, KiteHeader, WatchlistSidebar
-  - `watchlist/` - IndexHeader, InstrumentRow, InstrumentSearch
-  - `strategy/` - StrategyHeader, StrategyLegRow, StrategyActions, modals
 
 ### Database Connection
 
@@ -337,6 +316,7 @@ The platform includes a comprehensive options Strategy Builder:
 - `/` redirects to `/watchlist` (default landing page)
 - `/dashboard` - Dashboard with navigation cards
 - `/positions` - F&O positions view
+- `/strategies` - Strategy Library with templates and wizard
 - `/strategy/:id` - Load saved strategy by ID
 - `/strategy/shared/:shareCode` - Public access for shared strategies (no auth required)
 
@@ -353,46 +333,50 @@ Frontend requires `.env` file:
 - `VITE_API_BASE_URL` - Backend API URL (defaults to http://localhost:8000)
 - `VITE_WS_URL` - WebSocket URL (defaults to localhost:8000)
 
-## Key Dependencies
-
-**Backend:**
-- `fastapi` - Web framework
-- `sqlalchemy[asyncio]` - Async ORM
-- `asyncpg` - PostgreSQL async driver
-- `redis[asyncio]` - Redis async client
-- `alembic` - Database migrations
-- `pydantic-settings` - Settings management
-- `kiteconnect` - Zerodha API client
-- `PyJWT` - JWT token handling
-- `scipy` - Black-Scholes calculations for P/L
-
-**Frontend:**
-- `vue` - UI framework
-- `vue-router` - Routing
-- `pinia` - State management
-- `axios` - HTTP client
-- `tailwindcss` - CSS framework
 
 ## Testing
 
 **See [docs/testing/README.md](docs/testing/README.md) for complete documentation.**
 
-160 tests across 24 spec files covering all 7 screens. Test commands are in the Development Commands section above.
+~310 tests total: 240 frontend E2E tests across 28 spec files covering 8 screens (Login, Dashboard, Positions, Watchlist, Option Chain, Strategy Builder, Strategy Library, Integration), plus 70 backend pytest tests.
 
-**Test Architecture:**
-- **Page Object Model** - `tests/e2e/pages/` with BasePage.js and 6 screen-specific POMs
+### Frontend E2E Tests (Playwright)
+
+**Architecture:**
+- **Page Object Model** - `tests/e2e/pages/` with BasePage.js and 8 screen-specific POMs
 - **Auth Fixture** - `tests/e2e/fixtures/auth.fixture.js` for token injection (bypasses OAuth)
 - **Single Browser Window** - Login once with TOTP, reuse auth for all tests
 - **Self-Healing Selectors** - All Vue components use `data-testid` attributes
 - **Organized Specs** - `tests/e2e/specs/{screen}/` with happy, edge, visual, api tests
 
 **Test Categories:**
-- `*.happy.spec.js` - Happy path tests (57 total)
-- `*.edge.spec.js` - Edge case tests (40 total)
-- `*.visual.spec.js` - Visual regression tests (30 total)
-- `*.api.spec.js` / `*.websocket.spec.js` - API/WebSocket tests (33 total)
+- `*.happy.spec.js` - Happy path tests (82 total)
+- `*.edge.spec.js` - Edge case tests (60 total)
+- `*.visual.spec.js` - Visual regression tests (45 total)
+- `*.api.spec.js` / `*.websocket.spec.js` - API/WebSocket tests (53 total)
+- `*.audit.spec.js` - Style & accessibility audits (7 files, ~50 tests)
 
-**data-testid Convention:**
+**Browser Configuration:**
+- All tests run with **maximized browser window** (via `--start-maximized`)
+- Credentials auto-filled from `tests/config/credentials.js`, only TOTP is manual
+
+### Backend Tests (pytest)
+
+Located in `backend/tests/`:
+- `conftest.py` - Fixtures: db_session, mock templates, mock Kite client
+- `test_strategy_templates.py` - Model CRUD, constraints, JSON legs (~15 tests)
+- `test_strategy_wizard_api.py` - All API endpoints (~35 tests)
+- `test_strategy_validation.py` - Legs config, characteristics (~15 tests)
+- `test_strategy_integration.py` - Full flows, concurrent requests (~5 tests)
+
+**Run backend tests:**
+```bash
+cd backend
+pytest tests/test_strategy*.py -v
+pytest tests/test_strategy*.py -v --cov=app/api/routes/strategy_wizard
+```
+
+### data-testid Convention
 ```
 data-testid="[screen]-[component]-[element]"
 Examples:
@@ -400,4 +384,6 @@ Examples:
   data-testid="strategy-add-row-button"
   data-testid="positions-exit-modal"
   data-testid="optionchain-strike-row-24500"
+  data-testid="strategy-library-wizard-button"
+  data-testid="strategy-card-iron_condor"
 ```

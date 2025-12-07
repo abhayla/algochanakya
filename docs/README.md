@@ -30,6 +30,7 @@ docs/
 │   ├── watchlist.md    # Watchlist implementation
 │   ├── option-chain.md # Option chain with OI, IV, Greeks
 │   ├── strategy-builder.md  # Options strategy builder
+│   ├── strategy-library.md  # Pre-built strategies with AI wizard
 │   └── positions.md    # F&O positions management
 │
 ├── api/                # API documentation
@@ -74,6 +75,7 @@ docs/
 - **[Watchlist](features/watchlist.md)** - Real-time watchlist with live prices
 - **[Option Chain](features/option-chain.md)** - Full option chain with OI, IV, Greeks
 - **[Strategy Builder](features/strategy-builder.md)** - P/L calculator, payoff charts
+- **[Strategy Library](features/strategy-library.md)** - Pre-built strategies with AI wizard
 - **[Positions](features/positions.md)** - F&O positions with live P&L
 
 ## API
@@ -83,7 +85,7 @@ docs/
 
 ## Testing
 
-- **[Testing Guide](testing/README.md)** - 160 E2E tests with Playwright
+- **[Testing Guide](testing/README.md)** - ~310 tests (240 E2E + 70 backend pytest)
 - **[Conventions](testing/conventions.md)** - data-testid naming conventions
 
 ## Decisions

@@ -12,6 +12,7 @@
 import { test as base } from '@playwright/test';
 import fs from 'fs';
 import path from 'path';
+import { StyleAudit } from '../helpers/style-audit.helper.js';
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 const API_BASE = process.env.API_BASE || 'http://localhost:8000';
@@ -144,12 +145,68 @@ export const authFixture = {
  *   test('my test', async ({ authenticatedPage }) => {
  *     // Page is already authenticated
  *   });
+ *
+ *   // For style audit tests:
+ *   test('audit test', async ({ auditablePage }) => {
+ *     const results = await auditablePage.styleAudit.runFullAudit();
+ *   });
  */
 export const test = base.extend({
+  // Authenticated page fixture with cleanup
   authenticatedPage: async ({ page }, use) => {
     await authFixture.injectToken(page);
     await use(page);
+    // Cleanup after test: close any open modals
+    await cleanupPageState(page);
+  },
+
+  // Page with StyleAudit instance attached
+  auditablePage: async ({ page }, use) => {
+    await authFixture.injectToken(page);
+    page.styleAudit = new StyleAudit(page);
+    await use(page);
+    // Cleanup after test
+    await cleanupPageState(page);
+  },
+
+  // Standalone StyleAudit instance
+  styleAudit: async ({ page }, use) => {
+    await use(new StyleAudit(page));
   },
 });
+
+/**
+ * Cleanup page state between tests to prevent state pollution
+ * Closes modals, dropdowns, and resets any open UI elements
+ */
+async function cleanupPageState(page) {
+  try {
+    // Close any open modals by clicking close buttons
+    const closeSelectors = [
+      '[data-testid*="-close"]',
+      '[data-testid*="-modal"] button[aria-label="Close"]',
+      '[data-testid*="modal-close"]',
+      '.modal button[aria-label="Close"]',
+      '[role="dialog"] button[aria-label="Close"]',
+    ];
+
+    for (const selector of closeSelectors) {
+      const closeButtons = await page.locator(selector).all();
+      for (const btn of closeButtons) {
+        if (await btn.isVisible()) {
+          await btn.click().catch(() => {});
+        }
+      }
+    }
+
+    // Press Escape to close any remaining modals/dropdowns
+    await page.keyboard.press('Escape').catch(() => {});
+
+    // Wait briefly for animations to complete
+    await page.waitForTimeout(100);
+  } catch {
+    // Ignore cleanup errors - they shouldn't fail tests
+  }
+}
 
 export { expect } from '@playwright/test';

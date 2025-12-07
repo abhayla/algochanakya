@@ -117,3 +117,22 @@ export async function setViewportAndPrepare(page, viewportName) {
   await page.waitForTimeout(500); // Allow responsive adjustments
   await prepareForVisualTest(page);
 }
+
+/**
+ * Ensure consistent viewport for visual regression tests
+ * Call before screenshots when using maximized browser window
+ */
+export async function ensureConsistentViewport(page, viewportName = 'desktop') {
+  const viewport = VIEWPORTS[viewportName] || VIEWPORTS.desktop;
+  await page.setViewportSize(viewport);
+  await page.waitForTimeout(200); // Allow responsive adjustments
+}
+
+/**
+ * Combined preparation: set viewport + prepare for visual test
+ * Use this for all visual regression tests to ensure consistency
+ */
+export async function prepareVisualTestWithViewport(page, viewportName = 'desktop') {
+  await ensureConsistentViewport(page, viewportName);
+  await prepareForVisualTest(page);
+}
