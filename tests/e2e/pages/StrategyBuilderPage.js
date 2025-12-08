@@ -1,4 +1,4 @@
-import BasePage from './BasePage.js';
+import { BasePage } from './BasePage.js';
 
 /**
  * Page Object for Strategy Builder screen
