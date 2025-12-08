@@ -58,6 +58,10 @@ node_modules/
 .playwright-mcp/
 playwright-report/
 
+# Allure test results
+backend/allure-results/
+allure-results/
+
 # Windows artifacts
 NUL
 

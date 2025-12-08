@@ -183,6 +183,7 @@ class DeployResponse(BaseModel):
     legs: List[DeployLeg]
     estimated_premium: Optional[float] = None
     margin_required: Optional[float] = None
+    strategy_id: Optional[str] = None  # UUID of created strategy
 
 
 # Compare Schemas

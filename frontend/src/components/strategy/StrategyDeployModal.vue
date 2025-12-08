@@ -1,5 +1,5 @@
 <template>
-  <div class="modal-overlay" @click.self="store.closeDeploy()">
+  <div class="modal-overlay" data-testid="strategy-deploy-overlay" @click.self="store.closeDeploy()">
     <div class="deploy-modal" data-testid="strategy-deploy-modal">
       <!-- Header -->
       <div class="modal-header">
@@ -17,7 +17,7 @@
       <!-- Content -->
       <div class="modal-content">
         <!-- Success State -->
-        <div v-if="deploySuccess" class="success-state">
+        <div v-if="deploySuccess" class="success-state" data-testid="strategy-deploy-success">
           <div class="success-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="12" cy="12" r="10"/>
@@ -28,7 +28,7 @@
           <p>Your {{ template?.display_name }} strategy has been set up successfully.</p>
           <div class="success-actions">
             <button class="btn-secondary" @click="store.closeDeploy()">Close</button>
-            <button class="btn-primary" @click="goToStrategy">
+            <button class="btn-primary" @click="goToStrategy" data-testid="strategy-deploy-view-button">
               View Strategy
             </button>
           </div>
@@ -44,6 +44,7 @@
                 v-for="(leg, idx) in template?.legs_config"
                 :key="idx"
                 :class="['leg-row', leg.position.toLowerCase()]"
+                :data-testid="`strategy-deploy-leg-${idx}`"
               >
                 <span class="leg-type">{{ leg.type }}</span>
                 <span class="leg-position">{{ leg.position }}</span>
@@ -83,9 +84,9 @@
               <div class="config-item">
                 <label>Lots</label>
                 <div class="lots-control">
-                  <button @click="decrementLots" :disabled="deployConfig.lots <= 1">-</button>
+                  <button @click="decrementLots" :disabled="deployConfig.lots <= 1" data-testid="strategy-deploy-lots-minus">-</button>
                   <input type="number" v-model.number="deployConfig.lots" min="1" max="50" data-testid="strategy-deploy-lots" />
-                  <button @click="incrementLots" :disabled="deployConfig.lots >= 50">+</button>
+                  <button @click="incrementLots" :disabled="deployConfig.lots >= 50" data-testid="strategy-deploy-lots-plus">+</button>
                 </div>
               </div>
 
@@ -105,7 +106,7 @@
           <!-- Estimated Values -->
           <section class="section">
             <h3>Estimated Values</h3>
-            <div class="estimates-grid">
+            <div class="estimates-grid" data-testid="strategy-deploy-estimates">
               <div class="estimate profit">
                 <span class="label">Max Profit</span>
                 <span class="value">{{ template?.max_profit }}</span>
@@ -189,7 +190,9 @@ const strikeStep = computed(() => {
 })
 
 const canDeploy = computed(() => {
-  return deployConfig.value.underlying && deployConfig.value.expiry
+  return deployConfig.value.underlying &&
+         deployConfig.value.expiry &&
+         deployConfig.value.lots >= 1
 })
 
 async function fetchExpiries() {

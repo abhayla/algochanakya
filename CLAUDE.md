@@ -387,3 +387,32 @@ Examples:
   data-testid="strategy-library-wizard-button"
   data-testid="strategy-card-iron_condor"
 ```
+
+### E2E Test Rules (Quick Reference)
+
+**See [docs/testing/e2e-test-rules.md](docs/testing/e2e-test-rules.md) for complete documentation.**
+
+**Selector Rules:**
+- Use `data-testid` ONLY - no CSS classes, tags, or text selectors
+- All selectors via Page Object `getByTestId()` method
+
+**Fixture Rules:**
+- Import from `auth.fixture.js` (NOT `@playwright/test`)
+- Use `authenticatedPage` for all authenticated tests
+
+**Page Object Pattern:**
+- Extend `BasePage.js`, set `this.url` property
+- Structure: Getters → Actions → Assertions (assertions in tests, not POM)
+
+**Test File Suffixes:**
+- `.happy.spec.js` - Normal flows
+- `.edge.spec.js` - Error/boundary cases
+- `.visual.spec.js` - Screenshots
+- `.api.spec.js` - API validation
+- `.audit.spec.js` - A11y/CSS
+
+**Adding Tests Checklist:**
+1. Add `data-testid` to Vue component
+2. Add selector to Page Object
+3. Import from `auth.fixture.js`
+4. Use POM methods (no inline selectors)

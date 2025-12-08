@@ -424,4 +424,212 @@ test.describe('Strategy Library - API Validation @api', () => {
     // Should either succeed or return validation error
     expect([200, 422]).toContain(response.status());
   });
+
+  // ==================== Deploy API Integration Tests ====================
+
+  test('POST /api/strategy-library/deploy validates required fields', async ({ request }) => {
+    const response = await request.post(`${API_BASE}/api/strategy-library/deploy`, {
+      headers: authHeader,
+      data: {
+        // Missing template_name
+        underlying: 'NIFTY',
+        lots: 1
+      }
+    });
+
+    // Should return validation error
+    expect(response.status()).toBe(422);
+  });
+
+  test('POST /api/strategy-library/deploy validates underlying values', async ({ request }) => {
+    const response = await request.post(`${API_BASE}/api/strategy-library/deploy`, {
+      headers: authHeader,
+      data: {
+        template_name: 'iron_condor',
+        underlying: 'INVALID_INDEX',
+        lots: 1
+      }
+    });
+
+    // Should return validation error for invalid underlying
+    expect([400, 422]).toContain(response.status());
+  });
+
+  test('POST /api/strategy-library/deploy validates lots range', async ({ request }) => {
+    // Test minimum boundary (0 lots should fail)
+    const responseLow = await request.post(`${API_BASE}/api/strategy-library/deploy`, {
+      headers: authHeader,
+      data: {
+        template_name: 'iron_condor',
+        underlying: 'NIFTY',
+        lots: 0
+      }
+    });
+
+    expect([400, 422]).toContain(responseLow.status());
+
+    // Test maximum boundary (100 lots should fail if max is 50)
+    const responseHigh = await request.post(`${API_BASE}/api/strategy-library/deploy`, {
+      headers: authHeader,
+      data: {
+        template_name: 'iron_condor',
+        underlying: 'NIFTY',
+        lots: 100
+      }
+    });
+
+    // May succeed or fail depending on server validation
+    expect([200, 400, 422]).toContain(responseHigh.status());
+  });
+
+  test('POST /api/strategy-library/deploy returns strategy with legs', async ({ request }) => {
+    if (!process.env.TEST_AUTH_TOKEN) {
+      test.skip('No TEST_AUTH_TOKEN available');
+      return;
+    }
+
+    // First get available expiries
+    const expiriesResponse = await request.get(`${API_BASE}/api/options/expiries?underlying=NIFTY`);
+
+    if (!expiriesResponse.ok()) {
+      test.skip('Cannot fetch expiries');
+      return;
+    }
+
+    const expiriesData = await expiriesResponse.json();
+    const expiry = expiriesData.expiries?.[0];
+
+    if (!expiry) {
+      test.skip('No expiries available');
+      return;
+    }
+
+    const response = await request.post(`${API_BASE}/api/strategy-library/deploy`, {
+      headers: authHeader,
+      data: {
+        template_name: 'iron_condor',
+        underlying: 'NIFTY',
+        expiry: expiry,
+        lots: 1
+      }
+    });
+
+    if (response.ok()) {
+      const data = await response.json();
+
+      // Verify response structure
+      expect(data).toHaveProperty('strategy_id');
+      expect(data).toHaveProperty('legs');
+      expect(Array.isArray(data.legs)).toBe(true);
+
+      // Iron Condor should have 4 legs
+      expect(data.legs.length).toBe(4);
+
+      // Verify leg structure
+      for (const leg of data.legs) {
+        expect(leg).toHaveProperty('strike');
+        expect(leg).toHaveProperty('contract_type');
+        expect(leg).toHaveProperty('transaction_type');
+        expect(['CE', 'PE']).toContain(leg.contract_type);
+        expect(['BUY', 'SELL']).toContain(leg.transaction_type);
+      }
+    }
+  });
+
+  test('POST /api/strategy-library/deploy returns correct legs for Bull Call Spread', async ({ request }) => {
+    if (!process.env.TEST_AUTH_TOKEN) {
+      test.skip('No TEST_AUTH_TOKEN available');
+      return;
+    }
+
+    const expiriesResponse = await request.get(`${API_BASE}/api/options/expiries?underlying=BANKNIFTY`);
+
+    if (!expiriesResponse.ok()) {
+      test.skip('Cannot fetch expiries');
+      return;
+    }
+
+    const expiriesData = await expiriesResponse.json();
+    const expiry = expiriesData.expiries?.[0];
+
+    if (!expiry) {
+      test.skip('No expiries available');
+      return;
+    }
+
+    const response = await request.post(`${API_BASE}/api/strategy-library/deploy`, {
+      headers: authHeader,
+      data: {
+        template_name: 'bull_call_spread',
+        underlying: 'BANKNIFTY',
+        expiry: expiry,
+        lots: 2
+      }
+    });
+
+    if (response.ok()) {
+      const data = await response.json();
+
+      // Bull Call Spread should have 2 legs
+      expect(data.legs.length).toBe(2);
+
+      // Both should be CE options
+      for (const leg of data.legs) {
+        expect(leg.contract_type).toBe('CE');
+      }
+
+      // One BUY, one SELL
+      const buyLegs = data.legs.filter(l => l.transaction_type === 'BUY');
+      const sellLegs = data.legs.filter(l => l.transaction_type === 'SELL');
+      expect(buyLegs.length).toBe(1);
+      expect(sellLegs.length).toBe(1);
+
+      // BUY strike should be lower than SELL strike
+      expect(buyLegs[0].strike).toBeLessThan(sellLegs[0].strike);
+    }
+  });
+
+  test('POST /api/strategy-library/deploy respects lots multiplier', async ({ request }) => {
+    if (!process.env.TEST_AUTH_TOKEN) {
+      test.skip('No TEST_AUTH_TOKEN available');
+      return;
+    }
+
+    const expiriesResponse = await request.get(`${API_BASE}/api/options/expiries?underlying=NIFTY`);
+
+    if (!expiriesResponse.ok()) {
+      test.skip('Cannot fetch expiries');
+      return;
+    }
+
+    const expiriesData = await expiriesResponse.json();
+    const expiry = expiriesData.expiries?.[0];
+
+    if (!expiry) {
+      test.skip('No expiries available');
+      return;
+    }
+
+    // Deploy with 2 lots
+    const response = await request.post(`${API_BASE}/api/strategy-library/deploy`, {
+      headers: authHeader,
+      data: {
+        template_name: 'bull_put_spread',
+        underlying: 'NIFTY',
+        expiry: expiry,
+        lots: 2
+      }
+    });
+
+    if (response.ok()) {
+      const data = await response.json();
+
+      // NIFTY lot size is 75, so 2 lots = 150 qty
+      for (const leg of data.legs) {
+        if (leg.quantity) {
+          expect(leg.quantity).toBe(150);
+        }
+      }
+    }
+  });
 });

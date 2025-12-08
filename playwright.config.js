@@ -12,6 +12,33 @@ export default defineConfig({
   // Global setup runs once before all tests - handles login
   globalSetup: './tests/e2e/global-setup.js',
 
+  // Multiple reporters for comprehensive test reporting
+  reporter: [
+    ['list'],
+    ['html', { open: 'never', outputFolder: 'playwright-report' }],
+    ['json', { outputFile: 'test-results/results.json' }],
+    ['junit', { outputFile: 'test-results/junit.xml' }],
+    ['allure-playwright', {
+      outputFolder: 'allure-results',
+      suiteTitle: true,
+      categories: [
+        {
+          name: 'Outdated tests',
+          messageRegex: '.*FileNotFound.*'
+        },
+        {
+          name: 'Product defects',
+          messageRegex: '.*AssertionError.*'
+        }
+      ],
+      environmentInfo: {
+        Project: 'AlgoChanakya',
+        Framework: 'Vue.js 3',
+        Browser: 'Chromium'
+      }
+    }]
+  ],
+
   use: {
     baseURL: 'http://localhost:5173',
     headless: false,

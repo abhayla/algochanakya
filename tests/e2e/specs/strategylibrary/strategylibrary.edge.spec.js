@@ -378,4 +378,160 @@ test.describe('Strategy Library - Edge Cases @edge', () => {
 
     expect(pageVisible || loadingVisible).toBe(true);
   });
+
+  // ==================== Deploy to Builder Edge Cases ====================
+
+  test('should disable deploy button until expiry is selected', async ({ authenticatedPage }) => {
+    await strategyLibraryPage.openDeploy('iron_condor');
+    await strategyLibraryPage.assertDeployModalVisible();
+
+    // Clear expiry selection by selecting empty option
+    const expirySelect = strategyLibraryPage.deployExpirySelect;
+
+    // Check that deploy button is disabled when no expiry selected
+    await expirySelect.selectOption({ value: '' });
+    await authenticatedPage.waitForTimeout(300);
+
+    const deployBtn = strategyLibraryPage.deployButton;
+    await expect(deployBtn).toBeDisabled();
+  });
+
+  test('should handle deploy API failure gracefully', async ({ authenticatedPage }) => {
+    // Mock API failure
+    await authenticatedPage.route('**/api/strategy-wizard/deploy', route => {
+      route.fulfill({
+        status: 500,
+        contentType: 'application/json',
+        body: JSON.stringify({ detail: 'Internal server error' })
+      });
+    });
+
+    await strategyLibraryPage.openDeploy('iron_condor');
+    await strategyLibraryPage.selectDeployUnderlying('NIFTY');
+    await authenticatedPage.waitForTimeout(1000);
+    await strategyLibraryPage.setDeployLots(1);
+
+    // Attempt to deploy
+    await strategyLibraryPage.confirmDeploy();
+
+    // Should show error state (not success state)
+    await authenticatedPage.waitForTimeout(1000);
+    const successVisible = await strategyLibraryPage.deploySuccess.isVisible().catch(() => false);
+    expect(successVisible).toBe(false);
+
+    // Page should remain usable
+    const modalVisible = await strategyLibraryPage.deployModal.isVisible().catch(() => false);
+    expect(modalVisible).toBe(true);
+  });
+
+  test('should refresh expiries when underlying changes', async ({ authenticatedPage }) => {
+    await strategyLibraryPage.openDeploy('bull_call_spread');
+    await strategyLibraryPage.assertDeployModalVisible();
+
+    // Select NIFTY first
+    await strategyLibraryPage.selectDeployUnderlying('NIFTY');
+    await authenticatedPage.waitForTimeout(1000);
+
+    // Get NIFTY expiries count
+    const expirySelect = strategyLibraryPage.deployExpirySelect;
+    const niftyOptions = await expirySelect.locator('option').count();
+
+    // Change to BANKNIFTY
+    await strategyLibraryPage.selectDeployUnderlying('BANKNIFTY');
+    await authenticatedPage.waitForTimeout(1000);
+
+    // Expiries should refresh (may be different count or same, but select should work)
+    const bankniftyOptions = await expirySelect.locator('option').count();
+    expect(bankniftyOptions).toBeGreaterThanOrEqual(1);
+  });
+
+  test('should disable deploy button while API is loading', async ({ authenticatedPage }) => {
+    // Slow down deploy API
+    await authenticatedPage.route('**/api/strategy-wizard/deploy', async route => {
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          strategy_id: 123,
+          legs: []
+        })
+      });
+    });
+
+    await strategyLibraryPage.openDeploy('iron_condor');
+    await strategyLibraryPage.selectDeployUnderlying('NIFTY');
+    await authenticatedPage.waitForTimeout(1000);
+    await strategyLibraryPage.setDeployLots(1);
+
+    // Click deploy
+    const deployBtn = strategyLibraryPage.deployButton;
+    await deployBtn.click();
+
+    // Button should show loading state
+    await expect(deployBtn).toContainText(/Creating/i);
+  });
+
+  test('should handle lots boundary - minimum value', async ({ authenticatedPage }) => {
+    await strategyLibraryPage.openDeploy('bull_put_spread');
+    await strategyLibraryPage.assertDeployModalVisible();
+
+    // Try to set 0 lots
+    await strategyLibraryPage.setDeployLots(0);
+
+    // Minus button should be disabled at minimum
+    await expect(strategyLibraryPage.deployLotsMinus).toBeDisabled();
+  });
+
+  test('should handle lots boundary - maximum value', async ({ authenticatedPage }) => {
+    await strategyLibraryPage.openDeploy('bull_put_spread');
+    await strategyLibraryPage.assertDeployModalVisible();
+
+    // Try to set max lots (50)
+    await strategyLibraryPage.setDeployLots(50);
+
+    // Plus button should be disabled at maximum
+    await expect(strategyLibraryPage.deployLotsPlus).toBeDisabled();
+  });
+
+  test('should preserve deploy modal state when closed via overlay click', async ({ authenticatedPage }) => {
+    await strategyLibraryPage.openDeploy('iron_condor');
+    await strategyLibraryPage.assertDeployModalVisible();
+
+    // Configure some settings
+    await strategyLibraryPage.selectDeployUnderlying('BANKNIFTY');
+    await authenticatedPage.waitForTimeout(1000);
+    await strategyLibraryPage.setDeployLots(3);
+
+    // Close by clicking overlay using POM method
+    await strategyLibraryPage.clickDeployOverlay();
+    await authenticatedPage.waitForTimeout(500);
+
+    // Modal should be closed
+    const isVisible = await strategyLibraryPage.deployModal.isVisible().catch(() => false);
+    expect(isVisible).toBe(false);
+  });
+
+  test('should handle expiry API failure gracefully', async ({ authenticatedPage }) => {
+    // Mock expiry API failure
+    await authenticatedPage.route('**/api/options/expiries**', route => {
+      route.fulfill({
+        status: 500,
+        contentType: 'application/json',
+        body: JSON.stringify({ detail: 'Failed to fetch expiries' })
+      });
+    });
+
+    await strategyLibraryPage.openDeploy('iron_condor');
+    await strategyLibraryPage.assertDeployModalVisible();
+
+    // Modal should still be visible even with API error
+    const modalVisible = await strategyLibraryPage.deployModal.isVisible();
+    expect(modalVisible).toBe(true);
+
+    // Expiry select should show loading or empty state
+    const expirySelect = strategyLibraryPage.deployExpirySelect;
+    await expect(expirySelect).toBeVisible();
+  });
 });

@@ -6,11 +6,14 @@ Provides fixtures for:
 - Sample strategy templates
 - Mocked Kite API client
 - Test users and broker connections
+- Allure reporting hooks
 """
 
 import pytest
 import pytest_asyncio
 import asyncio
+import allure
+import os
 from typing import AsyncGenerator, Generator
 from unittest.mock import MagicMock, patch, AsyncMock
 from uuid import uuid4
@@ -21,6 +24,71 @@ from sqlalchemy.pool import StaticPool
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy import JSON, event
 from httpx import AsyncClient, ASGITransport
+
+
+# =============================================================================
+# ALLURE CONFIGURATION
+# =============================================================================
+
+def pytest_configure(config):
+    """Configure Allure environment information."""
+    # Write environment.properties for Allure report
+    allure_results_dir = config.getoption("--alluredir", default="allure-results")
+    if allure_results_dir:
+        os.makedirs(allure_results_dir, exist_ok=True)
+        env_file = os.path.join(allure_results_dir, "environment.properties")
+        with open(env_file, "w") as f:
+            f.write("Project=AlgoChanakya\n")
+            f.write("Backend=FastAPI\n")
+            f.write("Database=PostgreSQL\n")
+            f.write("Python=3.11\n")
+            f.write("TestFramework=pytest\n")
+
+
+@pytest.hookimpl(tryfirst=True, hookwrapper=True)
+def pytest_runtest_makereport(item, call):
+    """Attach additional data on test failure for Allure reports."""
+    outcome = yield
+    report = outcome.get_result()
+
+    if report.when == "call" and report.failed:
+        # Attach any relevant data on failure
+        if hasattr(item, "funcargs"):
+            # Attach response data if available
+            if "response" in item.funcargs:
+                try:
+                    response_data = str(item.funcargs["response"].json())
+                    allure.attach(
+                        response_data,
+                        name="API Response",
+                        attachment_type=allure.attachment_type.JSON
+                    )
+                except Exception:
+                    pass
+
+            # Attach request data if available
+            if "client" in item.funcargs:
+                allure.attach(
+                    f"Client: {item.funcargs['client']}",
+                    name="HTTP Client Info",
+                    attachment_type=allure.attachment_type.TEXT
+                )
+
+
+def allure_step(title: str):
+    """Decorator to add Allure step to async test functions."""
+    def decorator(func):
+        @allure.step(title)
+        async def wrapper(*args, **kwargs):
+            return await func(*args, **kwargs)
+        wrapper.__name__ = func.__name__
+        return wrapper
+    return decorator
+
+
+# =============================================================================
+# DATABASE FIXTURES
+# =============================================================================
 
 # Import app components
 from app.database import Base, get_db

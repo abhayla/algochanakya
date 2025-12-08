@@ -12,7 +12,8 @@ from datetime import date
 from decimal import Decimal
 
 from app.database import get_db
-from app.models import User, StrategyTemplate
+from app.config import settings
+from app.models import User, StrategyTemplate, Strategy, StrategyLeg
 from app.schemas.strategy_templates import (
     StrategyTemplateListItem,
     StrategyTemplateDetail,
@@ -367,7 +368,7 @@ async def deploy_template(
             )
 
         # Initialize Kite
-        kite = KiteConnect(api_key=broker_connection.broker_api_key)
+        kite = KiteConnect(api_key=settings.KITE_API_KEY)
         kite.set_access_token(broker_connection.access_token)
 
         # Get underlying symbol and lot size
@@ -446,6 +447,34 @@ async def deploy_template(
                 lots=request.lots
             ))
 
+        # Create Strategy in database
+        strategy = Strategy(
+            user_id=user.id,
+            name=template.display_name,
+            underlying=underlying,
+            status="open"
+        )
+        db.add(strategy)
+        await db.flush()
+
+        # Create StrategyLeg records
+        for leg in deployed_legs:
+            strategy_leg = StrategyLeg(
+                strategy_id=strategy.id,
+                expiry_date=leg.expiry,
+                contract_type=leg.type,
+                transaction_type="BUY" if leg.position == "BUY" else "SELL",
+                strike_price=leg.strike,
+                lots=leg.lots,
+                strategy_type="hedged",
+                entry_price=leg.ltp,
+                instrument_token=leg.instrument_token,
+                position_status="pending"
+            )
+            db.add(strategy_leg)
+
+        await db.commit()
+
         return DeployResponse(
             template_name=template.name,
             display_name=template.display_name,
@@ -455,7 +484,8 @@ async def deploy_template(
             expiry=expiry,
             legs=deployed_legs,
             estimated_premium=None,  # Could calculate based on LTPs
-            margin_required=None
+            margin_required=None,
+            strategy_id=str(strategy.id)
         )
 
     except HTTPException:

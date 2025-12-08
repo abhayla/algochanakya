@@ -46,8 +46,8 @@
                 <span v-for="reason in rec.match_reasons" :key="reason" class="reason-tag">{{ reason }}</span>
               </div>
               <div class="rec-actions">
-                <button class="btn-secondary" @click="store.openDetails(rec.template)">Details</button>
-                <button class="btn-primary" @click="deployFromWizard(rec.template)">Deploy</button>
+                <button class="btn-secondary" @click="store.openDetails(rec.template)" :data-testid="`strategy-wizard-recommendation-${index}-details`">Details</button>
+                <button class="btn-primary" @click="deployFromWizard(rec.template)" :data-testid="`strategy-wizard-recommendation-${index}-deploy`">Deploy</button>
               </div>
             </div>
           </div>
@@ -62,7 +62,7 @@
             <button
               v-for="option in outlookOptions"
               :key="option.value"
-              :class="['option-card', { selected: store.wizardInputs.market_outlook === option.value }]"
+              :class="['option-card', { selected: selectedOutlook === option.value }]"
               @click="selectOutlook(option.value)"
               :data-testid="`strategy-wizard-outlook-${option.value}`"
             >
@@ -82,7 +82,7 @@
             <button
               v-for="option in volatilityOptions"
               :key="option.value"
-              :class="['option-card', { selected: store.wizardInputs.volatility_view === option.value }]"
+              :class="['option-card', { selected: selectedVolatility === option.value }]"
               @click="selectVolatility(option.value)"
               :data-testid="`strategy-wizard-volatility-${option.value === 'high_iv' ? 'high' : option.value === 'low_iv' ? 'low' : option.value}`"
             >
@@ -102,7 +102,7 @@
             <button
               v-for="option in riskOptions"
               :key="option.value"
-              :class="['option-card', 'risk-card', option.value, { selected: store.wizardInputs.risk_tolerance === option.value }]"
+              :class="['option-card', 'risk-card', option.value, { selected: selectedRisk === option.value }]"
               @click="selectRisk(option.value)"
               :data-testid="`strategy-wizard-risk-${option.value}`"
             >
@@ -121,7 +121,7 @@
               <button
                 v-for="level in ['beginner', 'intermediate', 'advanced']"
                 :key="level"
-                :class="['pill', { active: store.wizardInputs.experience_level === level }]"
+                :class="['pill', { active: selectedExperience === level }]"
                 @click="store.setWizardInput('experience_level', level)"
               >
                 {{ level }}
@@ -169,10 +169,19 @@
 <script setup>
 import { computed } from 'vue'
 import { useStrategyLibraryStore } from '@/stores/strategyLibrary'
+import { storeToRefs } from 'pinia'
 
 const store = useStrategyLibraryStore()
+// Use storeToRefs for reactive binding to store state
+const { wizardInputs } = storeToRefs(store)
 
 const stepLabels = ['Outlook', 'Volatility', 'Risk']
+
+// Computed properties for selections to ensure reactivity
+const selectedOutlook = computed(() => wizardInputs.value.market_outlook)
+const selectedVolatility = computed(() => wizardInputs.value.volatility_view)
+const selectedRisk = computed(() => wizardInputs.value.risk_tolerance)
+const selectedExperience = computed(() => wizardInputs.value.experience_level)
 
 const outlookOptions = [
   { value: 'bullish', label: 'Bullish', icon: '📈', description: 'I expect the market to go up' },
@@ -194,8 +203,8 @@ const riskOptions = [
 ]
 
 const canProceed = computed(() => {
-  if (store.wizardStep === 1) return store.wizardInputs.market_outlook
-  if (store.wizardStep === 2) return store.wizardInputs.volatility_view
+  if (store.wizardStep === 1) return selectedOutlook.value
+  if (store.wizardStep === 2) return selectedVolatility.value
   return true
 })
 

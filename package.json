@@ -24,6 +24,10 @@
     "test:audit": "playwright test --grep @audit",
     "test:a11y": "playwright test --grep @audit",
     "test:isolated": "playwright test --project=isolated",
+    "allure:generate": "allure generate allure-results --clean -o allure-report",
+    "allure:open": "allure open allure-report",
+    "allure:serve": "allure serve allure-results",
+    "test:allure": "playwright test && npm run allure:generate && npm run allure:open",
     "test:login": "playwright test tests/e2e/specs/legacy/login.spec.js --headed",
     "test:api": "playwright test tests/e2e/specs/legacy/api.spec.js",
     "test:oauth": "playwright test tests/e2e/specs/legacy/oauth-flow.spec.js --headed",
@@ -55,6 +59,7 @@
   "homepage": "https://github.com/abhayla/algochanakya#readme",
   "devDependencies": {
     "@axe-core/playwright": "^4.11.0",
-    "@playwright/test": "^1.57.0"
+    "@playwright/test": "^1.57.0",
+    "allure-playwright": "^3.4.3"
   }
 }

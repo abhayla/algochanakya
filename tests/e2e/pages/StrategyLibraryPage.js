@@ -153,6 +153,14 @@ export default class StrategyLibraryPage extends BasePage {
     return this.getByTestId(`strategy-wizard-recommendation-${index}-reasons`);
   }
 
+  getWizardRecommendationDeploy(index) {
+    return this.getByTestId(`strategy-wizard-recommendation-${index}-deploy`);
+  }
+
+  getWizardRecommendationDetails(index) {
+    return this.getByTestId(`strategy-wizard-recommendation-${index}-details`);
+  }
+
   // ============ Strategy Details Modal ============
 
   get detailsModal() { return this.getByTestId('strategy-details-modal'); }
@@ -174,10 +182,20 @@ export default class StrategyLibraryPage extends BasePage {
   get deployUnderlyingSelect() { return this.getByTestId('strategy-deploy-underlying'); }
   get deployExpirySelect() { return this.getByTestId('strategy-deploy-expiry'); }
   get deployLotsInput() { return this.getByTestId('strategy-deploy-lots'); }
+  get deployLotsMinus() { return this.getByTestId('strategy-deploy-lots-minus'); }
+  get deployLotsPlus() { return this.getByTestId('strategy-deploy-lots-plus'); }
   get deployLegsPreview() { return this.getByTestId('strategy-deploy-legs-preview'); }
   get deployNetPremium() { return this.getByTestId('strategy-deploy-net-premium'); }
+  get deployEstimates() { return this.getByTestId('strategy-deploy-estimates'); }
   get deployButton() { return this.getByTestId('strategy-deploy-confirm-button'); }
   get deployCancelButton() { return this.getByTestId('strategy-deploy-cancel-button'); }
+  get deployOverlay() { return this.getByTestId('strategy-deploy-overlay'); }
+  get deploySuccess() { return this.getByTestId('strategy-deploy-success'); }
+  get deployViewButton() { return this.getByTestId('strategy-deploy-view-button'); }
+
+  getDeployLegRow(index) {
+    return this.getByTestId(`strategy-deploy-leg-${index}`);
+  }
 
   // ============ Comparison Bar ============
 
@@ -303,6 +321,14 @@ export default class StrategyLibraryPage extends BasePage {
 
   async confirmDeploy() {
     await this.deployButton.click();
+  }
+
+  async clickViewStrategy() {
+    await this.deployViewButton.click();
+  }
+
+  async clickDeployOverlay() {
+    await this.deployOverlay.click({ position: { x: 10, y: 10 } });
   }
 
   async addToComparison(strategyName) {
