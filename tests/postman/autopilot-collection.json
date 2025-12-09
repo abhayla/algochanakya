@@ -1,0 +1,1477 @@
+{
+	"info": {
+		"_postman_id": "autopilot-algochanakya-v1",
+		"name": "AlgoChanakya AutoPilot API",
+		"description": "Complete API collection for testing AutoPilot auto-execution and adjustment system.\n\n## Setup Instructions\n\n1. Import this collection into Postman\n2. Create an environment with variables:\n   - `base_url`: Your API base URL (e.g., http://localhost:8000 or https://api.algochanakya.com)\n   - `token`: Your JWT authentication token\n3. Run the \"Health Check\" request first to verify connectivity\n4. Use the \"Login\" request to get a fresh token\n\n## Collection Structure\n\n- **Auth**: Login and token management\n- **Strategies**: CRUD and lifecycle operations\n- **Dashboard**: Overview and monitoring\n- **Orders**: Order history and export\n- **Logs**: Activity logs and export\n- **Settings**: User settings management\n- **Templates**: Strategy templates\n- **Emergency**: Kill switch\n\n## Tips\n\n- Use \"Send\" button to execute requests\n- Check \"Tests\" tab for auto-validation\n- Use Collection Runner for automated testing",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8000/api/v1/autopilot",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": "your_jwt_token_here",
+			"type": "string"
+		},
+		{
+			"key": "strategy_id",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "order_id",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "template_id",
+			"value": "1",
+			"type": "string"
+		}
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{token}}",
+				"type": "string"
+			}
+		]
+	},
+	"item": [
+		{
+			"name": "🔐 Auth",
+			"description": "Authentication endpoints",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/../health",
+							"host": ["{{base_url}}"],
+							"path": ["..", "health"]
+						},
+						"description": "Check if API is running"
+					},
+					"response": []
+				},
+				{
+					"name": "Login (Get Token)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    if (jsonData.access_token) {",
+									"        pm.collectionVariables.set('token', jsonData.access_token);",
+									"        console.log('Token saved to collection variable');",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"your_email@example.com\",\n    \"password\": \"your_password\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/../auth/login",
+							"host": ["{{base_url}}"],
+							"path": ["..", "auth", "login"]
+						},
+						"description": "Login to get JWT token. Token is automatically saved to collection variable."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "📊 Dashboard",
+			"description": "Dashboard and monitoring endpoints",
+			"item": [
+				{
+					"name": "Get Dashboard Summary",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response has data', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('data');",
+									"    pm.expect(jsonData.data).to.have.property('active_strategies');",
+									"    pm.expect(jsonData.data).to.have.property('risk_metrics');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/dashboard/summary",
+							"host": ["{{base_url}}"],
+							"path": ["dashboard", "summary"]
+						},
+						"description": "Get overview of all AutoPilot activity including active strategies, P&L, and risk metrics."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Activity Feed",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response has items array', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.data).to.have.property('items');",
+									"    pm.expect(jsonData.data.items).to.be.an('array');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/dashboard/activity?limit=50",
+							"host": ["{{base_url}}"],
+							"path": ["dashboard", "activity"],
+							"query": [
+								{
+									"key": "limit",
+									"value": "50"
+								},
+								{
+									"key": "event_types",
+									"value": "order_filled,adjustment_triggered",
+									"disabled": true
+								},
+								{
+									"key": "strategy_id",
+									"value": "{{strategy_id}}",
+									"disabled": true
+								}
+							]
+						},
+						"description": "Get recent activity feed for real-time display."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Risk Metrics",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/dashboard/risk",
+							"host": ["{{base_url}}"],
+							"path": ["dashboard", "risk"]
+						},
+						"description": "Get detailed risk metrics for dashboard gauges."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Performance Metrics",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/dashboard/performance?period=month",
+							"host": ["{{base_url}}"],
+							"path": ["dashboard", "performance"],
+							"query": [
+								{
+									"key": "period",
+									"value": "month",
+									"description": "today | week | month | all"
+								}
+							]
+						},
+						"description": "Get trading performance statistics."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "📈 Strategies",
+			"description": "Strategy CRUD and lifecycle operations",
+			"item": [
+				{
+					"name": "List Strategies",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response has pagination', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('data');",
+									"    pm.expect(jsonData).to.have.property('total');",
+									"    pm.expect(jsonData).to.have.property('page');",
+									"});",
+									"",
+									"// Save first strategy ID if available",
+									"var jsonData = pm.response.json();",
+									"if (jsonData.data && jsonData.data.length > 0) {",
+									"    pm.collectionVariables.set('strategy_id', jsonData.data[0].id);",
+									"    console.log('Saved strategy_id:', jsonData.data[0].id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/strategies?page=1&page_size=20",
+							"host": ["{{base_url}}"],
+							"path": ["strategies"],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "page_size",
+									"value": "20"
+								},
+								{
+									"key": "status",
+									"value": "active",
+									"disabled": true
+								},
+								{
+									"key": "underlying",
+									"value": "NIFTY",
+									"disabled": true
+								},
+								{
+									"key": "sort_by",
+									"value": "created_at",
+									"disabled": true
+								},
+								{
+									"key": "sort_order",
+									"value": "desc",
+									"disabled": true
+								}
+							]
+						},
+						"description": "Get paginated list of user's AutoPilot strategies."
+					},
+					"response": []
+				},
+				{
+					"name": "Create Strategy - Iron Condor",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 201', function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test('Strategy created with draft status', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.data).to.have.property('id');",
+									"    pm.expect(jsonData.data.status).to.equal('draft');",
+									"});",
+									"",
+									"// Save created strategy ID",
+									"var jsonData = pm.response.json();",
+									"if (jsonData.data && jsonData.data.id) {",
+									"    pm.collectionVariables.set('strategy_id', jsonData.data.id);",
+									"    console.log('Created strategy_id:', jsonData.data.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Iron Condor Weekly - Test\",\n    \"description\": \"Test iron condor strategy created via Postman\",\n    \"underlying\": \"NIFTY\",\n    \"expiry_type\": \"current_week\",\n    \"lots\": 1,\n    \"position_type\": \"intraday\",\n    \"legs_config\": [\n        {\n            \"id\": \"leg_1\",\n            \"contract_type\": \"PE\",\n            \"transaction_type\": \"SELL\",\n            \"strike_selection\": {\n                \"mode\": \"atm_offset\",\n                \"offset\": -200\n            },\n            \"quantity_multiplier\": 1,\n            \"execution_order\": 1\n        },\n        {\n            \"id\": \"leg_2\",\n            \"contract_type\": \"PE\",\n            \"transaction_type\": \"BUY\",\n            \"strike_selection\": {\n                \"mode\": \"atm_offset\",\n                \"offset\": -400\n            },\n            \"quantity_multiplier\": 1,\n            \"execution_order\": 2\n        },\n        {\n            \"id\": \"leg_3\",\n            \"contract_type\": \"CE\",\n            \"transaction_type\": \"SELL\",\n            \"strike_selection\": {\n                \"mode\": \"atm_offset\",\n                \"offset\": 200\n            },\n            \"quantity_multiplier\": 1,\n            \"execution_order\": 3\n        },\n        {\n            \"id\": \"leg_4\",\n            \"contract_type\": \"CE\",\n            \"transaction_type\": \"BUY\",\n            \"strike_selection\": {\n                \"mode\": \"atm_offset\",\n                \"offset\": 400\n            },\n            \"quantity_multiplier\": 1,\n            \"execution_order\": 4\n        }\n    ],\n    \"entry_conditions\": {\n        \"logic\": \"AND\",\n        \"conditions\": [\n            {\n                \"id\": \"cond_1\",\n                \"enabled\": true,\n                \"variable\": \"TIME.CURRENT\",\n                \"operator\": \"greater_than\",\n                \"value\": \"09:20\"\n            },\n            {\n                \"id\": \"cond_2\",\n                \"enabled\": true,\n                \"variable\": \"VOLATILITY.VIX\",\n                \"operator\": \"between\",\n                \"value\": [13, 18]\n            }\n        ]\n    },\n    \"adjustment_rules\": [\n        {\n            \"id\": \"rule_1\",\n            \"name\": \"Stop Loss Exit\",\n            \"enabled\": true,\n            \"priority\": 1,\n            \"trigger\": {\n                \"logic\": \"OR\",\n                \"conditions\": [\n                    {\n                        \"id\": \"trig_1\",\n                        \"variable\": \"STRATEGY.PNL\",\n                        \"operator\": \"less_than\",\n                        \"value\": -5000\n                    }\n                ]\n            },\n            \"action\": {\n                \"type\": \"exit_all\",\n                \"config\": {\n                    \"order_type\": \"MARKET\"\n                }\n            },\n            \"execution_mode\": \"auto\",\n            \"timeout_seconds\": 60,\n            \"timeout_action\": \"skip\"\n        },\n        {\n            \"id\": \"rule_2\",\n            \"name\": \"Profit Target Exit\",\n            \"enabled\": true,\n            \"priority\": 2,\n            \"trigger\": {\n                \"logic\": \"OR\",\n                \"conditions\": [\n                    {\n                        \"id\": \"trig_2\",\n                        \"variable\": \"STRATEGY.PNL\",\n                        \"operator\": \"greater_than\",\n                        \"value\": 8000\n                    }\n                ]\n            },\n            \"action\": {\n                \"type\": \"exit_all\",\n                \"config\": {\n                    \"order_type\": \"MARKET\"\n                }\n            },\n            \"execution_mode\": \"auto\",\n            \"timeout_seconds\": 60,\n            \"timeout_action\": \"skip\"\n        },\n        {\n            \"id\": \"rule_3\",\n            \"name\": \"Time Exit\",\n            \"enabled\": true,\n            \"priority\": 3,\n            \"trigger\": {\n                \"logic\": \"OR\",\n                \"conditions\": [\n                    {\n                        \"id\": \"trig_3\",\n                        \"variable\": \"TIME.CURRENT\",\n                        \"operator\": \"greater_than\",\n                        \"value\": \"15:15\"\n                    }\n                ]\n            },\n            \"action\": {\n                \"type\": \"exit_all\",\n                \"config\": {\n                    \"order_type\": \"MARKET\"\n                }\n            },\n            \"execution_mode\": \"auto\",\n            \"timeout_seconds\": 60,\n            \"timeout_action\": \"execute\"\n        }\n    ],\n    \"order_settings\": {\n        \"order_type\": \"MARKET\",\n        \"execution_style\": \"sequential\",\n        \"leg_sequence\": [\"leg_1\", \"leg_3\", \"leg_2\", \"leg_4\"],\n        \"delay_between_legs\": 2,\n        \"slippage_protection\": {\n            \"enabled\": true,\n            \"max_per_leg_pct\": 2.0,\n            \"max_total_pct\": 5.0,\n            \"on_exceed\": \"retry\",\n            \"max_retries\": 3\n        },\n        \"on_leg_failure\": \"stop\"\n    },\n    \"risk_settings\": {\n        \"max_loss\": 10000,\n        \"max_loss_pct\": null,\n        \"trailing_stop\": {\n            \"enabled\": false\n        },\n        \"max_margin\": 200000,\n        \"time_stop\": \"15:20\"\n    },\n    \"schedule_config\": {\n        \"activation_mode\": \"always\",\n        \"active_days\": [\"MON\", \"TUE\", \"WED\", \"THU\", \"FRI\"],\n        \"start_time\": \"09:15\",\n        \"end_time\": \"15:30\",\n        \"expiry_days_only\": false\n    },\n    \"priority\": 100\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/strategies",
+							"host": ["{{base_url}}"],
+							"path": ["strategies"]
+						},
+						"description": "Create a new Iron Condor strategy with complete configuration."
+					},
+					"response": []
+				},
+				{
+					"name": "Create Strategy - Short Straddle",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 201', function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"var jsonData = pm.response.json();",
+									"if (jsonData.data && jsonData.data.id) {",
+									"    pm.collectionVariables.set('strategy_id', jsonData.data.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Short Straddle - Test\",\n    \"description\": \"ATM short straddle for high premium collection\",\n    \"underlying\": \"NIFTY\",\n    \"expiry_type\": \"current_week\",\n    \"lots\": 1,\n    \"position_type\": \"intraday\",\n    \"legs_config\": [\n        {\n            \"id\": \"leg_1\",\n            \"contract_type\": \"PE\",\n            \"transaction_type\": \"SELL\",\n            \"strike_selection\": {\n                \"mode\": \"atm_offset\",\n                \"offset\": 0\n            },\n            \"quantity_multiplier\": 1,\n            \"execution_order\": 1\n        },\n        {\n            \"id\": \"leg_2\",\n            \"contract_type\": \"CE\",\n            \"transaction_type\": \"SELL\",\n            \"strike_selection\": {\n                \"mode\": \"atm_offset\",\n                \"offset\": 0\n            },\n            \"quantity_multiplier\": 1,\n            \"execution_order\": 2\n        }\n    ],\n    \"entry_conditions\": {\n        \"logic\": \"AND\",\n        \"conditions\": [\n            {\n                \"id\": \"cond_1\",\n                \"enabled\": true,\n                \"variable\": \"TIME.CURRENT\",\n                \"operator\": \"greater_than\",\n                \"value\": \"09:20\"\n            },\n            {\n                \"id\": \"cond_2\",\n                \"enabled\": true,\n                \"variable\": \"VOLATILITY.VIX\",\n                \"operator\": \"greater_than\",\n                \"value\": 15\n            }\n        ]\n    },\n    \"adjustment_rules\": [\n        {\n            \"id\": \"rule_1\",\n            \"name\": \"Add Hedge on Movement\",\n            \"enabled\": true,\n            \"priority\": 1,\n            \"trigger\": {\n                \"logic\": \"OR\",\n                \"conditions\": [\n                    {\n                        \"id\": \"trig_1\",\n                        \"variable\": \"STRATEGY.PNL\",\n                        \"operator\": \"less_than\",\n                        \"value\": -4000\n                    }\n                ]\n            },\n            \"action\": {\n                \"type\": \"add_hedge\",\n                \"config\": {\n                    \"hedge_type\": \"both\",\n                    \"pe_strike\": {\n                        \"mode\": \"offset_from_spot\",\n                        \"offset\": -300\n                    },\n                    \"ce_strike\": {\n                        \"mode\": \"offset_from_spot\",\n                        \"offset\": 300\n                    },\n                    \"quantity_mode\": \"same_as_position\",\n                    \"max_cost\": 5000\n                }\n            },\n            \"execution_mode\": \"semi_auto\",\n            \"timeout_seconds\": 60,\n            \"timeout_action\": \"skip\",\n            \"max_executions\": 1\n        }\n    ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/strategies",
+							"host": ["{{base_url}}"],
+							"path": ["strategies"]
+						},
+						"description": "Create a short straddle strategy with hedge adjustment rule."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Strategy",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Strategy has required fields', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.data).to.have.property('id');",
+									"    pm.expect(jsonData.data).to.have.property('name');",
+									"    pm.expect(jsonData.data).to.have.property('status');",
+									"    pm.expect(jsonData.data).to.have.property('legs_config');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/strategies/{{strategy_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["strategies", "{{strategy_id}}"]
+						},
+						"description": "Get complete strategy details including runtime state."
+					},
+					"response": []
+				},
+				{
+					"name": "Update Strategy",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Strategy updated', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.message).to.include('updated');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Iron Condor Weekly - Updated\",\n    \"lots\": 2,\n    \"description\": \"Updated description via Postman\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/strategies/{{strategy_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["strategies", "{{strategy_id}}"]
+						},
+						"description": "Update strategy configuration. Only allowed for draft/paused strategies."
+					},
+					"response": []
+				},
+				{
+					"name": "Activate Strategy",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Strategy activated', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.data.status).to.equal('waiting');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"confirm\": true,\n    \"paper_trading\": false\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/strategies/{{strategy_id}}/activate",
+							"host": ["{{base_url}}"],
+							"path": ["strategies", "{{strategy_id}}", "activate"]
+						},
+						"description": "Activate a draft strategy to start monitoring entry conditions."
+					},
+					"response": []
+				},
+				{
+					"name": "Pause Strategy",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Strategy paused', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.data.status).to.equal('paused');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/strategies/{{strategy_id}}/pause",
+							"host": ["{{base_url}}"],
+							"path": ["strategies", "{{strategy_id}}", "pause"]
+						},
+						"description": "Pause an active strategy. Positions remain open."
+					},
+					"response": []
+				},
+				{
+					"name": "Resume Strategy",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/strategies/{{strategy_id}}/resume",
+							"host": ["{{base_url}}"],
+							"path": ["strategies", "{{strategy_id}}", "resume"]
+						},
+						"description": "Resume a paused strategy."
+					},
+					"response": []
+				},
+				{
+					"name": "Force Exit Strategy",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"confirm\": true,\n    \"exit_type\": \"market\",\n    \"reason\": \"Manual exit via Postman\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/strategies/{{strategy_id}}/exit",
+							"host": ["{{base_url}}"],
+							"path": ["strategies", "{{strategy_id}}", "exit"]
+						},
+						"description": "Immediately exit all positions and complete the strategy."
+					},
+					"response": []
+				},
+				{
+					"name": "Clone Strategy",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 201', function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test('Clone created', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.data.status).to.equal('draft');",
+									"    pm.expect(jsonData.data.cloned_from_id).to.not.be.null;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"new_name\": \"Iron Condor - Clone\",\n    \"reset_schedule\": true\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/strategies/{{strategy_id}}/clone",
+							"host": ["{{base_url}}"],
+							"path": ["strategies", "{{strategy_id}}", "clone"]
+						},
+						"description": "Create a copy of an existing strategy."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Condition States",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/strategies/{{strategy_id}}/conditions",
+							"host": ["{{base_url}}"],
+							"path": ["strategies", "{{strategy_id}}", "conditions"]
+						},
+						"description": "Get real-time condition evaluation states for progress bars."
+					},
+					"response": []
+				},
+				{
+					"name": "Confirm Pending Adjustment",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"action\": \"confirm\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/strategies/{{strategy_id}}/confirm",
+							"host": ["{{base_url}}"],
+							"path": ["strategies", "{{strategy_id}}", "confirm"]
+						},
+						"description": "Confirm, skip, or modify a pending semi-auto adjustment."
+					},
+					"response": []
+				},
+				{
+					"name": "Skip Pending Adjustment",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"action\": \"skip\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/strategies/{{strategy_id}}/confirm",
+							"host": ["{{base_url}}"],
+							"path": ["strategies", "{{strategy_id}}", "confirm"]
+						},
+						"description": "Skip a pending adjustment."
+					},
+					"response": []
+				},
+				{
+					"name": "Run Backtest",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"start_date\": \"2025-01-01\",\n    \"end_date\": \"2025-11-30\",\n    \"initial_capital\": 500000\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/strategies/{{strategy_id}}/backtest",
+							"host": ["{{base_url}}"],
+							"path": ["strategies", "{{strategy_id}}", "backtest"]
+						},
+						"description": "Run historical backtest on strategy configuration."
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Strategy",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 204', function () {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/strategies/{{strategy_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["strategies", "{{strategy_id}}"]
+						},
+						"description": "Delete a strategy. Only allowed for draft/completed/error strategies."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "📋 Orders",
+			"description": "Order history and management",
+			"item": [
+				{
+					"name": "List Orders",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"var jsonData = pm.response.json();",
+									"if (jsonData.data && jsonData.data.length > 0) {",
+									"    pm.collectionVariables.set('order_id', jsonData.data[0].id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/orders?page=1&page_size=50",
+							"host": ["{{base_url}}"],
+							"path": ["orders"],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "page_size",
+									"value": "50"
+								},
+								{
+									"key": "strategy_id",
+									"value": "{{strategy_id}}",
+									"disabled": true
+								},
+								{
+									"key": "status",
+									"value": "complete",
+									"disabled": true
+								},
+								{
+									"key": "purpose",
+									"value": "entry",
+									"disabled": true
+								},
+								{
+									"key": "start_date",
+									"value": "2025-12-01",
+									"disabled": true
+								},
+								{
+									"key": "end_date",
+									"value": "2025-12-08",
+									"disabled": true
+								}
+							]
+						},
+						"description": "Get paginated list of AutoPilot orders."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Order Details",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/orders/{{order_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["orders", "{{order_id}}"]
+						},
+						"description": "Get full details of a specific order."
+					},
+					"response": []
+				},
+				{
+					"name": "Export Orders (CSV)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/orders/export?start_date=2025-12-01&end_date=2025-12-08&format=csv",
+							"host": ["{{base_url}}"],
+							"path": ["orders", "export"],
+							"query": [
+								{
+									"key": "start_date",
+									"value": "2025-12-01"
+								},
+								{
+									"key": "end_date",
+									"value": "2025-12-08"
+								},
+								{
+									"key": "format",
+									"value": "csv"
+								},
+								{
+									"key": "strategy_id",
+									"value": "{{strategy_id}}",
+									"disabled": true
+								}
+							]
+						},
+						"description": "Export orders to CSV file."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "📝 Logs",
+			"description": "Activity logs and audit trail",
+			"item": [
+				{
+					"name": "List Logs",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/logs?page=1&page_size=50",
+							"host": ["{{base_url}}"],
+							"path": ["logs"],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "page_size",
+									"value": "50"
+								},
+								{
+									"key": "strategy_id",
+									"value": "{{strategy_id}}",
+									"disabled": true
+								},
+								{
+									"key": "event_type",
+									"value": "order_filled",
+									"disabled": true
+								},
+								{
+									"key": "severity",
+									"value": "error",
+									"disabled": true
+								},
+								{
+									"key": "search",
+									"value": "executed",
+									"disabled": true
+								}
+							]
+						},
+						"description": "Get paginated list of activity logs."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Log Details",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/logs/1",
+							"host": ["{{base_url}}"],
+							"path": ["logs", "1"]
+						},
+						"description": "Get full details of a specific log entry."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Log Stats",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/logs/stats?days=7",
+							"host": ["{{base_url}}"],
+							"path": ["logs", "stats"],
+							"query": [
+								{
+									"key": "days",
+									"value": "7"
+								}
+							]
+						},
+						"description": "Get log statistics and counts."
+					},
+					"response": []
+				},
+				{
+					"name": "Export Logs (CSV)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/logs/export?start_date=2025-12-01&end_date=2025-12-08",
+							"host": ["{{base_url}}"],
+							"path": ["logs", "export"],
+							"query": [
+								{
+									"key": "start_date",
+									"value": "2025-12-01"
+								},
+								{
+									"key": "end_date",
+									"value": "2025-12-08"
+								},
+								{
+									"key": "severity",
+									"value": "error",
+									"disabled": true
+								}
+							]
+						},
+						"description": "Export logs to CSV file."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "⚙️ Settings",
+			"description": "User settings management",
+			"item": [
+				{
+					"name": "Get Settings",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Settings have required fields', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.data).to.have.property('daily_loss_limit');",
+									"    pm.expect(jsonData.data).to.have.property('max_active_strategies');",
+									"    pm.expect(jsonData.data).to.have.property('notification_prefs');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/settings",
+							"host": ["{{base_url}}"],
+							"path": ["settings"]
+						},
+						"description": "Get user's AutoPilot settings."
+					},
+					"response": []
+				},
+				{
+					"name": "Update Settings",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Settings updated', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.message).to.include('updated');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"daily_loss_limit\": 25000,\n    \"per_strategy_loss_limit\": 10000,\n    \"max_capital_deployed\": 500000,\n    \"max_active_strategies\": 5,\n    \"no_trade_first_minutes\": 5,\n    \"no_trade_last_minutes\": 10,\n    \"cooldown_after_loss\": true,\n    \"cooldown_minutes\": 30,\n    \"cooldown_threshold\": 5000,\n    \"default_order_settings\": {\n        \"order_type\": \"MARKET\",\n        \"execution_style\": \"sequential\",\n        \"delay_between_legs\": 2,\n        \"slippage_protection\": true,\n        \"max_slippage_pct\": 2.0,\n        \"price_improvement\": false\n    },\n    \"notification_prefs\": {\n        \"enabled\": true,\n        \"channels\": [\"in_app\"],\n        \"frequency\": \"realtime\",\n        \"events\": {\n            \"entry_triggered\": true,\n            \"order_executed\": true,\n            \"adjustment_triggered\": true,\n            \"exit_executed\": true,\n            \"error\": true,\n            \"daily_summary\": true\n        }\n    },\n    \"paper_trading_mode\": false\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/settings",
+							"host": ["{{base_url}}"],
+							"path": ["settings"]
+						},
+						"description": "Update AutoPilot settings."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "📦 Templates",
+			"description": "Strategy templates management",
+			"item": [
+				{
+					"name": "List Templates",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"var jsonData = pm.response.json();",
+									"if (jsonData.data && jsonData.data.length > 0) {",
+									"    pm.collectionVariables.set('template_id', jsonData.data[0].id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/templates?page=1&page_size=20",
+							"host": ["{{base_url}}"],
+							"path": ["templates"],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "page_size",
+									"value": "20"
+								},
+								{
+									"key": "category",
+									"value": "iron_condor",
+									"disabled": true
+								},
+								{
+									"key": "risk_level",
+									"value": "moderate",
+									"disabled": true
+								},
+								{
+									"key": "is_public",
+									"value": "true",
+									"disabled": true
+								}
+							]
+						},
+						"description": "Get list of available strategy templates."
+					},
+					"response": []
+				},
+				{
+					"name": "Create Template",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 201', function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"var jsonData = pm.response.json();",
+									"if (jsonData.data && jsonData.data.id) {",
+									"    pm.collectionVariables.set('template_id', jsonData.data.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"My Custom Template\",\n    \"description\": \"Custom iron condor template with VIX filter\",\n    \"category\": \"iron_condor\",\n    \"tags\": [\"weekly\", \"vix_filter\", \"custom\"],\n    \"risk_level\": \"moderate\",\n    \"is_public\": false,\n    \"strategy_config\": {\n        \"underlying\": \"NIFTY\",\n        \"expiry_type\": \"current_week\",\n        \"lots\": 1,\n        \"position_type\": \"intraday\",\n        \"legs_config\": [\n            {\n                \"id\": \"leg_1\",\n                \"contract_type\": \"PE\",\n                \"transaction_type\": \"SELL\",\n                \"strike_selection\": {\"mode\": \"atm_offset\", \"offset\": -200},\n                \"quantity_multiplier\": 1,\n                \"execution_order\": 1\n            },\n            {\n                \"id\": \"leg_2\",\n                \"contract_type\": \"PE\",\n                \"transaction_type\": \"BUY\",\n                \"strike_selection\": {\"mode\": \"atm_offset\", \"offset\": -400},\n                \"quantity_multiplier\": 1,\n                \"execution_order\": 2\n            },\n            {\n                \"id\": \"leg_3\",\n                \"contract_type\": \"CE\",\n                \"transaction_type\": \"SELL\",\n                \"strike_selection\": {\"mode\": \"atm_offset\", \"offset\": 200},\n                \"quantity_multiplier\": 1,\n                \"execution_order\": 3\n            },\n            {\n                \"id\": \"leg_4\",\n                \"contract_type\": \"CE\",\n                \"transaction_type\": \"BUY\",\n                \"strike_selection\": {\"mode\": \"atm_offset\", \"offset\": 400},\n                \"quantity_multiplier\": 1,\n                \"execution_order\": 4\n            }\n        ],\n        \"entry_conditions\": {\n            \"logic\": \"AND\",\n            \"conditions\": [\n                {\"id\": \"c1\", \"enabled\": true, \"variable\": \"TIME.CURRENT\", \"operator\": \"greater_than\", \"value\": \"09:20\"},\n                {\"id\": \"c2\", \"enabled\": true, \"variable\": \"VOLATILITY.VIX\", \"operator\": \"between\", \"value\": [13, 18]}\n            ]\n        },\n        \"adjustment_rules\": []\n    }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/templates",
+							"host": ["{{base_url}}"],
+							"path": ["templates"]
+						},
+						"description": "Create a new strategy template."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Template",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/templates/{{template_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["templates", "{{template_id}}"]
+						},
+						"description": "Get template details including strategy_config."
+					},
+					"response": []
+				},
+				{
+					"name": "Update Template",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"My Custom Template - Updated\",\n    \"description\": \"Updated description\",\n    \"is_public\": true\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/templates/{{template_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["templates", "{{template_id}}"]
+						},
+						"description": "Update a template you own."
+					},
+					"response": []
+				},
+				{
+					"name": "Rate Template",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"rating\": 5\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/templates/{{template_id}}/rate",
+							"host": ["{{base_url}}"],
+							"path": ["templates", "{{template_id}}", "rate"]
+						},
+						"description": "Rate a public template (1-5 stars)."
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Template",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/templates/{{template_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["templates", "{{template_id}}"]
+						},
+						"description": "Delete a template you own."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "🚨 Emergency",
+			"description": "Emergency controls - USE WITH CAUTION!",
+			"item": [
+				{
+					"name": "⚠️ KILL SWITCH",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"// This is a dangerous operation!",
+									"// Make sure you really want to execute this",
+									"console.warn('⚠️ KILL SWITCH - This will:');",
+									"console.warn('  1. Pause ALL active strategies');",
+									"console.warn('  2. Cancel ALL pending orders');",
+									"console.warn('  3. Exit ALL open positions at MARKET price');",
+									"console.warn('');",
+									"console.warn('This action CANNOT be undone!');"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Kill switch executed', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.data).to.have.property('strategies_paused');",
+									"    pm.expect(jsonData.data).to.have.property('positions_closed');",
+									"    pm.expect(jsonData.data).to.have.property('success');",
+									"});",
+									"",
+									"console.log('Kill Switch Result:');",
+									"console.log(pm.response.json());"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"confirm_text\": \"STOP\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/kill-switch",
+							"host": ["{{base_url}}"],
+							"path": ["kill-switch"]
+						},
+						"description": "🚨 EMERGENCY STOP\n\nThis will:\n1. Pause ALL active AutoPilot strategies\n2. Cancel ALL pending orders\n3. Exit ALL open positions at MARKET price\n\n⚠️ THIS ACTION CANNOT BE UNDONE!\n\nYou must send confirm_text=\"STOP\" to execute."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "🧪 Test Scenarios",
+			"description": "Pre-built test scenarios for common workflows",
+			"item": [
+				{
+					"name": "Scenario: Create & Activate Strategy",
+					"item": [
+						{
+							"name": "1. Create Strategy",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Strategy created', function () {",
+											"    pm.response.to.have.status(201);",
+											"    var jsonData = pm.response.json();",
+											"    pm.collectionVariables.set('test_strategy_id', jsonData.data.id);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"Test Scenario Strategy\",\n    \"underlying\": \"NIFTY\",\n    \"expiry_type\": \"current_week\",\n    \"lots\": 1,\n    \"legs_config\": [\n        {\n            \"id\": \"leg_1\",\n            \"contract_type\": \"PE\",\n            \"transaction_type\": \"SELL\",\n            \"strike_selection\": {\"mode\": \"atm_offset\", \"offset\": -200},\n            \"quantity_multiplier\": 1,\n            \"execution_order\": 1\n        },\n        {\n            \"id\": \"leg_2\",\n            \"contract_type\": \"CE\",\n            \"transaction_type\": \"SELL\",\n            \"strike_selection\": {\"mode\": \"atm_offset\", \"offset\": 200},\n            \"quantity_multiplier\": 1,\n            \"execution_order\": 2\n        }\n    ],\n    \"entry_conditions\": {\n        \"logic\": \"AND\",\n        \"conditions\": [\n            {\"id\": \"c1\", \"enabled\": true, \"variable\": \"TIME.CURRENT\", \"operator\": \"greater_than\", \"value\": \"09:20\"}\n        ]\n    },\n    \"adjustment_rules\": []\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/strategies",
+									"host": ["{{base_url}}"],
+									"path": ["strategies"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "2. Verify Draft Status",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Strategy is in draft', function () {",
+											"    pm.response.to.have.status(200);",
+											"    var jsonData = pm.response.json();",
+											"    pm.expect(jsonData.data.status).to.equal('draft');",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/strategies/{{test_strategy_id}}",
+									"host": ["{{base_url}}"],
+									"path": ["strategies", "{{test_strategy_id}}"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "3. Activate Strategy",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Strategy activated', function () {",
+											"    pm.response.to.have.status(200);",
+											"    var jsonData = pm.response.json();",
+											"    pm.expect(jsonData.data.status).to.equal('waiting');",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"confirm\": true,\n    \"paper_trading\": true\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/strategies/{{test_strategy_id}}/activate",
+									"host": ["{{base_url}}"],
+									"path": ["strategies", "{{test_strategy_id}}", "activate"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "4. Check Dashboard",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Strategy appears in dashboard', function () {",
+											"    pm.response.to.have.status(200);",
+											"    var jsonData = pm.response.json();",
+											"    pm.expect(jsonData.data.waiting_strategies).to.be.at.least(1);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/dashboard/summary",
+									"host": ["{{base_url}}"],
+									"path": ["dashboard", "summary"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "5. Cleanup - Delete Strategy",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"// First pause the strategy before deleting"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/strategies/{{test_strategy_id}}",
+									"host": ["{{base_url}}"],
+									"path": ["strategies", "{{test_strategy_id}}"]
+								}
+							},
+							"response": []
+						}
+					]
+				}
+			]
+		}
+	]
+}

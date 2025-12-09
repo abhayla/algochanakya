@@ -30,8 +30,9 @@ A complete, auto-updating test suite for all 8 screens with full coverage (happy
 | Option Chain | 11 | 7 | 5 | 7 | 7 | **37** |
 | Strategy Builder | 11 | 10 | 8 | 9 | 9 | **47** |
 | Strategy Library | 25 | 20 | 15 | 20 | 9 | **89** |
+| AutoPilot | TBD | TBD | TBD | TBD | TBD | **TBD** |
 | Integration | - | - | - | 3 | - | **3** |
-| **Frontend Total** | **82** | **60** | **45** | **53** | **50** | **290** |
+| **Frontend Total** | **82+** | **60+** | **45+** | **53+** | **50+** | **290+** |
 
 ### Backend Tests (pytest)
 
@@ -242,11 +243,17 @@ tests/e2e/
       strategy.edge.spec.js
       strategy.visual.spec.js
       strategy.api.spec.js
-    strategylibrary/              # NEW - Strategy Library specs
+    strategylibrary/              # Strategy Library specs
       strategylibrary.happy.spec.js
       strategylibrary.edge.spec.js
       strategylibrary.visual.spec.js
       strategylibrary.api.spec.js
+    autopilot/                    # AutoPilot specs (NEW)
+      autopilot.happy.spec.js
+      autopilot.edge.spec.js
+      autopilot.visual.spec.js
+      autopilot.api.spec.js
+      autopilot.websocket.spec.js
     positions/
       positions.happy.spec.js
       positions.edge.spec.js
@@ -272,6 +279,19 @@ backend/tests/
   test_strategy_wizard_api.py    # All API endpoints
   test_strategy_validation.py    # Legs config, strategy characteristics
   test_strategy_integration.py   # Full flows, concurrent requests
+
+tests/backend/autopilot/         # AutoPilot backend tests (NEW)
+  test_autopilot_strategies.py   # Strategy CRUD, activation
+  test_autopilot_orders.py       # Order execution, slippage
+  test_autopilot_logs.py         # Activity logging
+  test_autopilot_settings.py     # User settings CRUD
+```
+
+### API Testing (Postman)
+
+```
+tests/postman/
+  autopilot-collection.json      # AutoPilot API test collection (NEW)
 ```
 
 ---
@@ -585,7 +605,8 @@ npm run test:specs:watchlist
 npm run test:specs:optionchain
 npm run test:specs:strategy
 npm run test:specs:positions
-npm run test:specs:strategylibrary   # NEW
+npm run test:specs:strategylibrary
+npm run test:specs:autopilot         # AutoPilot tests (NEW)
 
 # Run tests by type
 npm run test:happy        # All happy path tests (@happy)

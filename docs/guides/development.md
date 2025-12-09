@@ -173,8 +173,24 @@ npm install package-name
 
 See [Troubleshooting Guide](./troubleshooting.md) for common issues.
 
+## AutoPilot Setup
+
+After completing the basic setup, if you're working on the AutoPilot feature:
+
+```bash
+# Run AutoPilot database migration
+cd backend
+alembic upgrade head  # Includes 001_autopilot_initial.py
+
+# Import Postman collection for API testing
+# File: tests/postman/autopilot-collection.json
+```
+
+See [AutoPilot Documentation](../autopilot/README.md) for complete specs.
+
 ## Next Steps
 
 - [Database Setup Details](./database-setup.md) - Advanced database configuration
 - [Testing Guide](../testing/README.md) - E2E test architecture
 - [Architecture Overview](../architecture/overview.md) - System design
+- [AutoPilot Docs](../autopilot/README.md) - Auto-execution system specs

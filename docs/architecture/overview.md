@@ -20,10 +20,10 @@ AlgoChanakya is an options trading platform (similar to Sensibull) built with Fa
 │  │  Login   │ │Dashboard │ │Watchlist │ │ Option   │           │
 │  │  View    │ │  View    │ │  View    │ │  Chain   │           │
 │  └──────────┘ └──────────┘ └──────────┘ └──────────┘           │
-│  ┌──────────┐ ┌──────────┐                                      │
-│  │Strategy  │ │Positions │  Pinia Stores │ Vue Router          │
-│  │ Builder  │ │  View    │                                      │
-│  └──────────┘ └──────────┘                                      │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐                         │
+│  │Strategy  │ │Positions │ │AutoPilot │  Pinia Stores          │
+│  │ Builder  │ │  View    │ │  Views   │  Vue Router            │
+│  └──────────┘ └──────────┘ └──────────┘                         │
 └──────────────────────────────┬──────────────────────────────────┘
                                │ HTTP/WebSocket
 ┌──────────────────────────────▼──────────────────────────────────┐
@@ -69,6 +69,17 @@ backend/
 │   │   ├── orders.py        # Basket orders, positions
 │   │   ├── positions.py     # F&O positions, exit/add
 │   │   └── websocket.py     # Live price streaming
+│   │
+│   ├── api/v1/autopilot/    # AutoPilot API (v1)
+│   │   ├── strategies.py    # AutoPilot strategy CRUD
+│   │   ├── dashboard.py     # Dashboard summary, activity
+│   │   ├── orders.py        # AutoPilot order history
+│   │   ├── logs.py          # Activity logs
+│   │   ├── settings.py      # User settings
+│   │   └── templates.py     # Strategy templates
+│   │
+│   ├── websocket/           # WebSocket handlers
+│   │   └── autopilot.py     # AutoPilot real-time updates
 │   │
 │   ├── models/              # SQLAlchemy ORM models
 │   │   ├── users.py
@@ -118,12 +129,25 @@ frontend/
 │   │   ├── WatchlistView.vue
 │   │   ├── OptionChainView.vue
 │   │   ├── StrategyBuilderView.vue
-│   │   └── PositionsView.vue
+│   │   ├── PositionsView.vue
+│   │   └── autopilot/       # AutoPilot views
+│   │       ├── DashboardView.vue
+│   │       ├── StrategyBuilderView.vue
+│   │       ├── StrategyDetailView.vue
+│   │       └── SettingsView.vue
 │   │
-│   └── components/          # Reusable components
-│       ├── layout/          # KiteLayout, KiteHeader
-│       ├── watchlist/       # Watchlist components
-│       └── strategy/        # Strategy builder components
+│   ├── components/          # Reusable components
+│   │   ├── layout/          # KiteLayout, KiteHeader
+│   │   ├── watchlist/       # Watchlist components
+│   │   ├── strategy/        # Strategy builder components
+│   │   └── autopilot/       # AutoPilot components
+│   │       ├── dashboard/   # Dashboard widgets
+│   │       ├── strategy/    # Strategy list/cards
+│   │       ├── builder/     # Builder form widgets
+│   │       └── common/      # Shared components
+│   │
+│   └── composables/
+│       └── autopilot/       # AutoPilot composables
 │
 ├── package.json
 └── vite.config.js

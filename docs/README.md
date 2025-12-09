@@ -33,6 +33,13 @@ docs/
 │   ├── strategy-library.md  # Pre-built strategies with AI wizard
 │   └── positions.md    # F&O positions management
 │
+├── autopilot/          # AutoPilot auto-execution system
+│   ├── README.md       # Overview and architecture
+│   ├── ui-ux-design.md # Screens, wireframes, user flows
+│   ├── component-design.md  # Vue.js 3 component specs
+│   ├── database-schema.md   # PostgreSQL tables, triggers
+│   └── api-contracts.md     # FastAPI endpoints, Pydantic models
+│
 ├── api/                # API documentation
 │   ├── README.md       # API overview
 │   └── openapi.yaml    # OpenAPI specification
@@ -77,6 +84,7 @@ docs/
 - **[Strategy Builder](features/strategy-builder.md)** - P/L calculator, payoff charts
 - **[Strategy Library](features/strategy-library.md)** - Pre-built strategies with AI wizard
 - **[Positions](features/positions.md)** - F&O positions with live P&L
+- **[AutoPilot](autopilot/README.md)** - Auto-execution with conditional entry, adjustments, risk management
 
 ## API
 

@@ -17,6 +17,7 @@ AlgoChanakya is an options trading platform (similar to Sensibull) built with Fa
 - [API Reference](docs/api/) - Endpoint documentation
 - [Guides](docs/guides/) - Setup and troubleshooting
 - [Testing](docs/testing/) - E2E test architecture
+- [AutoPilot](docs/autopilot/) - Auto-execution system specs
 
 ## Development Commands
 
@@ -265,6 +266,43 @@ Pre-built strategy templates with AI-powered recommendations:
 
 4. **Seeding Templates:** `backend/scripts/seed_strategies.py` - Seeds 20+ strategy templates
 
+### AutoPilot (Auto-Execution System)
+
+Automated strategy execution with conditional entry, adjustments, and risk management:
+
+1. **Database Tables (`backend/alembic/versions/001_autopilot_initial.py`):**
+   - `autopilot_strategies` - Strategy configurations with entry conditions, adjustment rules
+   - `autopilot_orders` - Order history with slippage tracking
+   - `autopilot_logs` - Activity logs with event types and severity
+   - `autopilot_templates` - Pre-built strategy templates
+   - `autopilot_user_settings` - User risk limits and preferences
+   - `autopilot_daily_summary` - Daily P&L and execution stats
+   - `autopilot_condition_eval` - Condition evaluation snapshots
+
+2. **AutoPilot API (`backend/app/api/v1/autopilot/`):**
+   - `GET/POST /api/v1/autopilot/strategies` - Strategy CRUD
+   - `POST /api/v1/autopilot/strategies/{id}/activate` - Start monitoring
+   - `POST /api/v1/autopilot/strategies/{id}/pause` - Pause strategy
+   - `POST /api/v1/autopilot/strategies/{id}/exit` - Force exit all positions
+   - `GET /api/v1/autopilot/dashboard/summary` - Dashboard overview
+   - `GET /api/v1/autopilot/orders` - Order history
+   - `GET /api/v1/autopilot/logs` - Activity logs
+   - `POST /api/v1/autopilot/kill-switch` - Emergency stop all
+
+3. **Frontend (`frontend/src/views/autopilot/`):**
+   - `DashboardView.vue` - Active strategies, P&L summary, activity feed
+   - `StrategyBuilderView.vue` - Visual strategy configuration
+   - `StrategyDetailView.vue` - Real-time monitoring, condition progress
+   - `SettingsView.vue` - Risk limits, notifications, preferences
+
+4. **Frontend Components (`frontend/src/components/autopilot/`):**
+   - `dashboard/` - Summary cards, activity feed, risk gauges
+   - `strategy/` - Strategy list, status badges, action buttons
+   - `builder/` - Condition builder, leg configurator, schedule picker
+   - `common/` - Shared widgets, confirmation dialogs
+
+5. **Documentation:** See [docs/autopilot/README.md](docs/autopilot/README.md) for complete specs
+
 ### Key Backend Files
 
 - `app/main.py` - FastAPI app initialization, CORS, lifespan events
@@ -319,6 +357,11 @@ Pre-built strategy templates with AI-powered recommendations:
 - `/strategies` - Strategy Library with templates and wizard
 - `/strategy/:id` - Load saved strategy by ID
 - `/strategy/shared/:shareCode` - Public access for shared strategies (no auth required)
+- `/autopilot` - AutoPilot dashboard with active strategies
+- `/autopilot/strategies/new` - Create new AutoPilot strategy
+- `/autopilot/strategies/:id` - Strategy detail with real-time monitoring
+- `/autopilot/settings` - User settings and risk limits
+- `/autopilot/templates` - Pre-built AutoPilot templates
 
 ### Environment Variables
 
