@@ -88,3 +88,7 @@ images/
 # Root logo files (copies in frontend/src/assets/)
 AngelOne Logo.png
 Kite Logo.png
+
+# Temporary requirements files
+backend/requirements_clean.txt
+backend/requirements_fixed.txt

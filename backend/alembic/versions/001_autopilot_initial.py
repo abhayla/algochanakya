@@ -186,9 +186,9 @@ def upgrade() -> None:
         sa.Column('category', sa.String(50), nullable=True),
         sa.Column('tags', postgresql.ARRAY(sa.String(50)), default=[]),
         sa.Column('risk_level', sa.String(20), nullable=True),
-        sa.Column('usage_count', sa.Integer(), nullable=False, default=0),
+        sa.Column('usage_count', sa.Integer(), nullable=False, server_default='0'),
         sa.Column('avg_rating', sa.Numeric(3, 2), nullable=True),
-        sa.Column('rating_count', sa.Integer(), nullable=False, default=0),
+        sa.Column('rating_count', sa.Integer(), nullable=False, server_default='0'),
         sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
         sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
         sa.CheckConstraint('avg_rating IS NULL OR (avg_rating >= 1 AND avg_rating <= 5)', name='chk_template_rating')
@@ -490,12 +490,9 @@ def upgrade() -> None:
     op.create_index('idx_autopilot_logs_severity', 'autopilot_logs', ['severity'],
                     postgresql_where=sa.text("severity IN ('error', 'critical')"))
     
-    # Partial index for recent logs
-    op.execute("""
-        CREATE INDEX idx_autopilot_logs_recent 
-        ON autopilot_logs(user_id, strategy_id, created_at DESC)
-        WHERE created_at > NOW() - INTERVAL '7 days'
-    """)
+    # Index for recent logs lookup (without partial predicate since NOW() is not immutable)
+    op.create_index('idx_autopilot_logs_recent', 'autopilot_logs',
+                    ['user_id', 'strategy_id', sa.text('created_at DESC')])
     
     # GIN index for event_data
     op.create_index('idx_autopilot_logs_data', 'autopilot_logs', ['event_data'],
@@ -843,7 +840,7 @@ def upgrade() -> None:
         );
     """)
     
-    print("✅ AutoPilot migration completed successfully!")
+    print("AutoPilot migration completed successfully!")
     print("   - 7 tables created")
     print("   - 9 enum types created")
     print("   - 25+ indexes created")
