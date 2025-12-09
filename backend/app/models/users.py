@@ -1,6 +1,7 @@
 import uuid
 from sqlalchemy import Column, String, DateTime
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
 
@@ -14,6 +15,10 @@ class User(Base):
     email = Column(String, unique=True, nullable=True, index=True)  # Can be null for broker-only users
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     last_login = Column(DateTime(timezone=True), nullable=True)
+
+    # AutoPilot relationships
+    autopilot_settings = relationship("AutoPilotUserSettings", back_populates="user", uselist=False)
+    autopilot_strategies = relationship("AutoPilotStrategy", back_populates="user")
 
     def __repr__(self):
         return f"<User {self.id} email={self.email}>"

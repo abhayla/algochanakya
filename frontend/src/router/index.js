@@ -72,6 +72,37 @@ const router = createRouter({
       component: () => import('../views/StrategyLibraryView.vue'),
       meta: { requiresAuth: true },
     },
+    // AutoPilot routes
+    {
+      path: '/autopilot',
+      name: 'AutoPilot',
+      component: () => import('../views/autopilot/DashboardView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/autopilot/strategies/new',
+      name: 'AutoPilotStrategyBuilder',
+      component: () => import('../views/autopilot/StrategyBuilderView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/autopilot/strategies/:id',
+      name: 'AutoPilotStrategyDetail',
+      component: () => import('../views/autopilot/StrategyDetailView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/autopilot/strategies/:id/edit',
+      name: 'AutoPilotStrategyEdit',
+      component: () => import('../views/autopilot/StrategyBuilderView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/autopilot/settings',
+      name: 'AutoPilotSettings',
+      component: () => import('../views/autopilot/SettingsView.vue'),
+      meta: { requiresAuth: true },
+    },
   ],
 })
 

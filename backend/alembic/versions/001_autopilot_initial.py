@@ -16,7 +16,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers
 revision = '001_autopilot_initial'
-down_revision = None  # Change this to your last migration ID if you have existing migrations
+down_revision = '2af9b0ff566c'  # Points to the last existing migration
 branch_labels = None
 depends_on = None
 
@@ -177,7 +177,7 @@ def upgrade() -> None:
     op.create_table(
         'autopilot_templates',
         sa.Column('id', sa.BigInteger(), primary_key=True, autoincrement=True),
-        sa.Column('user_id', sa.BigInteger(), sa.ForeignKey('users.id', ondelete='SET NULL'), nullable=True),
+        sa.Column('user_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('users.id', ondelete='SET NULL'), nullable=True),
         sa.Column('name', sa.String(100), nullable=False),
         sa.Column('description', sa.String(1000), nullable=True),
         sa.Column('is_system', sa.Boolean(), nullable=False, default=False),
@@ -209,7 +209,7 @@ def upgrade() -> None:
     op.create_table(
         'autopilot_user_settings',
         sa.Column('id', sa.BigInteger(), primary_key=True, autoincrement=True),
-        sa.Column('user_id', sa.BigInteger(), sa.ForeignKey('users.id', ondelete='CASCADE'), nullable=False, unique=True),
+        sa.Column('user_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('users.id', ondelete='CASCADE'), nullable=False, unique=True),
         
         # Risk Limits
         sa.Column('daily_loss_limit', sa.Numeric(12, 2), nullable=False, default=20000.00),
@@ -259,7 +259,7 @@ def upgrade() -> None:
     op.create_table(
         'autopilot_strategies',
         sa.Column('id', sa.BigInteger(), primary_key=True, autoincrement=True),
-        sa.Column('user_id', sa.BigInteger(), sa.ForeignKey('users.id', ondelete='CASCADE'), nullable=False),
+        sa.Column('user_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('users.id', ondelete='CASCADE'), nullable=False),
         
         # Basic Info
         sa.Column('name', sa.String(100), nullable=False),
@@ -346,7 +346,7 @@ def upgrade() -> None:
         'autopilot_orders',
         sa.Column('id', sa.BigInteger(), primary_key=True, autoincrement=True),
         sa.Column('strategy_id', sa.BigInteger(), sa.ForeignKey('autopilot_strategies.id', ondelete='CASCADE'), nullable=False),
-        sa.Column('user_id', sa.BigInteger(), sa.ForeignKey('users.id', ondelete='CASCADE'), nullable=False),
+        sa.Column('user_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('users.id', ondelete='CASCADE'), nullable=False),
         
         # Broker Reference
         sa.Column('kite_order_id', sa.String(50), nullable=True),
@@ -443,7 +443,7 @@ def upgrade() -> None:
     op.create_table(
         'autopilot_logs',
         sa.Column('id', sa.BigInteger(), primary_key=True, autoincrement=True),
-        sa.Column('user_id', sa.BigInteger(), sa.ForeignKey('users.id', ondelete='CASCADE'), nullable=False),
+        sa.Column('user_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('users.id', ondelete='CASCADE'), nullable=False),
         sa.Column('strategy_id', sa.BigInteger(), sa.ForeignKey('autopilot_strategies.id', ondelete='SET NULL'), nullable=True),
         sa.Column('order_id', sa.BigInteger(), sa.ForeignKey('autopilot_orders.id', ondelete='SET NULL'), nullable=True),
         
@@ -541,7 +541,7 @@ def upgrade() -> None:
     op.create_table(
         'autopilot_daily_summary',
         sa.Column('id', sa.BigInteger(), primary_key=True, autoincrement=True),
-        sa.Column('user_id', sa.BigInteger(), sa.ForeignKey('users.id', ondelete='CASCADE'), nullable=False),
+        sa.Column('user_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('users.id', ondelete='CASCADE'), nullable=False),
         sa.Column('summary_date', sa.Date(), nullable=False),
         
         # Strategy Counts
