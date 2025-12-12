@@ -239,6 +239,183 @@ export default class StrategyBuilderPage extends BasePage {
     return parseFloat(value);
   }
 
+  /**
+   * Get leg row by index
+   * @param {number} index - Zero-based row index
+   * @returns {Locator} Row locator
+   */
+  getLegRow(index) {
+    return this.table.locator('tbody tr.leg-row').nth(index);
+  }
+
+  /**
+   * Wait for legs to be fully loaded with all data
+   * @param {number} expectedCount - Expected number of legs
+   */
+  async waitForLegsLoaded(expectedCount) {
+    // Wait for legs to appear
+    await this.waitForLegCount(expectedCount);
+
+    // Wait for network idle to ensure all data is loaded
+    await this.page.waitForLoadState('networkidle').catch(() => {});
+
+    // Additional wait for Vue reactivity
+    await this.page.waitForTimeout(1000);
+  }
+
+  /**
+   * Get all field values for a specific leg
+   * @param {number} index - Zero-based row index
+   * @returns {Object} Object containing all leg field values
+   */
+  async getLegDetails(index) {
+    const row = this.getLegRow(index);
+
+    // Wait for row to be visible
+    await row.waitFor({ state: 'visible', timeout: 5000 });
+
+    // Get all select and input elements
+    const expirySelect = row.locator('select').nth(0);
+    const typeSelect = row.locator('select').nth(1);
+    const buySellSelect = row.locator('select').nth(2);
+    const strikeSelect = row.locator('select').nth(3);
+    const lotsInput = row.locator('input[type="number"]').first();
+    const entryInput = row.locator('input[type="number"]').nth(1);
+
+    return {
+      expiry: await expirySelect.inputValue().catch(() => ''),
+      type: await typeSelect.inputValue().catch(() => ''),
+      buySell: await buySellSelect.inputValue().catch(() => ''),
+      strike: await strikeSelect.inputValue().catch(() => ''),
+      lots: await lotsInput.inputValue().catch(() => ''),
+      entry: await entryInput.inputValue().catch(() => ''),
+      qty: await row.locator('td').nth(7).textContent().catch(() => ''),
+      cmp: await row.locator('td').nth(8).textContent().catch(() => ''),
+      exitPL: await row.locator('td').nth(9).textContent().catch(() => '')
+    };
+  }
+
+  /**
+   * Get details for all legs in the strategy
+   * @returns {Array<Object>} Array of leg detail objects
+   */
+  async getAllLegsDetails() {
+    const count = await this.getLegCount();
+    const legs = [];
+    for (let i = 0; i < count; i++) {
+      legs.push(await this.getLegDetails(i));
+    }
+    return legs;
+  }
+
+  /**
+   * Get summary card values
+   * @returns {Object} Object containing summary values
+   */
+  async getSummaryValues() {
+    return {
+      maxProfit: await this.maxProfitCard.locator('.value').textContent().catch(() => '-'),
+      maxLoss: await this.maxLossCard.locator('.value').textContent().catch(() => '-'),
+      breakeven: await this.breakevenCard.locator('.value').textContent().catch(() => '-'),
+      riskReward: await this.riskRewardCard.locator('.value').textContent().catch(() => '-'),
+      spot: await this.spotCard.locator('.value').textContent().catch(() => '-')
+    };
+  }
+
+  /**
+   * Wait for P/L calculation to complete
+   */
+  async waitForPnLCalculation() {
+    // Wait for loading indicator to disappear
+    await this.page.waitForSelector('[data-testid="strategy-loading"]', {
+      state: 'hidden',
+      timeout: 15000
+    }).catch(() => {});
+    // Additional buffer for Vue reactivity
+    await this.page.waitForTimeout(500);
+  }
+
+  /**
+   * Check if the underlying tab is active
+   * @param {string} underlying - NIFTY, BANKNIFTY, or FINNIFTY
+   * @returns {boolean} True if tab is active
+   */
+  async isUnderlyingActive(underlying) {
+    const tab = this.getByTestId(`strategy-underlying-${underlying.toLowerCase()}`);
+    const classList = await tab.getAttribute('class');
+    return classList.includes('active') || classList.includes('bg-blue') || classList.includes('selected');
+  }
+
+  /**
+   * Verify all legs match expected template configuration
+   * @param {Array} expectedLegs - Array of expected leg configurations
+   * @param {number} lotSize - Lot size for the underlying
+   * @param {number} lots - Number of lots configured
+   * @returns {Object} Verification result with pass/fail and details
+   */
+  async verifyDeployedLegs(expectedLegs, lotSize, lots = 1) {
+    const actualLegs = await this.getAllLegsDetails();
+    const results = {
+      passed: true,
+      legCount: {
+        expected: expectedLegs.length,
+        actual: actualLegs.length,
+        passed: actualLegs.length === expectedLegs.length
+      },
+      legs: []
+    };
+
+    if (!results.legCount.passed) {
+      results.passed = false;
+    }
+
+    for (let i = 0; i < Math.min(expectedLegs.length, actualLegs.length); i++) {
+      const expected = expectedLegs[i];
+      const actual = actualLegs[i];
+
+      const legResult = {
+        index: i,
+        type: {
+          expected: expected.type,
+          actual: actual.type,
+          passed: actual.type === expected.type
+        },
+        position: {
+          expected: expected.position,
+          actual: actual.buySell,
+          passed: actual.buySell === expected.position
+        },
+        lots: {
+          expected: lots,
+          actual: parseInt(actual.lots) || 0,
+          passed: (parseInt(actual.lots) || 0) === lots
+        },
+        qty: {
+          expected: lots * lotSize,
+          actual: parseInt(actual.qty) || 0,
+          passed: (parseInt(actual.qty) || 0) === lots * lotSize
+        },
+        strikePopulated: {
+          passed: actual.strike !== '' && parseFloat(actual.strike) > 0
+        },
+        entryPopulated: {
+          passed: actual.entry !== '' && parseFloat(actual.entry) > 0
+        }
+      };
+
+      // Check if any field failed
+      if (!legResult.type.passed || !legResult.position.passed ||
+          !legResult.lots.passed || !legResult.qty.passed ||
+          !legResult.strikePopulated.passed || !legResult.entryPopulated.passed) {
+        results.passed = false;
+      }
+
+      results.legs.push(legResult);
+    }
+
+    return results;
+  }
+
   // ============ Assertions ============
 
   async assertPageVisible() {

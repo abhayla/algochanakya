@@ -15,6 +15,8 @@
     "test:specs:strategy": "playwright test tests/e2e/specs/strategy/",
     "test:specs:positions": "playwright test tests/e2e/specs/positions/",
     "test:specs:strategylibrary": "playwright test tests/e2e/specs/strategylibrary/",
+    "test:specs:deploy": "playwright test tests/e2e/specs/strategylibrary/strategylibrary.deploy.*.spec.js",
+    "test:deploy": "playwright test --grep @deploy",
     "test:specs:navigation": "playwright test tests/e2e/specs/navigation/",
     "test:specs:autopilot": "playwright test tests/e2e/specs/autopilot/",
     "test:autopilot:fast": "playwright test tests/e2e/specs/autopilot/ --timeout=15000 --workers=4",
