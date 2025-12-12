@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import api from '../services/api'
+import { fetchLegLTP as fetchLegLTPFromAPI } from '@/composables/usePriceFallback'
 
 export const useStrategyStore = defineStore('strategy', () => {
   // State
@@ -623,29 +624,9 @@ export const useStrategyStore = defineStore('strategy', () => {
     // Skip if we already have live price for this token
     if (livePrices.value[leg.instrument_token]?.ltp) return
 
-    try {
-      // Use /orders/ltp endpoint which calls Kite API
-      // Format: NFO:TRADINGSYMBOL (e.g., NFO:NIFTY25DEC23750PE)
-      const instrument = `NFO:${leg.tradingsymbol}`
-      const response = await api.get('/api/orders/ltp', {
-        params: {
-          instruments: instrument
-        }
-      })
-
-      // Response format: { "NFO:NIFTY25DEC23750PE": { "instrument_token": 123, "last_price": 100.5 } }
-      if (response.data && response.data[instrument]) {
-        const data = response.data[instrument]
-        livePrices.value[leg.instrument_token] = {
-          ltp: data.last_price,
-          change: 0,
-          change_percent: 0
-        }
-      }
-    } catch (e) {
-      // Silently fail - WebSocket is the primary source
-      console.debug('fetchLegLTP failed:', e.message)
-    }
+    await fetchLegLTPFromAPI(leg, (token, tick) => {
+      livePrices.value[token] = tick
+    })
   }
 
   // Add leg from Option Chain

@@ -202,6 +202,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useWatchlistStore } from '../stores/watchlist'
 import KiteLayout from '../components/layout/KiteLayout.vue'
+import { fetchWatchlistPrices } from '@/composables/usePriceFallback'
 
 const store = useWatchlistStore()
 
@@ -328,6 +329,17 @@ onMounted(async () => {
     store.subscribeToTokens([256265, 260105], 'quote')
   }, 1000)
   document.addEventListener('click', handleClickOutside)
+
+  // Fallback: fetch prices via API if WebSocket data not available after 2s
+  setTimeout(() => {
+    const hasData = instruments.value.some(inst => inst.tick?.ltp)
+    if (!hasData && store.activeWatchlist?.instruments) {
+      fetchWatchlistPrices(
+        store.activeWatchlist.instruments,
+        (token, tick) => store.updateTick(token, tick)
+      )
+    }
+  }, 2000)
 })
 
 onUnmounted(() => {

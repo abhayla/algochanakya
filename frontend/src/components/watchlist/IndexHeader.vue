@@ -41,8 +41,9 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useWatchlistStore } from '../../stores/watchlist'
+import { fetchIndexPrices } from '@/composables/usePriceFallback'
 
 const store = useWatchlistStore()
 
@@ -94,4 +95,13 @@ const formatPercent = (percent) => {
   const sign = percent >= 0 ? '+' : ''
   return sign + percent.toFixed(2) + '%'
 }
+
+// Fallback: fetch index prices via API if WebSocket data not available after 2s
+onMounted(() => {
+  setTimeout(() => {
+    if (!niftyTick.value?.ltp) {
+      fetchIndexPrices((token, tick) => store.updateTick(token, tick))
+    }
+  }, 2000)
+})
 </script>

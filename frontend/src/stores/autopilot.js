@@ -5,6 +5,7 @@
  */
 import { defineStore } from 'pinia'
 import api from '@/services/api'
+import { fetchLegLTP as fetchLegLTPFromAPI } from '@/composables/usePriceFallback'
 
 export const useAutopilotStore = defineStore('autopilot', {
   state: () => ({
@@ -17,6 +18,9 @@ export const useAutopilotStore = defineStore('autopilot', {
 
     // Settings
     settings: null,
+
+    // Activity logs
+    recentLogs: [],
 
     // UI State
     loading: false,
@@ -42,7 +46,23 @@ export const useAutopilotStore = defineStore('autopilot', {
       step: 1,
       strategy: createEmptyStrategy(),
       validation: {}
-    }
+    },
+
+    // Options data for leg configuration
+    expiries: [],
+    strikes: {},  // { expiry_date: [strike1, strike2, ...] }
+    livePrices: {},  // { instrument_token: { ltp, change, change_percent } }
+
+    // Lot sizes per underlying
+    lotSizes: {
+      'NIFTY': 75,
+      'BANKNIFTY': 15,
+      'FINNIFTY': 25,
+      'SENSEX': 10
+    },
+
+    // Leg selection for bulk actions
+    selectedLegIndices: []
   }),
 
   getters: {
@@ -72,6 +92,15 @@ export const useAutopilotStore = defineStore('autopilot', {
       const active = state.dashboardSummary.active_strategies +
                      state.dashboardSummary.waiting_strategies
       return active < state.settings.max_active_strategies
+    },
+
+    // Leg configuration getters
+    lotSize: (state) => state.lotSizes[state.builder.strategy.underlying] || 75,
+
+    totalQty: (state) => {
+      const legs = state.builder.strategy.legs_config
+      const lotSize = state.lotSizes[state.builder.strategy.underlying] || 75
+      return legs.reduce((sum, leg) => sum + ((leg.lots || 1) * lotSize), 0)
     }
   },
 
@@ -334,6 +363,244 @@ export const useAutopilotStore = defineStore('autopilot', {
     },
 
     // ========================================================================
+    // KILL SWITCH (Phase 3 Enhanced)
+    // ========================================================================
+
+    async activateKillSwitch() {
+      this.saving = true
+      this.error = null
+
+      try {
+        const response = await api.post('/api/v1/autopilot/kill-switch')
+        // Refresh strategies after kill switch
+        await this.fetchStrategies()
+        await this.fetchDashboardSummary()
+        return response.data.data
+      } catch (error) {
+        this.error = error.response?.data?.detail || error.message
+        throw error
+      } finally {
+        this.saving = false
+      }
+    },
+
+    async getKillSwitchStatus() {
+      try {
+        const response = await api.get('/api/v1/autopilot/kill-switch/status')
+        return response.data.data
+      } catch (error) {
+        this.error = error.response?.data?.detail || error.message
+        throw error
+      }
+    },
+
+    async triggerKillSwitch(reason = null, force = false) {
+      this.saving = true
+      this.error = null
+
+      try {
+        const response = await api.post('/api/v1/autopilot/kill-switch/trigger', {
+          reason,
+          force
+        })
+        // Refresh strategies after kill switch
+        await this.fetchStrategies()
+        await this.fetchDashboardSummary()
+        return response.data.data
+      } catch (error) {
+        this.error = error.response?.data?.detail || error.message
+        throw error
+      } finally {
+        this.saving = false
+      }
+    },
+
+    async resetKillSwitch() {
+      this.saving = true
+      this.error = null
+
+      try {
+        const response = await api.post('/api/v1/autopilot/kill-switch/reset')
+        await this.fetchDashboardSummary()
+        return response.data.data
+      } catch (error) {
+        this.error = error.response?.data?.detail || error.message
+        throw error
+      } finally {
+        this.saving = false
+      }
+    },
+
+    // ========================================================================
+    // CONFIRMATIONS (Phase 3)
+    // ========================================================================
+
+    async fetchPendingConfirmations(strategyId = null) {
+      try {
+        const params = strategyId ? { strategy_id: strategyId } : {}
+        const response = await api.get('/api/v1/autopilot/confirmations', { params })
+        return response.data.data || []
+      } catch (error) {
+        this.error = error.response?.data?.detail || error.message
+        throw error
+      }
+    },
+
+    async confirmAction(confirmationId) {
+      this.saving = true
+      this.error = null
+
+      try {
+        const response = await api.post(`/api/v1/autopilot/confirmations/${confirmationId}/confirm`)
+        return response.data.data
+      } catch (error) {
+        this.error = error.response?.data?.detail || error.message
+        throw error
+      } finally {
+        this.saving = false
+      }
+    },
+
+    async rejectAction(confirmationId, reason = null) {
+      this.saving = true
+      this.error = null
+
+      try {
+        const response = await api.post(`/api/v1/autopilot/confirmations/${confirmationId}/reject`, {
+          reason
+        })
+        return response.data.data
+      } catch (error) {
+        this.error = error.response?.data?.detail || error.message
+        throw error
+      } finally {
+        this.saving = false
+      }
+    },
+
+    // ========================================================================
+    // ADJUSTMENTS (Phase 3)
+    // ========================================================================
+
+    async triggerManualAdjustment(strategyId, action, description = null, executionMode = 'auto') {
+      this.saving = true
+      this.error = null
+
+      try {
+        const response = await api.post(`/api/v1/autopilot/strategies/${strategyId}/adjust`, {
+          action,
+          description,
+          execution_mode: executionMode
+        })
+        return response.data.data
+      } catch (error) {
+        this.error = error.response?.data?.detail || error.message
+        throw error
+      } finally {
+        this.saving = false
+      }
+    },
+
+    async fetchAdjustmentHistory(strategyId, page = 1, pageSize = 20) {
+      try {
+        const response = await api.get(`/api/v1/autopilot/strategies/${strategyId}/adjustments`, {
+          params: { page, page_size: pageSize }
+        })
+        return response.data
+      } catch (error) {
+        this.error = error.response?.data?.detail || error.message
+        throw error
+      }
+    },
+
+    // ========================================================================
+    // TRAILING STOP (Phase 3)
+    // ========================================================================
+
+    async fetchTrailingStopStatus(strategyId) {
+      try {
+        const response = await api.get(`/api/v1/autopilot/strategies/${strategyId}/trailing-stop`)
+        return response.data.data
+      } catch (error) {
+        this.error = error.response?.data?.detail || error.message
+        throw error
+      }
+    },
+
+    async updateTrailingStopConfig(strategyId, config) {
+      this.saving = true
+      this.error = null
+
+      try {
+        const response = await api.put(`/api/v1/autopilot/strategies/${strategyId}/trailing-stop`, config)
+        return response.data.data
+      } catch (error) {
+        this.error = error.response?.data?.detail || error.message
+        throw error
+      } finally {
+        this.saving = false
+      }
+    },
+
+    // ========================================================================
+    // POSITION SIZING (Phase 3)
+    // ========================================================================
+
+    async calculatePositionSize(request) {
+      try {
+        const response = await api.post('/api/v1/autopilot/position-sizing/calculate', request)
+        return response.data.data
+      } catch (error) {
+        this.error = error.response?.data?.detail || error.message
+        throw error
+      }
+    },
+
+    // ========================================================================
+    // GREEKS (Phase 3)
+    // ========================================================================
+
+    async fetchStrategyGreeks(strategyId) {
+      try {
+        const response = await api.get(`/api/v1/autopilot/strategies/${strategyId}/greeks`)
+        return response.data.data
+      } catch (error) {
+        this.error = error.response?.data?.detail || error.message
+        throw error
+      }
+    },
+
+    async calculateGreeks(legs, spotPrice) {
+      try {
+        const response = await api.post('/api/v1/autopilot/greeks/calculate', legs, {
+          params: { spot_price: spotPrice }
+        })
+        return response.data.data
+      } catch (error) {
+        this.error = error.response?.data?.detail || error.message
+        throw error
+      }
+    },
+
+    // ========================================================================
+    // LOGS
+    // ========================================================================
+
+    async fetchRecentLogs(limit = 10) {
+      try {
+        const response = await api.get('/api/v1/autopilot/logs', {
+          params: { limit }
+        })
+        this.recentLogs = response.data.data || []
+        return this.recentLogs
+      } catch (error) {
+        // Non-critical, don't show error
+        console.error('Failed to fetch logs:', error)
+        return []
+      }
+    },
+
+    // ========================================================================
     // BUILDER
     // ========================================================================
 
@@ -400,6 +667,111 @@ export const useAutopilotStore = defineStore('autopilot', {
     },
 
     // ========================================================================
+    // LEG OPTIONS DATA
+    // ========================================================================
+
+    async fetchExpiries() {
+      const underlying = this.builder.strategy.underlying
+      try {
+        const response = await api.get(`/api/options/expiries?underlying=${underlying}`)
+        this.expiries = response.data.expiries
+        // Pre-fetch strikes for first expiry
+        if (this.expiries.length > 0) {
+          await this.fetchStrikes(this.expiries[0])
+        }
+      } catch (error) {
+        console.error('Failed to fetch expiries:', error)
+        this.expiries = []
+      }
+    },
+
+    async fetchStrikes(expiry) {
+      const underlying = this.builder.strategy.underlying
+      try {
+        const response = await api.get(`/api/options/strikes?underlying=${underlying}&expiry=${expiry}`)
+        this.strikes[expiry] = response.data.strikes.map(s => parseFloat(s))
+      } catch (error) {
+        console.error('Failed to fetch strikes:', error)
+        this.strikes[expiry] = []
+      }
+    },
+
+    async fetchInstrumentToken(expiry, strike, contractType) {
+      const underlying = this.builder.strategy.underlying
+      try {
+        const response = await api.get('/api/options/instrument', {
+          params: { underlying, expiry, strike, contract_type: contractType }
+        })
+        return {
+          instrument_token: response.data.instrument_token,
+          tradingsymbol: response.data.tradingsymbol
+        }
+      } catch (error) {
+        console.error('Failed to fetch instrument token:', error)
+        return { instrument_token: null, tradingsymbol: null }
+      }
+    },
+
+    async fetchLegLTP(leg) {
+      if (!leg.instrument_token || !leg.tradingsymbol) return
+      if (this.livePrices[leg.instrument_token]?.ltp) return
+
+      await fetchLegLTPFromAPI(leg, (token, tick) => {
+        this.livePrices[token] = tick
+      })
+    },
+
+    updateLivePrices(prices) {
+      prices.forEach(p => {
+        this.livePrices[p.token] = {
+          ltp: p.ltp,
+          change: p.change,
+          change_percent: p.change_percent
+        }
+      })
+    },
+
+    getLegCMP(leg) {
+      if (!leg.instrument_token) return null
+      return this.livePrices[leg.instrument_token]?.ltp || null
+    },
+
+    getLegExitPnL(leg) {
+      const cmp = this.getLegCMP(leg)
+      if (cmp === null || !leg.entry_price) return null
+      const qty = (leg.lots || 1) * this.lotSize
+      const multiplier = leg.transaction_type === 'BUY' ? 1 : -1
+      return (cmp - parseFloat(leg.entry_price)) * qty * multiplier
+    },
+
+    // ========================================================================
+    // LEG SELECTION
+    // ========================================================================
+
+    toggleLegSelection(index) {
+      const idx = this.selectedLegIndices.indexOf(index)
+      if (idx > -1) {
+        this.selectedLegIndices.splice(idx, 1)
+      } else {
+        this.selectedLegIndices.push(index)
+      }
+    },
+
+    selectAllLegs() {
+      this.selectedLegIndices = this.builder.strategy.legs_config.map((_, i) => i)
+    },
+
+    deselectAllLegs() {
+      this.selectedLegIndices = []
+    },
+
+    removeSelectedLegs() {
+      const sorted = [...this.selectedLegIndices].sort((a, b) => b - a)
+      sorted.forEach(i => this.builder.strategy.legs_config.splice(i, 1))
+      this.selectedLegIndices = []
+    },
+
+    // ========================================================================
     // HELPERS
     // ========================================================================
 
@@ -423,6 +795,573 @@ export const useAutopilotStore = defineStore('autopilot', {
 
     clearError() {
       this.error = null
+    },
+
+    // ========================================================================
+    // PHASE 4: TEMPLATES
+    // ========================================================================
+
+    async fetchTemplates(options = {}) {
+      this.loading = true
+      this.error = null
+
+      try {
+        const params = {
+          page: options.page || 1,
+          page_size: options.pageSize || 20,
+          category: options.category || null,
+          underlying: options.underlying || null,
+          market_outlook: options.marketOutlook || null,
+          risk_level: options.riskLevel || null,
+          search: options.search || null
+        }
+
+        // Remove null values
+        Object.keys(params).forEach(key => {
+          if (params[key] === null) delete params[key]
+        })
+
+        const response = await api.get('/api/v1/autopilot/templates', { params })
+        return response.data
+      } catch (error) {
+        this.error = error.response?.data?.detail || error.message
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async fetchTemplate(id) {
+      this.loading = true
+      this.error = null
+
+      try {
+        const response = await api.get(`/api/v1/autopilot/templates/${id}`)
+        return response.data.data
+      } catch (error) {
+        this.error = error.response?.data?.detail || error.message
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async fetchTemplateCategories() {
+      try {
+        const response = await api.get('/api/v1/autopilot/templates/categories')
+        return response.data.data
+      } catch (error) {
+        this.error = error.response?.data?.detail || error.message
+        throw error
+      }
+    },
+
+    async fetchPopularTemplates(limit = 10) {
+      try {
+        const response = await api.get('/api/v1/autopilot/templates/popular', {
+          params: { limit }
+        })
+        return response.data.data
+      } catch (error) {
+        this.error = error.response?.data?.detail || error.message
+        throw error
+      }
+    },
+
+    async deployTemplate(templateId, options = {}) {
+      this.saving = true
+      this.error = null
+
+      try {
+        const response = await api.post(`/api/v1/autopilot/templates/${templateId}/deploy`, options)
+        const newStrategy = response.data.data
+
+        // Add to strategies list
+        this.strategies.unshift(newStrategy)
+
+        return newStrategy
+      } catch (error) {
+        this.error = error.response?.data?.detail || error.message
+        throw error
+      } finally {
+        this.saving = false
+      }
+    },
+
+    async createTemplate(templateData) {
+      this.saving = true
+      this.error = null
+
+      try {
+        const response = await api.post('/api/v1/autopilot/templates', templateData)
+        return response.data.data
+      } catch (error) {
+        this.error = error.response?.data?.detail || error.message
+        throw error
+      } finally {
+        this.saving = false
+      }
+    },
+
+    async rateTemplate(templateId, rating, review = null) {
+      this.saving = true
+      this.error = null
+
+      try {
+        const response = await api.post(`/api/v1/autopilot/templates/${templateId}/rate`, {
+          rating,
+          review
+        })
+        return response.data.data
+      } catch (error) {
+        this.error = error.response?.data?.detail || error.message
+        throw error
+      } finally {
+        this.saving = false
+      }
+    },
+
+    // ========================================================================
+    // PHASE 4: TRADE JOURNAL
+    // ========================================================================
+
+    async fetchJournalTrades(options = {}) {
+      this.loading = true
+      this.error = null
+
+      try {
+        const params = {
+          page: options.page || 1,
+          page_size: options.pageSize || 20,
+          start_date: options.startDate || null,
+          end_date: options.endDate || null,
+          underlying: options.underlying || null,
+          exit_reason: options.exitReason || null,
+          tags: options.tags ? options.tags.join(',') : null,
+          is_open: options.isOpen,
+          min_pnl: options.minPnl || null,
+          max_pnl: options.maxPnl || null
+        }
+
+        // Remove null/undefined values
+        Object.keys(params).forEach(key => {
+          if (params[key] === null || params[key] === undefined) delete params[key]
+        })
+
+        const response = await api.get('/api/v1/autopilot/journal', { params })
+        return response.data
+      } catch (error) {
+        this.error = error.response?.data?.detail || error.message
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async fetchJournalTrade(tradeId) {
+      this.loading = true
+      this.error = null
+
+      try {
+        const response = await api.get(`/api/v1/autopilot/journal/${tradeId}`)
+        return response.data.data
+      } catch (error) {
+        this.error = error.response?.data?.detail || error.message
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async fetchJournalStats(options = {}) {
+      try {
+        const params = {
+          start_date: options.startDate || null,
+          end_date: options.endDate || null
+        }
+
+        Object.keys(params).forEach(key => {
+          if (params[key] === null) delete params[key]
+        })
+
+        const response = await api.get('/api/v1/autopilot/journal/stats', { params })
+        return response.data.data
+      } catch (error) {
+        this.error = error.response?.data?.detail || error.message
+        throw error
+      }
+    },
+
+    async updateJournalTrade(tradeId, updates) {
+      this.saving = true
+      this.error = null
+
+      try {
+        const response = await api.put(`/api/v1/autopilot/journal/${tradeId}`, updates)
+        return response.data.data
+      } catch (error) {
+        this.error = error.response?.data?.detail || error.message
+        throw error
+      } finally {
+        this.saving = false
+      }
+    },
+
+    async updateTradeNotes(tradeId, notes) {
+      return this.updateJournalTrade(tradeId, { notes })
+    },
+
+    async exportJournalTrades(options = {}) {
+      this.loading = true
+      this.error = null
+
+      try {
+        const params = {
+          start_date: options.startDate || null,
+          end_date: options.endDate || null,
+          underlying: options.underlying || null,
+          exit_reason: options.exitReason || null,
+          format: options.format || 'csv'
+        }
+
+        Object.keys(params).forEach(key => {
+          if (params[key] === null) delete params[key]
+        })
+
+        const response = await api.get('/api/v1/autopilot/journal/export', { params })
+        return response.data.data
+      } catch (error) {
+        this.error = error.response?.data?.detail || error.message
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    // ========================================================================
+    // PHASE 4: ANALYTICS
+    // ========================================================================
+
+    async fetchAnalyticsPerformance(period = '30d', underlying = null) {
+      this.loading = true
+      this.error = null
+
+      try {
+        const params = { period }
+        if (underlying) params.underlying = underlying
+
+        const response = await api.get('/api/v1/autopilot/analytics/performance', { params })
+        return response.data.data
+      } catch (error) {
+        this.error = error.response?.data?.detail || error.message
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async fetchDailyPnL(options = {}) {
+      try {
+        const params = {
+          start_date: options.startDate || null,
+          end_date: options.endDate || null
+        }
+
+        Object.keys(params).forEach(key => {
+          if (params[key] === null) delete params[key]
+        })
+
+        const response = await api.get('/api/v1/autopilot/analytics/daily-pnl', { params })
+        return response.data.data
+      } catch (error) {
+        this.error = error.response?.data?.detail || error.message
+        throw error
+      }
+    },
+
+    async fetchAnalyticsByStrategy(period = '30d') {
+      try {
+        const response = await api.get('/api/v1/autopilot/analytics/by-strategy', {
+          params: { period }
+        })
+        return response.data.data
+      } catch (error) {
+        this.error = error.response?.data?.detail || error.message
+        throw error
+      }
+    },
+
+    async fetchAnalyticsByWeekday(period = '30d') {
+      try {
+        const response = await api.get('/api/v1/autopilot/analytics/by-weekday', {
+          params: { period }
+        })
+        return response.data.data
+      } catch (error) {
+        this.error = error.response?.data?.detail || error.message
+        throw error
+      }
+    },
+
+    async fetchDrawdownAnalysis(period = '30d') {
+      try {
+        const response = await api.get('/api/v1/autopilot/analytics/drawdown', {
+          params: { period }
+        })
+        return response.data.data
+      } catch (error) {
+        this.error = error.response?.data?.detail || error.message
+        throw error
+      }
+    },
+
+    // ========================================================================
+    // PHASE 4: REPORTS
+    // ========================================================================
+
+    async fetchReports(options = {}) {
+      this.loading = true
+      this.error = null
+
+      try {
+        const params = {
+          page: options.page || 1,
+          page_size: options.pageSize || 20,
+          report_type: options.reportType || null
+        }
+
+        Object.keys(params).forEach(key => {
+          if (params[key] === null) delete params[key]
+        })
+
+        const response = await api.get('/api/v1/autopilot/reports', { params })
+        return response.data
+      } catch (error) {
+        this.error = error.response?.data?.detail || error.message
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async fetchReport(reportId) {
+      this.loading = true
+      this.error = null
+
+      try {
+        const response = await api.get(`/api/v1/autopilot/reports/${reportId}`)
+        return response.data.data
+      } catch (error) {
+        this.error = error.response?.data?.detail || error.message
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async generateReport(reportData) {
+      this.saving = true
+      this.error = null
+
+      try {
+        const response = await api.post('/api/v1/autopilot/reports/generate', reportData)
+        return response.data.data
+      } catch (error) {
+        this.error = error.response?.data?.detail || error.message
+        throw error
+      } finally {
+        this.saving = false
+      }
+    },
+
+    async deleteReport(reportId) {
+      this.saving = true
+      this.error = null
+
+      try {
+        await api.delete(`/api/v1/autopilot/reports/${reportId}`)
+        return true
+      } catch (error) {
+        this.error = error.response?.data?.detail || error.message
+        throw error
+      } finally {
+        this.saving = false
+      }
+    },
+
+    async fetchTaxSummary(financialYear) {
+      this.loading = true
+      this.error = null
+
+      try {
+        const response = await api.get(`/api/v1/autopilot/reports/tax-summary/${financialYear}`)
+        return response.data.data
+      } catch (error) {
+        this.error = error.response?.data?.detail || error.message
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    // ========================================================================
+    // PHASE 4: BACKTESTS
+    // ========================================================================
+
+    async fetchBacktests(options = {}) {
+      this.loading = true
+      this.error = null
+
+      try {
+        const params = {
+          page: options.page || 1,
+          page_size: options.pageSize || 20,
+          status: options.status || null
+        }
+
+        Object.keys(params).forEach(key => {
+          if (params[key] === null) delete params[key]
+        })
+
+        const response = await api.get('/api/v1/autopilot/backtests', { params })
+        return response.data
+      } catch (error) {
+        this.error = error.response?.data?.detail || error.message
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async fetchBacktest(backtestId) {
+      this.loading = true
+      this.error = null
+
+      try {
+        const response = await api.get(`/api/v1/autopilot/backtests/${backtestId}`)
+        return response.data.data
+      } catch (error) {
+        this.error = error.response?.data?.detail || error.message
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async createBacktest(backtestData) {
+      this.saving = true
+      this.error = null
+
+      try {
+        const response = await api.post('/api/v1/autopilot/backtests', backtestData)
+        return response.data.data
+      } catch (error) {
+        this.error = error.response?.data?.detail || error.message
+        throw error
+      } finally {
+        this.saving = false
+      }
+    },
+
+    async cancelBacktest(backtestId) {
+      this.saving = true
+      this.error = null
+
+      try {
+        const response = await api.post(`/api/v1/autopilot/backtests/${backtestId}/cancel`)
+        return response.data.data
+      } catch (error) {
+        this.error = error.response?.data?.detail || error.message
+        throw error
+      } finally {
+        this.saving = false
+      }
+    },
+
+    async deleteBacktest(backtestId) {
+      this.saving = true
+      this.error = null
+
+      try {
+        await api.delete(`/api/v1/autopilot/backtests/${backtestId}`)
+        return true
+      } catch (error) {
+        this.error = error.response?.data?.detail || error.message
+        throw error
+      } finally {
+        this.saving = false
+      }
+    },
+
+    // ========================================================================
+    // PHASE 4: STRATEGY SHARING
+    // ========================================================================
+
+    async shareStrategy(strategyId, shareMode = 'link') {
+      this.saving = true
+      this.error = null
+
+      try {
+        const response = await api.post(`/api/v1/autopilot/strategies/${strategyId}/share`, {
+          share_mode: shareMode
+        })
+        return response.data.data
+      } catch (error) {
+        this.error = error.response?.data?.detail || error.message
+        throw error
+      } finally {
+        this.saving = false
+      }
+    },
+
+    async unshareStrategy(strategyId) {
+      this.saving = true
+      this.error = null
+
+      try {
+        await api.delete(`/api/v1/autopilot/strategies/${strategyId}/share`)
+        return true
+      } catch (error) {
+        this.error = error.response?.data?.detail || error.message
+        throw error
+      } finally {
+        this.saving = false
+      }
+    },
+
+    async fetchSharedStrategy(shareToken) {
+      this.loading = true
+      this.error = null
+
+      try {
+        const response = await api.get(`/api/v1/autopilot/shared/${shareToken}`)
+        return response.data.data
+      } catch (error) {
+        this.error = error.response?.data?.detail || error.message
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async cloneSharedStrategy(shareToken, options = {}) {
+      this.saving = true
+      this.error = null
+
+      try {
+        const response = await api.post(`/api/v1/autopilot/shared/${shareToken}/clone`, options)
+        const newStrategy = response.data.data
+
+        // Add to strategies list
+        this.strategies.unshift(newStrategy)
+
+        return newStrategy
+      } catch (error) {
+        this.error = error.response?.data?.detail || error.message
+        throw error
+      } finally {
+        this.saving = false
+      }
     }
   }
 })

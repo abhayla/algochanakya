@@ -48,6 +48,25 @@
           :class="['nav-item', { active: isActive(item.path) }]"
           :data-testid="`kite-header-nav-${item.path.slice(1)}`"
         >
+          <!-- Robot icon for AutoPilot -->
+          <svg
+            v-if="item.icon === 'robot'"
+            class="nav-icon"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <rect x="3" y="11" width="18" height="10" rx="2"/>
+            <circle cx="12" cy="5" r="2"/>
+            <path d="M12 7v4"/>
+            <circle cx="8" cy="16" r="1"/>
+            <circle cx="16" cy="16" r="1"/>
+          </svg>
           {{ item.label }}
         </router-link>
       </nav>
@@ -110,6 +129,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { useWatchlistStore } from '@/stores/watchlist';
+import { fetchIndexPrices } from '@/composables/usePriceFallback';
 
 const route = useRoute();
 const router = useRouter();
@@ -124,7 +144,7 @@ const navItems = [
   { path: '/strategy', label: 'Strategy' },
   { path: '/positions', label: 'Positions' },
   { path: '/strategies', label: 'Strategies' },
-  { path: '/watchlist', label: 'Watchlist' },
+  { path: '/autopilot', label: 'AutoPilot', icon: 'robot' },
 ];
 
 const indexTicks = computed(() => watchlistStore.indexTicks);
@@ -184,6 +204,14 @@ const logout = async () => {
 
 onMounted(() => {
   document.addEventListener('click', closeDropdown);
+
+  // Fetch index prices via API as initial data (fallback for WebSocket)
+  // Wait a bit for WebSocket to potentially connect first
+  setTimeout(() => {
+    if (!indexTicks.value.nifty50?.ltp) {
+      fetchIndexPrices((token, tick) => watchlistStore.updateTick(token, tick));
+    }
+  }, 2000);
 });
 
 onUnmounted(() => {
@@ -300,12 +328,19 @@ onUnmounted(() => {
 }
 
 .nav-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   padding: 8px 16px;
   font-size: 13px;
   color: #6c757d;
   text-decoration: none;
   border-radius: 3px;
   transition: all 0.15s ease;
+}
+
+.nav-icon {
+  flex-shrink: 0;
 }
 
 .nav-item:hover {
