@@ -25,9 +25,9 @@ async def get_user_from_token(token: str) -> str:
             settings.JWT_SECRET,
             algorithms=[settings.JWT_ALGORITHM]
         )
-        user_id = payload.get("sub")
+        user_id = payload.get("user_id")
         if user_id is None:
-            raise ValueError("Invalid token: no subject")
+            raise ValueError("Invalid token: no user_id")
         return str(user_id)
     except JWTError as e:
         raise ValueError(f"Token validation failed: {e}")
