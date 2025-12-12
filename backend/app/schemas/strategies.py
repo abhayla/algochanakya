@@ -99,6 +99,7 @@ class StrategyUpdate(BaseModel):
     """Schema for updating a strategy."""
     name: Optional[str] = Field(None, max_length=100)
     status: Optional[StrategyStatus] = None
+    legs: Optional[List[StrategyLegCreate]] = None
 
 
 class StrategyResponse(StrategyBase):

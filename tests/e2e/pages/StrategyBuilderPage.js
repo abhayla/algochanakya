@@ -63,6 +63,13 @@ export default class StrategyBuilderPage extends BasePage {
   get riskRewardCard() { return this.getByTestId('strategy-risk-reward-card'); }
   get spotCard() { return this.getByTestId('strategy-spot-card'); }
 
+  // Modals
+  get validationModal() { return this.getByTestId('strategy-validation-modal'); }
+  get validationOkButton() { return this.getByTestId('strategy-validation-ok'); }
+  get underlyingConfirmModal() { return this.getByTestId('strategy-underlying-confirm-modal'); }
+  get underlyingCancelButton() { return this.getByTestId('strategy-underlying-cancel'); }
+  get underlyingConfirmButton() { return this.getByTestId('strategy-underlying-confirm'); }
+
   // ============ Actions ============
 
   async navigate() {
@@ -452,5 +459,41 @@ export default class StrategyBuilderPage extends BasePage {
 
   async assertLoading() {
     await this.assertVisible('strategy-loading');
+  }
+
+  // Modal interactions
+  async isValidationModalVisible() {
+    return await this.validationModal.isVisible();
+  }
+
+  async getValidationErrors() {
+    await this.validationModal.waitFor({ state: 'visible' });
+    const errorList = this.validationModal.locator('ul.error-list li');
+    return await errorList.allTextContents();
+  }
+
+  async closeValidationModal() {
+    await this.validationOkButton.click();
+    await this.validationModal.waitFor({ state: 'hidden' });
+  }
+
+  async isUnderlyingConfirmModalVisible() {
+    return await this.underlyingConfirmModal.isVisible();
+  }
+
+  async confirmUnderlyingChange() {
+    await this.underlyingConfirmButton.click();
+    await this.underlyingConfirmModal.waitFor({ state: 'hidden' });
+  }
+
+  async cancelUnderlyingChange() {
+    await this.underlyingCancelButton.click();
+    await this.underlyingConfirmModal.waitFor({ state: 'hidden' });
+  }
+
+  async waitForPnLUpdate() {
+    // Wait for loading indicator to appear and disappear
+    // This indicates P/L calculation has completed
+    await this.page.waitForTimeout(500); // Brief delay for calculation to trigger
   }
 }

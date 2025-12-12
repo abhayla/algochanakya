@@ -10,7 +10,7 @@
                 v-for="u in ['NIFTY', 'BANKNIFTY', 'FINNIFTY']"
                 :key="u"
                 :class="['underlying-tab', { active: strategyStore.underlying === u }]"
-                @click="strategyStore.setUnderlying(u)"
+                @click="handleUnderlyingChange(u)"
                 :data-testid="'strategy-underlying-' + u.toLowerCase()"
               >
                 {{ u }}
@@ -552,6 +552,55 @@
           </div>
         </div>
       </div>
+
+      <!-- Validation Error Modal -->
+      <div v-if="showValidationModal" class="modal-overlay" data-testid="strategy-validation-modal">
+        <div class="modal-content">
+          <h3 class="modal-title">Validation Error</h3>
+          <div class="modal-text">
+            <p>Please fix the following errors before saving:</p>
+            <ul class="error-list">
+              <li v-for="(error, index) in validationErrors" :key="index">{{ error }}</li>
+            </ul>
+          </div>
+          <div class="modal-actions">
+            <button
+              @click="showValidationModal = false"
+              class="strategy-btn strategy-btn-primary"
+              data-testid="strategy-validation-ok"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Underlying Change Confirmation Modal -->
+      <div v-if="showUnderlyingConfirm" class="modal-overlay" data-testid="strategy-underlying-confirm-modal">
+        <div class="modal-content">
+          <h3 class="modal-title">Change Underlying?</h3>
+          <p class="modal-text">
+            Changing underlying will clear all {{ strategyStore.legs.length }} leg(s).
+            This action cannot be undone.
+          </p>
+          <div class="modal-actions">
+            <button
+              @click="cancelUnderlyingChange"
+              class="strategy-btn strategy-btn-outline"
+              data-testid="strategy-underlying-cancel"
+            >
+              Cancel
+            </button>
+            <button
+              @click="confirmUnderlyingChange"
+              class="strategy-btn strategy-btn-primary"
+              data-testid="strategy-underlying-confirm"
+            >
+              Change Underlying
+            </button>
+          </div>
+        </div>
+      </div>
     </div><!-- End strategy-page -->
   </KiteLayout>
 </template>
@@ -593,6 +642,14 @@ const selectedStrategyId = ref('')
 const strategyName = ref('')
 const isSaving = ref(false)
 const showSaveSuccess = ref(false)
+
+// Validation modal
+const showValidationModal = ref(false)
+const validationErrors = ref([])
+
+// Underlying change confirmation
+const showUnderlyingConfirm = ref(false)
+const pendingUnderlying = ref(null)
 
 // Filters
 const filters = ref({
@@ -969,6 +1026,9 @@ async function applyStrategyTypeLegs(strategyTypeKey) {
     })
   }
 
+  // Final P/L calculation after all legs are added
+  await strategyStore.calculatePnL()
+
   previousStrategyType.value = strategyTypeKey
   showReplaceConfirm.value = false
 }
@@ -1005,7 +1065,25 @@ async function handleRecalculate() {
 }
 
 async function handleSaveStrategy() {
-  if (!strategyName.value || strategyStore.legs.length === 0) return
+  // Validate strategy
+  strategyStore.currentStrategy = { name: strategyName.value }
+  const errors = strategyStore.validateStrategy()
+  if (errors.length > 0) {
+    validationErrors.value = errors
+    showValidationModal.value = true
+    return
+  }
+
+  // Check duplicate name (exclude current strategy when updating)
+  const isDuplicate = await strategyStore.checkDuplicateName(
+    strategyName.value,
+    selectedStrategyId.value || null
+  )
+  if (isDuplicate && !selectedStrategyId.value) {
+    validationErrors.value = ['A strategy with this name already exists']
+    showValidationModal.value = true
+    return
+  }
 
   isSaving.value = true
 
@@ -1050,6 +1128,29 @@ async function handleSaveStrategy() {
   } finally {
     isSaving.value = false
   }
+}
+
+// Underlying change handlers
+function handleUnderlyingChange(newUnderlying) {
+  if (strategyStore.legs.length > 0) {
+    pendingUnderlying.value = newUnderlying
+    showUnderlyingConfirm.value = true
+  } else {
+    strategyStore.setUnderlying(newUnderlying)
+  }
+}
+
+function confirmUnderlyingChange() {
+  if (pendingUnderlying.value) {
+    strategyStore.setUnderlying(pendingUnderlying.value)
+  }
+  showUnderlyingConfirm.value = false
+  pendingUnderlying.value = null
+}
+
+function cancelUnderlyingChange() {
+  showUnderlyingConfirm.value = false
+  pendingUnderlying.value = null
 }
 
 async function handleDeleteStrategy() {
@@ -1780,6 +1881,17 @@ watch(
   color: var(--kite-text-secondary);
   margin: 0 0 20px 0;
   line-height: 1.5;
+}
+
+.error-list {
+  margin: 12px 0 0 0;
+  padding-left: 20px;
+  list-style-type: disc;
+}
+
+.error-list li {
+  margin: 6px 0;
+  color: var(--kite-negative);
 }
 
 .modal-actions {

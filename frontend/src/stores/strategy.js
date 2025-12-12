@@ -237,6 +237,9 @@ export const useStrategyStore = defineStore('strategy', () => {
         legs.value[legIndex].tradingsymbol = data.tradingsymbol
       }
     }
+
+    // Auto-calculate P/L after adding leg
+    calculatePnL()
   }
 
   function updateLeg(index, updates) {
@@ -263,8 +266,13 @@ export const useStrategyStore = defineStore('strategy', () => {
                 legs.value[index].instrument_token = data.instrument_token
                 legs.value[index].tradingsymbol = data.tradingsymbol
               }
+              // Auto-calculate P/L after token update
+              calculatePnL()
             })
         }
+      } else {
+        // Auto-calculate P/L for other field changes
+        calculatePnL()
       }
     }
   }
@@ -276,6 +284,9 @@ export const useStrategyStore = defineStore('strategy', () => {
       selectedLegIndices.value = selectedLegIndices.value
         .filter(i => i !== index)
         .map(i => i > index ? i - 1 : i)
+
+      // Auto-calculate P/L after removing leg
+      calculatePnL()
     }
   }
 
@@ -752,6 +763,56 @@ export const useStrategyStore = defineStore('strategy', () => {
     selectedLegIndices.value = []
   }
 
+  // Validation functions
+  function validateStrategy() {
+    const errors = []
+
+    // Check name
+    if (!currentStrategy.value?.name?.trim()) {
+      errors.push('Strategy name is required')
+    }
+
+    // Check underlying
+    if (!underlying.value) {
+      errors.push('Underlying is required')
+    }
+
+    // Check legs
+    if (legs.value.length === 0) {
+      errors.push('At least one leg is required')
+    }
+
+    // Check each leg has all required fields
+    legs.value.forEach((leg, index) => {
+      const missingFields = []
+      if (!leg.strike_price) missingFields.push('strike')
+      if (!leg.expiry_date) missingFields.push('expiry')
+      if (!leg.option_type && !leg.contract_type) missingFields.push('option type')
+      if (!leg.transaction_type) missingFields.push('buy/sell')
+      if (!leg.lots) missingFields.push('lots')
+
+      if (missingFields.length > 0) {
+        errors.push(`Leg ${index + 1} is missing: ${missingFields.join(', ')}`)
+      }
+    })
+
+    return errors
+  }
+
+  async function checkDuplicateName(name, excludeStrategyId = null) {
+    try {
+      const params = { name }
+      if (excludeStrategyId) {
+        params.strategy_id = excludeStrategyId
+      }
+      const response = await api.get('/api/strategies/check-name', { params })
+      return response.data.exists
+    } catch (err) {
+      console.error('Failed to check duplicate name:', err)
+      return false
+    }
+  }
+
   return {
     // State
     strategies,
@@ -821,5 +882,7 @@ export const useStrategyStore = defineStore('strategy', () => {
     addLegFromOptionChain,
     clearStrategy,
     reset,
+    validateStrategy,
+    checkDuplicateName,
   }
 })

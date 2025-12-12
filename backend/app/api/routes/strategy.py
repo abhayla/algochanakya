@@ -6,7 +6,7 @@ CRUD operations for strategies and strategy legs, P/L calculations, and sharing.
 import secrets
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, func
+from sqlalchemy import select, and_, func, delete
 from sqlalchemy.orm import selectinload
 from typing import List, Optional
 from uuid import UUID
@@ -84,6 +84,47 @@ async def list_strategies(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to list strategies: {str(e)}"
+        )
+
+
+@router.get("/check-name")
+async def check_strategy_name(
+    name: str,
+    strategy_id: Optional[UUID] = Query(None, description="Exclude this strategy ID from check (for updates)"),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Check if a strategy name already exists for the current user (case-insensitive).
+
+    Args:
+        name: Strategy name to check
+        strategy_id: Optional strategy ID to exclude (for update operations)
+
+    Returns:
+        {"exists": true/false}
+    """
+    try:
+        conditions = [
+            Strategy.user_id == user.id,
+            func.lower(Strategy.name) == name.lower()
+        ]
+
+        # Exclude current strategy when updating
+        if strategy_id:
+            conditions.append(Strategy.id != strategy_id)
+
+        result = await db.execute(
+            select(Strategy).where(and_(*conditions))
+        )
+        exists = result.scalar_one_or_none() is not None
+
+        return {"exists": exists}
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to check strategy name: {str(e)}"
         )
 
 
@@ -248,6 +289,31 @@ async def update_strategy(
             strategy.name = strategy_data.name
         if strategy_data.status is not None:
             strategy.status = strategy_data.status.value
+
+        # Update legs if provided
+        if strategy_data.legs is not None:
+            # Delete existing legs
+            await db.execute(
+                delete(StrategyLeg).where(StrategyLeg.strategy_id == strategy_id)
+            )
+            await db.flush()
+
+            # Add new legs
+            for leg_data in strategy_data.legs:
+                leg = StrategyLeg(
+                    strategy_id=strategy_id,
+                    expiry_date=leg_data.expiry_date,
+                    contract_type=leg_data.contract_type.value,
+                    transaction_type=leg_data.transaction_type.value,
+                    strike_price=leg_data.strike_price,
+                    lots=leg_data.lots,
+                    strategy_type=leg_data.strategy_type,
+                    entry_price=leg_data.entry_price,
+                    exit_price=leg_data.exit_price,
+                    instrument_token=leg_data.instrument_token,
+                    position_status="pending"
+                )
+                db.add(leg)
 
         await db.commit()
         await db.refresh(strategy)
