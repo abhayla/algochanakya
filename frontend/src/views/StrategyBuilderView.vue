@@ -929,18 +929,40 @@ async function applyStrategyTypeLegs(strategyTypeKey) {
   // Get the first available expiry
   const expiry = strategyStore.expiries[0] || null
 
+  // Ensure we have spot price for ATM calculation
+  if (!strategyStore.currentSpot) {
+    await strategyStore.fetchSpotPrice()
+  }
+
+  // Ensure strikes are loaded for the expiry
+  if (expiry && (!strategyStore.strikes[expiry] || strategyStore.strikes[expiry].length === 0)) {
+    await strategyStore.fetchStrikes(expiry)
+  }
+
+  // Get ATM strike
+  const strikesArray = expiry ? strategyStore.strikes[expiry] : []
+  const atmStrike = strategyStore.findNearestStrike(strategyStore.currentSpot, strikesArray)
+
   // Clear existing legs by removing all
   while (strategyStore.legs.length > 0) {
     strategyStore.removeLeg(0)
   }
 
-  // Add new legs from template
+  // Add new legs from template with calculated strikes
   for (const leg of templateLegs) {
+    // Calculate strike based on ATM + offset
+    let calculatedStrike = null
+    if (atmStrike && leg.strike_offset !== undefined) {
+      const targetStrike = atmStrike + leg.strike_offset
+      // Find the nearest available strike to the target
+      calculatedStrike = strategyStore.findNearestStrike(targetStrike, strikesArray)
+    }
+
     await strategyStore.addLeg({
       temp_id: `leg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       transaction_type: leg.action, // BUY or SELL
       contract_type: leg.type, // CE or PE
-      strike_price: null, // Will be set by user or calculated
+      strike_price: calculatedStrike, // Calculated from ATM + offset
       expiry_date: expiry,
       lots: 1,
       entry_price: null
