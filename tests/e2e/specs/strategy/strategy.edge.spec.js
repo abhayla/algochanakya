@@ -14,9 +14,10 @@ test.describe('Strategy Builder - Edge Cases @edge', () => {
   });
 
   test('should handle rapid leg additions', async () => {
-    // Add multiple legs rapidly
+    // Add multiple legs rapidly (waiting for each to complete since addLeg is async)
     for (let i = 0; i < 5; i++) {
       await strategyPage.addRow();
+      await strategyPage.waitForLegCount(i + 1);
     }
     const count = await strategyPage.getLegCount();
     expect(count).toBeGreaterThanOrEqual(5);
@@ -24,6 +25,7 @@ test.describe('Strategy Builder - Edge Cases @edge', () => {
 
   test('should handle save without strategy name', async () => {
     await strategyPage.addRow();
+    await strategyPage.waitForLegCount(1);
     await strategyPage.enterStrategyName('');
     // Save button should be disabled
     await expect(strategyPage.saveButton).toBeDisabled();
@@ -54,6 +56,13 @@ test.describe('Strategy Builder - Edge Cases @edge', () => {
     await strategyPage.assertPageVisible();
   });
 
+  test('should enable Add Row button after expiries load', async () => {
+    // Wait for Add Row to be enabled (expiries loaded)
+    await strategyPage.waitForAddRowEnabled();
+    const isEnabled = await strategyPage.isAddRowEnabled();
+    expect(isEnabled).toBe(true);
+  });
+
   test('should handle rapid P/L mode toggles', async () => {
     await strategyPage.setPnLMode('current');
     await strategyPage.setPnLMode('expiry');
@@ -63,9 +72,11 @@ test.describe('Strategy Builder - Edge Cases @edge', () => {
   });
 
   test('should clear legs on delete', async () => {
-    // Add legs
+    // Add legs (waiting for each to complete since addLeg is async)
     await strategyPage.addRow();
+    await strategyPage.waitForLegCount(1);
     await strategyPage.addRow();
+    await strategyPage.waitForLegCount(2);
 
     const initialCount = await strategyPage.getLegCount();
     expect(initialCount).toBeGreaterThanOrEqual(2);
@@ -89,6 +100,7 @@ test.describe('Strategy Builder - Edge Cases @edge', () => {
 
   test('should maintain state after page refresh', async ({ authenticatedPage }) => {
     await strategyPage.addRow();
+    await strategyPage.waitForLegCount(1);
     await strategyPage.enterStrategyName('Test Strategy');
 
     // Refresh page

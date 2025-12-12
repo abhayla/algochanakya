@@ -40,6 +40,10 @@ test.describe('Option Chain - Happy Path @happy', () => {
     await expect(optionChainPage.greeksToggle).toBeVisible();
   });
 
+  test('should display live toggle', async () => {
+    await expect(optionChainPage.liveToggle).toBeVisible();
+  });
+
   test('should display refresh button', async () => {
     await expect(optionChainPage.refreshButton).toBeVisible();
   });

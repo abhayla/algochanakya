@@ -29,6 +29,7 @@ export default class OptionChainPage extends BasePage {
   get dteBox() { return this.getByTestId('optionchain-dte-box'); }
   get dteValue() { return this.getByTestId('optionchain-dte-value'); }
   get greeksToggle() { return this.getByTestId('optionchain-greeks-toggle'); }
+  get liveToggle() { return this.getByTestId('optionchain-live-toggle'); }
   get refreshButton() { return this.getByTestId('optionchain-refresh-button'); }
 
   // Summary bar
@@ -104,6 +105,20 @@ export default class OptionChainPage extends BasePage {
 
   async toggleGreeks() {
     await this.greeksToggle.click();
+  }
+
+  async toggleLiveUpdates() {
+    await this.liveToggle.locator('input').click();
+  }
+
+  async isLiveEnabled() {
+    const checkbox = this.liveToggle.locator('input');
+    return await checkbox.isChecked();
+  }
+
+  async isLiveDotVisible() {
+    const dot = this.liveToggle.locator('.live-dot');
+    return await dot.isVisible().catch(() => false);
   }
 
   async refresh() {
@@ -197,5 +212,9 @@ export default class OptionChainPage extends BasePage {
 
   async assertSummaryBarVisible() {
     await this.assertVisible('optionchain-summary-bar');
+  }
+
+  async assertLiveToggleVisible() {
+    await this.assertVisible('optionchain-live-toggle');
   }
 }

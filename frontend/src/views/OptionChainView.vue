@@ -45,6 +45,15 @@
             <span>Greeks</span>
           </label>
 
+          <!-- Live Toggle -->
+          <label class="live-toggle" data-testid="optionchain-live-toggle">
+            <input type="checkbox" v-model="store.isLiveUpdatesEnabled" />
+            <span class="live-label">
+              <span v-if="watchlistStore.isConnected && store.isLiveUpdatesEnabled" class="live-dot"></span>
+              Live
+            </span>
+          </label>
+
           <!-- Refresh -->
           <button @click="store.fetchOptionChain()" class="refresh-btn" :disabled="store.isLoading" data-testid="optionchain-refresh-button">
             {{ store.isLoading ? 'Loading...' : 'Refresh' }}
@@ -234,16 +243,21 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import KiteLayout from '@/components/layout/KiteLayout.vue'
 import { useOptionChainStore } from '@/stores/optionchain'
 import { useStrategyStore } from '@/stores/strategy'
+import { useWatchlistStore } from '@/stores/watchlist'
 import { useScrollIndicator } from '@/composables/useScrollIndicator'
 
 const store = useOptionChainStore()
 const strategyStore = useStrategyStore()
+const watchlistStore = useWatchlistStore()
 const router = useRouter()
+
+// Track subscribed tokens to avoid re-subscribing
+const subscribedTokens = ref(new Set())
 
 // Table scroll indicator
 const tableContainer = ref(null)
@@ -328,12 +342,80 @@ const goToStrategy = () => {
   router.push('/strategy')
 }
 
+// Subscribe to option tokens for live updates
+function subscribeToOptionTokens() {
+  if (!watchlistStore.isConnected) return
+
+  const tokens = store.getAllOptionTokens()
+  const indexToken = store.getIndexToken()
+
+  // Add index token for spot price updates
+  const allTokens = [indexToken, ...tokens]
+
+  // Filter out already subscribed tokens
+  const newTokens = allTokens.filter(t => !subscribedTokens.value.has(t))
+
+  if (newTokens.length > 0) {
+    watchlistStore.subscribeToTokens(newTokens, 'quote')
+    newTokens.forEach(t => subscribedTokens.value.add(t))
+    console.log(`[OptionChain] Subscribed to ${newTokens.length} tokens`)
+  }
+}
+
+// Watch for WebSocket ticks and update option chain prices
+watch(() => watchlistStore.ticks, (newTicks) => {
+  if (!store.isLiveUpdatesEnabled) return
+
+  const ticksArray = Object.entries(newTicks).map(([token, data]) => ({
+    token: parseInt(token),
+    ltp: data.ltp,
+    change: data.change,
+    change_percent: data.change_percent
+  }))
+
+  if (ticksArray.length > 0) {
+    store.updateLivePrices(ticksArray)
+  }
+}, { deep: true })
+
+// Watch for chain changes to subscribe to new tokens
+watch(() => store.chain, (newChain) => {
+  if (newChain.length > 0) {
+    // Small delay to ensure WebSocket is ready
+    setTimeout(() => {
+      subscribeToOptionTokens()
+    }, 100)
+  }
+}, { deep: true })
+
+// Watch for WebSocket connection and subscribe when connected
+watch(() => watchlistStore.isConnected, (connected) => {
+  if (connected && store.chain.length > 0) {
+    subscribeToOptionTokens()
+  }
+})
+
 // Initialize
 onMounted(async () => {
+  // Connect to WebSocket if not already connected
+  if (!watchlistStore.isConnected) {
+    watchlistStore.connectWebSocket()
+  }
+
   await store.fetchExpiries()
   if (store.expiry) {
     await store.fetchOptionChain()
   }
+})
+
+// Cleanup subscriptions on unmount
+onUnmounted(() => {
+  // Unsubscribe from option tokens (keep index tokens as they're shared)
+  const optionTokens = store.getAllOptionTokens()
+  if (optionTokens.length > 0 && watchlistStore.isConnected) {
+    watchlistStore.unsubscribeFromTokens(optionTokens)
+  }
+  subscribedTokens.value.clear()
 })
 </script>
 
@@ -478,6 +560,40 @@ onMounted(async () => {
   width: 14px;
   height: 14px;
   accent-color: #2196f3;
+}
+
+.live-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #6c757d;
+  cursor: pointer;
+}
+
+.live-toggle input {
+  width: 14px;
+  height: 14px;
+  accent-color: #00b386;
+}
+
+.live-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.live-dot {
+  width: 8px;
+  height: 8px;
+  background: #00b386;
+  border-radius: 50%;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
 }
 
 .refresh-btn {

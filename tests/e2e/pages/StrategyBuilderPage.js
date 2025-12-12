@@ -96,7 +96,44 @@ export default class StrategyBuilderPage extends BasePage {
   }
 
   async addRow() {
+    // Wait for button to be enabled (expiries must be loaded first)
+    await this.addRowButton.waitFor({ state: 'visible' });
+    await this.page.waitForFunction(
+      (selector) => {
+        const btn = document.querySelector(selector);
+        return btn && !btn.disabled;
+      },
+      '[data-testid="strategy-add-row-button"]',
+      { timeout: 10000 }
+    );
     await this.addRowButton.click();
+  }
+
+  async waitForLegCount(expectedCount, timeout = 10000) {
+    // Wait for the leg count to reach the expected value
+    await this.page.waitForFunction(
+      ({ selector, count }) => {
+        const rows = document.querySelectorAll(selector);
+        return rows.length >= count;
+      },
+      { selector: '[data-testid="strategy-table"] tbody tr.leg-row', count: expectedCount },
+      { timeout }
+    );
+  }
+
+  async waitForAddRowEnabled() {
+    await this.page.waitForFunction(
+      (selector) => {
+        const btn = document.querySelector(selector);
+        return btn && !btn.disabled;
+      },
+      '[data-testid="strategy-add-row-button"]',
+      { timeout: 10000 }
+    );
+  }
+
+  async isAddRowEnabled() {
+    return await this.addRowButton.isEnabled();
   }
 
   async deleteSelectedLegs() {
@@ -178,6 +215,28 @@ export default class StrategyBuilderPage extends BasePage {
 
   async hasSummaryCards() {
     return await this.summaryGrid.isVisible().catch(() => false);
+  }
+
+  async getLegStrikeValue(rowIndex = 0) {
+    // Get the strike select value from a leg row
+    const rows = await this.table.locator('tbody tr.leg-row').all();
+    if (rows.length <= rowIndex) return null;
+    const row = rows[rowIndex];
+    // Strike is the 4th select (after expiry, contract type, transaction type)
+    const strikeSelect = row.locator('select').nth(3);
+    return await strikeSelect.inputValue();
+  }
+
+  async getLegStrikeDisplay(rowIndex = 0) {
+    // Get the currently selected strike option text
+    const rows = await this.table.locator('tbody tr.leg-row').all();
+    if (rows.length <= rowIndex) return null;
+    const row = rows[rowIndex];
+    // Strike is the 4th select (after expiry, contract type, transaction type)
+    const strikeSelect = row.locator('select').nth(3);
+    const value = await strikeSelect.inputValue();
+    if (!value) return null;
+    return parseFloat(value);
   }
 
   // ============ Assertions ============

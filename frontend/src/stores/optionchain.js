@@ -2,6 +2,13 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import api from '../services/api'
 
+// Index tokens for spot price updates
+const INDEX_TOKENS = {
+  'NIFTY': 256265,
+  'BANKNIFTY': 260105,
+  'FINNIFTY': 257801
+}
+
 export const useOptionChainStore = defineStore('optionchain', () => {
   // State
   const underlying = ref('NIFTY')
@@ -21,6 +28,10 @@ export const useOptionChainStore = defineStore('optionchain', () => {
 
   const isLoading = ref(false)
   const error = ref(null)
+
+  // Live prices from WebSocket (token -> tick data)
+  const livePrices = ref({})
+  const isLiveUpdatesEnabled = ref(true)
 
   // Display settings
   const showGreeks = ref(false)
@@ -65,6 +76,39 @@ export const useOptionChainStore = defineStore('optionchain', () => {
   const maxPEOI = computed(() => {
     return Math.max(...chain.value.map(r => r.pe?.oi || 0), 1)
   })
+
+  // Get live LTP for an option (token-based lookup)
+  function getLiveLTP(token) {
+    if (!token || !isLiveUpdatesEnabled.value) return null
+    return livePrices.value[token]?.ltp || null
+  }
+
+  // Get live change for an option
+  function getLiveChange(token) {
+    if (!token || !isLiveUpdatesEnabled.value) return null
+    return livePrices.value[token]?.change || null
+  }
+
+  // Get live change percent for an option
+  function getLiveChangePercent(token) {
+    if (!token || !isLiveUpdatesEnabled.value) return null
+    return livePrices.value[token]?.change_percent || null
+  }
+
+  // Get current index token for underlying
+  function getIndexToken() {
+    return INDEX_TOKENS[underlying.value] || INDEX_TOKENS['NIFTY']
+  }
+
+  // Get all option tokens from the chain for WebSocket subscription
+  function getAllOptionTokens() {
+    const tokens = []
+    for (const row of chain.value) {
+      if (row.ce?.instrument_token) tokens.push(row.ce.instrument_token)
+      if (row.pe?.instrument_token) tokens.push(row.pe.instrument_token)
+    }
+    return tokens
+  }
 
   // Actions
   async function setUnderlying(ul) {
@@ -185,6 +229,59 @@ export const useOptionChainStore = defineStore('optionchain', () => {
     return Math.round((oi / maxOI) * 50)
   }
 
+  // Update live prices from WebSocket ticks
+  function updateLivePrices(ticks) {
+    if (!isLiveUpdatesEnabled.value) return
+
+    // Update live prices map
+    for (const tick of ticks) {
+      livePrices.value[tick.token] = {
+        ltp: tick.ltp,
+        change: tick.change,
+        change_percent: tick.change_percent
+      }
+    }
+
+    // Update chain with live prices
+    updateChainWithLivePrices()
+
+    // Update spot price if index token is in ticks
+    const indexToken = getIndexToken()
+    const indexTick = ticks.find(t => t.token === indexToken)
+    if (indexTick) {
+      spotPrice.value = indexTick.ltp
+    }
+  }
+
+  // Update chain array with live prices from livePrices map
+  function updateChainWithLivePrices() {
+    for (const row of chain.value) {
+      // Update CE live price
+      if (row.ce?.instrument_token) {
+        const liveData = livePrices.value[row.ce.instrument_token]
+        if (liveData) {
+          row.ce.ltp = liveData.ltp
+          row.ce.change = liveData.change
+          row.ce.change_pct = liveData.change_percent
+        }
+      }
+      // Update PE live price
+      if (row.pe?.instrument_token) {
+        const liveData = livePrices.value[row.pe.instrument_token]
+        if (liveData) {
+          row.pe.ltp = liveData.ltp
+          row.pe.change = liveData.change
+          row.pe.change_pct = liveData.change_percent
+        }
+      }
+    }
+  }
+
+  // Toggle live updates on/off
+  function toggleLiveUpdates() {
+    isLiveUpdatesEnabled.value = !isLiveUpdatesEnabled.value
+  }
+
   function reset() {
     underlying.value = 'NIFTY'
     expiry.value = ''
@@ -203,6 +300,8 @@ export const useOptionChainStore = defineStore('optionchain', () => {
     isLoading.value = false
     error.value = null
     selectedStrikes.value = []
+    livePrices.value = {}
+    isLiveUpdatesEnabled.value = true
   }
 
   return {
@@ -222,6 +321,8 @@ export const useOptionChainStore = defineStore('optionchain', () => {
     strikesRange,
     selectedStrikes,
     lotSizes,
+    livePrices,
+    isLiveUpdatesEnabled,
 
     // Getters
     filteredChain,
@@ -238,6 +339,16 @@ export const useOptionChainStore = defineStore('optionchain', () => {
     clearSelection,
     getAddToStrategyPayload,
     getOIBarWidth,
-    reset
+    reset,
+
+    // Live price methods
+    getLiveLTP,
+    getLiveChange,
+    getLiveChangePercent,
+    getIndexToken,
+    getAllOptionTokens,
+    updateLivePrices,
+    updateChainWithLivePrices,
+    toggleLiveUpdates
   }
 })

@@ -347,8 +347,10 @@
             </button>
             <button
               @click="strategyStore.addLeg()"
+              :disabled="!strategyStore.canAddRow"
               class="strategy-btn strategy-btn-outline"
-              style="color: var(--kite-blue);"
+              :style="strategyStore.canAddRow ? 'color: var(--kite-blue);' : 'opacity: 0.5; cursor: not-allowed;'"
+              :title="strategyStore.canAddRow ? 'Add a new leg to the strategy' : 'Select an underlying first'"
               data-testid="strategy-add-row-button"
             >
               + Add Row

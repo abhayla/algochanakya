@@ -154,17 +154,20 @@ class KiteTickerService:
                     if token in user_tokens:
                         ltp = t.get("last_price", 0)
                         change = t.get("change", 0)
+                        close = t.get("ohlc", {}).get("close") if t.get("ohlc") else None
+                        # Calculate percentage using previous close, not LTP
+                        change_percent = ((ltp - close) / close * 100) if close else 0
                         user_ticks.append({
                             "token": token,
                             "ltp": ltp,
                             "change": change,
-                            "change_percent": (change / ltp * 100) if ltp else 0,
+                            "change_percent": change_percent,
                             "volume": t.get("volume"),
                             "oi": t.get("oi"),
                             "high": t.get("ohlc", {}).get("high") if t.get("ohlc") else None,
                             "low": t.get("ohlc", {}).get("low") if t.get("ohlc") else None,
                             "open": t.get("ohlc", {}).get("open") if t.get("ohlc") else None,
-                            "close": t.get("ohlc", {}).get("close") if t.get("ohlc") else None,
+                            "close": close,
                         })
 
                 if user_ticks:
@@ -250,11 +253,15 @@ class KiteTickerService:
                 t = self._latest_ticks[token]
                 ltp = t.get("last_price", 0)
                 change = t.get("change", 0)
+                close = t.get("ohlc", {}).get("close") if t.get("ohlc") else None
+                # Calculate percentage using previous close, not LTP
+                change_percent = ((ltp - close) / close * 100) if close else 0
                 cached_ticks.append({
                     "token": t.get("instrument_token"),
                     "ltp": ltp,
                     "change": change,
-                    "change_percent": (change / ltp * 100) if ltp else 0,
+                    "change_percent": change_percent,
+                    "close": close,
                 })
 
         if cached_ticks:

@@ -32,6 +32,20 @@ export const useStrategyStore = defineStore('strategy', () => {
     'FINNIFTY': 25
   }
 
+  // Index tokens for spot price lookup
+  const INDEX_TOKENS = {
+    'NIFTY': 256265,
+    'BANKNIFTY': 260105,
+    'FINNIFTY': 257801
+  }
+
+  // Index symbols for LTP API
+  const INDEX_SYMBOLS = {
+    'NIFTY': 'NSE:NIFTY 50',
+    'BANKNIFTY': 'NSE:NIFTY BANK',
+    'FINNIFTY': 'NSE:NIFTY FIN SERVICE'
+  }
+
   // Strategy types
   const strategyTypes = [
     'Naked Put',
@@ -80,6 +94,9 @@ export const useStrategyStore = defineStore('strategy', () => {
   const maxLoss = computed(() => pnlGrid.value?.max_loss || 0)
   const breakevens = computed(() => pnlGrid.value?.breakeven || [])
 
+  // Can add row only if underlying is selected and expiries are loaded
+  const canAddRow = computed(() => underlying.value && expiries.value.length > 0)
+
   // Helper function to generate temporary ID
   const generateTempId = () => `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
 
@@ -90,7 +107,9 @@ export const useStrategyStore = defineStore('strategy', () => {
     pnlGrid.value = null
     expiries.value = []
     strikes.value = {}
+    currentSpot.value = 0
     fetchExpiries()
+    fetchSpotPrice() // Fetch spot price for ATM calculation
   }
 
   async function fetchExpiries() {
@@ -123,6 +142,35 @@ export const useStrategyStore = defineStore('strategy', () => {
     }
   }
 
+  // Fetch spot price for the current underlying
+  async function fetchSpotPrice() {
+    try {
+      const symbol = INDEX_SYMBOLS[underlying.value]
+      if (!symbol) return { success: false }
+
+      const response = await api.get('/api/orders/ltp', {
+        params: { instruments: symbol }
+      })
+
+      if (response.data && response.data[symbol]) {
+        currentSpot.value = response.data[symbol].last_price
+        return { success: true, spot: currentSpot.value }
+      }
+      return { success: false }
+    } catch (err) {
+      console.error('Failed to fetch spot price:', err)
+      return { success: false }
+    }
+  }
+
+  // Find the nearest strike to the spot price
+  function findNearestStrike(spot, strikesArray) {
+    if (!spot || !strikesArray?.length) return null
+    return strikesArray.reduce((prev, curr) =>
+      Math.abs(curr - spot) < Math.abs(prev - spot) ? curr : prev
+    )
+  }
+
   async function fetchInstrumentToken(expiry, strike, contractType) {
     try {
       const response = await api.get('/api/options/instrument', {
@@ -146,12 +194,31 @@ export const useStrategyStore = defineStore('strategy', () => {
 
   async function addLeg(legData = null) {
     const defaultExpiry = expiries.value[0] || ''
+
+    // Ensure strikes are loaded for the default expiry
+    if (defaultExpiry && !strikes.value[defaultExpiry]) {
+      await fetchStrikes(defaultExpiry)
+    }
+
+    // Calculate ATM strike if not provided
+    let defaultStrike = null
+    if (!legData?.strike_price && defaultExpiry && strikes.value[defaultExpiry]) {
+      // If spot price is not yet loaded, try to fetch it
+      if (currentSpot.value === 0) {
+        await fetchSpotPrice()
+      }
+
+      if (currentSpot.value > 0) {
+        defaultStrike = findNearestStrike(currentSpot.value, strikes.value[defaultExpiry])
+      }
+    }
+
     const newLeg = legData || {
       temp_id: generateTempId(),
       expiry_date: defaultExpiry,
       contract_type: 'PE',
       transaction_type: 'SELL',
-      strike_price: null,
+      strike_price: defaultStrike,
       lots: 1,
       strategy_type: 'Naked Put',
       entry_price: null,
@@ -161,9 +228,14 @@ export const useStrategyStore = defineStore('strategy', () => {
     }
     legs.value.push(newLeg)
 
-    // Fetch strikes for the expiry if not already fetched
-    if (defaultExpiry && !strikes.value[defaultExpiry]) {
-      await fetchStrikes(defaultExpiry)
+    // If we set a default strike, fetch instrument token
+    if (defaultStrike && defaultExpiry) {
+      const legIndex = legs.value.length - 1
+      const data = await fetchInstrumentToken(defaultExpiry, defaultStrike, newLeg.contract_type)
+      if (data) {
+        legs.value[legIndex].instrument_token = data.instrument_token
+        legs.value[legIndex].tradingsymbol = data.tradingsymbol
+      }
     }
   }
 
@@ -710,11 +782,14 @@ export const useStrategyStore = defineStore('strategy', () => {
     maxProfit,
     maxLoss,
     breakevens,
+    canAddRow,
 
     // Actions
     setUnderlying,
     fetchExpiries,
     fetchStrikes,
+    fetchSpotPrice,
+    findNearestStrike,
     fetchInstrumentToken,
     addLeg,
     updateLeg,

@@ -56,8 +56,27 @@ test.describe('Strategy Builder - Happy Path @happy', () => {
   test('should add a new leg row', async () => {
     const initialCount = await strategyPage.getLegCount();
     await strategyPage.addRow();
+    // Wait for the row to be added (addLeg() is async with API calls)
+    await strategyPage.waitForLegCount(initialCount + 1);
     const newCount = await strategyPage.getLegCount();
     expect(newCount).toBe(initialCount + 1);
+  });
+
+  test('should default strike to ATM when adding row', async () => {
+    // Add a row and verify strike is pre-populated (not empty)
+    await strategyPage.addRow();
+
+    // Wait for the row to be added and strike to be set (API call might take time)
+    await strategyPage.page.waitForTimeout(3000);
+
+    const strikeValue = await strategyPage.getLegStrikeDisplay(0);
+
+    // Strike should be a valid number (ATM strike near spot price)
+    // Note: If market is closed, spot price API may fail, and strike may remain null
+    // In that case, the test will fail which is expected behavior
+    expect(strikeValue).not.toBeNull();
+    expect(typeof strikeValue).toBe('number');
+    expect(strikeValue).toBeGreaterThan(0);
   });
 
   test('should switch underlying tabs', async () => {
