@@ -10,7 +10,7 @@ AlgoChanakya is an options trading platform (similar to Sensibull) built with Fa
 - Backend: FastAPI + SQLAlchemy (async) + PostgreSQL + Redis
 - Frontend: Vue.js 3 + Vite + Pinia + Vue Router + Tailwind CSS
 - Broker Integration: Zerodha Kite Connect API
-- Testing: Playwright (E2E ~240 tests) + pytest (backend ~70 tests)
+- Testing: Playwright (E2E ~290 tests) + pytest (backend ~70 tests)
 
 **Detailed Documentation:** See [docs/](docs/README.md) for comprehensive documentation including:
 - [Architecture](docs/architecture/) - System design, auth, WebSocket, database
@@ -57,6 +57,8 @@ npm run test:specs:watchlist
 npm run test:specs:optionchain
 npm run test:specs:strategy
 npm run test:specs:strategylibrary
+npm run test:specs:autopilot
+npm run test:specs:navigation
 
 # Run by category
 npm run test:happy      # All happy path tests
@@ -79,7 +81,15 @@ npx playwright test tests/e2e/specs/positions/positions.happy.spec.js
 npm run test:headed         # Run with visible browser
 npm run test:debug          # Debug mode
 npm run test:visual:update  # Update visual baselines
+npm run test:isolated       # Tests needing fresh browser context
 npm run generate:test -- --screen MyScreen --path /mypath  # Generate test scaffold
+
+# AutoPilot fast mode (parallel, shorter timeout)
+npm run test:autopilot:fast
+
+# Allure test reports
+npm run test:allure         # Run tests and open Allure report
+npm run allure:serve        # Serve existing Allure results
 ```
 
 ## Architecture
@@ -398,7 +408,7 @@ Frontend requires `.env` file:
 
 **See [docs/testing/README.md](docs/testing/README.md) for complete documentation.**
 
-~310 tests total: 240 frontend E2E tests across 28 spec files covering 8 screens (Login, Dashboard, Positions, Watchlist, Option Chain, Strategy Builder, Strategy Library, Integration), plus 70 backend pytest tests.
+~360 tests total: 290 frontend E2E tests across 28 spec files covering 9 screens (Login, Dashboard, Positions, Watchlist, Option Chain, Strategy Builder, Strategy Library, AutoPilot, Integration), plus 70 backend pytest tests.
 
 ### Frontend E2E Tests (Playwright)
 

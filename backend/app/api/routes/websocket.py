@@ -105,6 +105,7 @@ async def websocket_ticks(
     try:
         # Accept connection
         await websocket.accept()
+        print(f"[WS] WebSocket connection accepted", flush=True)
         logger.info("WebSocket connection accepted")
 
         # Authenticate user and get broker connection
@@ -112,10 +113,16 @@ async def websocket_ticks(
             try:
                 user = await get_user_from_token(token, db)
                 user_id = str(user.id)
+                print(f"[WS] User authenticated: {user_id}", flush=True)
                 broker_connection = await get_user_broker_connection(user.id, db)
                 kite_access_token = broker_connection.access_token
 
                 logger.info(f"WebSocket authenticated for user {user_id}")
+                if kite_access_token:
+                    print(f"[WS] Kite token found: ...{kite_access_token[-10:]}", flush=True)
+                    logger.info(f"Using Kite access token: ...{kite_access_token[-10:]}")
+                else:
+                    logger.warning("No Kite access token found in broker connection")
 
             except Exception as e:
                 await websocket.send_json({
@@ -128,17 +135,31 @@ async def websocket_ticks(
 
         # Connect to Kite WebSocket if not already connected
         if not kite_ticker_service.is_connected:
+            print(f"[WS] Connecting to Kite WebSocket...", flush=True)
             logger.info("Connecting to Kite WebSocket...")
-            await kite_ticker_service.connect(kite_access_token)
+            try:
+                await kite_ticker_service.connect(kite_access_token)
 
-            # Wait for connection to establish (up to 10 seconds)
-            for i in range(20):
-                await asyncio.sleep(0.5)
-                if kite_ticker_service.is_connected:
-                    logger.info("Kite WebSocket connected!")
-                    break
-            else:
-                logger.warning("Kite WebSocket connection timeout, but continuing...")
+                # Wait for connection to establish (up to 10 seconds)
+                for i in range(20):
+                    await asyncio.sleep(0.5)
+                    if kite_ticker_service.is_connected:
+                        print(f"[WS] Kite WebSocket connected!", flush=True)
+                        logger.info("Kite WebSocket connected!")
+                        break
+                else:
+                    print(f"[WS] Kite WebSocket connection timeout, but continuing...", flush=True)
+                    logger.warning("Kite WebSocket connection timeout, but continuing...")
+            except Exception as e:
+                print(f"[WS] Kite connection failed: {e}", flush=True)
+                logger.error(f"Kite connection failed: {e}")
+
+        # Send warning if Kite connection failed
+        if not kite_ticker_service.is_connected:
+            await websocket.send_json({
+                "type": "warning",
+                "message": "Kite connection failed. Access token may be expired. Please re-login to get live prices."
+            })
 
         # Register this client with the ticker service
         await kite_ticker_service.register_client(user_id, websocket)

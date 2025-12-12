@@ -7,7 +7,7 @@ import asyncio
 import logging
 from typing import Set, Dict, Optional
 from fastapi import WebSocket
-from kiteconnect import KiteTicker
+from kiteconnect import KiteTicker, KiteConnect
 
 from app.config import settings
 
@@ -43,6 +43,20 @@ class KiteTickerService:
         try:
             self.access_token = access_token
             self._main_loop = asyncio.get_running_loop()
+
+            # Validate access token with a test API call before WebSocket connection
+            print(f"[KITE] Validating Kite access token...", flush=True)
+            logger.info("Validating Kite access token...")
+            kite = KiteConnect(api_key=settings.KITE_API_KEY)
+            kite.set_access_token(access_token)
+            try:
+                profile = kite.profile()
+                print(f"[KITE] API validated for user: {profile.get('user_name', 'Unknown')}", flush=True)
+                logger.info(f"Kite API validated for user: {profile.get('user_name', 'Unknown')}")
+            except Exception as e:
+                print(f"[KITE] API validation failed: {e}", flush=True)
+                logger.error(f"Kite API validation failed: {e}")
+                raise Exception(f"Invalid Kite access token: {e}")
 
             # Initialize Kite Ticker
             self.kite_ws = KiteTicker(
@@ -91,7 +105,12 @@ class KiteTickerService:
 
     def _on_error(self, ws, code, reason):
         """Callback on WebSocket error."""
-        logger.error(f"Kite WebSocket error: {code} - {reason}")
+        logger.error(f"Kite WebSocket error: code={code}, reason={reason}")
+        # Log additional debug info
+        if self.access_token:
+            logger.error(f"Access token (last 10 chars): ...{self.access_token[-10:]}")
+        else:
+            logger.error("Access token: None")
 
     def _on_reconnect(self, ws, attempts_count):
         """Callback on reconnection attempt."""
