@@ -70,6 +70,32 @@
                 />
               </div>
 
+              <!-- Strategy Type Dropdown -->
+              <div class="form-group">
+                <label class="form-label">Type:</label>
+                <select
+                  v-model="selectedStrategyType"
+                  @change="onStrategyTypeChange"
+                  class="strategy-select"
+                  data-testid="strategy-type-select"
+                >
+                  <option value="">Custom (Manual)</option>
+                  <optgroup
+                    v-for="(cat, catKey) in categories"
+                    :key="catKey"
+                    :label="cat.name"
+                  >
+                    <option
+                      v-for="strategy in strategiesByCategory[catKey]"
+                      :key="strategy.key"
+                      :value="strategy.key"
+                    >
+                      {{ strategy.display_name }}
+                    </option>
+                  </optgroup>
+                </select>
+              </div>
+
               <!-- Save and Delete Buttons -->
               <div class="form-group" style="display: flex; gap: 8px; align-items: center;">
                 <button
@@ -497,6 +523,33 @@
         @confirm="handlePlaceOrder"
         @close="showOrderModal = false"
       />
+
+      <!-- Replace Legs Confirmation Modal -->
+      <div v-if="showReplaceConfirm" class="modal-overlay" data-testid="strategy-replace-legs-modal">
+        <div class="modal-content">
+          <h3 class="modal-title">Replace Existing Legs?</h3>
+          <p class="modal-text">
+            Changing strategy type will replace your current {{ strategyStore.legs.length }} leg(s).
+            This action cannot be undone.
+          </p>
+          <div class="modal-actions">
+            <button
+              @click="cancelReplaceLegs"
+              class="strategy-btn strategy-btn-outline"
+              data-testid="strategy-replace-legs-cancel"
+            >
+              Cancel
+            </button>
+            <button
+              @click="confirmReplaceLegs"
+              class="strategy-btn strategy-btn-primary"
+              data-testid="strategy-replace-legs-confirm"
+            >
+              Replace Legs
+            </button>
+          </div>
+        </div>
+      </div>
     </div><!-- End strategy-page -->
   </KiteLayout>
 </template>
@@ -506,15 +559,31 @@ import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { useStrategyStore } from '../stores/strategy'
 import { useWatchlistStore } from '../stores/watchlist'
+import { useStrategyTypes } from '@/constants/strategyTypes'
 import KiteLayout from '../components/layout/KiteLayout.vue'
 import ShareStrategyModal from '../components/strategy/ShareStrategyModal.vue'
 import BasketOrderModal from '../components/strategy/BasketOrderModal.vue'
 import PayoffChart from '../components/strategy/PayoffChart.vue'
 import PnLCell from '../components/strategy/PnLCell.vue'
+import '@/assets/css/strategy-table.css'
 
 const route = useRoute()
 const strategyStore = useStrategyStore()
 const watchlistStore = useWatchlistStore()
+
+// Strategy Types from centralized constants
+const {
+  strategyTypes,
+  categories,
+  strategiesByCategory,
+  loadStrategyTypes,
+  getStrategyLegs
+} = useStrategyTypes()
+
+// Selected strategy type for auto-populating legs
+const selectedStrategyType = ref('')
+const previousStrategyType = ref('')
+const showReplaceConfirm = ref(false)
 
 // Strategy management
 const savedStrategies = ref([])
@@ -830,6 +899,67 @@ async function loadSavedStrategies() {
   }
 }
 
+// Handle strategy type change - auto-populate legs
+function onStrategyTypeChange() {
+  const newType = selectedStrategyType.value
+
+  // If custom or empty, don't auto-populate
+  if (!newType || newType === 'custom') {
+    previousStrategyType.value = newType
+    return
+  }
+
+  // Check if legs exist - show confirmation if so
+  if (strategyStore.legs.length > 0) {
+    showReplaceConfirm.value = true
+    return
+  }
+
+  // No existing legs - auto-populate directly
+  applyStrategyTypeLegs(newType)
+}
+
+// Apply legs from strategy type template
+async function applyStrategyTypeLegs(strategyTypeKey) {
+  const templateLegs = getStrategyLegs(strategyTypeKey)
+  if (!templateLegs || templateLegs.length === 0) return
+
+  // Get the first available expiry
+  const expiry = strategyStore.expiries[0] || null
+
+  // Clear existing legs by removing all
+  while (strategyStore.legs.length > 0) {
+    strategyStore.removeLeg(0)
+  }
+
+  // Add new legs from template
+  for (const leg of templateLegs) {
+    await strategyStore.addLeg({
+      temp_id: `leg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      transaction_type: leg.action, // BUY or SELL
+      contract_type: leg.type, // CE or PE
+      strike_price: null, // Will be set by user or calculated
+      expiry_date: expiry,
+      lots: 1,
+      entry_price: null
+    })
+  }
+
+  previousStrategyType.value = strategyTypeKey
+  showReplaceConfirm.value = false
+}
+
+// Confirm replace legs
+function confirmReplaceLegs() {
+  applyStrategyTypeLegs(selectedStrategyType.value)
+}
+
+// Cancel replace legs - revert selection
+function cancelReplaceLegs() {
+  selectedStrategyType.value = previousStrategyType.value
+  showReplaceConfirm.value = false
+}
+
 async function handleStrategyChange() {
   if (!selectedStrategyId.value) {
     // New strategy - clear everything
@@ -933,6 +1063,11 @@ async function handlePlaceOrder() {
 
 // Lifecycle
 onMounted(async () => {
+  // Load strategy types from backend (non-blocking - will use fallback if API fails)
+  loadStrategyTypes().catch(() => {
+    // Silently use fallback data which is set in strategyTypes.js
+  })
+
   // Check for shared strategy
   if (route.params.shareCode) {
     await strategyStore.loadSharedStrategy(route.params.shareCode)

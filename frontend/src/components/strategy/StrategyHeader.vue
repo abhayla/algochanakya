@@ -6,7 +6,6 @@
         <div class="flex items-center gap-4">
           <!-- Navigation Links -->
           <div class="flex items-center gap-4 mr-4">
-            <router-link to="/watchlist" class="text-sm text-gray-600 hover:text-blue-600">Watchlist</router-link>
             <router-link to="/optionchain" class="text-sm text-gray-600 hover:text-blue-600">Option Chain</router-link>
             <router-link to="/strategy" class="text-sm text-blue-600 font-semibold">Strategy Builder</router-link>
           </div>

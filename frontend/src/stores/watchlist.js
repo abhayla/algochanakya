@@ -303,6 +303,16 @@ export const useWatchlistStore = defineStore('watchlist', () => {
     }
   }
 
+  // Update tick data for a token (used for API fallback when WebSocket isn't available)
+  function updateTick(token, tickData) {
+    ticks.value[token] = {
+      ...ticks.value[token],
+      ltp: tickData.ltp,
+      change: tickData.change,
+      change_percent: tickData.change_percent
+    }
+  }
+
   function setActiveWatchlist(watchlistId) {
     // Unsubscribe from old watchlist instruments
     if (activeWatchlist.value) {
@@ -352,6 +362,7 @@ export const useWatchlistStore = defineStore('watchlist', () => {
     subscribeToTokens,
     unsubscribeFromTokens,
     disconnectWebSocket,
-    setActiveWatchlist
+    setActiveWatchlist,
+    updateTick
   }
 })

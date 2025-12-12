@@ -2,12 +2,12 @@ import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests/e2e',
-  timeout: 180000, // 3 minutes for manual login
+  timeout: 15000, // 15 seconds - fast fail for broken tests
   retries: 0,
 
-  // Single worker = single browser window, no flickering
-  workers: 1,
-  fullyParallel: false,
+  // 4 parallel workers for faster execution (token shared via file)
+  workers: 4,
+  fullyParallel: true,
 
   // Global setup runs once before all tests - handles login
   globalSetup: './tests/e2e/global-setup.js',

@@ -2,6 +2,7 @@
 AutoPilot SQLAlchemy Models
 
 Reference: docs/autopilot/database-schema.md
+Phase 3: Added ExecutionMode, AdjustmentTriggerType, AdjustmentActionType, ConfirmationStatus
 """
 import uuid
 from datetime import datetime, date
@@ -10,9 +11,9 @@ from typing import Optional, List
 from sqlalchemy import (
     Column, BigInteger, String, Integer, Boolean, Numeric,
     Date, DateTime, ForeignKey, Text, CheckConstraint,
-    UniqueConstraint, Index
+    UniqueConstraint, Index, Enum
 )
-from sqlalchemy.dialects.postgresql import JSONB, ARRAY, UUID
+from sqlalchemy.dialects.postgresql import JSONB, ARRAY, UUID, ENUM as PgEnum
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import enum
@@ -72,6 +73,40 @@ class LogSeverity(str, enum.Enum):
     CRITICAL = "critical"
 
 
+# Phase 3 Enums
+class ExecutionMode(str, enum.Enum):
+    AUTO = "auto"
+    SEMI_AUTO = "semi_auto"
+    MANUAL = "manual"
+
+
+class AdjustmentTriggerType(str, enum.Enum):
+    PNL_BASED = "pnl_based"
+    DELTA_BASED = "delta_based"
+    TIME_BASED = "time_based"
+    PREMIUM_BASED = "premium_based"
+    VIX_BASED = "vix_based"
+    SPOT_BASED = "spot_based"
+
+
+class AdjustmentActionType(str, enum.Enum):
+    ADD_HEDGE = "add_hedge"
+    CLOSE_LEG = "close_leg"
+    ROLL_STRIKE = "roll_strike"
+    ROLL_EXPIRY = "roll_expiry"
+    EXIT_ALL = "exit_all"
+    SCALE_DOWN = "scale_down"
+    SCALE_UP = "scale_up"
+
+
+class ConfirmationStatus(str, enum.Enum):
+    PENDING = "pending"
+    CONFIRMED = "confirmed"
+    REJECTED = "rejected"
+    EXPIRED = "expired"
+    CANCELLED = "cancelled"
+
+
 # Models
 class AutoPilotUserSettings(Base):
     __tablename__ = "autopilot_user_settings"
@@ -103,6 +138,26 @@ class AutoPilotUserSettings(Base):
     paper_trading_mode = Column(Boolean, nullable=False, default=False)
     show_advanced_features = Column(Boolean, nullable=False, default=False)
 
+    # Phase 3: Kill Switch
+    kill_switch_enabled = Column(Boolean, nullable=False, default=False)
+    kill_switch_triggered_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Phase 3: Semi-Auto Execution
+    default_execution_mode = Column(
+        PgEnum('auto', 'semi_auto', 'manual',
+               name='autopilot_execution_mode', create_type=False),
+        nullable=False,
+        default="auto"
+    )
+    confirmation_timeout_seconds = Column(Integer, nullable=False, default=30)
+
+    # Phase 3: Auto-Exit
+    auto_exit_time = Column(String(5), nullable=True, default="15:15")
+
+    # Phase 3: Position Sizing
+    account_capital = Column(Numeric(14, 2), nullable=True)
+    risk_per_trade_pct = Column(Numeric(5, 2), nullable=True, default=2.00)
+
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
@@ -120,14 +175,28 @@ class AutoPilotStrategy(Base):
     # Basic Info
     name = Column(String(100), nullable=False)
     description = Column(String(500), nullable=True)
-    status = Column(String(20), nullable=False, default="draft")
+    status = Column(
+        PgEnum('draft', 'waiting', 'active', 'pending', 'paused', 'completed', 'error', 'expired',
+               name='autopilot_strategy_status', create_type=False),
+        nullable=False,
+        default="draft"
+    )
 
     # Instrument Configuration
-    underlying = Column(String(20), nullable=False)
+    underlying = Column(
+        PgEnum('NIFTY', 'BANKNIFTY', 'FINNIFTY', 'SENSEX',
+               name='autopilot_underlying', create_type=False),
+        nullable=False
+    )
     expiry_type = Column(String(20), nullable=False, default="current_week")
     expiry_date = Column(Date, nullable=True)
     lots = Column(Integer, nullable=False, default=1)
-    position_type = Column(String(20), nullable=False, default="intraday")
+    position_type = Column(
+        PgEnum('intraday', 'positional',
+               name='autopilot_position_type', create_type=False),
+        nullable=False,
+        default="intraday"
+    )
 
     # JSONB Configurations
     legs_config = Column(JSONB, nullable=False, default=list)
@@ -137,6 +206,19 @@ class AutoPilotStrategy(Base):
     risk_settings = Column(JSONB, nullable=False, default=dict)
     schedule_config = Column(JSONB, nullable=False, default=dict)
 
+    # Phase 3: Execution Mode (overrides user default)
+    execution_mode = Column(
+        PgEnum('auto', 'semi_auto', 'manual',
+               name='autopilot_execution_mode', create_type=False),
+        nullable=True
+    )
+
+    # Phase 3: Trailing Stop Configuration
+    trailing_stop_config = Column(JSONB, nullable=True)
+
+    # Phase 3: Greeks Snapshot
+    greeks_snapshot = Column(JSONB, nullable=True)
+
     # Priority & State
     priority = Column(Integer, nullable=False, default=100)
     runtime_state = Column(JSONB, nullable=True)
@@ -144,6 +226,16 @@ class AutoPilotStrategy(Base):
     # References
     source_template_id = Column(BigInteger, ForeignKey("autopilot_templates.id", ondelete="SET NULL"), nullable=True)
     cloned_from_id = Column(BigInteger, ForeignKey("autopilot_strategies.id", ondelete="SET NULL"), nullable=True)
+
+    # Phase 4: Sharing
+    share_mode = Column(
+        PgEnum('private', 'link', 'public',
+               name='autopilot_share_mode', create_type=False),
+        nullable=False,
+        default="private"
+    )
+    share_token = Column(String(50), nullable=True, unique=True)
+    shared_at = Column(DateTime(timezone=True), nullable=True)
 
     # Version & Timestamps
     version = Column(Integer, nullable=False, default=1)
@@ -156,6 +248,8 @@ class AutoPilotStrategy(Base):
     user = relationship("User", back_populates="autopilot_strategies")
     orders = relationship("AutoPilotOrder", back_populates="strategy", cascade="all, delete-orphan")
     logs = relationship("AutoPilotLog", back_populates="strategy")
+    adjustment_logs = relationship("AutoPilotAdjustmentLog", back_populates="strategy", cascade="all, delete-orphan")
+    pending_confirmations = relationship("AutoPilotPendingConfirmation", back_populates="strategy", cascade="all, delete-orphan")
 
 
 class AutoPilotOrder(Base):
@@ -170,7 +264,11 @@ class AutoPilotOrder(Base):
     kite_exchange_order_id = Column(String(50), nullable=True)
 
     # Order Context
-    purpose = Column(String(20), nullable=False)
+    purpose = Column(
+        PgEnum('entry', 'adjustment', 'hedge', 'exit', 'roll_close', 'roll_open', 'kill_switch',
+               name='autopilot_order_purpose', create_type=False),
+        nullable=False
+    )
     rule_name = Column(String(100), nullable=True)
     leg_index = Column(Integer, nullable=False, default=0)
 
@@ -178,14 +276,26 @@ class AutoPilotOrder(Base):
     exchange = Column(String(10), nullable=False, default="NFO")
     tradingsymbol = Column(String(50), nullable=False)
     instrument_token = Column(BigInteger, nullable=True)
-    underlying = Column(String(20), nullable=False)
-    contract_type = Column(String(3), nullable=False)
+    underlying = Column(
+        PgEnum('NIFTY', 'BANKNIFTY', 'FINNIFTY', 'SENSEX',
+               name='autopilot_underlying', create_type=False),
+        nullable=False
+    )
+    contract_type = Column(String(2), nullable=False)
     strike = Column(Numeric(10, 2), nullable=True)
     expiry = Column(Date, nullable=False)
 
     # Order Details
-    transaction_type = Column(String(4), nullable=False)
-    order_type = Column(String(10), nullable=False)
+    transaction_type = Column(
+        PgEnum('BUY', 'SELL',
+               name='autopilot_transaction_type', create_type=False),
+        nullable=False
+    )
+    order_type = Column(
+        PgEnum('MARKET', 'LIMIT', 'SL', 'SL-M',
+               name='autopilot_order_type', create_type=False),
+        nullable=False
+    )
     product = Column(String(10), nullable=False, default="NRML")
     quantity = Column(Integer, nullable=False)
 
@@ -202,7 +312,12 @@ class AutoPilotOrder(Base):
     slippage_pct = Column(Numeric(5, 2), nullable=True)
 
     # Status
-    status = Column(String(20), nullable=False, default="pending")
+    status = Column(
+        PgEnum('pending', 'placed', 'open', 'complete', 'cancelled', 'rejected', 'error',
+               name='autopilot_order_status', create_type=False),
+        nullable=False,
+        default="pending"
+    )
     rejection_reason = Column(String(500), nullable=True)
 
     # Timing
@@ -235,8 +350,29 @@ class AutoPilotLog(Base):
     order_id = Column(BigInteger, ForeignKey("autopilot_orders.id", ondelete="SET NULL"), nullable=True)
 
     # Event Details
-    event_type = Column(String(50), nullable=False)
-    severity = Column(String(20), nullable=False, default="info")
+    event_type = Column(
+        PgEnum('strategy_created', 'strategy_activated', 'strategy_paused', 'strategy_resumed',
+               'strategy_completed', 'strategy_expired', 'strategy_error',
+               'entry_condition_evaluated', 'entry_condition_triggered',
+               'entry_started', 'entry_completed', 'entry_failed',
+               'adjustment_condition_evaluated', 'adjustment_condition_triggered',
+               'confirmation_requested', 'confirmation_received', 'confirmation_timeout', 'confirmation_skipped',
+               'adjustment_started', 'adjustment_completed', 'adjustment_failed',
+               'order_placed', 'order_filled', 'order_partial_fill', 'order_cancelled', 'order_rejected', 'order_modified',
+               'exit_triggered', 'exit_started', 'exit_completed', 'exit_failed',
+               'risk_limit_warning', 'risk_limit_breach', 'daily_loss_limit_hit',
+               'margin_warning', 'margin_insufficient', 'kill_switch_activated',
+               'connection_lost', 'connection_restored', 'system_error', 'api_error',
+               'user_modified_settings', 'user_force_entry', 'user_force_exit',
+               name='autopilot_log_event', create_type=False),
+        nullable=False
+    )
+    severity = Column(
+        PgEnum('debug', 'info', 'warning', 'error', 'critical',
+               name='autopilot_log_severity', create_type=False),
+        nullable=False,
+        default="info"
+    )
 
     # Context
     rule_name = Column(String(100), nullable=True)
@@ -272,11 +408,23 @@ class AutoPilotTemplate(Base):
     avg_rating = Column(Numeric(3, 2), nullable=True)
     rating_count = Column(Integer, nullable=False, default=0)
 
+    # Phase 4: Enhanced template fields
+    author_name = Column(String(100), nullable=True)
+    underlying = Column(String(20), nullable=True)
+    position_type = Column(String(20), nullable=True)
+    expected_return_pct = Column(Numeric(5, 2), nullable=True)
+    max_risk_pct = Column(Numeric(5, 2), nullable=True)
+    market_outlook = Column(String(50), nullable=True)  # bullish, bearish, neutral, volatile
+    iv_environment = Column(String(50), nullable=True)  # high, low, normal
+    thumbnail_url = Column(String(500), nullable=True)
+    educational_content = Column(JSONB, nullable=True, default=dict)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
     # Relationships
     user = relationship("User")
+    ratings = relationship("AutoPilotTemplateRating", back_populates="template", cascade="all, delete-orphan")
 
 
 class AutoPilotConditionEval(Base):
@@ -350,4 +498,437 @@ class AutoPilotDailySummary(Base):
     # Unique constraint
     __table_args__ = (
         UniqueConstraint('user_id', 'summary_date', name='uq_user_date'),
+    )
+
+
+# Phase 3 Models
+class AutoPilotAdjustmentLog(Base):
+    """
+    Phase 3: Track adjustment rule executions.
+    Logs when adjustment rules are triggered and their outcomes.
+    """
+    __tablename__ = "autopilot_adjustment_logs"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    strategy_id = Column(BigInteger, ForeignKey("autopilot_strategies.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+
+    # Rule Reference
+    rule_id = Column(String(50), nullable=False)
+    rule_name = Column(String(100), nullable=False)
+
+    # Trigger Details
+    trigger_type = Column(
+        PgEnum('pnl_based', 'delta_based', 'time_based', 'premium_based', 'vix_based', 'spot_based',
+               name='autopilot_adjustment_trigger_type', create_type=False),
+        nullable=False
+    )
+    trigger_condition = Column(String(200), nullable=False)
+    trigger_value = Column(JSONB, nullable=False)
+    actual_value = Column(JSONB, nullable=False)
+
+    # Action Details
+    action_type = Column(
+        PgEnum('add_hedge', 'close_leg', 'roll_strike', 'roll_expiry', 'exit_all', 'scale_down', 'scale_up',
+               name='autopilot_adjustment_action_type', create_type=False),
+        nullable=False
+    )
+    action_params = Column(JSONB, nullable=False, default=dict)
+
+    # Execution Status
+    execution_mode = Column(
+        PgEnum('auto', 'semi_auto', 'manual',
+               name='autopilot_execution_mode', create_type=False),
+        nullable=False
+    )
+    executed = Column(Boolean, nullable=False, default=False)
+    execution_result = Column(JSONB, nullable=True)
+    error_message = Column(String(500), nullable=True)
+
+    # Related Orders
+    order_ids = Column(ARRAY(BigInteger), nullable=True)
+
+    # Confirmation (for semi-auto)
+    confirmation_id = Column(BigInteger, ForeignKey("autopilot_pending_confirmations.id", ondelete="SET NULL"), nullable=True)
+    confirmed_by_user = Column(Boolean, nullable=True)
+
+    # Timestamps
+    triggered_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    executed_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    # Relationships
+    strategy = relationship("AutoPilotStrategy", back_populates="adjustment_logs")
+    user = relationship("User")
+    confirmation = relationship("AutoPilotPendingConfirmation", foreign_keys=[confirmation_id])
+
+
+class AutoPilotPendingConfirmation(Base):
+    """
+    Phase 3: Semi-auto confirmation requests.
+    When execution_mode is 'semi_auto', actions require user confirmation.
+    """
+    __tablename__ = "autopilot_pending_confirmations"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    strategy_id = Column(BigInteger, ForeignKey("autopilot_strategies.id", ondelete="CASCADE"), nullable=False)
+
+    # Action Type
+    action_type = Column(String(50), nullable=False)  # 'entry', 'adjustment', 'exit', 'hedge'
+    action_description = Column(String(500), nullable=False)
+    action_data = Column(JSONB, nullable=False, default=dict)
+
+    # Related Rule (for adjustments)
+    rule_id = Column(String(50), nullable=True)
+    rule_name = Column(String(100), nullable=True)
+
+    # Status
+    status = Column(
+        PgEnum('pending', 'confirmed', 'rejected', 'expired', 'cancelled',
+               name='autopilot_confirmation_status', create_type=False),
+        nullable=False,
+        default="pending"
+    )
+
+    # Timing
+    timeout_seconds = Column(Integer, nullable=False, default=30)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+
+    # Response
+    responded_at = Column(DateTime(timezone=True), nullable=True)
+    response_source = Column(String(50), nullable=True)  # 'user', 'timeout', 'system'
+
+    # Execution Result
+    execution_result = Column(JSONB, nullable=True)
+    order_ids = Column(ARRAY(BigInteger), nullable=True)
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    # Relationships
+    strategy = relationship("AutoPilotStrategy", back_populates="pending_confirmations")
+    user = relationship("User")
+
+
+# =============================================================================
+# Phase 4 Enums
+# =============================================================================
+
+class ExitReason(str, enum.Enum):
+    TARGET_HIT = "target_hit"
+    STOP_LOSS = "stop_loss"
+    TRAILING_STOP = "trailing_stop"
+    TIME_EXIT = "time_exit"
+    MANUAL_EXIT = "manual_exit"
+    ADJUSTMENT_EXIT = "adjustment_exit"
+    KILL_SWITCH = "kill_switch"
+    AUTO_EXIT = "auto_exit"
+    ERROR = "error"
+
+
+class TemplateCategory(str, enum.Enum):
+    INCOME = "income"
+    DIRECTIONAL = "directional"
+    VOLATILITY = "volatility"
+    HEDGING = "hedging"
+    ADVANCED = "advanced"
+    CUSTOM = "custom"
+
+
+class ReportType(str, enum.Enum):
+    DAILY = "daily"
+    WEEKLY = "weekly"
+    MONTHLY = "monthly"
+    CUSTOM = "custom"
+    STRATEGY = "strategy"
+    TAX = "tax"
+
+
+class ReportFormat(str, enum.Enum):
+    PDF = "pdf"
+    EXCEL = "excel"
+    CSV = "csv"
+
+
+class BacktestStatus(str, enum.Enum):
+    PENDING = "pending"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+
+
+class ShareMode(str, enum.Enum):
+    PRIVATE = "private"
+    LINK = "link"
+    PUBLIC = "public"
+
+
+# =============================================================================
+# Phase 4 Models
+# =============================================================================
+
+class AutoPilotTradeJournal(Base):
+    """
+    Phase 4: Automatic trade logging.
+    Records all trades with full details for analysis and reporting.
+    """
+    __tablename__ = "autopilot_trade_journal"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    strategy_id = Column(BigInteger, ForeignKey("autopilot_strategies.id", ondelete="SET NULL"), nullable=True)
+
+    # Strategy Info (snapshot at trade time)
+    strategy_name = Column(String(100), nullable=False)
+    underlying = Column(String(20), nullable=False)
+    position_type = Column(String(20), nullable=False)
+
+    # Trade Timing
+    entry_time = Column(DateTime(timezone=True), nullable=False)
+    exit_time = Column(DateTime(timezone=True), nullable=True)
+    holding_duration_minutes = Column(Integer, nullable=True)
+
+    # Legs Snapshot (JSONB)
+    legs = Column(JSONB, nullable=False, default=list)
+
+    # Quantities
+    lots = Column(Integer, nullable=False)
+    total_quantity = Column(Integer, nullable=False)
+
+    # Prices
+    entry_premium = Column(Numeric(12, 2), nullable=True)
+    exit_premium = Column(Numeric(12, 2), nullable=True)
+
+    # P&L
+    gross_pnl = Column(Numeric(14, 2), nullable=True)
+    brokerage = Column(Numeric(10, 2), nullable=True, default=0)
+    taxes = Column(Numeric(10, 2), nullable=True, default=0)
+    other_charges = Column(Numeric(10, 2), nullable=True, default=0)
+    net_pnl = Column(Numeric(14, 2), nullable=True)
+    pnl_percentage = Column(Numeric(8, 4), nullable=True)
+
+    # Tracking metrics
+    max_profit_reached = Column(Numeric(14, 2), nullable=True)
+    max_loss_reached = Column(Numeric(14, 2), nullable=True)
+    max_drawdown = Column(Numeric(14, 2), nullable=True)
+
+    # Exit Details
+    exit_reason = Column(
+        PgEnum('target_hit', 'stop_loss', 'trailing_stop', 'time_exit',
+               'manual_exit', 'adjustment_exit', 'kill_switch', 'auto_exit', 'error',
+               name='autopilot_exit_reason', create_type=False),
+        nullable=True
+    )
+
+    # Market Conditions (JSONB)
+    market_conditions = Column(JSONB, nullable=True, default=dict)
+
+    # User Notes & Tags
+    notes = Column(Text, nullable=True)
+    tags = Column(ARRAY(String(50)), default=[])
+
+    # Screenshots (JSONB array of URLs)
+    screenshots = Column(JSONB, nullable=True, default=list)
+
+    # Order IDs (for reference)
+    entry_order_ids = Column(ARRAY(BigInteger), nullable=True)
+    exit_order_ids = Column(ARRAY(BigInteger), nullable=True)
+
+    # Status
+    is_open = Column(Boolean, nullable=False, default=True)
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    # Relationships
+    user = relationship("User")
+    strategy = relationship("AutoPilotStrategy")
+
+
+class AutoPilotAnalyticsCache(Base):
+    """
+    Phase 4: Pre-calculated analytics cache.
+    Stores computed metrics for fast dashboard loading.
+    """
+    __tablename__ = "autopilot_analytics_cache"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+
+    # Cache Key (e.g., 'summary_30d', 'performance_ytd')
+    cache_key = Column(String(100), nullable=False)
+
+    # Date Range
+    start_date = Column(Date, nullable=False)
+    end_date = Column(Date, nullable=False)
+
+    # Cached Metrics (JSONB)
+    metrics = Column(JSONB, nullable=False)
+
+    # Cache Validity
+    is_valid = Column(Boolean, nullable=False, default=True)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    # Relationships
+    user = relationship("User")
+
+    # Unique constraint
+    __table_args__ = (
+        UniqueConstraint('user_id', 'cache_key', name='uq_analytics_cache_user_key'),
+    )
+
+
+class AutoPilotReport(Base):
+    """
+    Phase 4: Generated reports.
+    Stores report configurations and generated files.
+    """
+    __tablename__ = "autopilot_reports"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+
+    # Report Type
+    report_type = Column(
+        PgEnum('daily', 'weekly', 'monthly', 'custom', 'strategy', 'tax',
+               name='autopilot_report_type', create_type=False),
+        nullable=False
+    )
+
+    # Report Name
+    name = Column(String(200), nullable=False)
+    description = Column(String(500), nullable=True)
+
+    # Date Range
+    start_date = Column(Date, nullable=False)
+    end_date = Column(Date, nullable=False)
+
+    # Strategy Filter (optional)
+    strategy_id = Column(BigInteger, ForeignKey("autopilot_strategies.id", ondelete="SET NULL"), nullable=True)
+
+    # Report Data (JSONB)
+    report_data = Column(JSONB, nullable=False)
+
+    # Export Format & File
+    format = Column(
+        PgEnum('pdf', 'excel', 'csv',
+               name='autopilot_report_format', create_type=False),
+        nullable=True
+    )
+    file_path = Column(String(500), nullable=True)
+    file_size_bytes = Column(BigInteger, nullable=True)
+
+    # Status
+    is_ready = Column(Boolean, nullable=False, default=False)
+    error_message = Column(String(500), nullable=True)
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    generated_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Relationships
+    user = relationship("User")
+    strategy = relationship("AutoPilotStrategy")
+
+
+class AutoPilotBacktest(Base):
+    """
+    Phase 4: Backtest results.
+    Stores backtest configurations and results.
+    """
+    __tablename__ = "autopilot_backtests"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+
+    # Backtest Name
+    name = Column(String(200), nullable=False)
+    description = Column(String(500), nullable=True)
+
+    # Strategy Configuration (JSONB snapshot)
+    strategy_config = Column(JSONB, nullable=False)
+
+    # Backtest Parameters
+    start_date = Column(Date, nullable=False)
+    end_date = Column(Date, nullable=False)
+    initial_capital = Column(Numeric(14, 2), nullable=False)
+    slippage_pct = Column(Numeric(5, 2), nullable=False, default=0.1)
+    charges_per_lot = Column(Numeric(10, 2), nullable=False, default=40)
+    data_interval = Column(String(20), nullable=False, default="1min")
+
+    # Status
+    status = Column(
+        PgEnum('pending', 'running', 'completed', 'failed', 'cancelled',
+               name='autopilot_backtest_status', create_type=False),
+        nullable=False,
+        default="pending"
+    )
+    progress_pct = Column(Integer, nullable=False, default=0)
+    error_message = Column(String(500), nullable=True)
+
+    # Results (JSONB)
+    results = Column(JSONB, nullable=True)
+
+    # Summary Metrics
+    total_trades = Column(Integer, nullable=True)
+    winning_trades = Column(Integer, nullable=True)
+    losing_trades = Column(Integer, nullable=True)
+    win_rate = Column(Numeric(5, 2), nullable=True)
+    gross_pnl = Column(Numeric(14, 2), nullable=True)
+    net_pnl = Column(Numeric(14, 2), nullable=True)
+    max_drawdown = Column(Numeric(14, 2), nullable=True)
+    max_drawdown_pct = Column(Numeric(5, 2), nullable=True)
+    sharpe_ratio = Column(Numeric(6, 3), nullable=True)
+    profit_factor = Column(Numeric(6, 3), nullable=True)
+
+    # Equity Curve (JSONB array)
+    equity_curve = Column(JSONB, nullable=True, default=list)
+
+    # Trades List (JSONB array)
+    trades = Column(JSONB, nullable=True, default=list)
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    started_at = Column(DateTime(timezone=True), nullable=True)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Relationships
+    user = relationship("User")
+
+
+class AutoPilotTemplateRating(Base):
+    """
+    Phase 4: User ratings for templates.
+    One rating per user per template.
+    """
+    __tablename__ = "autopilot_template_ratings"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    template_id = Column(BigInteger, ForeignKey("autopilot_templates.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+
+    # Rating
+    rating = Column(Integer, nullable=False)
+    review = Column(Text, nullable=True)
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    # Relationships
+    template = relationship("AutoPilotTemplate", back_populates="ratings")
+    user = relationship("User")
+
+    # Unique constraint
+    __table_args__ = (
+        UniqueConstraint('template_id', 'user_id', name='uq_template_rating_user'),
+        CheckConstraint('rating >= 1 AND rating <= 5', name='chk_rating_value'),
     )

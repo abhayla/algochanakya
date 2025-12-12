@@ -2,12 +2,16 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from sqlalchemy import select, func
+import logging
 
 from app.config import settings
 from app.database import init_db, close_db, AsyncSessionLocal
-from app.api.routes import health, auth, watchlist, instruments, websocket, options, strategy, orders, optionchain, positions, strategy_wizard
+from app.api.routes import health, auth, watchlist, instruments, websocket, options, strategy, orders, optionchain, positions, strategy_wizard, constants
 from app.api.v1.autopilot import router as autopilot_router
+from app.websocket.routes import router as autopilot_ws_router
 from app.models import Instrument
+
+logger = logging.getLogger(__name__)
 
 
 async def check_and_download_instruments():
@@ -37,12 +41,28 @@ async def lifespan(app: FastAPI):
     print(f"[SUCCESS] {settings.APP_NAME} backend started")
     print(f"[SUCCESS] Database: Connected to PostgreSQL")
     print(f"[SUCCESS] Redis: Connected")
+    print(f"[SUCCESS] AutoPilot WebSocket: /ws/autopilot")
 
     # Auto-download instruments if needed
     await check_and_download_instruments()
 
+    # Note: Strategy Monitor requires a valid Kite session to start.
+    # It will be initialized when a user with valid broker connection
+    # activates a strategy. See app/services/strategy_monitor.py for details.
+    # To start monitor globally with a service account:
+    #
+    # from kiteconnect import KiteConnect
+    # from app.services.strategy_monitor import get_strategy_monitor
+    # kite = KiteConnect(api_key=settings.KITE_API_KEY)
+    # kite.set_access_token(service_account_token)
+    # monitor = await get_strategy_monitor(kite)
+    # await monitor.start()
+
     yield
+
     # Shutdown
+    from app.services.strategy_monitor import stop_strategy_monitor
+    await stop_strategy_monitor()
     await close_db()
     print("[INFO] Shutting down...")
 
@@ -76,7 +96,9 @@ app.include_router(orders.router, prefix="/api/orders", tags=["Orders"])
 app.include_router(optionchain.router, prefix="/api/optionchain", tags=["OptionChain"])
 app.include_router(positions.router, prefix="/api/positions", tags=["Positions"])
 app.include_router(strategy_wizard.router, prefix="/api/strategy-library", tags=["Strategy Library"])
+app.include_router(constants.router, prefix="/api/constants", tags=["Constants"])
 app.include_router(autopilot_router, prefix="/api/v1", tags=["AutoPilot"])
+app.include_router(autopilot_ws_router, tags=["AutoPilot WebSocket"])
 app.include_router(websocket.router, tags=["WebSocket"])
 
 

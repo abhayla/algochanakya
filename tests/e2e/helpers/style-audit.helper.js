@@ -7,9 +7,20 @@
  *   await audit.validateFonts();
  *   await audit.validateColors();
  *   await audit.checkAccessibility();
+ *
+ * Cross-screen consistency:
+ *   await audit.collectElementStyles('buttons', { primary: 'button.primary' });
+ *   audit.compareStyles(collectedStyles, EXPECTED_STYLES.buttons);
  */
 
 import AxeBuilder from '@axe-core/playwright';
+import {
+  EXPECTED_STYLES,
+  CONSISTENCY_THRESHOLDS,
+  matchesExpected,
+  colorsMatch,
+  getSeverity,
+} from './ui-consistency.constants.js';
 
 /**
  * Design tokens extracted from Tailwind config and global CSS
@@ -229,7 +240,296 @@ export class StyleAudit {
   getErrors() {
     return this.errors;
   }
+
+  // ===========================================================================
+  // CROSS-SCREEN CONSISTENCY METHODS
+  // ===========================================================================
+
+  /**
+   * Collect element styles from the current page
+   * @param {string} elementType - Type of element (buttons, cards, inputs, etc.)
+   * @param {Object} selectors - Object mapping variant names to CSS selectors
+   * @returns {Object} Styles for each variant found on the page
+   */
+  async collectElementStyles(elementType, selectors) {
+    const styles = {};
+
+    for (const [variant, selector] of Object.entries(selectors)) {
+      try {
+        const elements = this.page.locator(selector);
+        const count = await elements.count();
+
+        if (count > 0) {
+          // Get styles from the first matching element
+          styles[variant] = await this.extractStyles(elements.first());
+          styles[variant]._count = count;
+          styles[variant]._selector = selector;
+        }
+      } catch (error) {
+        // Element not found on this page, skip
+        continue;
+      }
+    }
+
+    return styles;
+  }
+
+  /**
+   * Extract all relevant CSS properties from an element
+   * @param {Locator} element - Playwright locator
+   * @returns {Object} CSS properties
+   */
+  async extractStyles(element) {
+    return await element.evaluate(el => {
+      const computed = window.getComputedStyle(el);
+      return {
+        // Colors
+        backgroundColor: computed.backgroundColor,
+        color: computed.color,
+        borderColor: computed.borderColor,
+
+        // Typography
+        fontSize: computed.fontSize,
+        fontWeight: computed.fontWeight,
+        fontFamily: computed.fontFamily,
+        textTransform: computed.textTransform,
+
+        // Spacing
+        padding: computed.padding,
+        margin: computed.margin,
+
+        // Borders & Shadows
+        borderRadius: computed.borderRadius,
+        borderWidth: computed.borderWidth,
+        boxShadow: computed.boxShadow,
+
+        // Layout
+        display: computed.display,
+        alignItems: computed.alignItems,
+        justifyContent: computed.justifyContent,
+      };
+    });
+  }
+
+  /**
+   * Compare collected styles against expected styles
+   * @param {Array} screenResults - Array of { screen, styles } objects
+   * @param {Object} expectedStyles - Expected styles from EXPECTED_STYLES
+   * @returns {Object} Comparison results with inconsistencies
+   */
+  compareStyles(screenResults, expectedStyles) {
+    const inconsistencies = [];
+    const screenComparisons = [];
+
+    for (const { screen, styles } of screenResults) {
+      const screenIssues = [];
+
+      for (const [variant, variantStyles] of Object.entries(styles)) {
+        if (!expectedStyles[variant]) continue;
+
+        const expected = expectedStyles[variant];
+
+        for (const [property, expectedValue] of Object.entries(expected)) {
+          const actualValue = variantStyles[property];
+
+          if (!actualValue) continue;
+
+          // Check if actual matches expected
+          const matches = this.valueMatches(actualValue, expectedValue, property);
+
+          if (!matches) {
+            const severity = getSeverity(property);
+            screenIssues.push({
+              screen,
+              variant,
+              property,
+              expected: expectedValue,
+              actual: actualValue,
+              severity,
+            });
+          }
+        }
+      }
+
+      screenComparisons.push({
+        screen,
+        issues: screenIssues,
+        passed: screenIssues.length === 0,
+      });
+
+      inconsistencies.push(...screenIssues);
+    }
+
+    // Cross-screen comparison: check if same element varies across screens
+    const crossScreenIssues = this.detectCrossScreenVariance(screenResults);
+    inconsistencies.push(...crossScreenIssues);
+
+    return {
+      inconsistencies,
+      screenComparisons,
+      totalIssues: inconsistencies.length,
+      criticalCount: inconsistencies.filter(i => i.severity === 'critical').length,
+      majorCount: inconsistencies.filter(i => i.severity === 'major').length,
+      minorCount: inconsistencies.filter(i => i.severity === 'minor').length,
+      passed: inconsistencies.length <= CONSISTENCY_THRESHOLDS.maxInconsistencies,
+      passedCritical: inconsistencies.filter(i => i.severity === 'critical').length <= CONSISTENCY_THRESHOLDS.maxCriticalIssues,
+    };
+  }
+
+  /**
+   * Check if an actual value matches the expected value
+   * @param {string} actual - Actual CSS value
+   * @param {*} expected - Expected value (string, array, or regex)
+   * @param {string} property - CSS property name
+   * @returns {boolean}
+   */
+  valueMatches(actual, expected, property) {
+    // Skip internal properties
+    if (property.startsWith('_')) return true;
+
+    // Color properties need special handling with tolerance
+    const colorProperties = ['backgroundColor', 'color', 'borderColor'];
+    if (colorProperties.includes(property)) {
+      if (Array.isArray(expected)) {
+        return expected.some(exp => colorsMatch(actual, exp, CONSISTENCY_THRESHOLDS.colorTolerance));
+      }
+      if (expected instanceof RegExp) {
+        return expected.test(actual);
+      }
+      return colorsMatch(actual, expected, CONSISTENCY_THRESHOLDS.colorTolerance);
+    }
+
+    // Use the matchesExpected helper for other properties
+    return matchesExpected(actual, expected);
+  }
+
+  /**
+   * Detect variance in styles across different screens
+   * @param {Array} screenResults - Array of { screen, styles } objects
+   * @returns {Array} Cross-screen variance issues
+   */
+  detectCrossScreenVariance(screenResults) {
+    const issues = [];
+    const propertyValues = {}; // { 'buttons.primary.fontSize': { '/dashboard': '13px', '/watchlist': '14px' } }
+
+    for (const { screen, styles } of screenResults) {
+      for (const [variant, variantStyles] of Object.entries(styles)) {
+        for (const [property, value] of Object.entries(variantStyles)) {
+          if (property.startsWith('_')) continue;
+
+          const key = `${variant}.${property}`;
+          if (!propertyValues[key]) {
+            propertyValues[key] = {};
+          }
+          propertyValues[key][screen] = value;
+        }
+      }
+    }
+
+    // Check for variance
+    for (const [key, screens] of Object.entries(propertyValues)) {
+      const values = Object.values(screens);
+      const uniqueValues = [...new Set(values.map(v => this.normalizeForComparison(v)))];
+
+      if (uniqueValues.length > 1) {
+        const [variant, property] = key.split('.');
+        const severity = getSeverity(property);
+
+        // Only report if not a minor issue
+        if (severity !== 'minor') {
+          issues.push({
+            type: 'cross-screen-variance',
+            variant,
+            property,
+            values: screens,
+            severity,
+            message: `${key} varies across screens: ${JSON.stringify(screens)}`,
+          });
+        }
+      }
+    }
+
+    return issues;
+  }
+
+  /**
+   * Normalize a CSS value for comparison
+   * @param {string} value - CSS value
+   * @returns {string} Normalized value
+   */
+  normalizeForComparison(value) {
+    if (!value) return '';
+    return value.toString().toLowerCase().replace(/\s+/g, ' ').trim();
+  }
+
+  /**
+   * Generate a detailed consistency report
+   * @param {Object} comparisonResults - Results from compareStyles
+   * @returns {Object} Formatted report
+   */
+  generateReport(comparisonResults) {
+    const { inconsistencies, screenComparisons, totalIssues, criticalCount, majorCount, minorCount } = comparisonResults;
+
+    // Group by element type
+    const byElement = {};
+    const byScreen = {};
+
+    for (const issue of inconsistencies) {
+      const element = issue.variant || 'unknown';
+      const screen = issue.screen || 'cross-screen';
+
+      if (!byElement[element]) byElement[element] = [];
+      byElement[element].push(issue);
+
+      if (!byScreen[screen]) byScreen[screen] = [];
+      byScreen[screen].push(issue);
+    }
+
+    return {
+      summary: {
+        totalIssues,
+        criticalCount,
+        majorCount,
+        minorCount,
+        passed: comparisonResults.passed,
+        passedCritical: comparisonResults.passedCritical,
+      },
+      byElement,
+      byScreen,
+      screenComparisons,
+      details: inconsistencies,
+    };
+  }
+
+  /**
+   * Run a full cross-screen consistency check
+   * @param {Array} screens - Array of { name, path } objects
+   * @param {string} elementType - Element type to check
+   * @param {Object} selectors - CSS selectors for element variants
+   * @param {Object} expectedStyles - Expected styles
+   * @returns {Object} Full consistency report
+   */
+  async runCrossScreenAudit(screens, elementType, selectors, expectedStyles) {
+    const results = [];
+
+    for (const screen of screens) {
+      await this.page.goto(screen.path);
+      await this.page.waitForLoadState('networkidle');
+
+      const styles = await this.collectElementStyles(elementType, selectors);
+      results.push({ screen: screen.name, path: screen.path, styles });
+    }
+
+    const comparison = this.compareStyles(results, expectedStyles);
+    return this.generateReport(comparison);
+  }
 }
+
+// ===========================================================================
+// EXPORTED CONSTANTS FROM UI-CONSISTENCY
+// ===========================================================================
+
+export { EXPECTED_STYLES, CONSISTENCY_THRESHOLDS };
 
 /**
  * Quick audit function for use in tests

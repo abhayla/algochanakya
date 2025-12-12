@@ -204,7 +204,7 @@ The platform includes a comprehensive options Strategy Builder:
    - Uses scipy for accurate Black-Scholes pricing (with pure Python fallback)
    - Calculates P/L grid across multiple spot prices
    - Returns max profit, max loss, and breakeven points
-   - Lot sizes: NIFTY=75, BANKNIFTY=15, FINNIFTY=25
+   - Lot sizes: NIFTY=25, BANKNIFTY=15, FINNIFTY=25, SENSEX=10
 
 2. **P/L Grid Display (`src/views/StrategyBuilderView.vue`):**
    - Dynamic columns showing P/L at different spot prices
@@ -289,19 +289,30 @@ Automated strategy execution with conditional entry, adjustments, and risk manag
    - `GET /api/v1/autopilot/logs` - Activity logs
    - `POST /api/v1/autopilot/kill-switch` - Emergency stop all
 
-3. **Frontend (`frontend/src/views/autopilot/`):**
+3. **AutoPilot Services (`backend/app/services/`):**
+   - `market_data.py` - Market data fetching (LTP, spot prices, VIX) with caching
+   - `condition_engine.py` - Entry condition evaluation (TIME, SPOT, VIX, PREMIUM variables)
+   - `order_executor.py` - Order placement via Kite with sequential/simultaneous execution
+   - `strategy_monitor.py` - Background service polling strategies, executing entries/exits
+
+4. **AutoPilot WebSocket (`backend/app/websocket/`):**
+   - `manager.py` - ConnectionManager for real-time updates to frontend
+   - Message types: STRATEGY_UPDATE, PNL_UPDATE, CONDITION_EVALUATED, ORDER_PLACED, RISK_ALERT
+   - Per-user connection tracking and strategy subscriptions
+
+5. **Frontend (`frontend/src/views/autopilot/`):**
    - `DashboardView.vue` - Active strategies, P&L summary, activity feed
    - `StrategyBuilderView.vue` - Visual strategy configuration
    - `StrategyDetailView.vue` - Real-time monitoring, condition progress
    - `SettingsView.vue` - Risk limits, notifications, preferences
 
-4. **Frontend Components (`frontend/src/components/autopilot/`):**
+6. **Frontend Components (`frontend/src/components/autopilot/`):**
    - `dashboard/` - Summary cards, activity feed, risk gauges
    - `strategy/` - Strategy list, status badges, action buttons
    - `builder/` - Condition builder, leg configurator, schedule picker
    - `common/` - Shared widgets, confirmation dialogs
 
-5. **Documentation:** See [docs/autopilot/README.md](docs/autopilot/README.md) for complete specs
+7. **Documentation:** See [docs/autopilot/README.md](docs/autopilot/README.md) for complete specs
 
 ### Key Backend Files
 
@@ -310,6 +321,11 @@ Automated strategy execution with conditional entry, adjustments, and risk manag
 - `app/database.py` - SQLAlchemy async engine, session factory, Redis pool
 - `app/services/kite_ticker.py` - Singleton WebSocket service for live price streaming
 - `app/services/pnl_calculator.py` - Black-Scholes P/L calculations
+- `app/services/market_data.py` - Market data service (LTP, spot, VIX) for AutoPilot
+- `app/services/condition_engine.py` - Entry condition evaluation engine
+- `app/services/strategy_monitor.py` - Background strategy monitoring and execution
+- `app/services/order_executor.py` - Order placement via Kite Connect
+- `app/websocket/manager.py` - WebSocket connection manager for AutoPilot
 - `app/utils/dependencies.py` - `get_current_user` and `get_current_broker_connection` dependencies
 
 ### Key Frontend Files
@@ -317,6 +333,7 @@ Automated strategy execution with conditional entry, adjustments, and risk manag
 - `src/router/index.js` - Vue Router with authentication guards
 - `src/services/api.js` - Axios instance with auth header interceptor
 - `src/stores/` - Pinia stores (auth, watchlist, strategy, optionchain, positions)
+- `src/composables/autopilot/useWebSocket.js` - AutoPilot WebSocket composable for real-time updates
 
 ### Database Connection
 
@@ -415,8 +432,9 @@ Located in `backend/tests/`:
 **Run backend tests:**
 ```bash
 cd backend
-pytest tests/test_strategy*.py -v
-pytest tests/test_strategy*.py -v --cov=app/api/routes/strategy_wizard
+pytest tests/ -v                    # Run all backend tests
+pytest tests/test_strategy*.py -v   # Run strategy-related tests
+pytest tests/ -v --cov=app          # Run with coverage
 ```
 
 ### data-testid Convention

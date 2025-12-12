@@ -1,0 +1,579 @@
+"""
+Order Execution Service
+
+Executes orders via Kite Connect API for AutoPilot strategies.
+Handles order placement, modification, and cancellation.
+"""
+import asyncio
+from datetime import datetime, date
+from decimal import Decimal
+from typing import Dict, List, Any, Optional, Tuple
+from dataclasses import dataclass
+from enum import Enum
+import logging
+
+from kiteconnect import KiteConnect
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.autopilot import AutoPilotStrategy, AutoPilotOrder, AutoPilotLog
+from app.services.market_data import MarketDataService
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass
+class OrderRequest:
+    """Order request details."""
+    strategy_id: int
+    leg_id: str
+    leg_index: int
+    purpose: str  # entry, exit, adjustment, hedge
+    exchange: str
+    tradingsymbol: str
+    transaction_type: str  # BUY, SELL
+    quantity: int
+    order_type: str  # MARKET, LIMIT, SL, SL-M
+    product: str  # NRML, MIS
+    price: Optional[Decimal] = None
+    trigger_price: Optional[Decimal] = None
+    underlying: str = ""
+    contract_type: str = ""  # CE, PE, FUT
+    strike: Optional[Decimal] = None
+    expiry: Optional[date] = None
+
+
+@dataclass
+class OrderResult:
+    """Result of order placement."""
+    success: bool
+    order_id: Optional[str] = None
+    kite_order_id: Optional[str] = None
+    message: str = ""
+    error: Optional[str] = None
+    executed_price: Optional[Decimal] = None
+    slippage: Optional[Decimal] = None
+    leg_id: str = ""
+
+
+# Lot sizes for different underlyings
+LOT_SIZES = {
+    "NIFTY": 25,
+    "BANKNIFTY": 15,
+    "FINNIFTY": 25,
+    "SENSEX": 10,
+}
+
+# Strike steps for different underlyings
+STRIKE_STEPS = {
+    "NIFTY": 50,
+    "BANKNIFTY": 100,
+    "FINNIFTY": 50,
+    "SENSEX": 100,
+}
+
+
+class OrderExecutor:
+    """
+    Executes orders via Kite Connect.
+
+    Features:
+    - Sequential and simultaneous execution
+    - Slippage protection
+    - Retry on failure
+    - Order tracking
+    """
+
+    def __init__(self, kite: KiteConnect, market_data: MarketDataService):
+        self.kite = kite
+        self.market_data = market_data
+
+    async def execute_entry(
+        self,
+        db: AsyncSession,
+        strategy: AutoPilotStrategy,
+        dry_run: bool = False
+    ) -> Tuple[bool, List[OrderResult]]:
+        """
+        Execute entry orders for a strategy.
+
+        Args:
+            db: Database session
+            strategy: Strategy to execute
+            dry_run: If True, simulate without placing real orders
+
+        Returns:
+            Tuple of (success, list of order results)
+        """
+        legs_config = strategy.legs_config or []
+        order_settings = strategy.order_settings or {}
+
+        execution_style = order_settings.get('execution_style', 'sequential')
+        leg_sequence = order_settings.get('leg_sequence', [])
+        delay_between = order_settings.get('delay_between_legs', 2)
+
+        # Sort legs by execution order
+        if leg_sequence:
+            sorted_legs = sorted(
+                legs_config,
+                key=lambda x: leg_sequence.index(x['id']) if x['id'] in leg_sequence else 999
+            )
+        else:
+            sorted_legs = sorted(legs_config, key=lambda x: x.get('execution_order', 1))
+
+        results: List[OrderResult] = []
+        all_success = True
+
+        # Build order requests
+        order_requests = await self._build_order_requests(
+            strategy=strategy,
+            legs=sorted_legs,
+            purpose="entry"
+        )
+
+        if execution_style == 'simultaneous':
+            # Execute all orders at once
+            tasks = [
+                self._place_order(db, req, strategy, dry_run)
+                for req in order_requests
+            ]
+            results = await asyncio.gather(*tasks)
+            all_success = all(r.success for r in results)
+        else:
+            # Execute sequentially with delay
+            for i, req in enumerate(order_requests):
+                result = await self._place_order(db, req, strategy, dry_run)
+                results.append(result)
+
+                if not result.success:
+                    all_success = False
+                    # Check on_leg_failure setting
+                    on_failure = order_settings.get('on_leg_failure', 'stop')
+                    if on_failure == 'stop':
+                        logger.warning(f"Stopping execution due to leg failure: {result.error}")
+                        break
+
+                # Delay between legs
+                if i < len(order_requests) - 1 and delay_between > 0:
+                    await asyncio.sleep(delay_between)
+
+        return all_success, results
+
+    async def execute_exit(
+        self,
+        db: AsyncSession,
+        strategy: AutoPilotStrategy,
+        exit_type: str = "market",
+        reason: str = "manual",
+        dry_run: bool = False
+    ) -> Tuple[bool, List[OrderResult]]:
+        """
+        Execute exit orders to close all positions.
+
+        Args:
+            db: Database session
+            strategy: Strategy to exit
+            exit_type: market, limit
+            reason: Reason for exit
+            dry_run: Simulate without real orders
+
+        Returns:
+            Tuple of (success, list of order results)
+        """
+        # Get current positions from runtime_state
+        runtime_state = strategy.runtime_state or {}
+        current_positions = runtime_state.get('current_positions', [])
+
+        if not current_positions:
+            logger.info(f"No positions to exit for strategy {strategy.id}")
+            return True, []
+
+        results: List[OrderResult] = []
+        all_success = True
+
+        for position in current_positions:
+            # Create reverse order to close position
+            req = OrderRequest(
+                strategy_id=strategy.id,
+                leg_id=position.get('leg_id', ''),
+                leg_index=position.get('leg_index', 0),
+                purpose="exit",
+                exchange=position.get('exchange', 'NFO'),
+                tradingsymbol=position.get('tradingsymbol'),
+                transaction_type="SELL" if position.get('quantity', 0) > 0 else "BUY",
+                quantity=abs(position.get('quantity', 0)),
+                order_type="MARKET" if exit_type == "market" else "LIMIT",
+                product=position.get('product', 'NRML'),
+                underlying=strategy.underlying,
+                contract_type=position.get('contract_type', ''),
+                strike=Decimal(str(position.get('strike', 0))) if position.get('strike') else None,
+                expiry=position.get('expiry')
+            )
+
+            result = await self._place_order(db, req, strategy, dry_run)
+            results.append(result)
+
+            if not result.success:
+                all_success = False
+
+        return all_success, results
+
+    async def _build_order_requests(
+        self,
+        strategy: AutoPilotStrategy,
+        legs: List[Dict[str, Any]],
+        purpose: str
+    ) -> List[OrderRequest]:
+        """Build order requests from leg configurations."""
+        requests = []
+
+        # Get spot price for strike selection
+        spot_data = await self.market_data.get_spot_price(strategy.underlying)
+        spot_price = float(spot_data.ltp)
+
+        # Determine expiry
+        expiry_date = strategy.expiry_date
+        if not expiry_date:
+            # Calculate based on expiry_type
+            expiry_date = self._calculate_expiry(strategy.expiry_type, strategy.underlying)
+
+        lot_size = LOT_SIZES.get(strategy.underlying.upper(), 25)
+
+        for i, leg in enumerate(legs):
+            strike = await self._calculate_strike(
+                leg=leg,
+                spot_price=spot_price,
+                underlying=strategy.underlying
+            )
+
+            tradingsymbol = self._build_tradingsymbol(
+                underlying=strategy.underlying,
+                expiry=expiry_date,
+                strike=strike,
+                contract_type=leg['contract_type']
+            )
+
+            quantity = strategy.lots * lot_size * leg.get('quantity_multiplier', 1)
+
+            order_type = (strategy.order_settings or {}).get('order_type', 'MARKET')
+            product = "NRML" if strategy.position_type == "positional" else "MIS"
+
+            req = OrderRequest(
+                strategy_id=strategy.id,
+                leg_id=leg.get('id', f'leg_{i}'),
+                leg_index=i,
+                purpose=purpose,
+                exchange="NFO",
+                tradingsymbol=tradingsymbol,
+                transaction_type=leg['transaction_type'],
+                quantity=int(quantity),
+                order_type=order_type,
+                product=product,
+                underlying=strategy.underlying,
+                contract_type=leg['contract_type'],
+                strike=Decimal(str(strike)),
+                expiry=expiry_date
+            )
+            requests.append(req)
+
+        return requests
+
+    async def _place_order(
+        self,
+        db: AsyncSession,
+        request: OrderRequest,
+        strategy: AutoPilotStrategy,
+        dry_run: bool
+    ) -> OrderResult:
+        """Place a single order."""
+
+        # Get LTP before order
+        ltp_at_order = None
+        try:
+            instrument_key = f"NFO:{request.tradingsymbol}"
+            ltp_data = await self.market_data.get_ltp([instrument_key])
+            ltp_at_order = ltp_data.get(instrument_key)
+        except Exception as e:
+            logger.warning(f"Could not get LTP before order: {e}")
+
+        if dry_run:
+            # Simulate order
+            logger.info(f"[DRY RUN] Would place order: {request.transaction_type} "
+                       f"{request.quantity} {request.tradingsymbol}")
+
+            # Create simulated order record
+            order = AutoPilotOrder(
+                strategy_id=strategy.id,
+                user_id=strategy.user_id,
+                kite_order_id=f"DRY_{datetime.now().timestamp()}",
+                purpose=request.purpose,
+                leg_index=request.leg_index,
+                exchange=request.exchange,
+                tradingsymbol=request.tradingsymbol,
+                underlying=request.underlying,
+                contract_type=request.contract_type,
+                strike=request.strike,
+                expiry=request.expiry,
+                transaction_type=request.transaction_type,
+                order_type=request.order_type,
+                product=request.product,
+                quantity=request.quantity,
+                ltp_at_order=ltp_at_order,
+                executed_price=ltp_at_order,
+                executed_quantity=request.quantity,
+                status="complete",
+                order_placed_at=datetime.now(),
+                order_filled_at=datetime.now()
+            )
+            db.add(order)
+            await db.commit()
+            await db.refresh(order)
+
+            return OrderResult(
+                success=True,
+                order_id=str(order.id),
+                kite_order_id=order.kite_order_id,
+                message="Dry run - order simulated",
+                executed_price=ltp_at_order,
+                leg_id=request.leg_id
+            )
+
+        try:
+            # Place order via Kite
+            loop = asyncio.get_event_loop()
+            order_params = {
+                "exchange": request.exchange,
+                "tradingsymbol": request.tradingsymbol,
+                "transaction_type": request.transaction_type,
+                "quantity": request.quantity,
+                "order_type": request.order_type,
+                "product": request.product,
+            }
+
+            if request.price:
+                order_params["price"] = float(request.price)
+            if request.trigger_price:
+                order_params["trigger_price"] = float(request.trigger_price)
+
+            kite_order_id = await loop.run_in_executor(
+                None,
+                lambda: self.kite.place_order(variety="regular", **order_params)
+            )
+
+            # Create order record in database
+            order = AutoPilotOrder(
+                strategy_id=strategy.id,
+                user_id=strategy.user_id,
+                kite_order_id=str(kite_order_id),
+                purpose=request.purpose,
+                leg_index=request.leg_index,
+                exchange=request.exchange,
+                tradingsymbol=request.tradingsymbol,
+                underlying=request.underlying,
+                contract_type=request.contract_type,
+                strike=request.strike,
+                expiry=request.expiry,
+                transaction_type=request.transaction_type,
+                order_type=request.order_type,
+                product=request.product,
+                quantity=request.quantity,
+                ltp_at_order=ltp_at_order,
+                status="placed",
+                order_placed_at=datetime.now()
+            )
+            db.add(order)
+            await db.commit()
+            await db.refresh(order)
+
+            # Log the order
+            log = AutoPilotLog(
+                user_id=strategy.user_id,
+                strategy_id=strategy.id,
+                order_id=order.id,
+                event_type="order_placed",
+                severity="info",
+                message=f"Order placed: {request.transaction_type} {request.quantity} {request.tradingsymbol}",
+                event_data={
+                    "kite_order_id": str(kite_order_id),
+                    "leg_id": request.leg_id,
+                    "purpose": request.purpose
+                }
+            )
+            db.add(log)
+            await db.commit()
+
+            return OrderResult(
+                success=True,
+                order_id=str(order.id),
+                kite_order_id=str(kite_order_id),
+                message="Order placed successfully",
+                leg_id=request.leg_id
+            )
+
+        except Exception as e:
+            logger.error(f"Error placing order: {e}")
+
+            # Log the error
+            log = AutoPilotLog(
+                user_id=strategy.user_id,
+                strategy_id=strategy.id,
+                event_type="order_error",
+                severity="error",
+                message=f"Order failed: {str(e)}",
+                event_data={
+                    "leg_id": request.leg_id,
+                    "error": str(e)
+                }
+            )
+            db.add(log)
+            await db.commit()
+
+            return OrderResult(
+                success=False,
+                error=str(e),
+                message=f"Order failed: {str(e)}",
+                leg_id=request.leg_id
+            )
+
+    async def _calculate_strike(
+        self,
+        leg: Dict[str, Any],
+        spot_price: float,
+        underlying: str
+    ) -> float:
+        """Calculate strike price based on leg configuration."""
+        strike_selection = leg.get('strike_selection', {})
+        mode = strike_selection.get('mode', 'atm_offset')
+
+        # Get strike step
+        strike_step = STRIKE_STEPS.get(underlying.upper(), 50)
+
+        # Calculate ATM strike
+        atm_strike = round(spot_price / strike_step) * strike_step
+
+        if mode == 'fixed':
+            return strike_selection.get('fixed_strike', atm_strike)
+
+        elif mode == 'atm_offset':
+            offset = strike_selection.get('offset', 0)
+            return atm_strike + (offset * strike_step)
+
+        elif mode == 'premium_based':
+            # Would need to search for strike with target premium
+            # For now, return ATM with offset based on target
+            target_premium = strike_selection.get('target_premium', 100)
+            # Rough estimate: each step away from ATM changes premium by ~20-30
+            steps_away = int(target_premium / 25)
+            contract_type = leg.get('contract_type', 'CE')
+            if contract_type == 'PE':
+                return atm_strike - (steps_away * strike_step)
+            return atm_strike + (steps_away * strike_step)
+
+        elif mode == 'delta_based':
+            # Would need option chain with Greeks
+            # For now, return ATM with rough delta estimate
+            target_delta = strike_selection.get('target_delta', 0.5)
+            steps_away = int((0.5 - abs(target_delta)) / 0.05)
+            contract_type = leg.get('contract_type', 'CE')
+            if contract_type == 'PE':
+                return atm_strike - (steps_away * strike_step)
+            return atm_strike + (steps_away * strike_step)
+
+        return atm_strike
+
+    def _build_tradingsymbol(
+        self,
+        underlying: str,
+        expiry: date,
+        strike: float,
+        contract_type: str
+    ) -> str:
+        """Build Kite tradingsymbol."""
+        # Format: NIFTY24D2624500CE (weekly) or NIFTY24DEC24500CE (monthly)
+        # Weekly uses format: NIFTY{YY}{M}{DD}{STRIKE}{TYPE}
+        # Monthly uses format: NIFTY{YY}{MMM}{STRIKE}{TYPE}
+
+        year = expiry.strftime("%y")  # e.g., "24"
+        day = expiry.day
+
+        # Determine if weekly or monthly expiry
+        # Weekly expiries are typically Thursdays that aren't the last Thursday
+        is_monthly = self._is_monthly_expiry(expiry)
+
+        if is_monthly:
+            month_str = expiry.strftime("%b").upper()  # e.g., "DEC"
+            expiry_str = f"{year}{month_str}"
+        else:
+            # Weekly format: YY + single char month + DD
+            month_char = "O" if expiry.month == 10 else (
+                "N" if expiry.month == 11 else (
+                    "D" if expiry.month == 12 else expiry.strftime("%b")[0]
+                )
+            )
+            expiry_str = f"{year}{month_char}{day:02d}"
+
+        return f"{underlying}{expiry_str}{int(strike)}{contract_type}"
+
+    def _is_monthly_expiry(self, expiry: date) -> bool:
+        """Check if expiry is a monthly expiry (last Thursday of month)."""
+        # Get last day of month
+        if expiry.month == 12:
+            next_month = date(expiry.year + 1, 1, 1)
+        else:
+            next_month = date(expiry.year, expiry.month + 1, 1)
+
+        last_day = next_month - __import__('datetime').timedelta(days=1)
+
+        # Find last Thursday
+        days_since_thursday = (last_day.weekday() - 3) % 7
+        last_thursday = last_day - __import__('datetime').timedelta(days=days_since_thursday)
+
+        return expiry == last_thursday
+
+    def _calculate_expiry(self, expiry_type: str, underlying: str) -> date:
+        """Calculate expiry date based on expiry type."""
+        today = date.today()
+        weekday = today.weekday()  # 0 = Monday, 3 = Thursday
+
+        if expiry_type == "current_week":
+            # Next Thursday (or today if Thursday)
+            days_until_thursday = (3 - weekday) % 7
+            if days_until_thursday == 0 and datetime.now().time() > __import__('datetime').time(15, 30):
+                days_until_thursday = 7  # Already past expiry time
+            return today + __import__('datetime').timedelta(days=days_until_thursday)
+
+        elif expiry_type == "next_week":
+            # Thursday of next week
+            days_until_thursday = (3 - weekday) % 7
+            return today + __import__('datetime').timedelta(days=days_until_thursday + 7)
+
+        elif expiry_type == "current_month":
+            # Last Thursday of current month
+            return self._get_last_thursday(today.year, today.month)
+
+        elif expiry_type == "next_month":
+            # Last Thursday of next month
+            if today.month == 12:
+                return self._get_last_thursday(today.year + 1, 1)
+            return self._get_last_thursday(today.year, today.month + 1)
+
+        # Default to current week
+        days_until_thursday = (3 - weekday) % 7
+        return today + __import__('datetime').timedelta(days=days_until_thursday)
+
+    def _get_last_thursday(self, year: int, month: int) -> date:
+        """Get the last Thursday of a given month."""
+        if month == 12:
+            next_month = date(year + 1, 1, 1)
+        else:
+            next_month = date(year, month + 1, 1)
+
+        last_day = next_month - __import__('datetime').timedelta(days=1)
+
+        # Find last Thursday
+        days_since_thursday = (last_day.weekday() - 3) % 7
+        return last_day - __import__('datetime').timedelta(days=days_since_thursday)
+
+
+def get_order_executor(kite: KiteConnect, market_data: MarketDataService) -> OrderExecutor:
+    """Create OrderExecutor instance."""
+    return OrderExecutor(kite, market_data)

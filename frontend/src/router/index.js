@@ -10,7 +10,7 @@ const router = createRouter({
   routes: [
     {
       path: '/',
-      redirect: '/watchlist',
+      redirect: '/dashboard',
     },
     {
       path: '/login',
@@ -103,6 +103,49 @@ const router = createRouter({
       component: () => import('../views/autopilot/SettingsView.vue'),
       meta: { requiresAuth: true },
     },
+    // Phase 4 routes
+    {
+      path: '/autopilot/templates',
+      name: 'AutoPilotTemplates',
+      component: () => import('../views/autopilot/TemplateLibraryView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/autopilot/journal',
+      name: 'AutoPilotJournal',
+      component: () => import('../views/autopilot/TradeJournalView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/autopilot/analytics',
+      name: 'AutoPilotAnalytics',
+      component: () => import('../views/autopilot/AnalyticsView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/autopilot/reports',
+      name: 'AutoPilotReports',
+      component: () => import('../views/autopilot/ReportsView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/autopilot/backtests',
+      name: 'AutoPilotBacktests',
+      component: () => import('../views/autopilot/BacktestsView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/autopilot/shared/:token',
+      name: 'AutoPilotSharedStrategy',
+      component: () => import('../views/autopilot/SharedStrategyView.vue'),
+      meta: { requiresAuth: false },  // Public access for shared strategies
+    },
+    {
+      path: '/autopilot/shared',
+      name: 'AutoPilotSharedList',
+      component: () => import('../views/autopilot/SharedStrategiesView.vue'),
+      meta: { requiresAuth: true },
+    },
   ],
 })
 
@@ -119,7 +162,7 @@ router.beforeEach(async (to, from, next) => {
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     next('/login')
   } else if (to.path === '/login' && authStore.isAuthenticated) {
-    next('/watchlist')
+    next('/dashboard')
   } else {
     next()
   }

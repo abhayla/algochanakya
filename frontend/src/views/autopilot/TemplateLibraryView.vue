@@ -1,0 +1,1076 @@
+<template>
+  <KiteLayout>
+  <div class="templates-page" data-testid="autopilot-templates-page">
+    <!-- Header -->
+    <div class="templates-header" data-testid="autopilot-templates-header">
+      <div>
+        <h1 class="templates-title">Strategy Templates</h1>
+        <p class="templates-subtitle">Pre-built strategy configurations ready to deploy</p>
+      </div>
+      <router-link
+        to="/autopilot"
+        class="back-link"
+        data-testid="autopilot-templates-back-btn"
+      >
+        <svg class="icon-svg-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+        </svg>
+        Back to Dashboard
+      </router-link>
+    </div>
+
+    <!-- Filters -->
+    <div class="filters-card" data-testid="autopilot-templates-filters">
+      <div class="filters-grid">
+        <!-- Search -->
+        <div class="filter-field">
+          <label class="filter-label">Search</label>
+          <input
+            v-model="filters.search"
+            type="text"
+            placeholder="Search templates..."
+            class="filter-input"
+            data-testid="autopilot-templates-search"
+            @input="debouncedFetch"
+          />
+        </div>
+
+        <!-- Category -->
+        <div class="filter-field">
+          <label class="filter-label">Category</label>
+          <select
+            v-model="filters.category"
+            class="filter-select"
+            data-testid="autopilot-templates-category-filter"
+            @change="fetchTemplates"
+          >
+            <option :value="null">All Categories</option>
+            <option value="income">Income</option>
+            <option value="directional">Directional</option>
+            <option value="volatility">Volatility</option>
+            <option value="hedging">Hedging</option>
+            <option value="advanced">Advanced</option>
+          </select>
+        </div>
+
+        <!-- Underlying -->
+        <div class="filter-field">
+          <label class="filter-label">Underlying</label>
+          <select
+            v-model="filters.underlying"
+            class="filter-select"
+            data-testid="autopilot-templates-underlying-filter"
+            @change="fetchTemplates"
+          >
+            <option :value="null">All Underlyings</option>
+            <option value="NIFTY">NIFTY</option>
+            <option value="BANKNIFTY">BANKNIFTY</option>
+            <option value="FINNIFTY">FINNIFTY</option>
+            <option value="SENSEX">SENSEX</option>
+          </select>
+        </div>
+
+        <!-- Risk Level -->
+        <div class="filter-field">
+          <label class="filter-label">Risk Level</label>
+          <select
+            v-model="filters.riskLevel"
+            class="filter-select"
+            data-testid="autopilot-templates-risk-filter"
+            @change="fetchTemplates"
+          >
+            <option :value="null">All Levels</option>
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loading State -->
+    <div v-if="loading" class="loading-state">
+      <div class="loading-spinner"></div>
+      <p class="loading-text">Loading templates...</p>
+    </div>
+
+    <!-- Error State -->
+    <div v-else-if="error" class="error-state">
+      <p class="error-message">{{ error }}</p>
+      <button @click="fetchTemplates" class="link-btn">Try again</button>
+    </div>
+
+    <!-- Templates Grid -->
+    <div v-else-if="templates.length > 0" class="templates-grid" data-testid="autopilot-templates-grid">
+      <div
+        v-for="template in templates"
+        :key="template.id"
+        class="template-card"
+        :data-testid="`autopilot-template-card-${template.id}`"
+        @click="selectTemplate(template)"
+      >
+        <div class="template-card-content">
+          <!-- Header -->
+          <div class="template-card-header">
+            <div>
+              <h3 class="template-name">{{ template.name }}</h3>
+              <div class="template-badges">
+                <span v-if="template.is_system" class="badge badge-system">
+                  System
+                </span>
+                <span
+                  v-if="template.category"
+                  class="badge badge-category"
+                >
+                  {{ template.category }}
+                </span>
+              </div>
+            </div>
+            <span :class="['risk-badge', getRiskClass(template.risk_level)]">
+              {{ template.risk_level || 'Medium' }}
+            </span>
+          </div>
+
+          <!-- Description -->
+          <p class="template-description">
+            {{ template.description || 'No description available' }}
+          </p>
+
+          <!-- Stats -->
+          <div class="template-stats">
+            <div class="stat-box">
+              <div class="stat-value">{{ template.underlying || 'NIFTY' }}</div>
+              <div class="stat-label">Underlying</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-value">{{ template.expected_return_pct || '--' }}%</div>
+              <div class="stat-label">Exp. Return</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-value">{{ template.max_risk_pct || '--' }}%</div>
+              <div class="stat-label">Max Risk</div>
+            </div>
+          </div>
+
+          <!-- Rating -->
+          <div class="template-footer">
+            <div class="rating">
+              <svg class="star-icon" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+              </svg>
+              <span>{{ template.avg_rating?.toFixed(1) || '0.0' }} ({{ template.rating_count || 0 }})</span>
+            </div>
+            <div class="deployments">
+              {{ template.usage_count || 0 }} deployments
+            </div>
+          </div>
+
+          <!-- Deploy Button -->
+          <button
+            class="deploy-btn"
+            :data-testid="`autopilot-template-deploy-${template.id}`"
+            @click.stop="showDeployModal(template)"
+          >
+            Deploy Strategy
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Empty State -->
+    <div v-else class="empty-state">
+      <svg class="empty-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+      </svg>
+      <h3 class="empty-title">No templates found</h3>
+      <p class="empty-text">Try adjusting your filters</p>
+    </div>
+
+    <!-- Pagination -->
+    <div v-if="pagination.totalPages > 1" class="pagination">
+      <button
+        :disabled="pagination.page <= 1"
+        class="pagination-btn"
+        @click="changePage(pagination.page - 1)"
+      >
+        Previous
+      </button>
+      <span class="pagination-text">
+        Page {{ pagination.page }} of {{ pagination.totalPages }}
+      </span>
+      <button
+        :disabled="pagination.page >= pagination.totalPages"
+        class="pagination-btn"
+        @click="changePage(pagination.page + 1)"
+      >
+        Next
+      </button>
+    </div>
+
+    <!-- Deploy Modal -->
+    <div v-if="showDeployModalFlag" class="modal-overlay" data-testid="autopilot-template-deploy-modal">
+      <div class="modal-content modal-sm">
+        <h3 class="modal-title">Deploy Template</h3>
+
+        <div class="form-fields">
+          <div class="form-field">
+            <label class="filter-label">Strategy Name</label>
+            <input
+              v-model="deployOptions.name"
+              type="text"
+              class="filter-input"
+              :placeholder="selectedTemplate?.name"
+              data-testid="autopilot-template-deploy-name"
+            />
+          </div>
+
+          <div class="form-field">
+            <label class="filter-label">Lots</label>
+            <input
+              v-model.number="deployOptions.lots"
+              type="number"
+              min="1"
+              max="50"
+              class="filter-input"
+              data-testid="autopilot-template-deploy-lots"
+            />
+          </div>
+
+          <div class="form-field">
+            <label class="checkbox-label">
+              <input
+                v-model="deployOptions.activateImmediately"
+                type="checkbox"
+                class="checkbox-input"
+                data-testid="autopilot-template-deploy-activate"
+              />
+              <span>Activate immediately after deployment</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button
+            class="btn-secondary"
+            @click="closeDeployModal"
+          >
+            Cancel
+          </button>
+          <button
+            class="btn-primary"
+            :disabled="deploying"
+            data-testid="autopilot-template-deploy-confirm"
+            @click="deployTemplate"
+          >
+            {{ deploying ? 'Deploying...' : 'Deploy' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Template Detail Modal -->
+    <div v-if="selectedTemplate && !showDeployModalFlag" class="modal-overlay" data-testid="autopilot-template-details-modal">
+      <div class="modal-content modal-lg">
+        <div class="modal-header">
+          <div>
+            <h3 class="modal-title">{{ selectedTemplate.name }}</h3>
+            <div class="template-badges">
+              <span v-if="selectedTemplate.is_system" class="badge badge-system">
+                System
+              </span>
+              <span v-if="selectedTemplate.category" class="badge badge-category">
+                {{ selectedTemplate.category }}
+              </span>
+            </div>
+          </div>
+          <button @click="selectedTemplate = null" class="close-btn" data-testid="autopilot-template-details-close">
+            <svg class="icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <p class="detail-description">{{ selectedTemplate.description }}</p>
+
+        <!-- Stats Grid -->
+        <div class="detail-stats">
+          <div class="detail-stat-box">
+            <div class="detail-stat-value">{{ selectedTemplate.underlying || 'NIFTY' }}</div>
+            <div class="stat-label">Underlying</div>
+          </div>
+          <div class="detail-stat-box">
+            <div class="detail-stat-value">{{ selectedTemplate.expected_return_pct || '--' }}%</div>
+            <div class="stat-label">Expected Return</div>
+          </div>
+          <div class="detail-stat-box">
+            <div class="detail-stat-value">{{ selectedTemplate.max_risk_pct || '--' }}%</div>
+            <div class="stat-label">Max Risk</div>
+          </div>
+          <div class="detail-stat-box">
+            <div class="detail-stat-value capitalize">{{ selectedTemplate.risk_level || 'Medium' }}</div>
+            <div class="stat-label">Risk Level</div>
+          </div>
+        </div>
+
+        <!-- Educational Content -->
+        <div v-if="selectedTemplate.educational_content" class="educational-content">
+          <div v-if="selectedTemplate.educational_content.when_to_use" class="edu-section">
+            <h4 class="edu-heading">When to Use</h4>
+            <p class="edu-text">{{ selectedTemplate.educational_content.when_to_use }}</p>
+          </div>
+
+          <div v-if="selectedTemplate.educational_content.pros?.length" class="edu-section">
+            <h4 class="edu-heading edu-pros">Pros</h4>
+            <ul class="edu-list">
+              <li v-for="(pro, idx) in selectedTemplate.educational_content.pros" :key="idx">{{ pro }}</li>
+            </ul>
+          </div>
+
+          <div v-if="selectedTemplate.educational_content.cons?.length" class="edu-section">
+            <h4 class="edu-heading edu-cons">Cons</h4>
+            <ul class="edu-list">
+              <li v-for="(con, idx) in selectedTemplate.educational_content.cons" :key="idx">{{ con }}</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button
+            class="btn-secondary"
+            @click="selectedTemplate = null"
+          >
+            Close
+          </button>
+          <button
+            class="btn-primary"
+            @click="showDeployModal(selectedTemplate)"
+          >
+            Deploy This Template
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  </KiteLayout>
+</template>
+
+<script setup>
+import { ref, reactive, onMounted } from 'vue'
+import { useAutopilotStore } from '@/stores/autopilot'
+import { useRouter } from 'vue-router'
+import KiteLayout from '@/components/layout/KiteLayout.vue'
+import '@/assets/css/strategy-table.css'
+
+const store = useAutopilotStore()
+const router = useRouter()
+
+const templates = ref([])
+const loading = ref(false)
+const error = ref(null)
+const selectedTemplate = ref(null)
+const showDeployModalFlag = ref(false)
+const deploying = ref(false)
+
+const filters = reactive({
+  search: '',
+  category: null,
+  underlying: null,
+  riskLevel: null
+})
+
+const pagination = reactive({
+  page: 1,
+  pageSize: 12,
+  total: 0,
+  totalPages: 0
+})
+
+const deployOptions = reactive({
+  name: '',
+  lots: 1,
+  activateImmediately: false
+})
+
+let debounceTimeout = null
+
+const debouncedFetch = () => {
+  if (debounceTimeout) clearTimeout(debounceTimeout)
+  debounceTimeout = setTimeout(() => {
+    fetchTemplates()
+  }, 300)
+}
+
+const fetchTemplates = async () => {
+  loading.value = true
+  error.value = null
+
+  try {
+    const response = await store.fetchTemplates({
+      page: pagination.page,
+      pageSize: pagination.pageSize,
+      search: filters.search || undefined,
+      category: filters.category || undefined,
+      underlying: filters.underlying || undefined,
+      riskLevel: filters.riskLevel || undefined
+    })
+
+    templates.value = response.data || []
+    pagination.total = response.total || 0
+    pagination.totalPages = response.total_pages || 0
+  } catch (err) {
+    error.value = err.message || 'Failed to load templates'
+  } finally {
+    loading.value = false
+  }
+}
+
+const changePage = (page) => {
+  pagination.page = page
+  fetchTemplates()
+}
+
+const selectTemplate = (template) => {
+  selectedTemplate.value = template
+}
+
+const showDeployModal = (template) => {
+  selectedTemplate.value = template
+  deployOptions.name = template.name
+  deployOptions.lots = 1
+  deployOptions.activateImmediately = false
+  showDeployModalFlag.value = true
+}
+
+const closeDeployModal = () => {
+  showDeployModalFlag.value = false
+}
+
+const deployTemplate = async () => {
+  if (!selectedTemplate.value) return
+
+  deploying.value = true
+
+  try {
+    const strategy = await store.deployTemplate(selectedTemplate.value.id, {
+      name: deployOptions.name || selectedTemplate.value.name,
+      lots: deployOptions.lots,
+      activate_immediately: deployOptions.activateImmediately
+    })
+
+    closeDeployModal()
+    selectedTemplate.value = null
+
+    // Navigate to the new strategy
+    router.push(`/autopilot/strategies/${strategy.id}`)
+  } catch (err) {
+    error.value = err.message || 'Failed to deploy template'
+  } finally {
+    deploying.value = false
+  }
+}
+
+const getRiskClass = (level) => {
+  switch (level?.toLowerCase()) {
+    case 'low':
+      return 'risk-low'
+    case 'high':
+      return 'risk-high'
+    default:
+      return 'risk-medium'
+  }
+}
+
+onMounted(() => {
+  fetchTemplates()
+})
+</script>
+
+<style scoped>
+/* ===== Page Container ===== */
+.templates-page {
+  padding: 24px;
+}
+
+/* ===== Header ===== */
+.templates-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.templates-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--kite-text-primary);
+}
+
+.templates-subtitle {
+  color: var(--kite-text-secondary);
+  margin-top: 4px;
+}
+
+.back-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--kite-blue);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.back-link:hover {
+  color: var(--kite-blue-dark, #1565c0);
+}
+
+/* ===== Icons ===== */
+.icon-svg {
+  width: 24px;
+  height: 24px;
+}
+
+.icon-svg-sm {
+  width: 20px;
+  height: 20px;
+}
+
+/* ===== Filters ===== */
+.filters-card {
+  background: white;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  padding: 16px;
+  margin-bottom: 24px;
+}
+
+.filters-grid {
+  display: grid;
+  grid-template-columns: repeat(1, 1fr);
+  gap: 16px;
+}
+
+@media (min-width: 768px) {
+  .filters-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.filter-field {
+  display: flex;
+  flex-direction: column;
+}
+
+.filter-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--kite-text-secondary);
+  margin-bottom: 4px;
+}
+
+.filter-input,
+.filter-select {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--kite-border);
+  border-radius: 4px;
+  font-size: 0.875rem;
+  color: var(--kite-text-primary);
+  background: white;
+}
+
+.filter-input:focus,
+.filter-select:focus {
+  outline: none;
+  border-color: var(--kite-blue);
+  box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
+}
+
+/* ===== Loading State ===== */
+.loading-state {
+  text-align: center;
+  padding: 48px;
+}
+
+.loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 2px solid var(--kite-border);
+  border-top-color: var(--kite-blue);
+  border-radius: 50%;
+  margin: 0 auto;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading-text {
+  margin-top: 16px;
+  color: var(--kite-text-secondary);
+}
+
+/* ===== Error State ===== */
+.error-state {
+  background: var(--kite-red-light, #ffebee);
+  border: 1px solid var(--kite-red);
+  border-radius: 4px;
+  padding: 16px;
+  margin-bottom: 24px;
+}
+
+.error-message {
+  color: var(--kite-red);
+}
+
+.link-btn {
+  margin-top: 8px;
+  color: var(--kite-red);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+/* ===== Templates Grid ===== */
+.templates-grid {
+  display: grid;
+  grid-template-columns: repeat(1, 1fr);
+  gap: 24px;
+}
+
+@media (min-width: 768px) {
+  .templates-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .templates-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* ===== Template Card ===== */
+.template-card {
+  background: white;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: box-shadow 0.2s ease;
+}
+
+.template-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.template-card-content {
+  padding: 20px;
+}
+
+.template-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.template-name {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--kite-text-primary);
+}
+
+.template-badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.badge {
+  padding: 2px 8px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: 4px;
+}
+
+.badge-system {
+  background: var(--kite-blue-light, #e3f2fd);
+  color: var(--kite-blue);
+}
+
+.badge-category {
+  background: var(--kite-border-light, #f5f5f5);
+  color: var(--kite-text-secondary);
+  text-transform: capitalize;
+}
+
+.risk-badge {
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: 4px;
+  text-transform: capitalize;
+}
+
+.risk-low {
+  background: var(--kite-green-light, #e8f5e9);
+  color: var(--kite-green);
+}
+
+.risk-medium {
+  background: var(--kite-orange-light, #fff3e0);
+  color: var(--kite-orange);
+}
+
+.risk-high {
+  background: var(--kite-red-light, #ffebee);
+  color: var(--kite-red);
+}
+
+.template-description {
+  font-size: 0.875rem;
+  color: var(--kite-text-secondary);
+  margin-bottom: 16px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ===== Template Stats ===== */
+.template-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.stat-box {
+  background: var(--kite-body-bg, #f9fafb);
+  border-radius: 4px;
+  padding: 8px;
+  text-align: center;
+}
+
+.stat-value {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--kite-text-primary);
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  color: var(--kite-text-muted, #9e9e9e);
+}
+
+/* ===== Template Footer ===== */
+.template-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.875rem;
+}
+
+.rating {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--kite-text-secondary);
+}
+
+.star-icon {
+  width: 16px;
+  height: 16px;
+  color: #ffc107;
+}
+
+.deployments {
+  color: var(--kite-text-muted, #9e9e9e);
+}
+
+/* ===== Deploy Button ===== */
+.deploy-btn {
+  width: 100%;
+  margin-top: 16px;
+  padding: 10px;
+  background: var(--kite-blue);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.deploy-btn:hover {
+  background: var(--kite-blue-dark, #1565c0);
+}
+
+/* ===== Empty State ===== */
+.empty-state {
+  text-align: center;
+  padding: 48px;
+  background: white;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.empty-icon {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto;
+  color: var(--kite-text-muted, #9e9e9e);
+}
+
+.empty-title {
+  margin-top: 16px;
+  font-size: 1.125rem;
+  font-weight: 500;
+  color: var(--kite-text-primary);
+}
+
+.empty-text {
+  margin-top: 8px;
+  color: var(--kite-text-secondary);
+}
+
+/* ===== Pagination ===== */
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin-top: 24px;
+}
+
+.pagination-btn {
+  padding: 8px 16px;
+  border: 1px solid var(--kite-border);
+  border-radius: 4px;
+  background: white;
+  color: var(--kite-text-primary);
+  cursor: pointer;
+}
+
+.pagination-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background: var(--kite-table-hover, #f5f5f5);
+}
+
+.pagination-text {
+  color: var(--kite-text-secondary);
+}
+
+/* ===== Modal ===== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+  margin: 16px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-sm {
+  width: 100%;
+  max-width: 400px;
+  padding: 24px;
+}
+
+.modal-lg {
+  width: 100%;
+  max-width: 640px;
+  padding: 24px;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.modal-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--kite-text-primary);
+}
+
+.close-btn {
+  padding: 4px;
+  color: var(--kite-text-muted, #9e9e9e);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.close-btn:hover {
+  color: var(--kite-text-secondary);
+}
+
+/* ===== Form Fields ===== */
+.form-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.875rem;
+  color: var(--kite-text-secondary);
+  cursor: pointer;
+}
+
+.checkbox-input {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+}
+
+/* ===== Modal Actions ===== */
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--kite-border);
+}
+
+.btn-secondary {
+  padding: 8px 16px;
+  color: var(--kite-text-secondary);
+  background: none;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.btn-secondary:hover {
+  color: var(--kite-text-primary);
+}
+
+.btn-primary {
+  padding: 8px 16px;
+  background: var(--kite-blue);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.btn-primary:hover {
+  background: var(--kite-blue-dark, #1565c0);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ===== Detail Modal ===== */
+.detail-description {
+  color: var(--kite-text-secondary);
+  margin-bottom: 24px;
+}
+
+.detail-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+@media (min-width: 640px) {
+  .detail-stats {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.detail-stat-box {
+  background: var(--kite-body-bg, #f9fafb);
+  border-radius: 8px;
+  padding: 12px;
+  text-align: center;
+}
+
+.detail-stat-value {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--kite-text-primary);
+}
+
+/* ===== Educational Content ===== */
+.educational-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.edu-section {
+  margin-bottom: 8px;
+}
+
+.edu-heading {
+  font-weight: 500;
+  color: var(--kite-text-primary);
+  margin-bottom: 4px;
+}
+
+.edu-pros {
+  color: var(--kite-green);
+}
+
+.edu-cons {
+  color: var(--kite-red);
+}
+
+.edu-text {
+  font-size: 0.875rem;
+  color: var(--kite-text-secondary);
+}
+
+.edu-list {
+  list-style: disc;
+  list-style-position: inside;
+  font-size: 0.875rem;
+  color: var(--kite-text-secondary);
+}
+
+/* ===== Utilities ===== */
+.capitalize {
+  text-transform: capitalize;
+}
+</style>

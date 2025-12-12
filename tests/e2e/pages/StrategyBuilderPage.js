@@ -7,7 +7,7 @@ import { BasePage } from './BasePage.js';
 export default class StrategyBuilderPage extends BasePage {
   constructor(page) {
     super(page);
-    this.path = '/strategy';
+    this.url = '/strategy';
   }
 
   // ============ Selectors ============
@@ -66,7 +66,7 @@ export default class StrategyBuilderPage extends BasePage {
   // ============ Actions ============
 
   async navigate() {
-    await super.navigate(this.path);
+    await super.navigate();
     await this.waitForPageLoad();
   }
 

@@ -82,6 +82,29 @@ test.describe('Positions - Happy Path @happy', () => {
     }
   });
 
+  test('LTP column shows valid live prices', async ({ authenticatedPage }) => {
+    const hasPositions = await positionsPage.hasPositions();
+
+    if (hasPositions) {
+      // Wait for live data to load
+      await authenticatedPage.waitForTimeout(2000);
+
+      // Get all LTP cells in the positions table
+      const ltpCells = authenticatedPage.locator('[data-testid^="positions-ltp-"]');
+      const count = await ltpCells.count();
+
+      if (count > 0) {
+        // Validate that at least the first LTP shows a valid price
+        const firstLtp = await ltpCells.first().textContent();
+        const ltpValue = parseFloat(firstLtp.replace(/[^\d.-]/g, ''));
+
+        // LTP should be a valid positive number
+        // Test will fail if Kite broker token is expired
+        expect(ltpValue).toBeGreaterThan(0);
+      }
+    }
+  });
+
   test('Exit and Add buttons are visible for each position', async ({ authenticatedPage }) => {
     const hasPositions = await positionsPage.hasPositions();
 

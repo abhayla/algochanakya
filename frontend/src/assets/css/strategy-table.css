@@ -1,0 +1,234 @@
+/**
+ * Shared Strategy Table Styles
+ * Used by both StrategyBuilderView and AutoPilot legs configuration
+ */
+
+/* ===== Table Container ===== */
+.strategy-table-wrapper {
+  background: white;
+  border: 1px solid var(--kite-border-light);
+  border-radius: 4px;
+  margin-bottom: 16px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.table-scroll {
+  overflow-x: auto;
+  scroll-behavior: smooth;
+}
+
+/* Scroll Indicators */
+.scroll-indicator {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 40px;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.scroll-indicator-left {
+  left: 0;
+  background: linear-gradient(to right, rgba(255, 255, 255, 0.95), transparent);
+  border-radius: 4px 0 0 4px;
+}
+
+.scroll-indicator-right {
+  right: 0;
+  background: linear-gradient(to left, rgba(255, 255, 255, 0.95), transparent);
+  border-radius: 0 4px 4px 0;
+}
+
+/* ===== Table Base ===== */
+.strategy-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.strategy-table thead {
+  background: var(--kite-table-header-bg);
+}
+
+.strategy-table th {
+  padding: 8px 10px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--kite-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  text-align: center;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--kite-border);
+}
+
+.strategy-table td {
+  padding: 6px 10px;
+  font-size: 12px;
+  color: var(--kite-text-primary);
+  vertical-align: middle;
+}
+
+.strategy-table tbody tr {
+  border-bottom: 1px solid var(--kite-border-light);
+  transition: background 0.15s ease;
+}
+
+.strategy-table tbody tr:hover {
+  background: var(--kite-table-hover, #f5f8fa);
+}
+
+/* ===== Leg Rows ===== */
+.leg-row.leg-buy {
+  background: #f8fbff;
+  border-left: 3px solid var(--kite-blue);
+}
+
+.leg-row.leg-sell {
+  background: #fffbf8;
+  border-left: 3px solid var(--kite-orange, #ff9800);
+}
+
+/* ===== Checkbox Column ===== */
+.th-checkbox, .td-checkbox {
+  width: 40px;
+  text-align: center;
+}
+
+/* ===== Spot Columns ===== */
+.th-spot {
+  min-width: 70px;
+}
+
+.th-current-spot {
+  background: #fff3cd !important;
+  color: #856404;
+}
+
+.spot-label {
+  font-size: 9px;
+  font-weight: 700;
+  color: #856404;
+}
+
+/* ===== Special Rows ===== */
+.total-row {
+  background: var(--kite-table-header-bg);
+  font-weight: 600;
+  border-top: 2px solid var(--kite-border);
+}
+
+.empty-state td {
+  padding: 48px;
+  text-align: center;
+  color: var(--kite-text-muted);
+}
+
+/* ===== Tag Selects ===== */
+.tag-select {
+  appearance: none;
+  -webkit-appearance: none;
+  border: none;
+  background: transparent;
+  font-weight: 600;
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: center;
+}
+
+.tag-select.tag-ce {
+  background: var(--kite-blue-light, #e3f2fd);
+  color: var(--kite-blue, #1976d2);
+}
+
+.tag-select.tag-pe {
+  background: var(--kite-red-light, #ffebee);
+  color: var(--kite-red, #d32f2f);
+}
+
+.tag-select.tag-buy {
+  background: var(--kite-blue-light, #e3f2fd);
+  color: var(--kite-blue, #1976d2);
+}
+
+.tag-select.tag-sell {
+  background: var(--kite-orange-light, #fff3e0);
+  color: var(--kite-orange, #f57c00);
+}
+
+/* ===== Values ===== */
+.cmp-value {
+  color: var(--kite-blue);
+  font-weight: 500;
+}
+
+.cmp-entry-indicator {
+  position: absolute;
+  top: -2px;
+  right: -6px;
+  width: 14px;
+  height: 14px;
+  background: var(--kite-blue, #2962ff);
+  color: white;
+  font-size: 10px;
+  font-weight: bold;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: help;
+}
+
+.no-value {
+  color: var(--kite-text-muted);
+}
+
+/* ===== Compact Form Controls ===== */
+.strategy-select.compact,
+.strategy-input.compact {
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+/* ===== Action Bar ===== */
+.action-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: white;
+  border: 1px solid var(--kite-border-light);
+  border-radius: 4px;
+  padding: 12px 20px;
+  margin-bottom: 16px;
+}
+
+.action-left, .action-right {
+  display: flex;
+  gap: 8px;
+}
+
+/* ===== P&L Color Classes ===== */
+.pnl-profit {
+  color: var(--kite-green);
+}
+
+.pnl-loss {
+  color: var(--kite-red);
+}
+
+.pnl-neutral {
+  color: var(--kite-text-secondary);
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 768px) {
+  .action-bar {
+    flex-direction: column;
+    gap: 12px;
+  }
+}

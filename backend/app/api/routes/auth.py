@@ -207,6 +207,79 @@ async def get_current_user_info(
     }
 
 
+@router.get("/broker/validate")
+async def validate_broker_token(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Validate if the Kite broker access token is still valid.
+
+    Kite tokens expire daily around 6 AM IST. This endpoint checks
+    if the stored access token can still make API calls to Zerodha.
+
+    Requires: Bearer token in Authorization header
+
+    Returns:
+        is_valid: True if broker token is valid, False otherwise
+        message: Description of validation result
+    """
+    try:
+        # Get active broker connection
+        result = await db.execute(
+            select(BrokerConnection).where(
+                BrokerConnection.user_id == user.id,
+                BrokerConnection.broker == "zerodha",
+                BrokerConnection.is_active == True
+            )
+        )
+        broker_connection = result.scalar_one_or_none()
+
+        if not broker_connection:
+            return {
+                "is_valid": False,
+                "message": "No active broker connection found"
+            }
+
+        if not broker_connection.access_token:
+            return {
+                "is_valid": False,
+                "message": "No access token stored"
+            }
+
+        # Try to make a simple API call to Kite to validate the token
+        kite = KiteConnect(api_key=settings.KITE_API_KEY)
+        kite.set_access_token(broker_connection.access_token)
+
+        try:
+            # profile() is a lightweight API call to validate token
+            profile = kite.profile()
+            return {
+                "is_valid": True,
+                "message": "Broker token is valid",
+                "broker_user_id": profile.get("user_id")
+            }
+        except Exception as kite_error:
+            error_msg = str(kite_error)
+            # Token expired or invalid
+            if "TokenException" in error_msg or "403" in error_msg or "Invalid" in error_msg.lower():
+                return {
+                    "is_valid": False,
+                    "message": f"Broker token expired or invalid: {error_msg}"
+                }
+            # Other Kite API error
+            return {
+                "is_valid": False,
+                "message": f"Kite API error: {error_msg}"
+            }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to validate broker token: {str(e)}"
+        )
+
+
 @router.post("/logout")
 async def logout(
     user: User = Depends(get_current_user),

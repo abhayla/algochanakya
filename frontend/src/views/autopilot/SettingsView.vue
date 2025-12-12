@@ -7,6 +7,8 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAutopilotStore } from '@/stores/autopilot'
+import KiteLayout from '@/components/layout/KiteLayout.vue'
+import '@/assets/css/strategy-table.css'
 
 const router = useRouter()
 const store = useAutopilotStore()
@@ -48,27 +50,30 @@ const formatCurrency = (value) => {
 </script>
 
 <template>
-  <div class="p-6" data-testid="autopilot-settings">
+  <KiteLayout>
+  <div class="settings-page" data-testid="autopilot-settings">
     <!-- Header -->
-    <div class="flex justify-between items-center mb-6">
+    <div class="settings-header">
       <div>
-        <div class="flex items-center gap-3">
+        <div class="settings-title-row">
           <button
             @click="router.push('/autopilot')"
-            class="text-gray-500 hover:text-gray-700"
+            class="back-btn"
+            data-testid="autopilot-settings-back"
           >
             &larr;
           </button>
-          <h1 class="text-2xl font-bold text-gray-900">AutoPilot Settings</h1>
+          <h1 class="page-title">AutoPilot Settings</h1>
         </div>
-        <p class="text-gray-500 mt-1">Configure global settings for automated trading</p>
+        <p class="page-subtitle">Configure global settings for automated trading</p>
       </div>
 
-      <div class="flex gap-2">
+      <div class="header-actions">
         <button
           v-if="hasChanges"
           @click="handleReset"
-          class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+          data-testid="autopilot-settings-reset"
+          class="strategy-btn strategy-btn-outline"
         >
           Reset
         </button>
@@ -76,7 +81,7 @@ const formatCurrency = (value) => {
           @click="handleSave"
           :disabled="!hasChanges || store.saving"
           data-testid="autopilot-settings-save"
-          class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          class="strategy-btn strategy-btn-primary"
         >
           {{ store.saving ? 'Saving...' : 'Save Changes' }}
         </button>
@@ -84,203 +89,492 @@ const formatCurrency = (value) => {
     </div>
 
     <!-- Loading -->
-    <div v-if="store.loading && !localSettings" class="text-center py-12">
-      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-      <p class="mt-4 text-gray-500">Loading settings...</p>
+    <div v-if="store.loading && !localSettings" class="loading-state">
+      <div class="loading-spinner"></div>
+      <p class="loading-text">Loading settings...</p>
     </div>
 
     <!-- Settings Form -->
-    <div v-else-if="localSettings" class="space-y-6">
+    <div v-else-if="localSettings" class="settings-sections">
       <!-- Risk Limits -->
-      <div class="bg-white rounded-lg shadow p-6" data-testid="autopilot-settings-risk">
-        <h2 class="text-lg font-semibold mb-4">Risk Limits</h2>
+      <div class="settings-card" data-testid="autopilot-settings-risk">
+        <h2 class="section-title">Risk Limits</h2>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Daily Loss Limit (₹)</label>
+        <div class="form-grid">
+          <div class="form-field">
+            <label class="form-label">Daily Loss Limit (₹)</label>
             <input
               type="number"
               v-model.number="localSettings.daily_loss_limit"
               @input="handleChange"
-              data-testid="autopilot-settings-daily-loss"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+              data-testid="autopilot-settings-max-daily-loss"
+              class="strategy-input"
             />
-            <p class="text-xs text-gray-500 mt-1">Maximum loss allowed per day. AutoPilot will stop all strategies if breached.</p>
+            <p class="form-hint">Maximum loss allowed per day. AutoPilot will stop all strategies if breached.</p>
           </div>
 
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Per Strategy Loss Limit (₹)</label>
+          <div class="form-field">
+            <label class="form-label">Per Strategy Loss Limit (₹)</label>
             <input
               type="number"
               v-model.number="localSettings.per_strategy_loss_limit"
               @input="handleChange"
               data-testid="autopilot-settings-strategy-loss"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+              class="strategy-input"
             />
-            <p class="text-xs text-gray-500 mt-1">Maximum loss per individual strategy.</p>
+            <p class="form-hint">Maximum loss per individual strategy.</p>
           </div>
 
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Max Capital Deployed (₹)</label>
+          <div class="form-field">
+            <label class="form-label">Max Capital Deployed (₹)</label>
             <input
               type="number"
               v-model.number="localSettings.max_capital_deployed"
               @input="handleChange"
               data-testid="autopilot-settings-max-capital"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+              class="strategy-input"
             />
-            <p class="text-xs text-gray-500 mt-1">Maximum margin/capital that can be used across all strategies.</p>
+            <p class="form-hint">Maximum margin/capital that can be used across all strategies.</p>
           </div>
 
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Max Active Strategies</label>
+          <div class="form-field">
+            <label class="form-label">Max Active Strategies</label>
             <input
               type="number"
               v-model.number="localSettings.max_active_strategies"
               @input="handleChange"
               min="1"
               max="10"
-              data-testid="autopilot-settings-max-strategies"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+              data-testid="autopilot-settings-max-active"
+              class="strategy-input"
             />
-            <p class="text-xs text-gray-500 mt-1">Maximum number of strategies that can be active at once (1-10).</p>
+            <p class="form-hint">Maximum number of strategies that can be active at once (1-10).</p>
           </div>
         </div>
       </div>
 
       <!-- Time Restrictions -->
-      <div class="bg-white rounded-lg shadow p-6" data-testid="autopilot-settings-time">
-        <h2 class="text-lg font-semibold mb-4">Time Restrictions</h2>
+      <div class="settings-card" data-testid="autopilot-settings-time">
+        <h2 class="section-title">Time Restrictions</h2>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">No Trade First Minutes</label>
+        <div class="form-grid">
+          <div class="form-field">
+            <label class="form-label">No Trade First Minutes</label>
             <input
               type="number"
               v-model.number="localSettings.no_trade_first_minutes"
               @input="handleChange"
               min="0"
               max="60"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+              class="strategy-input"
             />
-            <p class="text-xs text-gray-500 mt-1">Don't enter trades during first N minutes of market open.</p>
+            <p class="form-hint">Don't enter trades during first N minutes of market open.</p>
           </div>
 
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">No Trade Last Minutes</label>
+          <div class="form-field">
+            <label class="form-label">No Trade Last Minutes</label>
             <input
               type="number"
               v-model.number="localSettings.no_trade_last_minutes"
               @input="handleChange"
               min="0"
               max="60"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+              class="strategy-input"
             />
-            <p class="text-xs text-gray-500 mt-1">Don't enter trades during last N minutes before market close.</p>
+            <p class="form-hint">Don't enter trades during last N minutes before market close.</p>
           </div>
         </div>
       </div>
 
       <!-- Cooldown Settings -->
-      <div class="bg-white rounded-lg shadow p-6" data-testid="autopilot-settings-cooldown">
-        <h2 class="text-lg font-semibold mb-4">Cooldown Settings</h2>
+      <div class="settings-card" data-testid="autopilot-settings-cooldown">
+        <h2 class="section-title">Cooldown Settings</h2>
 
-        <div class="mb-4">
-          <label class="flex items-center">
+        <div class="checkbox-group">
+          <label class="checkbox-label">
             <input
               type="checkbox"
               v-model="localSettings.cooldown_after_loss"
               @change="handleChange"
-              class="rounded border-gray-300 text-blue-600"
+              class="checkbox-input"
             />
-            <span class="ml-2 text-sm text-gray-700">Enable cooldown after significant loss</span>
+            <span class="checkbox-text">Enable cooldown after significant loss</span>
           </label>
         </div>
 
-        <div v-if="localSettings.cooldown_after_loss" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Cooldown Duration (minutes)</label>
+        <div v-if="localSettings.cooldown_after_loss" class="form-grid">
+          <div class="form-field">
+            <label class="form-label">Cooldown Duration (minutes)</label>
             <input
               type="number"
               v-model.number="localSettings.cooldown_minutes"
               @input="handleChange"
               min="5"
               max="240"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+              class="strategy-input"
             />
           </div>
 
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Cooldown Threshold (₹)</label>
+          <div class="form-field">
+            <label class="form-label">Cooldown Threshold (₹)</label>
             <input
               type="number"
               v-model.number="localSettings.cooldown_threshold"
               @input="handleChange"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+              class="strategy-input"
             />
-            <p class="text-xs text-gray-500 mt-1">Trigger cooldown if loss exceeds this amount.</p>
+            <p class="form-hint">Trigger cooldown if loss exceeds this amount.</p>
           </div>
         </div>
       </div>
 
       <!-- Feature Flags -->
-      <div class="bg-white rounded-lg shadow p-6" data-testid="autopilot-settings-features">
-        <h2 class="text-lg font-semibold mb-4">Features</h2>
+      <div class="settings-card" data-testid="autopilot-settings-features">
+        <h2 class="section-title">Features</h2>
 
-        <div class="space-y-4">
-          <label class="flex items-center">
-            <input
-              type="checkbox"
-              v-model="localSettings.paper_trading_mode"
-              @change="handleChange"
-              data-testid="autopilot-settings-paper-trading"
-              class="rounded border-gray-300 text-blue-600"
-            />
-            <span class="ml-2 text-sm text-gray-700">Paper Trading Mode</span>
-          </label>
-          <p class="text-xs text-gray-500 ml-6">Simulate trades without placing real orders. Great for testing strategies.</p>
+        <div class="feature-list">
+          <div class="feature-item">
+            <label class="checkbox-label">
+              <input
+                type="checkbox"
+                v-model="localSettings.paper_trading_mode"
+                @change="handleChange"
+                data-testid="autopilot-settings-paper-trading"
+                class="checkbox-input"
+              />
+              <span class="checkbox-text">Paper Trading Mode</span>
+            </label>
+            <p class="feature-hint">Simulate trades without placing real orders. Great for testing strategies.</p>
+          </div>
 
-          <label class="flex items-center">
-            <input
-              type="checkbox"
-              v-model="localSettings.show_advanced_features"
-              @change="handleChange"
-              class="rounded border-gray-300 text-blue-600"
-            />
-            <span class="ml-2 text-sm text-gray-700">Show Advanced Features</span>
-          </label>
-          <p class="text-xs text-gray-500 ml-6">Enable advanced configuration options and detailed analytics.</p>
+          <div class="feature-item">
+            <label class="checkbox-label">
+              <input
+                type="checkbox"
+                v-model="localSettings.show_advanced_features"
+                @change="handleChange"
+                class="checkbox-input"
+              />
+              <span class="checkbox-text">Show Advanced Features</span>
+            </label>
+            <p class="feature-hint">Enable advanced configuration options and detailed analytics.</p>
+          </div>
         </div>
       </div>
 
       <!-- Current Values Summary -->
-      <div class="bg-blue-50 rounded-lg p-4">
-        <h3 class="font-medium text-blue-900 mb-2">Current Limits Summary</h3>
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-          <div>
-            <p class="text-blue-700">Daily Loss Limit</p>
-            <p class="font-medium text-blue-900">{{ formatCurrency(localSettings.daily_loss_limit) }}</p>
+      <div class="summary-card">
+        <h3 class="summary-title">Current Limits Summary</h3>
+        <div class="summary-grid">
+          <div class="summary-item">
+            <p class="summary-label">Daily Loss Limit</p>
+            <p class="summary-value">{{ formatCurrency(localSettings.daily_loss_limit) }}</p>
           </div>
-          <div>
-            <p class="text-blue-700">Max Capital</p>
-            <p class="font-medium text-blue-900">{{ formatCurrency(localSettings.max_capital_deployed) }}</p>
+          <div class="summary-item">
+            <p class="summary-label">Max Capital</p>
+            <p class="summary-value">{{ formatCurrency(localSettings.max_capital_deployed) }}</p>
           </div>
-          <div>
-            <p class="text-blue-700">Max Strategies</p>
-            <p class="font-medium text-blue-900">{{ localSettings.max_active_strategies }}</p>
+          <div class="summary-item">
+            <p class="summary-label">Max Strategies</p>
+            <p class="summary-value">{{ localSettings.max_active_strategies }}</p>
           </div>
-          <div>
-            <p class="text-blue-700">Mode</p>
-            <p class="font-medium text-blue-900">{{ localSettings.paper_trading_mode ? 'Paper Trading' : 'Live Trading' }}</p>
+          <div class="summary-item">
+            <p class="summary-label">Mode</p>
+            <p class="summary-value">{{ localSettings.paper_trading_mode ? 'Paper Trading' : 'Live Trading' }}</p>
           </div>
         </div>
       </div>
     </div>
 
     <!-- Error -->
-    <div v-if="store.error" class="mt-4 bg-red-50 border border-red-200 rounded-lg p-4">
-      <p class="text-red-800">{{ store.error }}</p>
-      <button @click="store.clearError" class="text-red-600 underline mt-2">Dismiss</button>
+    <div v-if="store.error" class="error-banner" data-testid="autopilot-settings-error">
+      <p class="error-text">{{ store.error }}</p>
+      <button @click="store.clearError" class="error-dismiss">Dismiss</button>
     </div>
   </div>
+  </KiteLayout>
 </template>
+
+<style scoped>
+/* ===== Page Container ===== */
+.settings-page {
+  padding: 24px;
+}
+
+/* ===== Header ===== */
+.settings-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.settings-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.back-btn {
+  color: var(--kite-text-secondary);
+  background: none;
+  border: none;
+  font-size: 1.25rem;
+  cursor: pointer;
+}
+
+.back-btn:hover {
+  color: var(--kite-text-primary);
+}
+
+.page-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--kite-text-primary);
+}
+
+.page-subtitle {
+  color: var(--kite-text-secondary);
+  margin-top: 4px;
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* ===== Loading State ===== */
+.loading-state {
+  text-align: center;
+  padding: 48px;
+}
+
+.loading-spinner {
+  width: 48px;
+  height: 48px;
+  border: 2px solid var(--kite-border);
+  border-top-color: var(--kite-blue);
+  border-radius: 50%;
+  margin: 0 auto;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading-text {
+  margin-top: 16px;
+  color: var(--kite-text-secondary);
+}
+
+/* ===== Settings Sections ===== */
+.settings-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.settings-card {
+  background: white;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  padding: 24px;
+}
+
+.section-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--kite-text-primary);
+  margin-bottom: 16px;
+}
+
+/* ===== Form Elements ===== */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(1, 1fr);
+  gap: 16px;
+}
+
+@media (min-width: 768px) {
+  .form-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--kite-text-secondary);
+  margin-bottom: 4px;
+}
+
+.form-hint {
+  font-size: 0.75rem;
+  color: var(--kite-text-muted);
+  margin-top: 4px;
+}
+
+/* ===== Checkbox ===== */
+.checkbox-group {
+  margin-bottom: 16px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.checkbox-input {
+  border-radius: 4px;
+  border-color: var(--kite-border);
+  color: var(--kite-blue);
+}
+
+.checkbox-text {
+  margin-left: 8px;
+  font-size: 0.875rem;
+  color: var(--kite-text-secondary);
+}
+
+/* ===== Feature List ===== */
+.feature-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.feature-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.feature-hint {
+  font-size: 0.75rem;
+  color: var(--kite-text-muted);
+  margin-left: 24px;
+}
+
+/* ===== Summary Card ===== */
+.summary-card {
+  background: var(--kite-blue-light, #e3f2fd);
+  border-radius: 4px;
+  padding: 16px;
+}
+
+.summary-title {
+  font-weight: 500;
+  color: var(--kite-blue-dark, #1565c0);
+  margin-bottom: 8px;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  font-size: 0.875rem;
+}
+
+@media (min-width: 768px) {
+  .summary-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.summary-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.summary-label {
+  color: var(--kite-blue);
+}
+
+.summary-value {
+  font-weight: 500;
+  color: var(--kite-blue-dark, #1565c0);
+}
+
+/* ===== Error Banner ===== */
+.error-banner {
+  margin-top: 16px;
+  background: var(--kite-red-light, #ffebee);
+  border: 1px solid var(--kite-red-border, #ffcdd2);
+  border-radius: 4px;
+  padding: 16px;
+}
+
+.error-text {
+  color: var(--kite-red);
+}
+
+.error-dismiss {
+  color: var(--kite-red);
+  background: none;
+  border: none;
+  text-decoration: underline;
+  margin-top: 8px;
+  cursor: pointer;
+}
+
+/* ===== Button Styles ===== */
+.strategy-btn {
+  padding: 8px 16px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: 1px solid transparent;
+}
+
+.strategy-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.strategy-btn-primary {
+  background: var(--kite-blue);
+  color: white;
+  border-color: var(--kite-blue);
+}
+
+.strategy-btn-primary:hover:not(:disabled) {
+  background: var(--kite-blue-dark, #1565c0);
+}
+
+.strategy-btn-outline {
+  background: white;
+  color: var(--kite-text-primary);
+  border-color: var(--kite-border);
+}
+
+.strategy-btn-outline:hover:not(:disabled) {
+  background: var(--kite-table-hover);
+}
+
+/* ===== Input Styles ===== */
+.strategy-input {
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 0.875rem;
+  border: 1px solid var(--kite-border);
+  border-radius: 4px;
+  color: var(--kite-text-primary);
+  background: white;
+  transition: border-color 0.15s ease;
+}
+
+.strategy-input:focus {
+  outline: none;
+  border-color: var(--kite-blue);
+}
+</style>

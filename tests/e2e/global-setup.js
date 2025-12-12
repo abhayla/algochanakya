@@ -29,6 +29,7 @@ try {
 
 /**
  * Check if existing auth state is still valid
+ * Validates both JWT token AND Kite broker access token
  */
 async function isAuthStateValid() {
   try {
@@ -50,18 +51,39 @@ async function isAuthStateValid() {
       return false;
     }
 
-    // Validate token with API
+    // Step 1: Validate JWT token with API
     const response = await fetch(`${API_BASE}/api/auth/me`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
 
-    if (response.ok) {
-      console.log('Existing auth state is valid - reusing');
-      return true;
+    if (!response.ok) {
+      console.log('Token is expired or invalid');
+      return false;
     }
 
-    console.log('Token is expired or invalid');
-    return false;
+    console.log('JWT token is valid');
+
+    // Step 2: Validate Kite broker access token
+    // Kite tokens expire daily around 6 AM IST, so we need to check this
+    const brokerResponse = await fetch(`${API_BASE}/api/auth/broker/validate`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+
+    if (!brokerResponse.ok) {
+      const errorData = await brokerResponse.json().catch(() => ({}));
+      console.log('Kite broker token is expired or invalid:', errorData.detail || 'Unknown error');
+      console.log('Fresh login required to get new Kite access token');
+      return false;
+    }
+
+    const brokerData = await brokerResponse.json();
+    if (!brokerData.is_valid) {
+      console.log('Kite broker token validation failed:', brokerData.message || 'Token invalid');
+      return false;
+    }
+
+    console.log('Existing auth state is valid - reusing');
+    return true;
   } catch (e) {
     console.log('Error checking auth state:', e.message);
     return false;
