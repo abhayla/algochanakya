@@ -8,10 +8,9 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from kiteconnect import KiteConnect
 
-from app.database import get_async_db
+from app.database import get_db
 from app.utils.dependencies import get_current_user, get_current_broker_connection
-from app.models.user import User
-from app.models.broker import BrokerConnection
+from app.models import User, BrokerConnection
 from app.schemas.autopilot import AdjustmentSuggestionResponse
 from app.services.suggestion_engine import SuggestionEngine
 from app.services.market_data import MarketDataService
@@ -29,7 +28,7 @@ def get_kite_client(broker_connection: BrokerConnection = Depends(get_current_br
 @router.get("/strategies/{strategy_id}", response_model=List[AdjustmentSuggestionResponse])
 async def get_suggestions(
     strategy_id: int,
-    db: AsyncSession = Depends(get_async_db),
+    db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
     kite: KiteConnect = Depends(get_kite_client)
 ):
@@ -79,7 +78,7 @@ async def get_suggestions(
 async def get_suggestion(
     strategy_id: int,
     suggestion_id: int,
-    db: AsyncSession = Depends(get_async_db),
+    db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user)
 ):
     """
@@ -125,7 +124,7 @@ async def get_suggestion(
 async def dismiss_suggestion(
     strategy_id: int,
     suggestion_id: int,
-    db: AsyncSession = Depends(get_async_db),
+    db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user)
 ):
     """
@@ -176,7 +175,7 @@ async def dismiss_suggestion(
 async def execute_suggestion(
     strategy_id: int,
     suggestion_id: int,
-    db: AsyncSession = Depends(get_async_db),
+    db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
     kite: KiteConnect = Depends(get_kite_client)
 ):
@@ -303,7 +302,7 @@ async def execute_suggestion(
 @router.post("/strategies/{strategy_id}/suggestions/refresh")
 async def refresh_suggestions(
     strategy_id: int,
-    db: AsyncSession = Depends(get_async_db),
+    db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
     kite: KiteConnect = Depends(get_kite_client)
 ):

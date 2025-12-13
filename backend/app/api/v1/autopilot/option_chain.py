@@ -10,10 +10,9 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from kiteconnect import KiteConnect
 
-from app.database import get_async_db
+from app.database import get_db
 from app.utils.dependencies import get_current_user, get_current_broker_connection
-from app.models.user import User
-from app.models.broker import BrokerConnection
+from app.models import User, BrokerConnection
 from app.schemas.autopilot import (
     OptionChainResponse,
     StrikeFindByDeltaRequest,
@@ -38,7 +37,7 @@ async def get_option_chain(
     underlying: str,
     expiry: date,
     use_cache: bool = Query(True, description="Use cached data if available"),
-    db: AsyncSession = Depends(get_async_db),
+    db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
     kite: KiteConnect = Depends(get_kite_client)
 ):
@@ -91,7 +90,7 @@ async def get_option_chain(
 async def get_strikes_list(
     underlying: str,
     expiry: date,
-    db: AsyncSession = Depends(get_async_db),
+    db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
     kite: KiteConnect = Depends(get_kite_client)
 ):
@@ -124,7 +123,7 @@ async def get_strikes_list(
 @router.post("/find-by-delta", response_model=StrikeFindResponse)
 async def find_strike_by_delta(
     request: StrikeFindByDeltaRequest,
-    db: AsyncSession = Depends(get_async_db),
+    db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
     kite: KiteConnect = Depends(get_kite_client)
 ):
@@ -176,7 +175,7 @@ async def find_strike_by_delta(
 @router.post("/find-by-premium", response_model=StrikeFindResponse)
 async def find_strike_by_premium(
     request: StrikeFindByPremiumRequest,
-    db: AsyncSession = Depends(get_async_db),
+    db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
     kite: KiteConnect = Depends(get_kite_client)
 ):
@@ -229,7 +228,7 @@ async def find_strike_by_premium(
 async def find_atm_strike(
     underlying: str,
     expiry: date,
-    db: AsyncSession = Depends(get_async_db),
+    db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
     kite: KiteConnect = Depends(get_kite_client)
 ):
@@ -279,7 +278,7 @@ async def find_strikes_in_range(
     min_value: Decimal = Query(...),
     max_value: Decimal = Query(...),
     range_type: str = Query("premium", regex="^(premium|delta)$"),
-    db: AsyncSession = Depends(get_async_db),
+    db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
     kite: KiteConnect = Depends(get_kite_client)
 ):
@@ -328,7 +327,7 @@ async def find_strikes_in_range(
 @router.get("/expiries/{underlying}")
 async def get_expiries(
     underlying: str,
-    db: AsyncSession = Depends(get_async_db),
+    db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
     kite: KiteConnect = Depends(get_kite_client)
 ):

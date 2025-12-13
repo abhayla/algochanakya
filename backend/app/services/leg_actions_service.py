@@ -20,7 +20,7 @@ from app.models.autopilot import (
 )
 from app.services.position_leg_service import PositionLegService
 from app.services.strike_finder_service import StrikeFinderService
-from app.services.order_executor import OrderExecutorService
+from app.services.order_executor import OrderExecutor
 from app.services.market_data import MarketDataService
 
 logger = logging.getLogger(__name__)
@@ -35,7 +35,7 @@ class LegActionsService:
         self.user_id = user_id
         self.position_leg_service = PositionLegService(kite, db)
         self.strike_finder = StrikeFinderService(kite, db)
-        self.order_executor = OrderExecutorService(kite, db, user_id)
+        self.order_executor = OrderExecutor(kite, db, user_id)
         self.market_data = MarketDataService(kite)
 
     async def exit_leg(

@@ -16,7 +16,9 @@ test.describe('AutoPilot Leg Actions - E2E', () => {
     await page.waitForDashboardLoad();
 
     // Navigate to strategy with position legs
-    await page.page.click('[data-testid="autopilot-strategy-row"]');
+    await page.strategyCards.first().click();
+    await page.page.waitForSelector('[data-testid="autopilot-strategy-detail"]');
+    await page.page.click('[data-testid="autopilot-legs-tab"]');
     await page.page.waitForSelector('[data-testid="autopilot-legs-panel"]');
   });
 
@@ -32,7 +34,7 @@ test.describe('AutoPilot Leg Actions - E2E', () => {
 
   test('should open exit single leg modal', async ({ authenticatedPage }) => {
     // Click exit button on first leg
-    await page.page.click('[data-testid="autopilot-leg-exit-btn"]');
+    await page.page.click('[data-testid^="autopilot-leg-exit-btn"]');
 
     // Verify modal opens
     const modal = page.page.locator('[data-testid="autopilot-exit-leg-modal"]');
@@ -49,7 +51,7 @@ test.describe('AutoPilot Leg Actions - E2E', () => {
 
   test('should shift leg modal - by strike', async ({ authenticatedPage }) => {
     // Open shift modal
-    await page.page.click('[data-testid="autopilot-leg-shift-btn"]');
+    await page.page.click('[data-testid^="autopilot-leg-shift-btn"]');
 
     // Verify modal
     const modal = page.page.locator('[data-testid="autopilot-shift-leg-modal"]');
@@ -68,7 +70,7 @@ test.describe('AutoPilot Leg Actions - E2E', () => {
 
   test('should shift leg modal - by delta', async ({ authenticatedPage }) => {
     // Open shift modal
-    await page.page.click('[data-testid="autopilot-leg-shift-btn"]');
+    await page.page.click('[data-testid^="autopilot-leg-shift-btn"]');
 
     // Select delta mode
     await page.page.selectOption('[data-testid="autopilot-shift-mode-select"]', 'delta');
@@ -83,7 +85,7 @@ test.describe('AutoPilot Leg Actions - E2E', () => {
 
   test('should open roll leg modal', async ({ authenticatedPage }) => {
     // Click roll button
-    await page.page.click('[data-testid="autopilot-leg-roll-btn"]');
+    await page.page.click('[data-testid^="autopilot-leg-roll-btn"]');
 
     // Verify modal
     const modal = page.page.locator('[data-testid="autopilot-roll-leg-modal"]');
@@ -100,7 +102,7 @@ test.describe('AutoPilot Leg Actions - E2E', () => {
 
   test('should open break trade wizard - step navigation', async ({ authenticatedPage }) => {
     // Click break trade button
-    await page.page.click('[data-testid="autopilot-leg-break-btn"]');
+    await page.page.click('[data-testid^="autopilot-leg-break-btn"]');
 
     // Verify wizard modal
     const wizard = page.page.locator('[data-testid="autopilot-break-trade-wizard"]');
@@ -120,7 +122,7 @@ test.describe('AutoPilot Leg Actions - E2E', () => {
 
   test('should show break trade wizard - preview', async ({ authenticatedPage }) => {
     // Open wizard
-    await page.page.click('[data-testid="autopilot-leg-break-btn"]');
+    await page.page.click('[data-testid^="autopilot-leg-break-btn"]');
 
     // Navigate to preview step
     await page.page.click('[data-testid="autopilot-break-next-btn"]');
@@ -137,10 +139,10 @@ test.describe('AutoPilot Leg Actions - E2E', () => {
 
   test('should show action buttons visibility', async ({ authenticatedPage }) => {
     // Verify all action buttons are visible
-    const exitBtn = page.page.locator('[data-testid="autopilot-leg-exit-btn"]');
-    const shiftBtn = page.page.locator('[data-testid="autopilot-leg-shift-btn"]');
-    const rollBtn = page.page.locator('[data-testid="autopilot-leg-roll-btn"]');
-    const breakBtn = page.page.locator('[data-testid="autopilot-leg-break-btn"]');
+    const exitBtn = page.page.locator('[data-testid^="autopilot-leg-exit-btn"]');
+    const shiftBtn = page.page.locator('[data-testid^="autopilot-leg-shift-btn"]');
+    const rollBtn = page.page.locator('[data-testid^="autopilot-leg-roll-btn"]');
+    const breakBtn = page.page.locator('[data-testid^="autopilot-leg-break-btn"]');
 
     await expect(exitBtn).toBeVisible();
     await expect(shiftBtn).toBeVisible();

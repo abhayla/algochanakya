@@ -21,7 +21,8 @@ from app.models.autopilot import (
     AutoPilotUserSettings,
     PositionLegStatus,
     SuggestionType,
-    SuggestionPriority
+    SuggestionUrgency,
+    SuggestionStatus
 )
 from app.services.market_data import MarketDataService
 from app.services.position_leg_service import PositionLegService
@@ -158,14 +159,14 @@ class SuggestionEngine:
 
             await self.db.commit()
 
-            # Sort by priority
-            priority_order = {
-                SuggestionPriority.CRITICAL: 0,
-                SuggestionPriority.HIGH: 1,
-                SuggestionPriority.MEDIUM: 2,
-                SuggestionPriority.LOW: 3
+            # Sort by urgency
+            urgency_order = {
+                SuggestionUrgency.CRITICAL: 0,
+                SuggestionUrgency.HIGH: 1,
+                SuggestionUrgency.MEDIUM: 2,
+                SuggestionUrgency.LOW: 3
             }
-            suggestions.sort(key=lambda s: priority_order.get(s.priority, 999))
+            suggestions.sort(key=lambda s: urgency_order.get(s.urgency, 999))
 
             return suggestions
 
@@ -268,7 +269,7 @@ class SuggestionEngine:
                 suggestion = AutoPilotAdjustmentSuggestion(
                     strategy_id=strategy.id,
                     suggestion_type=SuggestionType.SHIFT,
-                    priority=SuggestionPriority.CRITICAL,
+                    urgency=SuggestionUrgency.CRITICAL,
                     title=f"Shift {target_leg.contract_type} leg to reduce delta",
                     description=f"Net delta ({abs_delta:.2f}) exceeds danger threshold. "
                                f"Shift the {target_leg.strike} {target_leg.contract_type} leg "
@@ -295,7 +296,7 @@ class SuggestionEngine:
             suggestion = AutoPilotAdjustmentSuggestion(
                 strategy_id=strategy.id,
                 suggestion_type=SuggestionType.SHIFT,
-                priority=SuggestionPriority.HIGH,
+                urgency=SuggestionUrgency.HIGH,
                 title="Consider adjusting position delta",
                 description=f"Net delta ({abs_delta:.2f}) is elevated. "
                            f"Consider shifting legs to reduce directional exposure.",
@@ -336,7 +337,7 @@ class SuggestionEngine:
             suggestion = AutoPilotAdjustmentSuggestion(
                 strategy_id=strategy.id,
                 suggestion_type=SuggestionType.BREAK,
-                priority=SuggestionPriority.CRITICAL,
+                urgency=SuggestionUrgency.CRITICAL,
                 title=f"Break trade on losing {worst_leg.contract_type} leg",
                 description=f"The {worst_leg.strike} {worst_leg.contract_type} leg has "
                            f"unrealized loss of ₹{abs(worst_pnl):.0f}. "
@@ -365,7 +366,7 @@ class SuggestionEngine:
             suggestion = AutoPilotAdjustmentSuggestion(
                 strategy_id=strategy.id,
                 suggestion_type=SuggestionType.EXIT,
-                priority=SuggestionPriority.HIGH,
+                urgency=SuggestionUrgency.HIGH,
                 title="Consider exiting position",
                 description=f"Current P&L (₹{current_pnl:.0f}) is approaching max loss limit "
                            f"(₹{max_loss}). Exit to preserve capital.",
@@ -404,7 +405,7 @@ class SuggestionEngine:
             suggestion = AutoPilotAdjustmentSuggestion(
                 strategy_id=strategy.id,
                 suggestion_type=SuggestionType.ROLL,
-                priority=SuggestionPriority.MEDIUM,
+                urgency=SuggestionUrgency.MEDIUM,
                 title="Roll to next expiry",
                 description=f"Current expiry has only {dte} days remaining. "
                            f"Consider rolling positions to next expiry to maintain theta decay.",
@@ -429,7 +430,7 @@ class SuggestionEngine:
             suggestion = AutoPilotAdjustmentSuggestion(
                 strategy_id=strategy.id,
                 suggestion_type=SuggestionType.EXIT,
-                priority=SuggestionPriority.CRITICAL,
+                urgency=SuggestionUrgency.CRITICAL,
                 title="EXIT NOW - Expiry day",
                 description="Today is expiry day! Exit all positions to avoid assignment risk.",
                 reasoning="Expiry day carries extreme gamma risk and assignment risk. "
@@ -466,7 +467,7 @@ class SuggestionEngine:
             suggestion = AutoPilotAdjustmentSuggestion(
                 strategy_id=strategy.id,
                 suggestion_type=SuggestionType.ADD_HEDGE,
-                priority=SuggestionPriority.HIGH,
+                urgency=SuggestionUrgency.HIGH,
                 title="Add hedge to reduce gamma risk",
                 description=f"High gamma ({abs(net_gamma):.3f}) with {analysis['dte']} DTE "
                            f"creates significant risk from spot moves.",
@@ -487,7 +488,7 @@ class SuggestionEngine:
             suggestion = AutoPilotAdjustmentSuggestion(
                 strategy_id=strategy.id,
                 suggestion_type=SuggestionType.NO_ACTION,
-                priority=SuggestionPriority.LOW,
+                urgency=SuggestionUrgency.LOW,
                 title="Monitor position - High volatility environment",
                 description=f"VIX at {vix:.1f} indicates elevated market volatility. "
                            f"Monitor position closely but no immediate action needed.",

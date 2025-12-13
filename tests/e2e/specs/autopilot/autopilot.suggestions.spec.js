@@ -16,8 +16,9 @@ test.describe('AutoPilot Suggestions - E2E', () => {
     await page.waitForDashboardLoad();
 
     // Navigate to strategy with suggestions
-    await page.page.click('[data-testid="autopilot-strategy-row"]');
+    await page.strategyCards.first().click();
     await page.page.waitForSelector('[data-testid="autopilot-strategy-detail"]');
+    await page.page.click('[data-testid="autopilot-suggestions-tab"]');
   });
 
   test('should view suggestions list', async ({ authenticatedPage }) => {

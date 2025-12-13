@@ -30,6 +30,9 @@ frontend/.env.*.local
 *.log
 logs/
 
+# Process files
+*.pid
+
 # Claude Code
 .claude/
 

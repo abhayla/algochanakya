@@ -8,10 +8,9 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from kiteconnect import KiteConnect
 
-from app.database import get_async_db
+from app.database import get_db
 from app.utils.dependencies import get_current_user, get_current_broker_connection
-from app.models.user import User
-from app.models.broker import BrokerConnection
+from app.models import User, BrokerConnection
 from app.schemas.autopilot import (
     PositionLegResponse,
     ExitLegRequest,
@@ -38,7 +37,7 @@ def get_kite_client(broker_connection: BrokerConnection = Depends(get_current_br
 async def get_strategy_legs(
     strategy_id: int,
     status_filter: str = None,
-    db: AsyncSession = Depends(get_async_db),
+    db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
     kite: KiteConnect = Depends(get_kite_client)
 ):
@@ -71,7 +70,7 @@ async def get_strategy_legs(
 async def get_position_leg(
     strategy_id: int,
     leg_id: str,
-    db: AsyncSession = Depends(get_async_db),
+    db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
     kite: KiteConnect = Depends(get_kite_client)
 ):
@@ -111,7 +110,7 @@ async def exit_leg(
     strategy_id: int,
     leg_id: str,
     request: ExitLegRequest,
-    db: AsyncSession = Depends(get_async_db),
+    db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
     kite: KiteConnect = Depends(get_kite_client)
 ):
@@ -154,7 +153,7 @@ async def shift_leg(
     strategy_id: int,
     leg_id: str,
     request: ShiftLegRequest,
-    db: AsyncSession = Depends(get_async_db),
+    db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
     kite: KiteConnect = Depends(get_kite_client)
 ):
@@ -206,7 +205,7 @@ async def roll_leg(
     strategy_id: int,
     leg_id: str,
     request: RollLegRequest,
-    db: AsyncSession = Depends(get_async_db),
+    db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
     kite: KiteConnect = Depends(get_kite_client)
 ):
@@ -250,7 +249,7 @@ async def break_trade(
     strategy_id: int,
     leg_id: str,
     request: BreakTradeRequest,
-    db: AsyncSession = Depends(get_async_db),
+    db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
     kite: KiteConnect = Depends(get_kite_client)
 ):
@@ -307,7 +306,7 @@ async def simulate_break_trade(
     premium_split: str = "equal",
     prefer_round_strikes: bool = True,
     max_delta: float = 0.30,
-    db: AsyncSession = Depends(get_async_db),
+    db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
     kite: KiteConnect = Depends(get_kite_client)
 ):
@@ -359,7 +358,7 @@ async def simulate_break_trade(
 @router.post("/strategies/{strategy_id}/legs/update-greeks")
 async def update_all_legs_greeks(
     strategy_id: int,
-    db: AsyncSession = Depends(get_async_db),
+    db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
     kite: KiteConnect = Depends(get_kite_client)
 ):

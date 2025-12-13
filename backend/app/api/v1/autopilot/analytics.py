@@ -9,10 +9,9 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query, Body
 from sqlalchemy.ext.asyncio import AsyncSession
 from kiteconnect import KiteConnect
 
-from app.database import get_async_db
+from app.database import get_db
 from app.utils.dependencies import get_current_user, get_current_broker_connection
-from app.models.user import User
-from app.models.broker import BrokerConnection
+from app.models import User, BrokerConnection
 from app.services.payoff_calculator import PayoffCalculator
 from app.services.market_data import MarketDataService
 
@@ -32,7 +31,7 @@ async def get_payoff_chart(
     mode: str = Query("expiry", pattern="^(expiry|current)$"),
     spot_range_pct: float = Query(10.0, ge=1.0, le=30.0),
     num_points: int = Query(100, ge=50, le=500),
-    db: AsyncSession = Depends(get_async_db),
+    db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
     kite: KiteConnect = Depends(get_kite_client)
 ):
@@ -95,7 +94,7 @@ async def get_payoff_chart(
 @router.get("/{strategy_id}/risk-metrics")
 async def get_risk_metrics(
     strategy_id: int,
-    db: AsyncSession = Depends(get_async_db),
+    db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
     kite: KiteConnect = Depends(get_kite_client)
 ):
@@ -184,7 +183,7 @@ async def get_risk_metrics(
 @router.get("/{strategy_id}/breakevens")
 async def get_breakevens(
     strategy_id: int,
-    db: AsyncSession = Depends(get_async_db),
+    db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
     kite: KiteConnect = Depends(get_kite_client)
 ):
@@ -254,7 +253,7 @@ async def calculate_pnl_at_spot(
     strategy_id: int,
     spot_price: Decimal = Body(...),
     mode: str = Body("expiry"),
-    db: AsyncSession = Depends(get_async_db),
+    db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
     kite: KiteConnect = Depends(get_kite_client)
 ):
@@ -305,7 +304,7 @@ async def calculate_pnl_at_spot(
 @router.get("/{strategy_id}/profit-zones")
 async def get_profit_zones(
     strategy_id: int,
-    db: AsyncSession = Depends(get_async_db),
+    db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
     kite: KiteConnect = Depends(get_kite_client)
 ):
@@ -430,7 +429,7 @@ async def get_greeks_heatmap(
     greek: str = Query(..., pattern="^(delta|gamma|theta|vega)$"),
     spot_range_pct: float = Query(10.0, ge=1.0, le=30.0),
     num_points: int = Query(50, ge=20, le=200),
-    db: AsyncSession = Depends(get_async_db),
+    db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
     kite: KiteConnect = Depends(get_kite_client)
 ):

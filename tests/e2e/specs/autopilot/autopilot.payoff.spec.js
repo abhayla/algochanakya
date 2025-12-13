@@ -16,7 +16,7 @@ test.describe('AutoPilot Payoff Chart - E2E', () => {
     await page.waitForDashboardLoad();
 
     // Navigate to strategy detail
-    await page.page.click('[data-testid="autopilot-strategy-row"]');
+    await page.strategyCards.first().click();
     await page.page.waitForSelector('[data-testid="autopilot-strategy-detail"]');
   });
 

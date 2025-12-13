@@ -103,6 +103,13 @@ const router = createRouter({
       component: () => import('../views/autopilot/SettingsView.vue'),
       meta: { requiresAuth: true },
     },
+    // Phase 5 routes
+    {
+      path: '/autopilot/option-chain',
+      name: 'AutoPilotOptionChain',
+      component: () => import('../views/autopilot/OptionChainView.vue'),
+      meta: { requiresAuth: true },
+    },
     // Phase 4 routes
     {
       path: '/autopilot/templates',

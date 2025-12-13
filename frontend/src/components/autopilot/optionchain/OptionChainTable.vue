@@ -1,5 +1,5 @@
 <template>
-  <div class="option-chain-table">
+  <div class="option-chain-table" data-testid="autopilot-optionchain-table">
     <!-- Header with spot price and ATM info -->
     <div class="chain-header" v-if="spotPrice">
       <div class="spot-info">
@@ -8,9 +8,9 @@
       </div>
       <div class="atm-info" v-if="atmStrike">
         <span class="label">ATM Strike:</span>
-        <span class="value">{{ atmStrike }}</span>
+        <span class="value" data-testid="autopilot-optionchain-atm-badge">{{ atmStrike }}</span>
       </div>
-      <div class="cache-indicator" v-if="isCached">
+      <div class="cache-indicator" v-if="isCached" data-testid="autopilot-optionchain-cache-indicator">
         <span class="cache-badge">Cached</span>
         <span class="cache-time">{{ formatCacheTime(cachedAt) }}</span>
       </div>
@@ -21,9 +21,9 @@
       <table class="chain-table">
         <thead>
           <tr>
-            <th colspan="5" class="section-header call-section">CALLS (CE)</th>
+            <th :colspan="showGreeks ? 6 : 3" class="section-header call-section">CALLS (CE)</th>
             <th class="strike-header">STRIKE</th>
-            <th colspan="5" class="section-header put-section">PUTS (PE)</th>
+            <th :colspan="showGreeks ? 6 : 3" class="section-header put-section">PUTS (PE)</th>
           </tr>
           <tr class="column-headers">
             <!-- CE Headers -->
@@ -31,13 +31,15 @@
             <th @click="sortBy('volume', 'CE')" class="sortable">Vol</th>
             <th @click="sortBy('ltp', 'CE')" class="sortable">LTP</th>
             <th @click="sortBy('iv', 'CE')" class="sortable" v-if="showGreeks">IV</th>
-            <th @click="sortBy('delta', 'CE')" class="sortable" v-if="showGreeks">Δ</th>
+            <th @click="sortBy('delta', 'CE')" class="sortable" v-if="showGreeks" data-testid="autopilot-optionchain-header-delta">Δ</th>
+            <th @click="sortBy('gamma', 'CE')" class="sortable" v-if="showGreeks" data-testid="autopilot-optionchain-header-gamma">Γ</th>
 
             <!-- Strike -->
             <th class="strike-column">Strike</th>
 
             <!-- PE Headers -->
-            <th @click="sortBy('delta', 'PE')" class="sortable" v-if="showGreeks">Δ</th>
+            <th @click="sortBy('gamma', 'PE')" class="sortable" v-if="showGreeks" data-testid="autopilot-optionchain-header-gamma">Γ</th>
+            <th @click="sortBy('delta', 'PE')" class="sortable" v-if="showGreeks" data-testid="autopilot-optionchain-header-delta">Δ</th>
             <th @click="sortBy('iv', 'PE')" class="sortable" v-if="showGreeks">IV</th>
             <th @click="sortBy('ltp', 'PE')" class="sortable">LTP</th>
             <th @click="sortBy('volume', 'PE')" class="sortable">Vol</th>
@@ -49,6 +51,7 @@
             v-for="row in groupedByStrike"
             :key="row.strike"
             :class="getRowClass(row.strike)"
+            :data-testid="`autopilot-optionchain-strike-row-${row.strike}`"
           >
             <!-- CE Data -->
             <td class="oi-cell ce-cell" :class="{ 'no-data': !row.CE }">
@@ -67,6 +70,9 @@
             <td class="delta-cell ce-cell" v-if="showGreeks" :class="{ 'no-data': !row.CE }">
               {{ row.CE && row.CE.delta ? row.CE.delta.toFixed(3) : '-' }}
             </td>
+            <td class="gamma-cell ce-cell" v-if="showGreeks" :class="{ 'no-data': !row.CE }">
+              {{ row.CE && row.CE.gamma ? row.CE.gamma.toFixed(4) : '-' }}
+            </td>
 
             <!-- Strike -->
             <td class="strike-cell" :class="{ 'atm-strike': row.strike === atmStrike }">
@@ -74,6 +80,9 @@
             </td>
 
             <!-- PE Data -->
+            <td class="gamma-cell pe-cell" v-if="showGreeks" :class="{ 'no-data': !row.PE }">
+              {{ row.PE && row.PE.gamma ? row.PE.gamma.toFixed(4) : '-' }}
+            </td>
             <td class="delta-cell pe-cell" v-if="showGreeks" :class="{ 'no-data': !row.PE }">
               {{ row.PE && row.PE.delta ? row.PE.delta.toFixed(3) : '-' }}
             </td>
@@ -95,15 +104,20 @@
       </table>
 
       <!-- Empty State -->
-      <div v-if="!groupedByStrike || groupedByStrike.length === 0" class="empty-state">
+      <div v-if="!groupedByStrike || groupedByStrike.length === 0" class="empty-state" data-testid="autopilot-optionchain-empty-state">
         <p>No option chain data available</p>
         <p class="hint">Select an underlying and expiry to load option chain</p>
       </div>
 
       <!-- Loading State -->
-      <div v-if="loading" class="loading-overlay">
+      <div v-if="loading" class="loading-overlay" data-testid="autopilot-optionchain-loading">
         <div class="spinner"></div>
         <p>Loading option chain...</p>
+      </div>
+
+      <!-- Error State -->
+      <div v-if="error" class="error-state" data-testid="autopilot-optionchain-error">
+        <p class="error-message">{{ error }}</p>
       </div>
     </div>
   </div>
@@ -140,6 +154,10 @@ export default {
       default: false
     },
     cachedAt: {
+      type: String,
+      default: null
+    },
+    error: {
       type: String,
       default: null
     }
@@ -394,9 +412,23 @@ export default {
   font-weight: 600;
 }
 
-.iv-cell, .delta-cell {
+.iv-cell, .delta-cell, .gamma-cell {
   font-size: 12px;
   font-family: 'Courier New', monospace;
+}
+
+.error-state {
+  padding: 40px 20px;
+  text-align: center;
+  background: #fef2f2;
+  border-radius: 8px;
+  margin: 20px;
+}
+
+.error-message {
+  color: #dc2626;
+  font-size: 14px;
+  font-weight: 500;
 }
 
 .empty-state {

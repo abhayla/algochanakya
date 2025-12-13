@@ -10,10 +10,9 @@ from fastapi import APIRouter, Depends, HTTPException, status, Body
 from sqlalchemy.ext.asyncio import AsyncSession
 from kiteconnect import KiteConnect
 
-from app.database import get_async_db
+from app.database import get_db
 from app.utils.dependencies import get_current_user, get_current_broker_connection
-from app.models.user import User
-from app.models.broker import BrokerConnection
+from app.models import User, BrokerConnection
 from app.services.whatif_simulator import WhatIfSimulator
 from app.services.market_data import MarketDataService
 
@@ -34,7 +33,7 @@ async def simulate_shift(
     target_strike: Decimal = Body(None),
     target_delta: Decimal = Body(None),
     shift_amount: int = Body(None),
-    db: AsyncSession = Depends(get_async_db),
+    db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
     kite: KiteConnect = Depends(get_kite_client)
 ):
@@ -85,7 +84,7 @@ async def simulate_roll(
     leg_id: str = Body(...),
     target_expiry: date = Body(...),
     target_strike: Decimal = Body(None),
-    db: AsyncSession = Depends(get_async_db),
+    db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
     kite: KiteConnect = Depends(get_kite_client)
 ):
@@ -134,7 +133,7 @@ async def simulate_break_trade(
     leg_id: str = Body(...),
     premium_split: str = Body("equal"),
     max_delta: Decimal = Body(Decimal('0.30')),
-    db: AsyncSession = Depends(get_async_db),
+    db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
     kite: KiteConnect = Depends(get_kite_client)
 ):
@@ -181,7 +180,7 @@ async def simulate_break_trade(
 async def simulate_exit(
     strategy_id: int,
     exit_type: str = Body("full"),
-    db: AsyncSession = Depends(get_async_db),
+    db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
     kite: KiteConnect = Depends(get_kite_client)
 ):
@@ -224,7 +223,7 @@ async def simulate_exit(
 async def compare_scenarios(
     strategy_id: int,
     scenarios: List[Dict[str, Any]] = Body(...),
-    db: AsyncSession = Depends(get_async_db),
+    db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
     kite: KiteConnect = Depends(get_kite_client)
 ):

@@ -9,6 +9,10 @@ import { useRouter, useRoute } from 'vue-router'
 import { useAutopilotStore } from '@/stores/autopilot'
 import KiteLayout from '@/components/layout/KiteLayout.vue'
 import ShareModal from '@/components/autopilot/common/ShareModal.vue'
+import LegsPanel from '@/components/autopilot/legs/LegsPanel.vue'
+import SuggestionsPanel from '@/components/autopilot/suggestions/SuggestionsPanel.vue'
+import AnalyticsPanel from '@/components/autopilot/analytics/AnalyticsPanel.vue'
+import WhatIfModal from '@/components/autopilot/simulation/WhatIfModal.vue'
 import '@/assets/css/strategy-table.css'
 
 const router = useRouter()
@@ -20,6 +24,8 @@ const refreshInterval = ref(null)
 const showExitModal = ref(false)
 const showDeleteModal = ref(false)
 const showShareModal = ref(false)
+const showWhatIfModal = ref(false)
+const activeTab = ref('configuration')
 
 onMounted(async () => {
   await store.fetchStrategy(strategyId.value)
@@ -161,6 +167,14 @@ const getStatusBadgeClass = (status) => {
 
         <div class="header-actions">
           <button
+            @click="showWhatIfModal = true"
+            data-testid="autopilot-whatif-btn"
+            class="strategy-btn strategy-btn-outline"
+          >
+            What-If
+          </button>
+
+          <button
             v-if="store.currentStrategy.status === 'draft'"
             @click="handleEdit"
             data-testid="autopilot-detail-edit"
@@ -266,106 +280,149 @@ const getStatusBadgeClass = (status) => {
       <div class="detail-card">
         <div class="tabs-header">
           <nav class="tabs-nav">
-            <button class="tab-btn tab-btn-active">
+            <button
+              @click="activeTab = 'configuration'"
+              :class="['tab-btn', { 'tab-btn-active': activeTab === 'configuration' }]"
+              data-testid="autopilot-configuration-tab"
+            >
               Configuration
+            </button>
+            <button
+              @click="activeTab = 'legs'"
+              :class="['tab-btn', { 'tab-btn-active': activeTab === 'legs' }]"
+              data-testid="autopilot-legs-tab"
+            >
+              Position Legs
+            </button>
+            <button
+              @click="activeTab = 'suggestions'"
+              :class="['tab-btn', { 'tab-btn-active': activeTab === 'suggestions' }]"
+              data-testid="autopilot-suggestions-tab"
+            >
+              Suggestions
+            </button>
+            <button
+              @click="activeTab = 'analytics'"
+              :class="['tab-btn', { 'tab-btn-active': activeTab === 'analytics' }]"
+              data-testid="autopilot-analytics-tab"
+            >
+              Analytics
             </button>
           </nav>
         </div>
 
         <div class="tab-content">
-          <!-- Legs -->
-          <div class="section">
-            <h3 class="section-title">Strategy Legs</h3>
-            <div class="strategy-table-wrapper">
-              <div class="table-scroll">
-                <table class="strategy-table">
-                  <thead>
-                    <tr>
-                      <th>Leg</th>
-                      <th>Type</th>
-                      <th>Action</th>
-                      <th>Strike Selection</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="(leg, index) in store.currentStrategy.legs_config" :key="leg.id">
-                      <td>{{ index + 1 }}</td>
-                      <td>{{ leg.contract_type }}</td>
-                      <td>
-                        <span :class="['tag-select', leg.transaction_type === 'BUY' ? 'tag-buy' : 'tag-sell']">
-                          {{ leg.transaction_type }}
-                        </span>
-                      </td>
-                      <td>
-                        {{ leg.strike_selection?.mode }}
-                        <span v-if="leg.strike_selection?.offset !== undefined">
-                          ({{ leg.strike_selection.offset >= 0 ? '+' : '' }}{{ leg.strike_selection.offset }})
-                        </span>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-
-          <!-- Entry Conditions -->
-          <div class="section">
-            <h3 class="section-title">Entry Conditions</h3>
-            <div v-if="store.currentStrategy.entry_conditions?.conditions?.length > 0">
-              <p class="logic-label">
-                Logic: {{ store.currentStrategy.entry_conditions.logic }}
-              </p>
-              <div class="conditions-list">
-                <div
-                  v-for="(cond, index) in store.currentStrategy.entry_conditions.conditions"
-                  :key="cond.id"
-                  class="condition-item"
-                >
-                  <span class="condition-number">{{ index + 1 }}.</span>
-                  {{ cond.variable }} {{ cond.operator }} {{ cond.value }}
-                  <span :class="['condition-status', cond.enabled ? 'condition-enabled' : 'condition-disabled']">
-                    {{ cond.enabled ? 'Active' : 'Disabled' }}
-                  </span>
+          <!-- Configuration Tab -->
+          <div v-if="activeTab === 'configuration'">
+            <!-- Legs -->
+            <div class="section">
+              <h3 class="section-title">Strategy Legs</h3>
+              <div class="strategy-table-wrapper">
+                <div class="table-scroll">
+                  <table class="strategy-table">
+                    <thead>
+                      <tr>
+                        <th>Leg</th>
+                        <th>Type</th>
+                        <th>Action</th>
+                        <th>Strike Selection</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="(leg, index) in store.currentStrategy.legs_config" :key="leg.id">
+                        <td>{{ index + 1 }}</td>
+                        <td>{{ leg.contract_type }}</td>
+                        <td>
+                          <span :class="['tag-select', leg.transaction_type === 'BUY' ? 'tag-buy' : 'tag-sell']">
+                            {{ leg.transaction_type }}
+                          </span>
+                        </td>
+                        <td>
+                          {{ leg.strike_selection?.mode }}
+                          <span v-if="leg.strike_selection?.offset !== undefined">
+                            ({{ leg.strike_selection.offset >= 0 ? '+' : '' }}{{ leg.strike_selection.offset }})
+                          </span>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>
-            <p v-else class="empty-text">No entry conditions configured. Strategy enters immediately.</p>
+
+            <!-- Entry Conditions -->
+            <div class="section">
+              <h3 class="section-title">Entry Conditions</h3>
+              <div v-if="store.currentStrategy.entry_conditions?.conditions?.length > 0">
+                <p class="logic-label">
+                  Logic: {{ store.currentStrategy.entry_conditions.logic }}
+                </p>
+                <div class="conditions-list">
+                  <div
+                    v-for="(cond, index) in store.currentStrategy.entry_conditions.conditions"
+                    :key="cond.id"
+                    class="condition-item"
+                  >
+                    <span class="condition-number">{{ index + 1 }}.</span>
+                    {{ cond.variable }} {{ cond.operator }} {{ cond.value }}
+                    <span :class="['condition-status', cond.enabled ? 'condition-enabled' : 'condition-disabled']">
+                      {{ cond.enabled ? 'Active' : 'Disabled' }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <p v-else class="empty-text">No entry conditions configured. Strategy enters immediately.</p>
+            </div>
+
+            <!-- Risk Settings -->
+            <div class="section">
+              <h3 class="section-title">Risk Settings</h3>
+              <dl class="risk-grid">
+                <div class="risk-item">
+                  <dt class="risk-label">Max Loss</dt>
+                  <dd class="risk-value">
+                    {{ store.currentStrategy.risk_settings?.max_loss
+                      ? formatCurrency(store.currentStrategy.risk_settings.max_loss)
+                      : 'Not set' }}
+                  </dd>
+                </div>
+                <div class="risk-item">
+                  <dt class="risk-label">Max Loss %</dt>
+                  <dd class="risk-value">
+                    {{ store.currentStrategy.risk_settings?.max_loss_pct
+                      ? store.currentStrategy.risk_settings.max_loss_pct + '%'
+                      : 'Not set' }}
+                  </dd>
+                </div>
+                <div class="risk-item">
+                  <dt class="risk-label">Trailing Stop</dt>
+                  <dd class="risk-value">
+                    {{ store.currentStrategy.risk_settings?.trailing_stop?.enabled ? 'Enabled' : 'Disabled' }}
+                  </dd>
+                </div>
+                <div class="risk-item">
+                  <dt class="risk-label">Time Stop</dt>
+                  <dd class="risk-value">
+                    {{ store.currentStrategy.risk_settings?.time_stop || 'Not set' }}
+                  </dd>
+                </div>
+              </dl>
+            </div>
           </div>
 
-          <!-- Risk Settings -->
-          <div class="section">
-            <h3 class="section-title">Risk Settings</h3>
-            <dl class="risk-grid">
-              <div class="risk-item">
-                <dt class="risk-label">Max Loss</dt>
-                <dd class="risk-value">
-                  {{ store.currentStrategy.risk_settings?.max_loss
-                    ? formatCurrency(store.currentStrategy.risk_settings.max_loss)
-                    : 'Not set' }}
-                </dd>
-              </div>
-              <div class="risk-item">
-                <dt class="risk-label">Max Loss %</dt>
-                <dd class="risk-value">
-                  {{ store.currentStrategy.risk_settings?.max_loss_pct
-                    ? store.currentStrategy.risk_settings.max_loss_pct + '%'
-                    : 'Not set' }}
-                </dd>
-              </div>
-              <div class="risk-item">
-                <dt class="risk-label">Trailing Stop</dt>
-                <dd class="risk-value">
-                  {{ store.currentStrategy.risk_settings?.trailing_stop?.enabled ? 'Enabled' : 'Disabled' }}
-                </dd>
-              </div>
-              <div class="risk-item">
-                <dt class="risk-label">Time Stop</dt>
-                <dd class="risk-value">
-                  {{ store.currentStrategy.risk_settings?.time_stop || 'Not set' }}
-                </dd>
-              </div>
-            </dl>
+          <!-- Position Legs Tab -->
+          <div v-if="activeTab === 'legs'">
+            <LegsPanel :strategy-id="strategyId" />
+          </div>
+
+          <!-- Suggestions Tab -->
+          <div v-if="activeTab === 'suggestions'">
+            <SuggestionsPanel :strategy-id="strategyId" />
+          </div>
+
+          <!-- Analytics Tab -->
+          <div v-if="activeTab === 'analytics'">
+            <AnalyticsPanel :strategy-id="strategyId" />
           </div>
         </div>
       </div>
@@ -453,6 +510,13 @@ const getStatusBadgeClass = (status) => {
       @close="closeShareModal"
       @shared="onStrategyShared"
       @unshared="onStrategyUnshared"
+    />
+
+    <!-- What-If Modal -->
+    <WhatIfModal
+      v-if="showWhatIfModal"
+      :strategy-id="strategyId"
+      @close="showWhatIfModal = false"
     />
   </div>
   </KiteLayout>

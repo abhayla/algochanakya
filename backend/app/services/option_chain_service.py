@@ -18,7 +18,7 @@ from sqlalchemy import select, and_
 from app.models.autopilot import AutoPilotOptionChainCache
 from app.services.greeks_calculator import GreeksCalculatorService
 from app.services.market_data import MarketDataService
-from app.database import async_session_maker
+from app.database import AsyncSessionLocal
 
 logger = logging.getLogger(__name__)
 

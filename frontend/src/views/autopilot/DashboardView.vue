@@ -274,6 +274,13 @@ const getStatusBadgeClass = (status) => {
           Settings
         </button>
         <button
+          @click="$router.push('/autopilot/option-chain')"
+          data-testid="autopilot-nav-optionchain"
+          class="strategy-btn strategy-btn-outline"
+        >
+          Option Chain
+        </button>
+        <button
           @click="navigateToBuilder"
           :disabled="!store.canCreateStrategy"
           data-testid="autopilot-create-strategy-btn"
