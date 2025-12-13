@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 # Constants
 TRADING_DAYS_PER_YEAR = 252
 CALENDAR_DAYS_PER_YEAR = 365
-RISK_FREE_RATE = 0.065  # 6.5% default risk-free rate (India)
+RISK_FREE_RATE = 0.07  # 7% default risk-free rate (India)
 
 
 class GreeksCalculatorService:

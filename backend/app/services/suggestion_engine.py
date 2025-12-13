@@ -146,6 +146,18 @@ class SuggestionEngine:
             )
             suggestions.extend(risk_suggestions)
 
+            # 5. Theta-based suggestions
+            theta_suggestions = await self._generate_theta_suggestions(
+                strategy, position_legs, analysis, dte, dte_zone
+            )
+            suggestions.extend(theta_suggestions)
+
+            # 6. Vega-based suggestions
+            vega_suggestions = await self._generate_vega_suggestions(
+                strategy, position_legs, analysis, dte_zone
+            )
+            suggestions.extend(vega_suggestions)
+
             # Clear old suggestions for this strategy
             await self.db.execute(
                 delete(AutoPilotAdjustmentSuggestion).where(
@@ -192,6 +204,7 @@ class SuggestionEngine:
         net_delta = strategy.net_delta or Decimal('0')
         net_theta = strategy.net_theta or Decimal('0')
         net_gamma = strategy.net_gamma or Decimal('0')
+        net_vega = strategy.net_vega or Decimal('0')
 
         # Find worst performing leg
         worst_leg = None
@@ -218,6 +231,7 @@ class SuggestionEngine:
             "net_delta": float(net_delta),
             "net_theta": float(net_theta),
             "net_gamma": float(net_gamma),
+            "net_vega": float(net_vega),
             "current_pnl": current_pnl,
             "worst_leg": worst_leg,
             "worst_pnl": worst_pnl,
@@ -460,6 +474,119 @@ class SuggestionEngine:
                            f"Monitor position closely but no immediate action needed."
                          "but also increases risk of large moves.",
                 action_params={}
+            )
+            suggestions.append(suggestion)
+
+        return suggestions
+
+    async def _generate_theta_suggestions(
+        self,
+        strategy: AutoPilotStrategy,
+        position_legs: List[AutoPilotPositionLeg],
+        analysis: Dict[str, Any],
+        dte: int,
+        dte_zone: DTEZone
+    ) -> List[AutoPilotAdjustmentSuggestion]:
+        """Generate suggestions based on theta analysis."""
+
+        suggestions = []
+        net_theta = analysis.get("net_theta", 0)
+
+        # HIGH: Negative theta (long options) near expiry - time working against you
+        if dte_zone in [DTEZone.LATE, DTEZone.EXPIRY] and net_theta < -20:
+            suggestion = AutoPilotAdjustmentSuggestion(
+                strategy_id=strategy.id,
+                suggestion_type=SuggestionType.EXIT,
+                urgency=SuggestionUrgency.HIGH,
+                trigger_reason="High theta burn on long positions",
+                description=f"Net theta ({net_theta:.2f}/day) indicates significant time decay loss. "
+                           f"With only {dte} DTE remaining, consider exiting long options "
+                           f"or rolling to longer expiry.",
+                action_params={
+                    "reason": "theta_decay",
+                    "execution_mode": "limit"
+                }
+            )
+            suggestions.append(suggestion)
+
+        # LOW: Positive net theta near expiry - favorable for short positions
+        if dte_zone in [DTEZone.LATE, DTEZone.EXPIRY] and net_theta > 0:
+            if dte <= 3:
+                suggestion = AutoPilotAdjustmentSuggestion(
+                    strategy_id=strategy.id,
+                    suggestion_type=SuggestionType.NO_ACTION,
+                    urgency=SuggestionUrgency.LOW,
+                    trigger_reason="Theta decay accelerating - favorable for short positions",
+                    description=f"With {dte} DTE, theta decay is accelerating. "
+                               f"Net theta (${net_theta:.2f}/day) is favorable. "
+                               f"Consider holding positions to maximize time decay collection.",
+                    action_params={}
+                )
+                suggestions.append(suggestion)
+
+        return suggestions
+
+    async def _generate_vega_suggestions(
+        self,
+        strategy: AutoPilotStrategy,
+        position_legs: List[AutoPilotPositionLeg],
+        analysis: Dict[str, Any],
+        dte_zone: DTEZone
+    ) -> List[AutoPilotAdjustmentSuggestion]:
+        """Generate suggestions based on vega analysis."""
+
+        suggestions = []
+        net_vega = analysis.get("net_vega", 0)
+        vix = analysis.get("vix")
+
+        # MEDIUM: High positive vega exposure in low volatility environment
+        if net_vega > 50 and vix and vix < 15:
+            suggestion = AutoPilotAdjustmentSuggestion(
+                strategy_id=strategy.id,
+                suggestion_type=SuggestionType.NO_ACTION,
+                urgency=SuggestionUrgency.MEDIUM,
+                trigger_reason="High vega exposure in low volatility environment",
+                description=f"Net vega ({net_vega:.2f}) indicates significant volatility exposure. "
+                           f"VIX is low ({vix:.1f}). If volatility increases, position will benefit. "
+                           f"Consider maintaining position if expecting volatility expansion.",
+                action_params={}
+            )
+            suggestions.append(suggestion)
+
+        # HIGH: High negative vega (short options) with high VIX
+        if net_vega < -50 and vix and vix > 20:
+            suggestion = AutoPilotAdjustmentSuggestion(
+                strategy_id=strategy.id,
+                suggestion_type=SuggestionType.ADD_HEDGE,
+                urgency=SuggestionUrgency.HIGH,
+                trigger_reason="High short vega exposure in elevated VIX environment",
+                description=f"Net vega ({net_vega:.2f}) indicates significant short volatility exposure. "
+                           f"VIX is elevated ({vix:.1f}). Position vulnerable to volatility spikes. "
+                           f"Consider adding long options to reduce vega risk.",
+                action_params={
+                    "hedge_type": "long_option",
+                    "reason": "vega_risk",
+                    "execution_mode": "limit"
+                }
+            )
+            suggestions.append(suggestion)
+
+        # CRITICAL: Extreme vega exposure
+        if abs(net_vega) > 100:
+            urgency = SuggestionUrgency.CRITICAL if abs(net_vega) > 200 else SuggestionUrgency.HIGH
+            direction = "long" if net_vega > 0 else "short"
+            suggestion = AutoPilotAdjustmentSuggestion(
+                strategy_id=strategy.id,
+                suggestion_type=SuggestionType.SHIFT,
+                urgency=urgency,
+                trigger_reason=f"Extreme {direction} vega exposure",
+                description=f"Net vega ({net_vega:.2f}) is extremely {direction}. "
+                           f"Position has significant volatility sensitivity. "
+                           f"Consider adjusting positions to reduce vega exposure.",
+                action_params={
+                    "target_vega": 50 if net_vega > 0 else -50,
+                    "execution_mode": "limit"
+                }
             )
             suggestions.append(suggestion)
 

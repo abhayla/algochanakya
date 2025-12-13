@@ -17,7 +17,7 @@ from app.utils.dependencies import get_current_user, get_current_broker_connecti
 router = APIRouter()
 
 # Lot sizes
-LOT_SIZES = {"NIFTY": 75, "BANKNIFTY": 15, "FINNIFTY": 25, "SENSEX": 10}
+LOT_SIZES = {"NIFTY": 25, "BANKNIFTY": 15, "FINNIFTY": 25, "SENSEX": 10}
 
 
 class ExitOrderRequest(BaseModel):

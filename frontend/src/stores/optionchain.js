@@ -55,9 +55,10 @@ export const useOptionChainStore = defineStore('optionchain', () => {
 
   // Lot sizes
   const lotSizes = {
-    'NIFTY': 75,
+    'NIFTY': 25,
     'BANKNIFTY': 15,
-    'FINNIFTY': 25
+    'FINNIFTY': 25,
+    'SENSEX': 10
   }
 
   // Getters

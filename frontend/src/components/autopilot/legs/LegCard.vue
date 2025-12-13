@@ -51,6 +51,10 @@
         <span class="greek-label">Θ</span>
         <span class="greek-value">{{ formatGreek(leg.theta) }}</span>
       </div>
+      <div class="greek-item" :data-testid="`autopilot-leg-vega-${leg.leg_id}`">
+        <span class="greek-label">V</span>
+        <span class="greek-value">{{ formatGreek(leg.vega) }}</span>
+      </div>
     </div>
 
     <!-- Action Buttons -->

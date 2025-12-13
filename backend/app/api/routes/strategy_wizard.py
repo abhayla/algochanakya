@@ -377,8 +377,8 @@ async def deploy_template(
         if underlying == "BANKNIFTY":
             underlying_symbol = "NSE:NIFTY BANK"
 
-        lot_sizes = {"NIFTY": 75, "BANKNIFTY": 15, "FINNIFTY": 25}
-        lot_size = lot_sizes.get(underlying, 75)
+        lot_sizes = {"NIFTY": 25, "BANKNIFTY": 15, "FINNIFTY": 25, "SENSEX": 10}
+        lot_size = lot_sizes.get(underlying, 25)
 
         # Get spot price
         try:

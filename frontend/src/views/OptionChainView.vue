@@ -133,6 +133,9 @@
               <th class="ce-col">Vol</th>
               <th class="ce-col">IV</th>
               <th v-if="store.showGreeks" class="ce-col greek-col">Delta</th>
+              <th v-if="store.showGreeks" class="ce-col greek-col">Gamma</th>
+              <th v-if="store.showGreeks" class="ce-col greek-col">Theta</th>
+              <th v-if="store.showGreeks" class="ce-col greek-col">Vega</th>
               <th class="ce-col">LTP</th>
               <th class="ce-col">Chg%</th>
 
@@ -143,6 +146,9 @@
               <th class="pe-col">Chg%</th>
               <th class="pe-col">LTP</th>
               <th v-if="store.showGreeks" class="pe-col greek-col">Delta</th>
+              <th v-if="store.showGreeks" class="pe-col greek-col">Gamma</th>
+              <th v-if="store.showGreeks" class="pe-col greek-col">Theta</th>
+              <th v-if="store.showGreeks" class="pe-col greek-col">Vega</th>
               <th class="pe-col">IV</th>
               <th class="pe-col">Vol</th>
               <th class="pe-col">Chg</th>
@@ -184,7 +190,10 @@
               <td class="ce-col" :class="getChangeClass(row.ce?.oi_change)">{{ formatOIChange(row.ce?.oi_change) }}</td>
               <td class="ce-col text-muted">{{ formatOI(row.ce?.volume) }}</td>
               <td class="ce-col">{{ row.ce?.iv || '-' }}</td>
-              <td v-if="store.showGreeks" class="ce-col text-muted">{{ row.ce?.delta?.toFixed(2) || '-' }}</td>
+              <td v-if="store.showGreeks" class="ce-col text-muted" :data-testid="'optionchain-ce-delta-' + row.strike">{{ row.ce?.delta?.toFixed(2) || '-' }}</td>
+              <td v-if="store.showGreeks" class="ce-col text-muted" :data-testid="'optionchain-ce-gamma-' + row.strike">{{ row.ce?.gamma?.toFixed(4) || '-' }}</td>
+              <td v-if="store.showGreeks" class="ce-col text-muted" :data-testid="'optionchain-ce-theta-' + row.strike">{{ row.ce?.theta?.toFixed(2) || '-' }}</td>
+              <td v-if="store.showGreeks" class="ce-col text-muted" :data-testid="'optionchain-ce-vega-' + row.strike">{{ row.ce?.vega?.toFixed(2) || '-' }}</td>
               <td class="ce-col ltp-col" :class="{ 'itm': row.is_itm_ce }">{{ formatPrice(row.ce?.ltp) }}</td>
               <td class="ce-col" :class="getChangeClass(row.ce?.change)">{{ formatPct(row.ce?.change_pct) }}</td>
 
@@ -197,7 +206,10 @@
               <!-- PE Data -->
               <td class="pe-col" :class="getChangeClass(row.pe?.change)">{{ formatPct(row.pe?.change_pct) }}</td>
               <td class="pe-col ltp-col" :class="{ 'itm': row.is_itm_pe }">{{ formatPrice(row.pe?.ltp) }}</td>
-              <td v-if="store.showGreeks" class="pe-col text-muted">{{ row.pe?.delta?.toFixed(2) || '-' }}</td>
+              <td v-if="store.showGreeks" class="pe-col text-muted" :data-testid="'optionchain-pe-delta-' + row.strike">{{ row.pe?.delta?.toFixed(2) || '-' }}</td>
+              <td v-if="store.showGreeks" class="pe-col text-muted" :data-testid="'optionchain-pe-gamma-' + row.strike">{{ row.pe?.gamma?.toFixed(4) || '-' }}</td>
+              <td v-if="store.showGreeks" class="pe-col text-muted" :data-testid="'optionchain-pe-theta-' + row.strike">{{ row.pe?.theta?.toFixed(2) || '-' }}</td>
+              <td v-if="store.showGreeks" class="pe-col text-muted" :data-testid="'optionchain-pe-vega-' + row.strike">{{ row.pe?.vega?.toFixed(2) || '-' }}</td>
               <td class="pe-col">{{ row.pe?.iv || '-' }}</td>
               <td class="pe-col text-muted">{{ formatOI(row.pe?.volume) }}</td>
               <td class="pe-col" :class="getChangeClass(row.pe?.oi_change)">{{ formatOIChange(row.pe?.oi_change) }}</td>

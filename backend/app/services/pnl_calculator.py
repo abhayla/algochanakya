@@ -56,9 +56,10 @@ class PnLCalculator:
 
     # Lot sizes for different underlyings
     LOT_SIZES = {
-        'NIFTY': 75,
+        'NIFTY': 25,
         'BANKNIFTY': 15,
         'FINNIFTY': 25,
+        'SENSEX': 10,
     }
 
     def __init__(self, risk_free_rate: float = 0.07):

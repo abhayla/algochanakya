@@ -24,7 +24,7 @@ from app.schemas.autopilot import (
 router = APIRouter()
 
 # Constants
-LOT_SIZES = {"NIFTY": 75, "BANKNIFTY": 15, "FINNIFTY": 25}
+LOT_SIZES = {"NIFTY": 25, "BANKNIFTY": 15, "FINNIFTY": 25, "SENSEX": 10}
 RISK_FREE_RATE = 0.07  # 7% for India
 
 # Index tokens for spot prices
