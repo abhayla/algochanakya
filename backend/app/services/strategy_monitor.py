@@ -11,6 +11,11 @@ Phase 3 Integrations:
 - Trailing Stop: Update and check trailing stop levels
 - Auto-Exit: Intraday auto-exit at configured time
 - Greeks: Calculate and store Greeks snapshot
+
+Phase 5 Integrations:
+- Delta Tracking: Monitor net delta per leg and strategy
+- Delta Alerts: Send alerts when delta thresholds crossed
+- Position Legs: Update Greeks for individual position legs
 """
 import asyncio
 from datetime import datetime, time, date, timezone
@@ -36,6 +41,7 @@ from app.services.adjustment_engine import AdjustmentEngine
 from app.services.confirmation_service import ConfirmationService
 from app.services.trailing_stop import TrailingStopService
 from app.services.greeks_calculator import GreeksCalculatorService
+from app.services.position_leg_service import PositionLegService
 from app.websocket.manager import get_ws_manager
 
 logger = logging.getLogger(__name__)
@@ -67,6 +73,8 @@ class StrategyMonitor:
     - Update trailing stops (Phase 3)
     - Auto-exit at configured time (Phase 3)
     - Calculate Greeks snapshots (Phase 3)
+    - Track delta per leg and strategy (Phase 5)
+    - Send delta threshold alerts (Phase 5)
     """
 
     MARKET_OPEN = time(9, 15)
@@ -94,6 +102,9 @@ class StrategyMonitor:
         self.confirmation_service = ConfirmationService()
         self.trailing_stop = TrailingStopService(market_data)
         self.greeks_calculator = GreeksCalculatorService()
+
+        # Phase 5 services (initialized per-session in methods that need db)
+        self.position_leg_service = None
 
     async def start(self):
         """Start the monitor background task."""
@@ -224,6 +235,9 @@ class StrategyMonitor:
 
             # Phase 3: Calculate and store Greeks snapshot
             await self._update_greeks(db, strategy)
+
+            # Phase 5: Update delta tracking and check thresholds
+            await self._update_delta_tracking(db, strategy)
 
     async def _evaluate_and_execute(self, db: AsyncSession, strategy: AutoPilotStrategy):
         """Evaluate conditions and execute if met."""
@@ -963,6 +977,180 @@ class StrategyMonitor:
 
         except Exception as e:
             logger.error(f"Error calculating Greeks for strategy {strategy.id}: {e}")
+
+    async def _update_delta_tracking(self, db: AsyncSession, strategy: AutoPilotStrategy):
+        """
+        Update delta tracking for position legs and check thresholds.
+        Phase 5 feature.
+        """
+        try:
+            # Initialize position leg service if needed
+            if not self.position_leg_service:
+                self.position_leg_service = PositionLegService(self.kite, db)
+
+            # Get all open position legs for this strategy
+            from app.models.autopilot import AutoPilotPositionLeg, PositionLegStatus
+            result = await db.execute(
+                select(AutoPilotPositionLeg).where(
+                    AutoPilotPositionLeg.strategy_id == strategy.id,
+                    AutoPilotPositionLeg.status == PositionLegStatus.OPEN.value
+                )
+            )
+            position_legs = result.scalars().all()
+
+            if not position_legs:
+                return
+
+            # Get spot price
+            spot_price = await self.market_data.get_spot_price(strategy.underlying)
+            if not spot_price:
+                return
+
+            # Update Greeks for each leg
+            net_delta = Decimal('0')
+            net_theta = Decimal('0')
+            net_gamma = Decimal('0')
+            net_vega = Decimal('0')
+
+            for leg in position_legs:
+                if not leg.tradingsymbol:
+                    continue
+
+                # Get current price
+                try:
+                    ltp_data = await self.market_data.get_ltp([f"NFO:{leg.tradingsymbol}"])
+                    current_ltp = ltp_data.get(f"NFO:{leg.tradingsymbol}")
+
+                    if current_ltp:
+                        # Update leg Greeks
+                        updated_leg = await self.position_leg_service.update_leg_greeks(
+                            strategy_id=strategy.id,
+                            leg_id=leg.leg_id,
+                            spot_price=Decimal(str(spot_price)),
+                            current_price=Decimal(str(current_ltp))
+                        )
+
+                        # Accumulate net Greeks
+                        if updated_leg.delta:
+                            net_delta += updated_leg.delta
+                        if updated_leg.theta:
+                            net_theta += updated_leg.theta
+                        if updated_leg.gamma:
+                            net_gamma += updated_leg.gamma
+                        if updated_leg.vega:
+                            net_vega += updated_leg.vega
+
+                except Exception as e:
+                    logger.warning(f"Error updating Greeks for leg {leg.leg_id}: {e}")
+
+            # Update strategy net Greeks (Phase 5 columns)
+            strategy.net_delta = net_delta
+            strategy.net_theta = net_theta
+            strategy.net_gamma = net_gamma
+            strategy.net_vega = net_vega
+            await db.commit()
+
+            # Check delta thresholds and send alerts
+            await self._check_delta_thresholds(db, strategy, net_delta)
+
+        except Exception as e:
+            logger.error(f"Error updating delta tracking for strategy {strategy.id}: {e}")
+
+    async def _check_delta_thresholds(
+        self,
+        db: AsyncSession,
+        strategy: AutoPilotStrategy,
+        net_delta: Decimal
+    ):
+        """
+        Check if delta has crossed any thresholds and send alerts.
+        Phase 5 feature.
+        """
+        try:
+            # Get user settings for delta thresholds
+            user_settings = await self._get_user_settings(db, strategy.user_id)
+            if not user_settings or not user_settings.delta_alert_enabled:
+                return
+
+            abs_delta = abs(float(net_delta))
+
+            # Determine alert level
+            alert_level = None
+            alert_message = None
+
+            danger_threshold = user_settings.delta_danger_threshold or 0.50
+            warning_threshold = user_settings.delta_warning_threshold or 0.30
+            watch_threshold = user_settings.delta_watch_threshold or 0.15
+
+            if abs_delta >= danger_threshold:
+                alert_level = "danger"
+                alert_message = f"DANGER: Net delta ({abs_delta:.2f}) exceeded danger threshold ({danger_threshold})"
+            elif abs_delta >= warning_threshold:
+                alert_level = "warning"
+                alert_message = f"WARNING: Net delta ({abs_delta:.2f}) exceeded warning threshold ({warning_threshold})"
+            elif abs_delta >= watch_threshold:
+                alert_level = "watch"
+                alert_message = f"WATCH: Net delta ({abs_delta:.2f}) exceeded watch threshold ({watch_threshold})"
+
+            if alert_level:
+                # Check if we already sent this alert recently (throttle)
+                runtime_state = strategy.runtime_state or {}
+                last_delta_alert = runtime_state.get('last_delta_alert', {})
+                last_alert_level = last_delta_alert.get('level')
+                last_alert_time = last_delta_alert.get('time')
+
+                # Only send if level changed or > 5 minutes since last alert
+                should_send = (
+                    last_alert_level != alert_level or
+                    not last_alert_time or
+                    (datetime.now() - datetime.fromisoformat(last_alert_time)).total_seconds() > 300
+                )
+
+                if should_send:
+                    # Update runtime state
+                    runtime_state['last_delta_alert'] = {
+                        'level': alert_level,
+                        'time': datetime.now().isoformat(),
+                        'delta': float(net_delta)
+                    }
+                    strategy.runtime_state = runtime_state
+                    await db.commit()
+
+                    # Log the alert
+                    log = AutoPilotLog(
+                        user_id=strategy.user_id,
+                        strategy_id=strategy.id,
+                        event_type="delta_alert",
+                        severity="warning" if alert_level in ["warning", "danger"] else "info",
+                        message=alert_message,
+                        event_data={
+                            "net_delta": float(net_delta),
+                            "alert_level": alert_level,
+                            "threshold": danger_threshold if alert_level == "danger"
+                                        else warning_threshold if alert_level == "warning"
+                                        else watch_threshold
+                        }
+                    )
+                    db.add(log)
+                    await db.commit()
+
+                    # Send WebSocket alert
+                    await self.ws_manager.send_risk_alert(
+                        user_id=str(strategy.user_id),
+                        alert_type="delta_threshold",
+                        message=alert_message,
+                        data={
+                            "strategy_id": strategy.id,
+                            "net_delta": float(net_delta),
+                            "alert_level": alert_level,
+                            "net_theta": float(strategy.net_theta) if strategy.net_theta else None,
+                            "net_gamma": float(strategy.net_gamma) if strategy.net_gamma else None,
+                            "net_vega": float(strategy.net_vega) if strategy.net_vega else None
+                        }
+                    )
+
+        except Exception as e:
+            logger.error(f"Error checking delta thresholds for strategy {strategy.id}: {e}")
 
 
 # Singleton instance

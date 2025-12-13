@@ -1261,3 +1261,273 @@ class StrategyCloneFromSharedRequest(BaseModel):
     """Request to clone a shared strategy"""
     new_name: Optional[str] = None
     lots: int = Field(1, ge=1, le=50)
+
+
+# =============================================================================
+# Phase 5 Schemas - Advanced Adjustments & Option Chain Integration
+# =============================================================================
+
+# Position Leg Schemas
+
+class PositionLegBase(BaseModel):
+    """Base schema for position leg"""
+    leg_id: str
+    contract_type: str = Field(..., pattern="^(CE|PE)$")
+    action: str = Field(..., pattern="^(BUY|SELL)$")
+    strike: Decimal
+    expiry: date
+    lots: int = Field(..., gt=0)
+    tradingsymbol: Optional[str] = None
+    instrument_token: Optional[int] = None
+
+
+class PositionLegCreate(PositionLegBase):
+    """Create position leg"""
+    entry_price: Optional[Decimal] = None
+
+
+class PositionLegUpdate(BaseModel):
+    """Update position leg"""
+    status: Optional[str] = None
+    entry_price: Optional[Decimal] = None
+    entry_time: Optional[datetime] = None
+    exit_price: Optional[Decimal] = None
+    exit_time: Optional[datetime] = None
+    exit_reason: Optional[str] = None
+    delta: Optional[Decimal] = None
+    gamma: Optional[Decimal] = None
+    theta: Optional[Decimal] = None
+    vega: Optional[Decimal] = None
+    iv: Optional[Decimal] = None
+    unrealized_pnl: Optional[Decimal] = None
+    realized_pnl: Optional[Decimal] = None
+
+
+class PositionLegResponse(PositionLegBase):
+    """Response schema for position leg"""
+    id: int
+    strategy_id: int
+    status: str
+    entry_price: Optional[Decimal]
+    entry_time: Optional[datetime]
+    entry_order_ids: List[str] = []
+    exit_price: Optional[Decimal]
+    exit_time: Optional[datetime]
+    exit_order_ids: List[str] = []
+    exit_reason: Optional[str]
+    delta: Optional[Decimal]
+    gamma: Optional[Decimal]
+    theta: Optional[Decimal]
+    vega: Optional[Decimal]
+    iv: Optional[Decimal]
+    unrealized_pnl: Decimal = Decimal('0')
+    realized_pnl: Decimal = Decimal('0')
+    rolled_from_leg_id: Optional[int]
+    rolled_to_leg_id: Optional[int]
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# Adjustment Suggestion Schemas
+
+class AdjustmentSuggestionBase(BaseModel):
+    """Base schema for adjustment suggestion"""
+    leg_id: Optional[str] = None
+    trigger_reason: str
+    suggestion_type: str
+    description: str
+    details: Optional[Dict[str, Any]] = None
+    urgency: str = "medium"
+    confidence: int = Field(50, ge=0, le=100)
+    one_click_action: bool = False
+    action_params: Optional[Dict[str, Any]] = None
+
+
+class AdjustmentSuggestionCreate(AdjustmentSuggestionBase):
+    """Create adjustment suggestion"""
+    expires_at: Optional[datetime] = None
+
+
+class AdjustmentSuggestionResponse(AdjustmentSuggestionBase):
+    """Response schema for adjustment suggestion"""
+    id: int
+    strategy_id: int
+    status: str
+    created_at: datetime
+    expires_at: Optional[datetime]
+    responded_at: Optional[datetime]
+
+    class Config:
+        from_attributes = True
+
+
+# Option Chain Schemas
+
+class OptionChainEntry(BaseModel):
+    """Single option in the chain"""
+    instrument_token: int
+    tradingsymbol: str
+    strike: Decimal
+    option_type: str
+    expiry: date
+    ltp: Optional[Decimal]
+    bid: Optional[Decimal]
+    ask: Optional[Decimal]
+    volume: Optional[int]
+    oi: Optional[int]
+    oi_change: Optional[int]
+    iv: Optional[Decimal]
+    delta: Optional[Decimal]
+    gamma: Optional[Decimal]
+    theta: Optional[Decimal]
+    vega: Optional[Decimal]
+
+
+class OptionChainResponse(BaseModel):
+    """Full option chain response"""
+    underlying: str
+    expiry: date
+    spot_price: Optional[Decimal]
+    options: List[OptionChainEntry]
+    cached: bool = False
+    cached_at: Optional[datetime] = None
+
+
+class StrikeFindByDeltaRequest(BaseModel):
+    """Request to find strike by delta"""
+    underlying: str
+    expiry: date
+    option_type: str = Field(..., pattern="^(CE|PE)$")
+    target_delta: Decimal = Field(..., ge=0, le=1)
+    tolerance: Decimal = Field(0.02, ge=0, le=0.1)
+    prefer_round_strike: bool = True
+
+
+class StrikeFindByPremiumRequest(BaseModel):
+    """Request to find strike by premium"""
+    underlying: str
+    expiry: date
+    option_type: str = Field(..., pattern="^(CE|PE)$")
+    target_premium: Decimal = Field(..., gt=0)
+    tolerance: Decimal = Field(10, ge=0)
+    prefer_round_strike: bool = True
+
+
+class StrikeFindResponse(BaseModel):
+    """Response for strike finder"""
+    strike: Decimal
+    tradingsymbol: str
+    instrument_token: int
+    ltp: Optional[Decimal]
+    delta: Optional[Decimal]
+    iv: Optional[Decimal]
+    distance_from_target: Decimal
+
+
+# Leg Action Request Schemas
+
+class ExitLegRequest(BaseModel):
+    """Request to exit a single leg"""
+    execution_mode: str = Field("market", pattern="^(market|limit)$")
+    limit_price: Optional[Decimal] = None
+
+
+class ShiftLegRequest(BaseModel):
+    """Request to shift a leg to new strike"""
+    target_strike: Optional[Decimal] = None
+    target_delta: Optional[Decimal] = None
+    shift_direction: Optional[str] = Field(None, pattern="^(closer|further)$")
+    shift_amount: Optional[int] = None
+    execution_mode: str = Field("market", pattern="^(market|limit)$")
+    limit_offset: Decimal = Field(1.0, ge=0)
+
+
+class RollLegRequest(BaseModel):
+    """Request to roll a leg to new expiry"""
+    target_expiry: date
+    target_strike: Optional[Decimal] = None
+    execution_mode: str = Field("market", pattern="^(market|limit)$")
+
+
+class BreakTradeRequest(BaseModel):
+    """Request to break/split trade"""
+    execution_mode: str = Field("market", pattern="^(market|limit)$")
+    new_positions: str = Field("auto", pattern="^(auto|manual)$")
+    new_put_strike: Optional[Decimal] = None
+    new_call_strike: Optional[Decimal] = None
+    premium_split: str = Field("equal", pattern="^(equal|weighted)$")
+    prefer_round_strikes: bool = True
+    max_delta: Decimal = Field(0.30, ge=0, le=1)
+
+
+class BreakTradeResponse(BaseModel):
+    """Response for break trade"""
+    break_trade_id: str
+    exit_order: Dict[str, Any]
+    new_positions: List[Dict[str, Any]]
+    recovery_premium: Decimal
+    exit_cost: Decimal
+    net_cost: Decimal
+    status: str
+
+
+# What-If Simulator Schemas
+
+class WhatIfScenario(BaseModel):
+    """Scenario for what-if analysis"""
+    spot_change: Optional[Decimal] = None
+    iv_change: Optional[Decimal] = None
+    days_forward: Optional[int] = None
+
+
+class WhatIfRequest(BaseModel):
+    """Request for what-if simulation"""
+    strategy_id: int
+    adjustment_type: str
+    adjustment_params: Dict[str, Any]
+    scenarios: List[WhatIfScenario] = []
+
+
+class PositionMetrics(BaseModel):
+    """Position metrics for comparison"""
+    net_delta: Optional[Decimal]
+    net_theta: Optional[Decimal]
+    net_gamma: Optional[Decimal]
+    net_vega: Optional[Decimal]
+    max_profit: Optional[Decimal]
+    max_loss: Optional[Decimal]
+    breakeven_lower: Optional[Decimal]
+    breakeven_upper: Optional[Decimal]
+    current_pnl: Decimal
+
+
+class WhatIfResponse(BaseModel):
+    """Response for what-if simulation"""
+    current_position: PositionMetrics
+    after_adjustment: PositionMetrics
+    comparison: Dict[str, Any]
+    scenario_results: List[Dict[str, Any]] = []
+
+
+# Payoff Chart Data Schema
+
+class PayoffDataPoint(BaseModel):
+    """Single point on payoff chart"""
+    spot_price: Decimal
+    pnl: Decimal
+    is_breakeven: bool = False
+    is_max_profit: bool = False
+    is_max_loss: bool = False
+
+
+class PayoffChartResponse(BaseModel):
+    """Payoff chart data"""
+    data_points: List[PayoffDataPoint]
+    breakeven_points: List[Decimal]
+    max_profit: Optional[Decimal]
+    max_loss: Optional[Decimal]
+    current_spot: Decimal
+    current_pnl: Decimal

@@ -158,6 +158,16 @@ class AutoPilotUserSettings(Base):
     account_capital = Column(Numeric(14, 2), nullable=True)
     risk_per_trade_pct = Column(Numeric(5, 2), nullable=True, default=2.00)
 
+    # Phase 5: Delta Monitoring Thresholds
+    delta_watch_threshold = Column(Numeric(4, 2), nullable=False, server_default='0.20')
+    delta_warning_threshold = Column(Numeric(4, 2), nullable=False, server_default='0.30')
+    delta_danger_threshold = Column(Numeric(4, 2), nullable=False, server_default='0.40')
+    delta_alert_enabled = Column(Boolean, nullable=False, server_default='true')
+
+    # Phase 5: Adjustment Preferences
+    suggestions_enabled = Column(Boolean, nullable=False, server_default='true')
+    prefer_round_strikes = Column(Boolean, nullable=False, server_default='true')
+
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
@@ -219,6 +229,16 @@ class AutoPilotStrategy(Base):
     # Phase 3: Greeks Snapshot
     greeks_snapshot = Column(JSONB, nullable=True)
 
+    # Phase 5: Position Legs & Greeks Tracking
+    position_legs_snapshot = Column(JSONB, nullable=True)
+    net_delta = Column(Numeric(6, 4), nullable=True)
+    net_theta = Column(Numeric(10, 2), nullable=True)
+    net_gamma = Column(Numeric(8, 6), nullable=True)
+    net_vega = Column(Numeric(8, 4), nullable=True)
+    breakeven_lower = Column(Numeric(10, 2), nullable=True)
+    breakeven_upper = Column(Numeric(10, 2), nullable=True)
+    dte = Column(Integer, nullable=True)  # Days to expiry
+
     # Priority & State
     priority = Column(Integer, nullable=False, default=100)
     runtime_state = Column(JSONB, nullable=True)
@@ -250,6 +270,9 @@ class AutoPilotStrategy(Base):
     logs = relationship("AutoPilotLog", back_populates="strategy")
     adjustment_logs = relationship("AutoPilotAdjustmentLog", back_populates="strategy", cascade="all, delete-orphan")
     pending_confirmations = relationship("AutoPilotPendingConfirmation", back_populates="strategy", cascade="all, delete-orphan")
+    # Phase 5 Relationships
+    position_legs = relationship("AutoPilotPositionLeg", back_populates="strategy", cascade="all, delete-orphan")
+    suggestions = relationship("AutoPilotAdjustmentSuggestion", back_populates="strategy", cascade="all, delete-orphan")
 
 
 class AutoPilotOrder(Base):
@@ -931,4 +954,189 @@ class AutoPilotTemplateRating(Base):
     __table_args__ = (
         UniqueConstraint('template_id', 'user_id', name='uq_template_rating_user'),
         CheckConstraint('rating >= 1 AND rating <= 5', name='chk_rating_value'),
+    )
+
+
+# =============================================================================
+# PHASE 5 MODELS: Advanced Adjustments & Option Chain Integration
+# =============================================================================
+
+
+class PositionLegStatus(str, enum.Enum):
+    """Status of an individual position leg"""
+    PENDING = "pending"
+    OPEN = "open"
+    CLOSED = "closed"
+    ROLLED = "rolled"
+
+
+class SuggestionType(str, enum.Enum):
+    """Type of adjustment suggestion"""
+    SHIFT = "shift"
+    BREAK = "break"
+    ROLL = "roll"
+    EXIT = "exit"
+    ADD_HEDGE = "add_hedge"
+    NO_ACTION = "no_action"
+
+
+class SuggestionUrgency(str, enum.Enum):
+    """Urgency level of suggestion"""
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
+
+
+class SuggestionStatus(str, enum.Enum):
+    """Status of suggestion"""
+    ACTIVE = "active"
+    DISMISSED = "dismissed"
+    EXECUTED = "executed"
+    EXPIRED = "expired"
+
+
+class AutoPilotPositionLeg(Base):
+    """
+    Phase 5: Individual leg tracking with Greeks and P&L.
+    Tracks each option leg separately for advanced adjustments.
+    """
+    __tablename__ = "autopilot_position_legs"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    strategy_id = Column(BigInteger, ForeignKey("autopilot_strategies.id", ondelete="CASCADE"), nullable=False)
+    leg_id = Column(String(50), nullable=False)
+
+    # Configuration
+    contract_type = Column(String(2), nullable=False)  # CE, PE
+    action = Column(String(4), nullable=False)  # BUY, SELL
+    strike = Column(Numeric(10, 2), nullable=False)
+    expiry = Column(Date, nullable=False)
+    lots = Column(Integer, nullable=False)
+
+    # Instrument
+    tradingsymbol = Column(String(50))
+    instrument_token = Column(BigInteger)
+
+    # Status
+    status = Column(String(20), server_default="pending")
+
+    # Entry
+    entry_price = Column(Numeric(10, 2))
+    entry_time = Column(DateTime)
+    entry_order_ids = Column(JSONB, server_default='[]')
+
+    # Exit
+    exit_price = Column(Numeric(10, 2))
+    exit_time = Column(DateTime)
+    exit_order_ids = Column(JSONB, server_default='[]')
+    exit_reason = Column(String(50))
+
+    # Greeks (updated real-time)
+    delta = Column(Numeric(6, 4))
+    gamma = Column(Numeric(8, 6))
+    theta = Column(Numeric(10, 2))
+    vega = Column(Numeric(8, 4))
+    iv = Column(Numeric(6, 2))
+
+    # P&L
+    unrealized_pnl = Column(Numeric(12, 2), server_default='0')
+    realized_pnl = Column(Numeric(12, 2), server_default='0')
+
+    # Roll tracking
+    rolled_from_leg_id = Column(BigInteger, ForeignKey("autopilot_position_legs.id"))
+    rolled_to_leg_id = Column(BigInteger)
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    # Relationships
+    strategy = relationship("AutoPilotStrategy", back_populates="position_legs")
+    rolled_from = relationship("AutoPilotPositionLeg", remote_side=[id], foreign_keys=[rolled_from_leg_id])
+
+    # Indexes
+    __table_args__ = (
+        Index('idx_position_legs_strategy', 'strategy_id'),
+        Index('idx_position_legs_status', 'status'),
+        Index('idx_position_legs_strategy_leg', 'strategy_id', 'leg_id',
+              unique=True, postgresql_where=Column('status') == 'open'),
+    )
+
+
+class AutoPilotAdjustmentSuggestion(Base):
+    """
+    Phase 5: AI-generated adjustment suggestions.
+    Analyzes position state and suggests appropriate adjustments.
+    """
+    __tablename__ = "autopilot_adjustment_suggestions"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    strategy_id = Column(BigInteger, ForeignKey("autopilot_strategies.id", ondelete="CASCADE"), nullable=False)
+    leg_id = Column(String(50), nullable=True)
+
+    trigger_reason = Column(Text, nullable=False)
+    suggestion_type = Column(String(30), nullable=False)
+    description = Column(Text, nullable=False)
+    details = Column(JSONB)
+
+    urgency = Column(String(20), server_default="medium")
+    confidence = Column(Integer, server_default='50')
+
+    one_click_action = Column(Boolean, server_default='false')
+    action_params = Column(JSONB)
+
+    status = Column(String(20), server_default="active")
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    expires_at = Column(DateTime(timezone=True))
+    responded_at = Column(DateTime(timezone=True))
+
+    # Relationships
+    strategy = relationship("AutoPilotStrategy", back_populates="suggestions")
+
+    # Indexes
+    __table_args__ = (
+        Index('idx_suggestions_strategy', 'strategy_id'),
+        Index('idx_suggestions_status', 'status'),
+    )
+
+
+class AutoPilotOptionChainCache(Base):
+    """
+    Phase 5: Option chain data cache with Greeks.
+    Caches option chain data to reduce API calls.
+    """
+    __tablename__ = "autopilot_option_chain_cache"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    underlying = Column(String(20), nullable=False)
+    expiry = Column(Date, nullable=False)
+    strike = Column(Numeric(10, 2), nullable=False)
+    option_type = Column(String(2), nullable=False)  # CE, PE
+
+    tradingsymbol = Column(String(50), nullable=False)
+    instrument_token = Column(BigInteger, nullable=False)
+
+    ltp = Column(Numeric(10, 2))
+    bid = Column(Numeric(10, 2))
+    ask = Column(Numeric(10, 2))
+    volume = Column(BigInteger)
+    oi = Column(BigInteger)
+    oi_change = Column(BigInteger)
+
+    iv = Column(Numeric(6, 2))
+    delta = Column(Numeric(6, 4))
+    gamma = Column(Numeric(8, 6))
+    theta = Column(Numeric(10, 2))
+    vega = Column(Numeric(8, 4))
+
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    # Unique constraint
+    __table_args__ = (
+        UniqueConstraint('underlying', 'expiry', 'strike', 'option_type',
+                         name='uq_option_chain_cache'),
+        Index('idx_option_chain_underlying', 'underlying', 'expiry'),
+        Index('idx_option_chain_delta', 'underlying', 'expiry', 'option_type', 'delta'),
     )

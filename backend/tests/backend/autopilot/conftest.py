@@ -75,7 +75,10 @@ from app.models.autopilot import (
     # Phase 4 Models
     AutoPilotTradeJournal, AutoPilotAnalyticsCache, AutoPilotReport,
     AutoPilotBacktest, AutoPilotTemplateRating,
-    ExitReason, TemplateCategory, ReportType, ReportFormat, BacktestStatus, ShareMode
+    ExitReason, TemplateCategory, ReportType, ReportFormat, BacktestStatus, ShareMode,
+    # Phase 5 Models
+    AutoPilotPositionLeg, AutoPilotAdjustmentSuggestion,
+    PositionLegStatus, SuggestionType, SuggestionUrgency, SuggestionStatus
 )
 from app.utils.dependencies import get_current_user
 
@@ -134,7 +137,10 @@ async def db_session(test_engine) -> AsyncGenerator[AsyncSession, None]:
     async with async_session() as session:
         # Clean up tables before each test (order matters due to foreign keys)
         tables_to_clean = [
-            # Phase 4 tables (clean first due to FK dependencies)
+            # Phase 5 tables (clean first due to FK dependencies)
+            AutoPilotAdjustmentSuggestion.__table__,
+            AutoPilotPositionLeg.__table__,
+            # Phase 4 tables
             AutoPilotTemplateRating.__table__,
             AutoPilotBacktest.__table__,
             AutoPilotReport.__table__,
@@ -3008,3 +3014,377 @@ def assert_share_response(response_data: Dict[str, Any]):
     assert "share_token" in response_data or response_data.get("share_mode") == "private"
     if response_data.get("share_mode") != "private":
         assert "share_url" in response_data or "shared_at" in response_data
+
+
+# =============================================================================
+# PHASE 5 FIXTURES - POSITION LEGS & ADJUSTMENTS
+# =============================================================================
+
+@pytest_asyncio.fixture
+async def test_position_leg(db_session: AsyncSession, test_strategy_active: AutoPilotStrategy) -> AutoPilotPositionLeg:
+    """Create a single position leg for testing."""
+    leg = AutoPilotPositionLeg(
+        strategy_id=test_strategy_active.id,
+        leg_id="leg_2",  # Referring to SELL PE leg
+        underlying="NIFTY",
+        expiry=date.today() + timedelta(days=7),
+        strike=25000,
+        option_type="PE",
+        transaction_type="SELL",
+        quantity=25,
+        entry_price=Decimal("185.50"),
+        status=PositionLegStatus.OPEN,
+        entry_time=datetime.utcnow(),
+        delta=Decimal("-0.15"),
+        gamma=Decimal("0.002"),
+        theta=Decimal("-12.50"),
+        vega=Decimal("8.75"),
+        iv=Decimal("0.18")
+    )
+    db_session.add(leg)
+    await db_session.commit()
+    await db_session.refresh(leg)
+    return leg
+
+
+@pytest_asyncio.fixture
+async def test_position_legs_multiple(db_session: AsyncSession, test_strategy_active: AutoPilotStrategy) -> List[AutoPilotPositionLeg]:
+    """Create a strangle with multiple legs for testing."""
+    expiry = date.today() + timedelta(days=7)
+
+    legs = [
+        # Sell 25000 PE
+        AutoPilotPositionLeg(
+            strategy_id=test_strategy_active.id,
+            leg_id="leg_pe_sell",
+            underlying="NIFTY",
+            expiry=expiry,
+            strike=25000,
+            option_type="PE",
+            transaction_type="SELL",
+            quantity=25,
+            entry_price=Decimal("185.00"),
+            status=PositionLegStatus.OPEN,
+            entry_time=datetime.utcnow(),
+            delta=Decimal("-0.15"),
+            gamma=Decimal("0.002"),
+            theta=Decimal("-12.50"),
+            vega=Decimal("8.75"),
+            iv=Decimal("0.18")
+        ),
+        # Sell 25500 CE
+        AutoPilotPositionLeg(
+            strategy_id=test_strategy_active.id,
+            leg_id="leg_ce_sell",
+            underlying="NIFTY",
+            expiry=expiry,
+            strike=25500,
+            option_type="CE",
+            transaction_type="SELL",
+            quantity=25,
+            entry_price=Decimal("180.00"),
+            status=PositionLegStatus.OPEN,
+            entry_time=datetime.utcnow(),
+            delta=Decimal("0.15"),
+            gamma=Decimal("0.002"),
+            theta=Decimal("-12.00"),
+            vega=Decimal("8.50"),
+            iv=Decimal("0.17")
+        )
+    ]
+
+    for leg in legs:
+        db_session.add(leg)
+    await db_session.commit()
+
+    for leg in legs:
+        await db_session.refresh(leg)
+
+    return legs
+
+
+@pytest_asyncio.fixture
+async def test_suggestion(
+    db_session: AsyncSession,
+    test_strategy_active: AutoPilotStrategy,
+    test_position_leg: AutoPilotPositionLeg
+) -> AutoPilotAdjustmentSuggestion:
+    """Create a sample adjustment suggestion."""
+    suggestion = AutoPilotAdjustmentSuggestion(
+        strategy_id=test_strategy_active.id,
+        leg_id=test_position_leg.id,
+        suggestion_type=SuggestionType.SHIFT,
+        title="Shift profitable leg closer to ATM",
+        description="PE leg has decayed to Rs. 120, consider shifting to 24900 strike",
+        urgency=SuggestionUrgency.MEDIUM,
+        confidence=Decimal("0.75"),
+        expected_impact={
+            "premium_captured": 65,
+            "new_delta": -0.18,
+            "cost": 15
+        },
+        one_click_params={
+            "target_strike": 24900,
+            "execution_mode": "market"
+        },
+        status=SuggestionStatus.ACTIVE,
+        expires_at=datetime.utcnow() + timedelta(hours=2)
+    )
+    db_session.add(suggestion)
+    await db_session.commit()
+    await db_session.refresh(suggestion)
+    return suggestion
+
+
+@pytest_asyncio.fixture
+def mock_option_chain_service():
+    """Mock for OptionChainService."""
+    mock = MagicMock()
+    mock.fetch_option_chain = AsyncMock(return_value=get_mock_option_chain_response())
+    mock.find_atm_strike = AsyncMock(return_value=25250)
+    return mock
+
+
+@pytest_asyncio.fixture
+def mock_kite_option_chain():
+    """Mock Kite option chain response data."""
+    return get_mock_option_chain_response()
+
+
+@pytest_asyncio.fixture
+async def test_break_trade_scenario(
+    db_session: AsyncSession,
+    test_strategy_active: AutoPilotStrategy
+) -> tuple[AutoPilotStrategy, AutoPilotPositionLeg]:
+    """Setup for break trade testing - losing leg scenario."""
+    # Create a leg that has moved against us (PE leg, market moved up)
+    losing_leg = AutoPilotPositionLeg(
+        strategy_id=test_strategy_active.id,
+        leg_id="leg_losing_pe",
+        underlying="NIFTY",
+        expiry=date.today() + timedelta(days=5),
+        strike=25000,
+        option_type="PE",
+        transaction_type="SELL",
+        quantity=25,
+        entry_price=Decimal("180.00"),
+        status=PositionLegStatus.OPEN,
+        entry_time=datetime.utcnow() - timedelta(hours=3),
+        delta=Decimal("-0.38"),  # Delta has doubled from entry -0.15
+        gamma=Decimal("0.004"),
+        theta=Decimal("-15.00"),
+        vega=Decimal("10.50"),
+        iv=Decimal("0.22")
+    )
+    db_session.add(losing_leg)
+    await db_session.commit()
+    await db_session.refresh(losing_leg)
+
+    return test_strategy_active, losing_leg
+
+
+@pytest_asyncio.fixture
+async def test_shift_leg_scenario(
+    db_session: AsyncSession,
+    test_strategy_active: AutoPilotStrategy
+) -> tuple[AutoPilotStrategy, AutoPilotPositionLeg]:
+    """Setup for shift leg testing - profitable leg to shift closer."""
+    # Create a leg that has decayed nicely
+    profitable_leg = AutoPilotPositionLeg(
+        strategy_id=test_strategy_active.id,
+        leg_id="leg_profitable_ce",
+        underlying="NIFTY",
+        expiry=date.today() + timedelta(days=6),
+        strike=25500,
+        option_type="CE",
+        transaction_type="SELL",
+        quantity=25,
+        entry_price=Decimal("185.00"),
+        status=PositionLegStatus.OPEN,
+        entry_time=datetime.utcnow() - timedelta(hours=4),
+        delta=Decimal("0.08"),  # Delta has halved from entry 0.15
+        gamma=Decimal("0.001"),
+        theta=Decimal("-8.00"),
+        vega=Decimal("6.00"),
+        iv=Decimal("0.15")
+    )
+    db_session.add(profitable_leg)
+    await db_session.commit()
+    await db_session.refresh(profitable_leg)
+
+    return test_strategy_active, profitable_leg
+
+
+# =============================================================================
+# PHASE 5 HELPER FUNCTIONS
+# =============================================================================
+
+def get_sample_position_leg_data(strategy_id: int, **overrides) -> Dict[str, Any]:
+    """Generate sample position leg data."""
+    data = {
+        "strategy_id": strategy_id,
+        "leg_id": "leg_1",
+        "underlying": "NIFTY",
+        "expiry": (date.today() + timedelta(days=7)).isoformat(),
+        "strike": 25000,
+        "option_type": "PE",
+        "transaction_type": "SELL",
+        "quantity": 25,
+        "entry_price": 180.00,
+        "status": "open",
+        "delta": -0.15,
+        "gamma": 0.002,
+        "theta": -12.50,
+        "vega": 8.75,
+        "iv": 0.18
+    }
+    data.update(overrides)
+    return data
+
+
+def get_sample_suggestion_data(strategy_id: int, leg_id: Optional[int] = None, **overrides) -> Dict[str, Any]:
+    """Generate sample suggestion data."""
+    data = {
+        "strategy_id": strategy_id,
+        "leg_id": leg_id,
+        "suggestion_type": "shift",
+        "title": "Consider shifting leg",
+        "description": "Leg has moved favorably, shift closer to ATM",
+        "urgency": "medium",
+        "confidence": 0.75,
+        "expected_impact": {
+            "premium_captured": 50,
+            "new_delta": -0.18
+        },
+        "one_click_params": {
+            "target_strike": 24900
+        }
+    }
+    data.update(overrides)
+    return data
+
+
+def get_mock_option_chain_response(underlying: str = "NIFTY", num_strikes: int = 20) -> Dict[str, Any]:
+    """Generate mock option chain data with Greeks."""
+    atm = 25250
+    strikes = []
+
+    for i in range(-num_strikes // 2, num_strikes // 2 + 1):
+        strike = atm + (i * 50)
+
+        # Generate realistic Greeks based on distance from ATM
+        distance_pct = abs(i) / (num_strikes / 2)
+
+        ce_delta = max(0.05, 0.50 - (distance_pct * 0.45)) if i >= 0 else min(0.45, 0.05 + (distance_pct * 0.40))
+        pe_delta = -ce_delta
+
+        gamma = 0.003 * (1 - distance_pct)
+        theta = -10.0 - (5.0 * (1 - distance_pct))
+        vega = 8.0 * (1 - distance_pct * 0.5)
+        iv = 0.15 + (distance_pct * 0.05)
+
+        ce_ltp = max(10, 200 - (abs(i) * 15))
+        pe_ltp = max(10, 200 - (abs(i) * 15))
+
+        strikes.append({
+            "strike": strike,
+            "ce": {
+                "ltp": ce_ltp,
+                "bid": ce_ltp - 2,
+                "ask": ce_ltp + 2,
+                "volume": 1000 + (i * 100),
+                "oi": 50000 + (i * 500),
+                "delta": round(ce_delta, 4),
+                "gamma": round(gamma, 4),
+                "theta": round(theta, 2),
+                "vega": round(vega, 2),
+                "iv": round(iv, 4)
+            },
+            "pe": {
+                "ltp": pe_ltp,
+                "bid": pe_ltp - 2,
+                "ask": pe_ltp + 2,
+                "volume": 1000 - (i * 50),
+                "oi": 50000 - (i * 300),
+                "delta": round(pe_delta, 4),
+                "gamma": round(gamma, 4),
+                "theta": round(theta, 2),
+                "vega": round(vega, 2),
+                "iv": round(iv, 4)
+            }
+        })
+
+    return {
+        "underlying": underlying,
+        "spot_price": atm,
+        "strikes": strikes,
+        "timestamp": datetime.utcnow().isoformat()
+    }
+
+
+def get_mock_break_trade_scenario() -> Dict[str, Any]:
+    """Setup data for break trade testing."""
+    return {
+        "losing_leg": {
+            "entry_price": 180.00,
+            "current_price": 320.00,
+            "loss": -140.00,
+            "delta": -0.38
+        },
+        "recovery_targets": {
+            "put_strike": 24800,
+            "call_strike": 25700,
+            "premium_per_leg": 70.00
+        }
+    }
+
+
+# =============================================================================
+# PHASE 5 ASSERTION HELPERS
+# =============================================================================
+
+def assert_position_leg_response(response_data: Dict[str, Any]):
+    """Assert position leg response structure."""
+    assert "id" in response_data
+    assert "strategy_id" in response_data
+    assert "leg_id" in response_data
+    assert "underlying" in response_data
+    assert "strike" in response_data
+    assert "option_type" in response_data
+    assert "transaction_type" in response_data
+    assert "quantity" in response_data
+    assert "entry_price" in response_data
+    assert "status" in response_data
+    assert "delta" in response_data
+    assert "gamma" in response_data
+    assert "theta" in response_data
+    assert "vega" in response_data
+
+
+def assert_suggestion_response(response_data: Dict[str, Any]):
+    """Assert adjustment suggestion response structure."""
+    assert "id" in response_data
+    assert "strategy_id" in response_data
+    assert "suggestion_type" in response_data
+    assert "title" in response_data
+    assert "description" in response_data
+    assert "urgency" in response_data
+    assert "confidence" in response_data
+    assert "expected_impact" in response_data
+    assert "one_click_params" in response_data
+    assert "status" in response_data
+
+
+def assert_option_chain_response(response_data: Dict[str, Any]):
+    """Assert option chain response structure."""
+    assert "underlying" in response_data
+    assert "spot_price" in response_data
+    assert "strikes" in response_data
+    assert isinstance(response_data["strikes"], list)
+    if len(response_data["strikes"]) > 0:
+        strike_data = response_data["strikes"][0]
+        assert "strike" in strike_data
+        assert "ce" in strike_data
+        assert "pe" in strike_data
+        assert "ltp" in strike_data["ce"]
+        assert "delta" in strike_data["ce"]

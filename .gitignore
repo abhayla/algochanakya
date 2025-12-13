@@ -41,9 +41,7 @@ logs/
 # OS
 Thumbs.db
 
-# Test files
-test_*.py
-*_test.py
+# Test artifacts (but keep test files themselves)
 .pytest_cache/
 .coverage
 htmlcov/

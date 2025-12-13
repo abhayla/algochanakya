@@ -62,7 +62,43 @@ export const useAutopilotStore = defineStore('autopilot', {
     },
 
     // Leg selection for bulk actions
-    selectedLegIndices: []
+    selectedLegIndices: [],
+
+    // Phase 5: Option Chain & Position Legs
+    optionChain: {
+      underlying: 'NIFTY',
+      expiry: null,
+      data: null,
+      loading: false,
+      error: null,
+      cached: false
+    },
+
+    positionLegs: {
+      legs: [],
+      loading: false,
+      error: null
+    },
+
+    suggestions: {
+      list: [],
+      loading: false,
+      error: null
+    },
+
+    whatIfSimulation: {
+      scenarios: [],
+      comparison: null,
+      loading: false,
+      error: null
+    },
+
+    payoffChart: {
+      data: null,
+      mode: 'expiry', // 'expiry' or 'current'
+      loading: false,
+      error: null
+    }
   }),
 
   getters: {
@@ -1361,6 +1397,170 @@ export const useAutopilotStore = defineStore('autopilot', {
         throw error
       } finally {
         this.saving = false
+      }
+    },
+
+    // ========================================================================
+    // PHASE 5: OPTION CHAIN
+    // ========================================================================
+
+    async fetchOptionChain(underlying, expiry, useCache = true) {
+      this.optionChain.loading = true
+      this.optionChain.error = null
+
+      try {
+        const response = await api.get(
+          `/api/v1/autopilot/option-chain/${underlying}/${expiry}`,
+          { params: { use_cache: useCache } }
+        )
+
+        this.optionChain.data = response.data.data
+        this.optionChain.underlying = underlying
+        this.optionChain.expiry = expiry
+        this.optionChain.cached = response.data.data.cached || false
+
+        return this.optionChain.data
+      } catch (error) {
+        this.optionChain.error = error.response?.data?.detail || error.message
+        throw error
+      } finally {
+        this.optionChain.loading = false
+      }
+    },
+
+    clearOptionChain() {
+      this.optionChain.data = null
+      this.optionChain.error = null
+      this.optionChain.cached = false
+    },
+
+    // ========================================================================
+    // PHASE 5: POSITION LEGS
+    // ========================================================================
+
+    async fetchPositionLegs(strategyId, statusFilter = null) {
+      this.positionLegs.loading = true
+      this.positionLegs.error = null
+
+      try {
+        const params = statusFilter ? { status_filter: statusFilter } : {}
+
+        const response = await api.get(
+          `/api/v1/autopilot/legs/strategies/${strategyId}/legs`,
+          { params }
+        )
+
+        this.positionLegs.legs = response.data.data
+        return this.positionLegs.legs
+      } catch (error) {
+        this.positionLegs.error = error.response?.data?.detail || error.message
+        throw error
+      } finally {
+        this.positionLegs.loading = false
+      }
+    },
+
+    // ========================================================================
+    // PHASE 5: SUGGESTIONS
+    // ========================================================================
+
+    async fetchSuggestions(strategyId) {
+      this.suggestions.loading = true
+      this.suggestions.error = null
+
+      try {
+        const response = await api.get(
+          `/api/v1/autopilot/suggestions/strategies/${strategyId}`
+        )
+
+        this.suggestions.list = response.data.data
+        return this.suggestions.list
+      } catch (error) {
+        this.suggestions.error = error.response?.data?.detail || error.message
+        throw error
+      } finally {
+        this.suggestions.loading = false
+      }
+    },
+
+    async dismissSuggestion(suggestionId) {
+      try {
+        await api.post(`/api/v1/autopilot/suggestions/${suggestionId}/dismiss`)
+
+        // Remove from list
+        this.suggestions.list = this.suggestions.list.filter(s => s.id !== suggestionId)
+      } catch (error) {
+        this.suggestions.error = error.response?.data?.detail || error.message
+        throw error
+      }
+    },
+
+    // ========================================================================
+    // PHASE 5: WHAT-IF SIMULATION
+    // ========================================================================
+
+    async simulateAdjustment(strategyId, scenarioType, params) {
+      this.whatIfSimulation.loading = true
+      this.whatIfSimulation.error = null
+
+      try {
+        const response = await api.post(
+          `/api/v1/autopilot/simulate/${strategyId}/${scenarioType}`,
+          params
+        )
+
+        return response.data.data
+      } catch (error) {
+        this.whatIfSimulation.error = error.response?.data?.detail || error.message
+        throw error
+      } finally {
+        this.whatIfSimulation.loading = false
+      }
+    },
+
+    async compareScenarios(strategyId, scenarios) {
+      this.whatIfSimulation.loading = true
+      this.whatIfSimulation.error = null
+
+      try {
+        const response = await api.post(
+          `/api/v1/autopilot/simulate/${strategyId}/compare`,
+          { scenarios }
+        )
+
+        this.whatIfSimulation.comparison = response.data.data
+        return this.whatIfSimulation.comparison
+      } catch (error) {
+        this.whatIfSimulation.error = error.response?.data?.detail || error.message
+        throw error
+      } finally {
+        this.whatIfSimulation.loading = false
+      }
+    },
+
+    // ========================================================================
+    // PHASE 5: PAYOFF CHART
+    // ========================================================================
+
+    async fetchPayoffChart(strategyId, mode = 'expiry') {
+      this.payoffChart.loading = true
+      this.payoffChart.error = null
+
+      try {
+        const response = await api.get(
+          `/api/v1/autopilot/payoff/${strategyId}`,
+          { params: { mode } }
+        )
+
+        this.payoffChart.data = response.data.data
+        this.payoffChart.mode = mode
+
+        return this.payoffChart.data
+      } catch (error) {
+        this.payoffChart.error = error.response?.data?.detail || error.message
+        throw error
+      } finally {
+        this.payoffChart.loading = false
       }
     }
   }

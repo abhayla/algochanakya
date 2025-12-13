@@ -45,7 +45,17 @@ from app.services.trailing_stop import TrailingStopService
 from app.services.position_sizing import PositionSizingService
 from app.services.greeks_calculator import GreeksCalculatorService
 
+# Phase 5 routers
+from app.api.v1.autopilot import legs, option_chain, suggestions, simulation, analytics
+
 router = APIRouter(prefix="/autopilot", tags=["autopilot"])
+
+# Include Phase 5 sub-routers
+router.include_router(legs.router, prefix="/legs", tags=["autopilot-legs"])
+router.include_router(option_chain.router, prefix="/option-chain", tags=["autopilot-option-chain"])
+router.include_router(suggestions.router, prefix="/suggestions", tags=["autopilot-suggestions"])
+router.include_router(simulation.router, prefix="/simulate", tags=["autopilot-simulation"])
+router.include_router(analytics.router, prefix="/analytics", tags=["autopilot-analytics"])
 
 
 # ============================================================================
