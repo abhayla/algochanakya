@@ -96,6 +96,7 @@ backend/requirements_fixed.txt
 
 # Temporary test files
 backend/backend_test.txt
+backend/fix_tests.py
 
 # Temporary prompt and report files
 *_PROMPT.md

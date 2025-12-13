@@ -172,7 +172,7 @@ class SuggestionEngine:
 
         except Exception as e:
             logger.error(f"Error generating suggestions for strategy {strategy_id}: {e}")
-            return []
+            raise  # Re-raise to see the actual error in tests
 
     async def _analyze_position(
         self,
@@ -244,8 +244,8 @@ class SuggestionEngine:
         abs_delta = abs(net_delta)
 
         # Get delta thresholds from user settings
-        danger_threshold = user_settings.delta_danger_threshold or 0.50
-        warning_threshold = user_settings.delta_warning_threshold or 0.30
+        danger_threshold = float(user_settings.delta_danger_threshold or 0.50)
+        warning_threshold = float(user_settings.delta_warning_threshold or 0.30)
 
         # Adjust thresholds by DTE zone
         if dte_zone == DTEZone.LATE or dte_zone == DTEZone.EXPIRY:
@@ -270,11 +270,10 @@ class SuggestionEngine:
                     strategy_id=strategy.id,
                     suggestion_type=SuggestionType.SHIFT,
                     urgency=SuggestionUrgency.CRITICAL,
-                    title=f"Shift {target_leg.contract_type} leg to reduce delta",
+                    trigger_reason=f"Shift {target_leg.contract_type} leg to reduce delta",
                     description=f"Net delta ({abs_delta:.2f}) exceeds danger threshold. "
                                f"Shift the {target_leg.strike} {target_leg.contract_type} leg "
-                               f"to reduce directional risk.",
-                    reasoning="High delta exposure creates significant directional risk. "
+                               f"to reduce directional risk."
                              "Position is vulnerable to adverse spot price movement.",
                     action_params={
                         "leg_id": target_leg.leg_id,
@@ -283,10 +282,6 @@ class SuggestionEngine:
                         "target_delta": 0.15,  # Safer delta
                         "shift_direction": "further",  # Move OTM
                         "execution_mode": "market"
-                    },
-                    estimated_impact={
-                        "delta_change": -abs(float(target_leg.delta)) * 0.5,
-                        "cost": "~₹20-50 per lot (depends on market)"
                     }
                 )
                 suggestions.append(suggestion)
@@ -297,16 +292,11 @@ class SuggestionEngine:
                 strategy_id=strategy.id,
                 suggestion_type=SuggestionType.SHIFT,
                 urgency=SuggestionUrgency.HIGH,
-                title="Consider adjusting position delta",
+                trigger_reason="Consider adjusting position delta",
                 description=f"Net delta ({abs_delta:.2f}) is elevated. "
                            f"Consider shifting legs to reduce directional exposure.",
-                reasoning="Moderate delta exposure. Position is showing directional bias.",
                 action_params={
                     "execution_mode": "limit"
-                },
-                estimated_impact={
-                    "delta_change": -abs_delta * 0.3,
-                    "risk_reduction": "moderate"
                 }
             )
             suggestions.append(suggestion)
@@ -338,11 +328,10 @@ class SuggestionEngine:
                 strategy_id=strategy.id,
                 suggestion_type=SuggestionType.BREAK,
                 urgency=SuggestionUrgency.CRITICAL,
-                title=f"Break trade on losing {worst_leg.contract_type} leg",
+                trigger_reason=f"Break trade on losing {worst_leg.contract_type} leg",
                 description=f"The {worst_leg.strike} {worst_leg.contract_type} leg has "
                            f"unrealized loss of ₹{abs(worst_pnl):.0f}. "
-                           f"Break trade can help recover losses by creating a strangle.",
-                reasoning="Break/split trade technique: exit losing leg, use exit premium "
+                           f"Break trade can help recover losses by creating a strangle."
                          "to sell two new positions (PUT + CALL) at safer strikes.",
                 action_params={
                     "leg_id": worst_leg.leg_id,
@@ -351,12 +340,6 @@ class SuggestionEngine:
                     "premium_split": "equal",
                     "prefer_round_strikes": True,
                     "max_delta": 0.25
-                },
-                estimated_impact={
-                    "exit_cost": abs(worst_pnl),
-                    "recovery_target": abs(worst_pnl) / 2,
-                    "new_positions": 2,
-                    "strategy": "strangle"
                 }
             )
             suggestions.append(suggestion)
@@ -367,18 +350,13 @@ class SuggestionEngine:
                 strategy_id=strategy.id,
                 suggestion_type=SuggestionType.EXIT,
                 urgency=SuggestionUrgency.HIGH,
-                title="Consider exiting position",
+                trigger_reason="Consider exiting position",
                 description=f"Current P&L (₹{current_pnl:.0f}) is approaching max loss limit "
-                           f"(₹{max_loss}). Exit to preserve capital.",
-                reasoning="Position is deteriorating. Better to exit with controlled loss "
+                           f"(₹{max_loss}). Exit to preserve capital."
                          "than risk hitting max loss limit.",
                 action_params={
                     "exit_type": "market",
                     "reason": "approaching_max_loss"
-                },
-                estimated_impact={
-                    "realized_pnl": current_pnl,
-                    "capital_preserved": float(max_loss) - current_pnl
                 }
             )
             suggestions.append(suggestion)
@@ -406,43 +384,36 @@ class SuggestionEngine:
                 strategy_id=strategy.id,
                 suggestion_type=SuggestionType.ROLL,
                 urgency=SuggestionUrgency.MEDIUM,
-                title="Roll to next expiry",
+                trigger_reason="Roll to next expiry",
                 description=f"Current expiry has only {dte} days remaining. "
                            f"Consider rolling positions to next expiry to maintain theta decay.",
-                reasoning=f"With {dte} DTE, gamma risk increases and theta decay accelerates. "
-                         "Rolling extends the position and reduces gamma risk.",
                 action_params={
                     "target_expiry": f"+{next_expiry_days}days",
                     "maintain_strikes": True,
                     "execution_mode": "limit"
-                },
-                estimated_impact={
-                    "new_dte": next_expiry_days,
-                    "roll_cost": "~₹10-30 per lot (typical)",
-                    "gamma_risk": "reduced",
-                    "theta_decay": "moderated"
                 }
             )
             suggestions.append(suggestion)
 
-        # HIGH: Expiry day - suggest exit
-        if dte_zone == DTEZone.EXPIRY and dte == 0:
+        # HIGH/CRITICAL: Expiry approaching or expiry day - suggest exit
+        if dte_zone == DTEZone.EXPIRY:
+            urgency = SuggestionUrgency.CRITICAL if dte == 0 else SuggestionUrgency.HIGH
+            trigger_msg = "EXIT NOW - Expiry day" if dte == 0 else f"Consider exit - {dte} days to expiry"
+            description = ("Today is expiry day! Exit all positions to avoid assignment risk. "
+                          "Exit positions before 3:30 PM to avoid complications.") if dte == 0 else (
+                          f"Only {dte} days to expiry! Exit positions to avoid assignment risk and gamma exposure. "
+                          "Close to expiry, adjustments are less effective.")
+
             suggestion = AutoPilotAdjustmentSuggestion(
                 strategy_id=strategy.id,
                 suggestion_type=SuggestionType.EXIT,
-                urgency=SuggestionUrgency.CRITICAL,
-                title="EXIT NOW - Expiry day",
-                description="Today is expiry day! Exit all positions to avoid assignment risk.",
-                reasoning="Expiry day carries extreme gamma risk and assignment risk. "
-                         "Exit positions before 3:30 PM to avoid complications.",
+                urgency=urgency,
+                trigger_reason=trigger_msg,
+                description=description,
                 action_params={
                     "exit_type": "market",
-                    "reason": "expiry_day",
-                    "urgency": "immediate"
-                },
-                estimated_impact={
-                    "assignment_risk": "eliminated",
-                    "time_remaining": "< 1 hour" if datetime.now().hour >= 14 else "few hours"
+                    "reason": "expiry_day" if dte == 0 else "expiry_approaching",
+                    "urgency": "immediate" if dte == 0 else "high"
                 }
             )
             suggestions.append(suggestion)
@@ -468,17 +439,12 @@ class SuggestionEngine:
                 strategy_id=strategy.id,
                 suggestion_type=SuggestionType.ADD_HEDGE,
                 urgency=SuggestionUrgency.HIGH,
-                title="Add hedge to reduce gamma risk",
+                trigger_reason="Add hedge to reduce gamma risk",
                 description=f"High gamma ({abs(net_gamma):.3f}) with {analysis['dte']} DTE "
                            f"creates significant risk from spot moves.",
-                reasoning="High gamma amplifies P&L swings. Adding a hedge can stabilize the position.",
                 action_params={
                     "hedge_type": "protective",
                     "execution_mode": "limit"
-                },
-                estimated_impact={
-                    "gamma_reduction": "~50%",
-                    "hedge_cost": "₹50-100 per lot"
                 }
             )
             suggestions.append(suggestion)
@@ -489,16 +455,11 @@ class SuggestionEngine:
                 strategy_id=strategy.id,
                 suggestion_type=SuggestionType.NO_ACTION,
                 urgency=SuggestionUrgency.LOW,
-                title="Monitor position - High volatility environment",
+                trigger_reason="Monitor position - High volatility environment",
                 description=f"VIX at {vix:.1f} indicates elevated market volatility. "
-                           f"Monitor position closely but no immediate action needed.",
-                reasoning="High VIX can benefit option sellers through higher premiums "
+                           f"Monitor position closely but no immediate action needed."
                          "but also increases risk of large moves.",
-                action_params={},
-                estimated_impact={
-                    "volatility_impact": "positive for option sellers",
-                    "risk_level": "elevated"
-                }
+                action_params={}
             )
             suggestions.append(suggestion)
 

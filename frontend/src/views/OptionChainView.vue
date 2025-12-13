@@ -54,6 +54,15 @@
             </span>
           </label>
 
+          <!-- Find Strike Button -->
+          <button @click="store.toggleStrikeFinder()" class="find-strike-btn" data-testid="optionchain-strike-finder-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"/>
+              <path d="m21 21-4.35-4.35"/>
+            </svg>
+            Find Strike
+          </button>
+
           <!-- Refresh -->
           <button @click="store.fetchOptionChain()" class="refresh-btn" :disabled="store.isLoading" data-testid="optionchain-refresh-button">
             {{ store.isLoading ? 'Loading...' : 'Refresh' }}
@@ -96,6 +105,9 @@
           </select>
         </div>
       </div>
+
+      <!-- Strike Finder Panel -->
+      <StrikeFinder @select-strike="handleStrikeSelected" />
 
       <!-- Error Alert -->
       <div v-if="store.error" class="error-alert" data-testid="optionchain-error">
@@ -246,6 +258,7 @@
 import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import KiteLayout from '@/components/layout/KiteLayout.vue'
+import StrikeFinder from '@/components/optionchain/StrikeFinder.vue'
 import { useOptionChainStore } from '@/stores/optionchain'
 import { useStrategyStore } from '@/stores/strategy'
 import { useWatchlistStore } from '@/stores/watchlist'
@@ -340,6 +353,26 @@ const goToStrategy = () => {
 
   store.clearSelection()
   router.push('/strategy')
+}
+
+const handleStrikeSelected = (strike) => {
+  // Close the strike finder
+  store.toggleStrikeFinder()
+
+  // Scroll to the selected strike row if it exists
+  if (typeof strike === 'object' && strike.strike) {
+    const strikeValue = strike.strike
+    const tableEl = tableContainer.value
+    if (tableEl) {
+      const strikeRow = tableEl.querySelector(`[data-strike="${strikeValue}"]`)
+      if (strikeRow) {
+        strikeRow.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        // Optionally highlight the row briefly
+        strikeRow.classList.add('highlight-strike')
+        setTimeout(() => strikeRow.classList.remove('highlight-strike'), 2000)
+      }
+    }
+  }
 }
 
 // Subscribe to option tokens for live updates
@@ -615,6 +648,29 @@ onUnmounted(() => {
 .refresh-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.find-strike-btn {
+  padding: 6px 16px;
+  font-size: 12px;
+  font-weight: 500;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.find-strike-btn:hover {
+  background: #2563eb;
+}
+
+.find-strike-btn svg {
+  flex-shrink: 0;
 }
 
 /* Summary Bar */
@@ -980,5 +1036,24 @@ onUnmounted(() => {
 
 .greek-col {
   min-width: 50px;
+}
+
+/* Highlight strike animation */
+.chain-row.highlight-strike {
+  animation: highlightStrike 2s ease-in-out;
+}
+
+@keyframes highlightStrike {
+  0% {
+    background-color: #fff3cd;
+    box-shadow: 0 0 0 3px #ffc107;
+  }
+  50% {
+    background-color: #fff3cd;
+  }
+  100% {
+    background-color: transparent;
+    box-shadow: none;
+  }
 }
 </style>

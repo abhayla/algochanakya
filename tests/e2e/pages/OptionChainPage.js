@@ -7,7 +7,7 @@ import { BasePage } from './BasePage.js';
 export default class OptionChainPage extends BasePage {
   constructor(page) {
     super(page);
-    this.path = '/optionchain';
+    this.url = '/optionchain';
   }
 
   // ============ Selectors ============
@@ -55,6 +55,17 @@ export default class OptionChainPage extends BasePage {
   get clearSelectionButton() { return this.getByTestId('optionchain-clear-selection'); }
   get addToStrategyButton() { return this.getByTestId('optionchain-add-to-strategy'); }
 
+  // Strike Finder
+  get strikeFinderBtn() { return this.getByTestId('optionchain-strike-finder-btn'); }
+  get strikeFinderMode() { return this.getByTestId('optionchain-strike-finder-mode'); }
+  get strikeFinderType() { return this.getByTestId('optionchain-strike-finder-type'); }
+  get strikeFinderDeltaInput() { return this.getByTestId('optionchain-strike-finder-delta-input'); }
+  get strikeFinderPremiumInput() { return this.getByTestId('optionchain-strike-finder-premium-input'); }
+  get strikeFinderSearchBtn() { return this.getByTestId('optionchain-strike-finder-search-btn'); }
+  get strikeFinderResult() { return this.getByTestId('optionchain-strike-finder-result'); }
+  get strikeFinderError() { return this.getByTestId('optionchain-strike-finder-error'); }
+  get strikeFinderClose() { return this.getByTestId('optionchain-strike-finder-close'); }
+
   // ============ Dynamic Selectors ============
 
   getStrikeRow(strike) {
@@ -76,7 +87,7 @@ export default class OptionChainPage extends BasePage {
   // ============ Actions ============
 
   async navigate() {
-    await super.navigate(this.path);
+    await super.navigate();
     await this.waitForPageLoad();
   }
 
@@ -178,6 +189,77 @@ export default class OptionChainPage extends BasePage {
   async isStrikeSelected(strike, type) {
     const chip = this.getSelectedChip(strike, type);
     return await chip.isVisible().catch(() => false);
+  }
+
+  // Strike Finder methods
+  async openStrikeFinder() {
+    await this.strikeFinderBtn.click();
+    await this.page.waitForSelector('[data-testid="optionchain-strike-finder-mode"]', { timeout: 5000 });
+  }
+
+  async closeStrikeFinder() {
+    await this.strikeFinderClose.click();
+  }
+
+  async isStrikeFinderVisible() {
+    const finder = this.page.locator('.strike-finder');
+    return await finder.isVisible().catch(() => false);
+  }
+
+  async setStrikeFinderMode(mode) {
+    await this.strikeFinderMode.selectOption(mode);
+  }
+
+  async setStrikeFinderType(type) {
+    await this.strikeFinderType.selectOption(type);
+  }
+
+  async enterTargetDelta(delta) {
+    await this.strikeFinderDeltaInput.fill(String(delta));
+  }
+
+  async enterTargetPremium(premium) {
+    await this.strikeFinderPremiumInput.fill(String(premium));
+  }
+
+  async searchStrike() {
+    await this.strikeFinderSearchBtn.click();
+  }
+
+  async findStrikeByDelta(delta, optionType = 'CE') {
+    await this.openStrikeFinder();
+    await this.setStrikeFinderMode('delta');
+    await this.setStrikeFinderType(optionType);
+    await this.enterTargetDelta(delta);
+    await this.searchStrike();
+  }
+
+  async findStrikeByPremium(premium, optionType = 'CE') {
+    await this.openStrikeFinder();
+    await this.setStrikeFinderMode('premium');
+    await this.setStrikeFinderType(optionType);
+    await this.enterTargetPremium(premium);
+    await this.searchStrike();
+  }
+
+  async hasStrikeFinderError() {
+    return await this.strikeFinderError.isVisible().catch(() => false);
+  }
+
+  async getStrikeFinderErrorText() {
+    if (await this.hasStrikeFinderError()) {
+      return await this.strikeFinderError.textContent();
+    }
+    return null;
+  }
+
+  async hasStrikeFinderResult() {
+    return await this.strikeFinderResult.isVisible().catch(() => false);
+  }
+
+  async getStrikeFinderResultStrike() {
+    const strikeValue = this.strikeFinderResult.locator('.strike-value');
+    return await strikeValue.textContent();
   }
 
   // ============ Assertions ============

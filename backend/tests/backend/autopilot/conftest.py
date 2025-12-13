@@ -230,6 +230,9 @@ async def test_settings(db_session: AsyncSession, test_user: User) -> AutoPilotU
             "on_network_error": "retry",
             "max_retries": 3
         },
+        suggestions_enabled=True,
+        delta_warning_threshold=Decimal("0.30"),
+        delta_danger_threshold=Decimal("0.40"),
         paper_trading_mode=False,
         show_advanced_features=False
     )

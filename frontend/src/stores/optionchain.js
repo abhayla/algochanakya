@@ -41,6 +41,18 @@ export const useOptionChainStore = defineStore('optionchain', () => {
   // Selected for strategy
   const selectedStrikes = ref([])
 
+  // Strike Finder state
+  const strikeFinder = ref({
+    visible: false,
+    mode: 'delta', // 'delta' or 'premium'
+    optionType: 'CE',
+    targetDelta: null,
+    targetPremium: null,
+    result: null,
+    loading: false,
+    error: null
+  })
+
   // Lot sizes
   const lotSizes = {
     'NIFTY': 75,
@@ -282,6 +294,73 @@ export const useOptionChainStore = defineStore('optionchain', () => {
     isLiveUpdatesEnabled.value = !isLiveUpdatesEnabled.value
   }
 
+  // Strike Finder methods
+  function toggleStrikeFinder() {
+    strikeFinder.value.visible = !strikeFinder.value.visible
+    if (!strikeFinder.value.visible) {
+      // Clear result when closing
+      strikeFinder.value.result = null
+      strikeFinder.value.error = null
+    }
+  }
+
+  async function findStrikeByDelta(params) {
+    strikeFinder.value.loading = true
+    strikeFinder.value.error = null
+    strikeFinder.value.result = null
+
+    try {
+      const response = await api.post('/api/optionchain/find-by-delta', {
+        underlying: params.underlying,
+        expiry: params.expiry,
+        option_type: params.option_type,
+        target_delta: params.target_delta,
+        tolerance: params.tolerance || 0.02,
+        prefer_round_strike: params.prefer_round_strike !== false
+      })
+
+      strikeFinder.value.result = response.data
+      return response.data
+    } catch (err) {
+      console.error('Error finding strike by delta:', err)
+      strikeFinder.value.error = err.response?.data?.detail || 'Failed to find strike'
+      throw err
+    } finally {
+      strikeFinder.value.loading = false
+    }
+  }
+
+  async function findStrikeByPremium(params) {
+    strikeFinder.value.loading = true
+    strikeFinder.value.error = null
+    strikeFinder.value.result = null
+
+    try {
+      const response = await api.post('/api/optionchain/find-by-premium', {
+        underlying: params.underlying,
+        expiry: params.expiry,
+        option_type: params.option_type,
+        target_premium: params.target_premium,
+        tolerance: params.tolerance || 10,
+        prefer_round_strike: params.prefer_round_strike !== false
+      })
+
+      strikeFinder.value.result = response.data
+      return response.data
+    } catch (err) {
+      console.error('Error finding strike by premium:', err)
+      strikeFinder.value.error = err.response?.data?.detail || 'Failed to find strike'
+      throw err
+    } finally {
+      strikeFinder.value.loading = false
+    }
+  }
+
+  function clearStrikeFinderResult() {
+    strikeFinder.value.result = null
+    strikeFinder.value.error = null
+  }
+
   function reset() {
     underlying.value = 'NIFTY'
     expiry.value = ''
@@ -323,6 +402,7 @@ export const useOptionChainStore = defineStore('optionchain', () => {
     lotSizes,
     livePrices,
     isLiveUpdatesEnabled,
+    strikeFinder,
 
     // Getters
     filteredChain,
@@ -349,6 +429,12 @@ export const useOptionChainStore = defineStore('optionchain', () => {
     getAllOptionTokens,
     updateLivePrices,
     updateChainWithLivePrices,
-    toggleLiveUpdates
+    toggleLiveUpdates,
+
+    // Strike Finder methods
+    toggleStrikeFinder,
+    findStrikeByDelta,
+    findStrikeByPremium,
+    clearStrikeFinderResult
   }
 })

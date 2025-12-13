@@ -1,15 +1,15 @@
 <template>
-  <div class="strike-finder" v-if="visible">
+  <div class="strike-finder" v-if="store.strikeFinder.visible">
     <div class="finder-header">
       <h3>Strike Finder</h3>
-      <button @click="$emit('close')" class="close-btn">×</button>
+      <button @click="store.toggleStrikeFinder()" class="close-btn" data-testid="optionchain-strike-finder-close">×</button>
     </div>
 
     <div class="finder-content">
       <!-- Mode Selection -->
       <div class="form-group">
         <label>Find By</label>
-        <select v-model="mode" data-testid="autopilot-strike-finder-mode" class="form-select">
+        <select v-model="store.strikeFinder.mode" data-testid="optionchain-strike-finder-mode" class="form-select">
           <option value="delta">Delta</option>
           <option value="premium">Premium</option>
         </select>
@@ -18,81 +18,81 @@
       <!-- Option Type Selection -->
       <div class="form-group">
         <label>Option Type</label>
-        <select v-model="optionType" data-testid="autopilot-strike-finder-type" class="form-select">
+        <select v-model="store.strikeFinder.optionType" data-testid="optionchain-strike-finder-type" class="form-select">
           <option value="CE">Call (CE)</option>
           <option value="PE">Put (PE)</option>
         </select>
       </div>
 
       <!-- Delta Input -->
-      <div v-if="mode === 'delta'" class="form-group">
+      <div v-if="store.strikeFinder.mode === 'delta'" class="form-group">
         <label>Target Delta (0-1)</label>
         <input
-          v-model.number="targetDelta"
+          v-model.number="store.strikeFinder.targetDelta"
           type="number"
           step="0.01"
           min="0"
           max="1"
           placeholder="e.g., 0.30"
-          data-testid="autopilot-strike-finder-delta-input"
+          data-testid="optionchain-strike-finder-delta-input"
           class="form-input"
         />
         <small class="hint">Enter delta value between 0 and 1</small>
       </div>
 
       <!-- Premium Input -->
-      <div v-if="mode === 'premium'" class="form-group">
+      <div v-if="store.strikeFinder.mode === 'premium'" class="form-group">
         <label>Target Premium (₹)</label>
         <input
-          v-model.number="targetPremium"
+          v-model.number="store.strikeFinder.targetPremium"
           type="number"
           step="0.5"
           min="0"
           placeholder="e.g., 180"
-          data-testid="autopilot-strike-finder-premium-input"
+          data-testid="optionchain-strike-finder-premium-input"
           class="form-input"
         />
         <small class="hint">Enter target premium in rupees</small>
       </div>
 
       <!-- Error Display -->
-      <div v-if="error" class="error-message" data-testid="autopilot-strike-finder-error">
-        {{ error }}
+      <div v-if="store.strikeFinder.error" class="error-message" data-testid="optionchain-strike-finder-error">
+        {{ store.strikeFinder.error }}
       </div>
 
       <!-- Search Button -->
       <button
         @click="handleSearch"
-        :disabled="!canSearch || loading"
-        data-testid="autopilot-strike-finder-search-btn"
+        :disabled="!canSearch || store.strikeFinder.loading"
+        data-testid="optionchain-strike-finder-search-btn"
         class="btn btn-primary btn-block"
       >
-        <span v-if="loading">Searching...</span>
+        <span v-if="store.strikeFinder.loading">Searching...</span>
         <span v-else>Find Strike</span>
       </button>
 
       <!-- Result Display -->
-      <div v-if="result" class="result-section" data-testid="autopilot-strike-finder-result">
+      <div v-if="store.strikeFinder.result" class="result-section" data-testid="optionchain-strike-finder-result">
         <h4>Result</h4>
         <div class="result-content">
           <div class="result-item">
             <span class="label">Strike:</span>
-            <span class="value strike-value">{{ result.strike }}</span>
+            <span class="value strike-value">{{ store.strikeFinder.result.strike }}</span>
           </div>
           <div class="result-item">
             <span class="label">LTP:</span>
-            <span class="value">₹{{ result.ltp?.toFixed(2) }}</span>
+            <span class="value">₹{{ store.strikeFinder.result.ltp?.toFixed(2) }}</span>
           </div>
           <div class="result-item">
             <span class="label">Delta:</span>
-            <span class="value">{{ result.delta?.toFixed(3) }}</span>
+            <span class="value">{{ store.strikeFinder.result.delta?.toFixed(3) }}</span>
           </div>
           <div class="result-item">
             <span class="label">IV:</span>
-            <span class="value">{{ result.iv ? (result.iv * 100).toFixed(1) + '%' : '-' }}</span>
+            <span class="value">{{ store.strikeFinder.result.iv ? (store.strikeFinder.result.iv * 100).toFixed(1) + '%' : '-' }}</span>
           </div>
         </div>
-        <button @click="$emit('select-strike', result)" class="btn btn-secondary btn-block">
+        <button @click="$emit('select-strike', store.strikeFinder.result)" class="btn btn-secondary btn-block">
           Select This Strike
         </button>
       </div>
@@ -101,71 +101,66 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import { useOptionChain } from '@/composables/autopilot/useOptionChain'
+import { computed } from 'vue'
+import { useOptionChainStore } from '@/stores/optionchain'
 
-const props = defineProps({
-  visible: {
-    type: Boolean,
-    default: false
-  },
-  underlying: {
-    type: String,
-    required: true
-  },
-  expiry: {
-    type: String,
-    required: true
-  }
-})
+const emit = defineEmits(['select-strike'])
 
-const emit = defineEmits(['close', 'select-strike'])
-
-const { findStrikeByDelta, findStrikeByPremium } = useOptionChain()
-
-const mode = ref('delta')
-const optionType = ref('CE')
-const targetDelta = ref(null)
-const targetPremium = ref(null)
-const result = ref(null)
-const loading = ref(false)
-const error = ref(null)
+const store = useOptionChainStore()
 
 const canSearch = computed(() => {
-  if (mode.value === 'delta') {
-    return targetDelta.value !== null && targetDelta.value >= 0 && targetDelta.value <= 1
+  if (store.strikeFinder.mode === 'delta') {
+    return store.strikeFinder.targetDelta !== null && store.strikeFinder.targetDelta >= 0 && store.strikeFinder.targetDelta <= 1
   } else {
-    return targetPremium.value !== null && targetPremium.value > 0
+    return store.strikeFinder.targetPremium !== null && store.strikeFinder.targetPremium > 0
   }
 })
 
 const handleSearch = async () => {
-  error.value = null
-  result.value = null
-  loading.value = true
+  // Validate inputs before searching
+  if (store.strikeFinder.mode === 'delta') {
+    if (store.strikeFinder.targetDelta === null || store.strikeFinder.targetDelta === undefined) {
+      store.strikeFinder.error = 'Please enter a delta value'
+      return
+    }
+    if (store.strikeFinder.targetDelta < 0 || store.strikeFinder.targetDelta > 1) {
+      store.strikeFinder.error = 'Delta must be between 0 and 1. Please enter a valid delta value in range [0, 1]'
+      return
+    }
+  } else {
+    if (store.strikeFinder.targetPremium === null || store.strikeFinder.targetPremium === undefined) {
+      store.strikeFinder.error = 'Please enter a premium value'
+      return
+    }
+    if (store.strikeFinder.targetPremium < 0) {
+      store.strikeFinder.error = 'Premium must be a positive value'
+      return
+    }
+    if (store.strikeFinder.targetPremium === 0) {
+      store.strikeFinder.error = 'Premium must be greater than 0'
+      return
+    }
+  }
 
   try {
-    if (mode.value === 'delta') {
-      const response = await findStrikeByDelta({
-        underlying: props.underlying,
-        expiry: props.expiry,
-        option_type: optionType.value,
-        target_delta: targetDelta.value
+    if (store.strikeFinder.mode === 'delta') {
+      await store.findStrikeByDelta({
+        underlying: store.underlying,
+        expiry: store.expiry,
+        option_type: store.strikeFinder.optionType,
+        target_delta: store.strikeFinder.targetDelta
       })
-      result.value = response
     } else {
-      const response = await findStrikeByPremium({
-        underlying: props.underlying,
-        expiry: props.expiry,
-        option_type: optionType.value,
-        target_premium: targetPremium.value
+      await store.findStrikeByPremium({
+        underlying: store.underlying,
+        expiry: store.expiry,
+        option_type: store.strikeFinder.optionType,
+        target_premium: store.strikeFinder.targetPremium
       })
-      result.value = response
     }
   } catch (err) {
-    error.value = err.message || 'Failed to find strike'
-  } finally {
-    loading.value = false
+    // Error already handled in store
+    console.error('Strike finder error:', err)
   }
 }
 </script>

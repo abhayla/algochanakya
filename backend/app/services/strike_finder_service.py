@@ -56,7 +56,33 @@ class StrikeFinderService:
                 use_cache=True
             )
 
+            # Handle both "options" (flat) and "strikes" (nested) formats
             options = chain_data.get('options', [])
+            if not options and 'strikes' in chain_data:
+                # Convert nested "strikes" format to flat "options" format
+                options = []
+                expiry_str = expiry.strftime("%y%b").upper() if hasattr(expiry, 'strftime') else str(expiry).replace('-', '')[-6:]
+                for strike_data in chain_data['strikes']:
+                    strike = strike_data['strike']
+                    if 'pe' in strike_data:
+                        tradingsymbol = f"{underlying}{expiry_str}{int(strike)}PE"
+                        options.append({
+                            'strike': strike,
+                            'option_type': 'PE',
+                            'tradingsymbol': tradingsymbol,
+                            'instrument_token': 0,  # Placeholder
+                            **strike_data['pe']
+                        })
+                    if 'ce' in strike_data:
+                        tradingsymbol = f"{underlying}{expiry_str}{int(strike)}CE"
+                        options.append({
+                            'strike': strike,
+                            'option_type': 'CE',
+                            'tradingsymbol': tradingsymbol,
+                            'instrument_token': 0,  # Placeholder
+                            **strike_data['ce']
+                        })
+
             if not options:
                 logger.warning(f"No options found for {underlying} {expiry}")
                 return None
@@ -145,7 +171,33 @@ class StrikeFinderService:
                 use_cache=True
             )
 
+            # Handle both "options" (flat) and "strikes" (nested) formats
             options = chain_data.get('options', [])
+            if not options and 'strikes' in chain_data:
+                # Convert nested "strikes" format to flat "options" format
+                options = []
+                expiry_str = expiry.strftime("%y%b").upper() if hasattr(expiry, 'strftime') else str(expiry).replace('-', '')[-6:]
+                for strike_data in chain_data['strikes']:
+                    strike = strike_data['strike']
+                    if 'pe' in strike_data:
+                        tradingsymbol = f"{underlying}{expiry_str}{int(strike)}PE"
+                        options.append({
+                            'strike': strike,
+                            'option_type': 'PE',
+                            'tradingsymbol': tradingsymbol,
+                            'instrument_token': 0,  # Placeholder
+                            **strike_data['pe']
+                        })
+                    if 'ce' in strike_data:
+                        tradingsymbol = f"{underlying}{expiry_str}{int(strike)}CE"
+                        options.append({
+                            'strike': strike,
+                            'option_type': 'CE',
+                            'tradingsymbol': tradingsymbol,
+                            'instrument_token': 0,  # Placeholder
+                            **strike_data['ce']
+                        })
+
             if not options:
                 logger.warning(f"No options found for {underlying} {expiry}")
                 return None
@@ -193,6 +245,7 @@ class StrikeFinderService:
                 'tradingsymbol': closest_option['tradingsymbol'],
                 'instrument_token': closest_option['instrument_token'],
                 'ltp': closest_option.get('ltp'),
+                'premium': closest_option.get('ltp'),  # Alias for ltp
                 'delta': closest_option.get('delta'),
                 'iv': closest_option.get('iv'),
                 'distance_from_target': Decimal(str(premium_diff)),

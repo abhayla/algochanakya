@@ -103,12 +103,10 @@ const router = createRouter({
       component: () => import('../views/autopilot/SettingsView.vue'),
       meta: { requiresAuth: true },
     },
-    // Phase 5 routes
+    // Phase 5 routes - Redirect to main option chain
     {
       path: '/autopilot/option-chain',
-      name: 'AutoPilotOptionChain',
-      component: () => import('../views/autopilot/OptionChainView.vue'),
-      meta: { requiresAuth: true },
+      redirect: '/optionchain'
     },
     // Phase 4 routes
     {

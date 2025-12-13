@@ -35,8 +35,8 @@ class LegActionsService:
         self.user_id = user_id
         self.position_leg_service = PositionLegService(kite, db)
         self.strike_finder = StrikeFinderService(kite, db)
-        self.order_executor = OrderExecutor(kite, db, user_id)
         self.market_data = MarketDataService(kite)
+        self.order_executor = OrderExecutor(kite, self.market_data)
 
     async def exit_leg(
         self,

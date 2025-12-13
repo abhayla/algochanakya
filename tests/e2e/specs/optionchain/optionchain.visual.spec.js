@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../../fixtures/auth.fixture.js';
 import OptionChainPage from '../../pages/OptionChainPage.js';
 import { prepareForVisualTest, VIEWPORTS } from '../../helpers/visual.helper.js';
 

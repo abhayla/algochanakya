@@ -13,6 +13,7 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from decimal import Decimal
 from datetime import date, timedelta
+from uuid import uuid4
 
 from app.services.strike_finder_service import StrikeFinderService
 from app.services.break_trade_service import BreakTradeService
@@ -25,6 +26,27 @@ from app.models.autopilot import (
     SuggestionType,
     SuggestionUrgency
 )
+
+
+# Mock GreeksCalculatorService to avoid signature mismatch in nested dependencies
+@pytest.fixture(autouse=True)
+def mock_greeks_calculator_service():
+    patches = [
+        patch('app.services.option_chain_service.GreeksCalculatorService'),
+        patch('app.services.payoff_calculator.GreeksCalculatorService'),
+        patch('app.services.whatif_simulator.GreeksCalculatorService'),
+        patch('app.services.strategy_monitor.GreeksCalculatorService'),
+        patch('app.services.position_leg_service.GreeksCalculatorService'),
+    ]
+    mocks = []
+    for p in patches:
+        m = p.start()
+        m.return_value = MagicMock()
+        mocks.append(m)
+    yield mocks
+    for p in patches:
+        p.stop()
+
 
 
 # =============================================================================
@@ -97,11 +119,11 @@ class TestScenario1FindDeltaStrikes:
         When: Finding PUT strike with delta 0.15
         Then: Should return 25000 PE with premium ~₹82
         """
-        service = StrikeFinderService(db_session=MagicMock())
+        service = StrikeFinderService(kite=MagicMock(), db=MagicMock())
 
         # Mock option chain with transcript values
         with patch.object(service, 'option_chain_service') as mock_chain:
-            mock_chain.get_option_chain.return_value = {
+            mock_chain.get_option_chain = AsyncMock(return_value={
                 "underlying": "NIFTY",
                 "spot_price": float(TranscriptData.SPOT_DAY1),
                 "strikes": [
@@ -125,7 +147,7 @@ class TestScenario1FindDeltaStrikes:
                         "pe": {"ltp": 89.00, "delta": -0.155, "gamma": 0.003, "theta": -10.0, "vega": 8.0, "iv": 0.18}
                     }
                 ]
-            }
+            })
 
             result = await service.find_strike_by_delta(
                 underlying="NIFTY",
@@ -149,11 +171,11 @@ class TestScenario1FindDeltaStrikes:
         When: Finding CALL strike with delta 0.15
         Then: Should return 26800 CE with premium ~₹145
         """
-        service = StrikeFinderService(db_session=MagicMock())
+        service = StrikeFinderService(kite=MagicMock(), db=MagicMock())
 
         # Mock option chain with transcript values
         with patch.object(service, 'option_chain_service') as mock_chain:
-            mock_chain.get_option_chain.return_value = {
+            mock_chain.get_option_chain = AsyncMock(return_value={
                 "underlying": "NIFTY",
                 "spot_price": float(TranscriptData.SPOT_DAY1),
                 "strikes": [
@@ -177,7 +199,7 @@ class TestScenario1FindDeltaStrikes:
                         "ce": {"ltp": 135.00, "delta": 0.14, "gamma": 0.003, "theta": -10.0, "vega": 8.0, "iv": 0.18}
                     }
                 ]
-            }
+            })
 
             result = await service.find_strike_by_delta(
                 underlying="NIFTY",
@@ -201,17 +223,17 @@ class TestScenario1FindDeltaStrikes:
         When: Exact match not available
         Then: Should accept strikes with delta in range 0.14-0.16
         """
-        service = StrikeFinderService(db_session=MagicMock())
+        service = StrikeFinderService(kite=MagicMock(), db=MagicMock())
 
         with patch.object(service, 'option_chain_service') as mock_chain:
-            mock_chain.get_option_chain.return_value = {
+            mock_chain.get_option_chain = AsyncMock(return_value={
                 "underlying": "NIFTY",
                 "spot_price": float(TranscriptData.SPOT_DAY1),
                 "strikes": [
                     {"strike": 25000, "pe": {"ltp": 82.00, "delta": -0.145, "gamma": 0.003, "theta": -10.0, "vega": 8.0, "iv": 0.18}},
                     {"strike": 25050, "pe": {"ltp": 89.00, "delta": -0.155, "gamma": 0.003, "theta": -10.0, "vega": 8.0, "iv": 0.18}}
                 ]
-            }
+            })
 
             # Both should be acceptable with 0.01 tolerance
             result = await service.find_strike_by_delta(
@@ -236,7 +258,7 @@ class TestScenario2DeltaMonitoring:
 
     @pytest.mark.asyncio
     async def test_short_strangle_delta_doubled_detection(
-        self, db_session, test_strategy_active, test_user, test_user_settings
+        self, db_session, test_strategy_active, test_user, test_settings
     ):
         """
         Short Strangle Adjustments: Detect when delta doubles from entry.
@@ -249,15 +271,14 @@ class TestScenario2DeltaMonitoring:
         pe_leg = AutoPilotPositionLeg(
             strategy_id=test_strategy_active.id,
             leg_id="short_strangle_pe",
-            underlying="NIFTY",
             expiry=TranscriptData.EXPIRY_OCT,
             strike=TranscriptData.PE_STRIKE_ENTRY,
-            option_type="PE",
-            transaction_type="SELL",
-            quantity=TranscriptData.LOT_SIZE,
+            contract_type="PE",
+            action="SELL",
+            lots=1,
             entry_price=TranscriptData.PE_PREMIUM_ENTRY,
             delta=-TranscriptData.PE_DELTA_ENTRY,  # PE delta is negative
-            status=PositionLegStatus.OPEN
+            status=PositionLegStatus.OPEN.value
         )
         db_session.add(pe_leg)
         await db_session.commit()
@@ -273,6 +294,29 @@ class TestScenario2DeltaMonitoring:
         mock_market_data.get_spot_price = AsyncMock(return_value=TranscriptData.SPOT_DAY3)
         mock_market_data.get_vix = AsyncMock(return_value=Decimal("15.00"))
 
+        # Debug: Verify test_settings exists
+        from sqlalchemy import select
+        from app.models.autopilot import AutoPilotUserSettings
+        result = await db_session.execute(
+            select(AutoPilotUserSettings).where(AutoPilotUserSettings.user_id == test_user.id)
+        )
+        found_settings = result.scalar_one_or_none()
+        assert found_settings is not None, "test_settings not found in database"
+        assert found_settings.suggestions_enabled is True, f"suggestions_enabled is {found_settings.suggestions_enabled}"
+
+        # Debug: Check strategy and legs
+        assert test_strategy_active.status == "active", f"Strategy status is {test_strategy_active.status}"
+        assert test_strategy_active.net_delta == -TranscriptData.PE_DELTA_DAY3, f"Strategy net_delta is {test_strategy_active.net_delta}"
+
+        result = await db_session.execute(
+            select(AutoPilotPositionLeg).where(
+                AutoPilotPositionLeg.strategy_id == test_strategy_active.id,
+                AutoPilotPositionLeg.status == PositionLegStatus.OPEN.value
+            )
+        )
+        legs = result.scalars().all()
+        assert len(legs) > 0, f"No position legs found, count: {len(legs)}"
+
         service = SuggestionEngine(mock_kite, db_session, mock_market_data)
 
         suggestions = await service.generate_suggestions(test_strategy_active.id, test_user.id)
@@ -287,7 +331,7 @@ class TestScenario2DeltaMonitoring:
 
     @pytest.mark.asyncio
     async def test_short_strangle_delta_warning_threshold(
-        self, db_session, test_strategy_active, test_user, test_user_settings
+        self, db_session, test_strategy_active, test_user, test_settings
     ):
         """
         Short Strangle Adjustments: Trigger warning when delta crosses 0.30.
@@ -300,15 +344,14 @@ class TestScenario2DeltaMonitoring:
         pe_leg = AutoPilotPositionLeg(
             strategy_id=test_strategy_active.id,
             leg_id="short_strangle_pe",
-            underlying="NIFTY",
             expiry=TranscriptData.EXPIRY_OCT,
             strike=TranscriptData.PE_STRIKE_ENTRY,
-            option_type="PE",
-            transaction_type="SELL",
-            quantity=TranscriptData.LOT_SIZE,
+            contract_type="PE",
+            action="SELL",
+            lots=1,
             entry_price=TranscriptData.PE_PREMIUM_ENTRY,
             delta=-Decimal("0.33"),  # Just above 0.30 threshold
-            status=PositionLegStatus.OPEN
+            status=PositionLegStatus.OPEN.value
         )
         db_session.add(pe_leg)
 
@@ -353,15 +396,14 @@ class TestScenario3ShiftProfitableLeg:
         ce_leg = AutoPilotPositionLeg(
             strategy_id=test_strategy_active.id,
             leg_id="short_strangle_ce",
-            underlying="NIFTY",
             expiry=TranscriptData.EXPIRY_OCT,
             strike=TranscriptData.CE_STRIKE_ENTRY,
-            option_type="CE",
-            transaction_type="SELL",
-            quantity=TranscriptData.LOT_SIZE,
+            contract_type="CE",
+            action="SELL",
+            lots=1,
             entry_price=TranscriptData.CE_PREMIUM_ENTRY,  # ₹145
             delta=TranscriptData.CE_DELTA_DAY3,  # 0.045
-            status=PositionLegStatus.OPEN
+            status=PositionLegStatus.OPEN.value
         )
         db_session.add(ce_leg)
         await db_session.commit()
@@ -384,7 +426,7 @@ class TestScenario3ShiftProfitableLeg:
         When: Shifting to collect more premium
         Then: Exit 26800 CE @ ₹14.5, Enter 26200 CE @ ₹33.5
         """
-        service = LegActionsService(db_session)
+        service = LegActionsService(kite=MagicMock(), db=db_session, user_id=str(uuid4()))
 
         # Mock order execution
         with patch.object(service, 'order_executor') as mock_executor, \
@@ -441,7 +483,7 @@ class TestScenario4BreakTrade:
         When: Calculating exit cost
         Then: Loss = (371 - 82) × 25 = ₹7,225
         """
-        service = BreakTradeService(db_session)
+        service = BreakTradeService(kite=MagicMock(), db=db_session, user_id=str(uuid4()))
 
         exit_cost = service.calculate_exit_cost(
             TranscriptData.PE_PREMIUM_ENTRY,  # 82
@@ -462,7 +504,7 @@ class TestScenario4BreakTrade:
         When: Calculating recovery premium with equal split
         Then: Each new leg should target ~₹185.50 premium
         """
-        service = BreakTradeService(db_session)
+        service = BreakTradeService(kite=MagicMock(), db=db_session, user_id=str(uuid4()))
 
         premiums = service.calculate_recovery_premiums(
             TranscriptData.PE_EXIT_PRICE,  # 371
@@ -483,17 +525,16 @@ class TestScenario4BreakTrade:
         When: Searching for PUT strike
         Then: Should find 24400 PE @ ₹160
         """
-        service = BreakTradeService(db_session)
+        service = BreakTradeService(kite=MagicMock(), db=db_session, user_id=str(uuid4()))
 
         with patch.object(service, 'strike_finder') as mock_finder:
-            mock_finder.find_strike_by_premium.return_value = {
+            mock_finder.find_strike_by_premium = AsyncMock(return_value={
                 "strike": TranscriptData.NEW_PUT_STRIKE,
                 "premium": float(TranscriptData.NEW_PUT_PREMIUM),
                 "delta": float(TranscriptData.NEW_PUT_DELTA)
-            }
+            })
 
             strikes = await service.find_new_strikes(
-                underlying="NIFTY",
                 expiry=TranscriptData.EXPIRY_OCT.isoformat(),
                 put_premium=TranscriptData.NEW_PUT_PREMIUM,
                 call_premium=TranscriptData.NEW_CALL_PREMIUM
@@ -511,17 +552,16 @@ class TestScenario4BreakTrade:
         When: Searching for CALL strike
         Then: Should find 25300 CE @ ₹207
         """
-        service = BreakTradeService(db_session)
+        service = BreakTradeService(kite=MagicMock(), db=db_session, user_id=str(uuid4()))
 
         with patch.object(service, 'strike_finder') as mock_finder:
-            mock_finder.find_strike_by_premium.return_value = {
+            mock_finder.find_strike_by_premium = AsyncMock(return_value={
                 "strike": TranscriptData.NEW_CALL_STRIKE,
                 "premium": float(TranscriptData.NEW_CALL_PREMIUM),
                 "delta": float(TranscriptData.NEW_CALL_DELTA)
-            }
+            })
 
             strikes = await service.find_new_strikes(
-                underlying="NIFTY",
                 expiry=TranscriptData.EXPIRY_OCT.isoformat(),
                 put_premium=TranscriptData.NEW_PUT_PREMIUM,
                 call_premium=TranscriptData.NEW_CALL_PREMIUM
@@ -568,10 +608,10 @@ class TestScenario5FindStrikesByPremium:
         When: Searching for exact premium
         Then: Should find 24400 PE @ ₹160
         """
-        service = StrikeFinderService(db_session=MagicMock())
+        service = StrikeFinderService(kite=MagicMock(), db=MagicMock())
 
         with patch.object(service, 'option_chain_service') as mock_chain:
-            mock_chain.get_option_chain.return_value = {
+            mock_chain.get_option_chain = AsyncMock(return_value={
                 "underlying": "NIFTY",
                 "spot_price": float(TranscriptData.SPOT_DAY5),
                 "strikes": [
@@ -579,7 +619,7 @@ class TestScenario5FindStrikesByPremium:
                     {"strike": 24450, "pe": {"ltp": 170.00, "delta": -0.30, "gamma": 0.003, "theta": -10.0, "vega": 8.0, "iv": 0.20}},
                     {"strike": 24350, "pe": {"ltp": 150.00, "delta": -0.26, "gamma": 0.003, "theta": -10.0, "vega": 8.0, "iv": 0.20}}
                 ]
-            }
+            })
 
             result = await service.find_strike_by_premium(
                 underlying="NIFTY",
@@ -602,10 +642,10 @@ class TestScenario5FindStrikesByPremium:
         When: Exact match not available
         Then: Should find closest strike (25300 CE @ ₹207)
         """
-        service = StrikeFinderService(db_session=MagicMock())
+        service = StrikeFinderService(kite=MagicMock(), db=MagicMock())
 
         with patch.object(service, 'option_chain_service') as mock_chain:
-            mock_chain.get_option_chain.return_value = {
+            mock_chain.get_option_chain = AsyncMock(return_value={
                 "underlying": "NIFTY",
                 "spot_price": float(TranscriptData.SPOT_DAY5),
                 "strikes": [
@@ -613,7 +653,7 @@ class TestScenario5FindStrikesByPremium:
                     {"strike": 25250, "ce": {"ltp": 220.00, "delta": 0.20, "gamma": 0.003, "theta": -10.0, "vega": 8.0, "iv": 0.20}},
                     {"strike": 25350, "ce": {"ltp": 195.00, "delta": 0.16, "gamma": 0.003, "theta": -10.0, "vega": 8.0, "iv": 0.20}}
                 ]
-            }
+            })
 
             result = await service.find_strike_by_premium(
                 underlying="NIFTY",
@@ -669,17 +709,17 @@ class TestScenario6RoundStrikePreference:
         When: 25000 and 24950 both available
         Then: Should prefer 25000 (round strike)
         """
-        service = StrikeFinderService(db_session=MagicMock())
+        service = StrikeFinderService(kite=MagicMock(), db=MagicMock())
 
         with patch.object(service, 'option_chain_service') as mock_chain:
-            mock_chain.get_option_chain.return_value = {
+            mock_chain.get_option_chain = AsyncMock(return_value={
                 "underlying": "NIFTY",
                 "spot_price": float(TranscriptData.SPOT_DAY1),
                 "strikes": [
                     {"strike": 25000, "pe": {"ltp": 82.00, "delta": -0.15, "gamma": 0.003, "theta": -10.0, "vega": 8.0, "iv": 0.18}},
                     {"strike": 24950, "pe": {"ltp": 79.00, "delta": -0.149, "gamma": 0.003, "theta": -10.0, "vega": 8.0, "iv": 0.18}}
                 ]
-            }
+            })
 
             result = await service.find_strike_by_delta(
                 underlying="NIFTY",
@@ -703,17 +743,17 @@ class TestScenario6RoundStrikePreference:
         When: Both 24400 (₹160) and 24450 (₹162) available
         Then: Should prefer 24400 (round strike)
         """
-        service = StrikeFinderService(db_session=MagicMock())
+        service = StrikeFinderService(kite=MagicMock(), db=MagicMock())
 
         with patch.object(service, 'option_chain_service') as mock_chain:
-            mock_chain.get_option_chain.return_value = {
+            mock_chain.get_option_chain = AsyncMock(return_value={
                 "underlying": "NIFTY",
                 "spot_price": float(TranscriptData.SPOT_DAY5),
                 "strikes": [
                     {"strike": 24400, "pe": {"ltp": 160.00, "delta": -0.28, "gamma": 0.003, "theta": -10.0, "vega": 8.0, "iv": 0.20}},
                     {"strike": 24450, "pe": {"ltp": 162.00, "delta": -0.285, "gamma": 0.003, "theta": -10.0, "vega": 8.0, "iv": 0.20}}
                 ]
-            }
+            })
 
             result = await service.find_strike_by_premium(
                 underlying="NIFTY",
@@ -738,7 +778,7 @@ class TestScenario7DTEAwareBehavior:
 
     @pytest.mark.asyncio
     async def test_short_strangle_dte_15_plus_relaxed_thresholds(
-        self, db_session, test_strategy_active, test_user, test_user_settings
+        self, db_session, test_strategy_active, test_user, test_settings
     ):
         """
         Short Strangle Adjustments: DTE > 15 allows more patience.
@@ -751,15 +791,14 @@ class TestScenario7DTEAwareBehavior:
         pe_leg = AutoPilotPositionLeg(
             strategy_id=test_strategy_active.id,
             leg_id="short_strangle_pe",
-            underlying="NIFTY",
             expiry=date.today() + timedelta(days=20),  # EARLY zone (>15 DTE)
             strike=TranscriptData.PE_STRIKE_ENTRY,
-            option_type="PE",
-            transaction_type="SELL",
-            quantity=TranscriptData.LOT_SIZE,
+            contract_type="PE",
+            action="SELL",
+            lots=1,
             entry_price=TranscriptData.PE_PREMIUM_ENTRY,
             delta=-Decimal("0.25"),  # Moderate delta
-            status=PositionLegStatus.OPEN
+            status=PositionLegStatus.OPEN.value
         )
         db_session.add(pe_leg)
 
@@ -782,7 +821,7 @@ class TestScenario7DTEAwareBehavior:
 
     @pytest.mark.asyncio
     async def test_short_strangle_dte_8_to_15_standard(
-        self, db_session, test_strategy_active, test_user, test_user_settings
+        self, db_session, test_strategy_active, test_user, test_settings
     ):
         """
         Short Strangle Adjustments: DTE 8-15 uses standard thresholds.
@@ -794,15 +833,14 @@ class TestScenario7DTEAwareBehavior:
         pe_leg = AutoPilotPositionLeg(
             strategy_id=test_strategy_active.id,
             leg_id="short_strangle_pe",
-            underlying="NIFTY",
             expiry=date.today() + timedelta(days=10),  # MID zone (8-15 DTE)
             strike=TranscriptData.PE_STRIKE_ENTRY,
-            option_type="PE",
-            transaction_type="SELL",
-            quantity=TranscriptData.LOT_SIZE,
+            contract_type="PE",
+            action="SELL",
+            lots=1,
             entry_price=TranscriptData.PE_PREMIUM_ENTRY,
             delta=-Decimal("0.33"),  # Above standard warning threshold
-            status=PositionLegStatus.OPEN
+            status=PositionLegStatus.OPEN.value
         )
         db_session.add(pe_leg)
 
@@ -824,7 +862,7 @@ class TestScenario7DTEAwareBehavior:
 
     @pytest.mark.asyncio
     async def test_short_strangle_dte_under_7_warning(
-        self, db_session, test_strategy_active, test_user, test_user_settings
+        self, db_session, test_strategy_active, test_user, test_settings
     ):
         """
         Short Strangle Adjustments: DTE < 7 warns adjustments less effective.
@@ -836,15 +874,14 @@ class TestScenario7DTEAwareBehavior:
         pe_leg = AutoPilotPositionLeg(
             strategy_id=test_strategy_active.id,
             leg_id="short_strangle_pe",
-            underlying="NIFTY",
             expiry=date.today() + timedelta(days=5),  # LATE zone (<7 DTE)
             strike=TranscriptData.PE_STRIKE_ENTRY,
-            option_type="PE",
-            transaction_type="SELL",
-            quantity=TranscriptData.LOT_SIZE,
+            contract_type="PE",
+            action="SELL",
+            lots=1,
             entry_price=TranscriptData.PE_PREMIUM_ENTRY,
             delta=-Decimal("0.30"),
-            status=PositionLegStatus.OPEN
+            status=PositionLegStatus.OPEN.value
         )
         db_session.add(pe_leg)
 
@@ -865,7 +902,7 @@ class TestScenario7DTEAwareBehavior:
 
     @pytest.mark.asyncio
     async def test_short_strangle_dte_under_7_prefer_exit(
-        self, db_session, test_strategy_active, test_user, test_user_settings
+        self, db_session, test_strategy_active, test_user, test_settings
     ):
         """
         Short Strangle Adjustments: DTE < 7 prefers exit over complex adjustments.
@@ -877,16 +914,15 @@ class TestScenario7DTEAwareBehavior:
         pe_leg = AutoPilotPositionLeg(
             strategy_id=test_strategy_active.id,
             leg_id="short_strangle_pe",
-            underlying="NIFTY",
             expiry=date.today() + timedelta(days=3),  # Very close to expiry
             strike=TranscriptData.PE_STRIKE_ENTRY,
-            option_type="PE",
-            transaction_type="SELL",
-            quantity=TranscriptData.LOT_SIZE,
+            contract_type="PE",
+            action="SELL",
+            lots=1,
             entry_price=TranscriptData.PE_PREMIUM_ENTRY,
             delta=-Decimal("0.50"),  # High delta
             unrealized_pnl=Decimal("-500.00"),  # Losing position
-            status=PositionLegStatus.OPEN
+            status=PositionLegStatus.OPEN.value
         )
         db_session.add(pe_leg)
 
@@ -932,29 +968,27 @@ class TestScenario9PositionSurvival:
         pe_leg = AutoPilotPositionLeg(
             strategy_id=test_strategy_active.id,
             leg_id="adjusted_pe",
-            underlying="NIFTY",
             expiry=TranscriptData.EXPIRY_OCT,
             strike=TranscriptData.NEW_PUT_STRIKE,  # 24400
-            option_type="PE",
-            transaction_type="SELL",
-            quantity=TranscriptData.LOT_SIZE,
+            contract_type="PE",
+            action="SELL",
+            lots=1,
             entry_price=TranscriptData.NEW_PUT_PREMIUM,  # 160
             delta=-TranscriptData.NEW_PUT_DELTA,  # -0.28
-            status=PositionLegStatus.OPEN
+            status=PositionLegStatus.OPEN.value
         )
 
         ce_leg = AutoPilotPositionLeg(
             strategy_id=test_strategy_active.id,
             leg_id="adjusted_ce",
-            underlying="NIFTY",
             expiry=TranscriptData.EXPIRY_OCT,
             strike=TranscriptData.NEW_CALL_STRIKE,  # 25300
-            option_type="CE",
-            transaction_type="SELL",
-            quantity=TranscriptData.LOT_SIZE,
+            contract_type="CE",
+            action="SELL",
+            lots=1,
             entry_price=TranscriptData.NEW_CALL_PREMIUM,  # 207
             delta=TranscriptData.NEW_CALL_DELTA,  # 0.18
-            status=PositionLegStatus.OPEN
+            status=PositionLegStatus.OPEN.value
         )
 
         db_session.add_all([pe_leg, ce_leg])
@@ -999,27 +1033,25 @@ class TestScenario9PositionSurvival:
         pe_leg = AutoPilotPositionLeg(
             strategy_id=test_strategy_active.id,
             leg_id="adjusted_pe",
-            underlying="NIFTY",
             expiry=TranscriptData.EXPIRY_OCT,
             strike=TranscriptData.NEW_PUT_STRIKE,  # 24400
-            option_type="PE",
-            transaction_type="SELL",
-            quantity=TranscriptData.LOT_SIZE,
+            contract_type="PE",
+            action="SELL",
+            lots=1,
             entry_price=TranscriptData.NEW_PUT_PREMIUM,  # 160
-            status=PositionLegStatus.OPEN
+            status=PositionLegStatus.OPEN.value
         )
 
         ce_leg = AutoPilotPositionLeg(
             strategy_id=test_strategy_active.id,
             leg_id="adjusted_ce",
-            underlying="NIFTY",
             expiry=TranscriptData.EXPIRY_OCT,
             strike=TranscriptData.NEW_CALL_STRIKE,  # 25300
-            option_type="CE",
-            transaction_type="SELL",
-            quantity=TranscriptData.LOT_SIZE,
+            contract_type="CE",
+            action="SELL",
+            lots=1,
             entry_price=TranscriptData.NEW_CALL_PREMIUM,  # 207
-            status=PositionLegStatus.OPEN
+            status=PositionLegStatus.OPEN.value
         )
 
         db_session.add_all([pe_leg, ce_leg])

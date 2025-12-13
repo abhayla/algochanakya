@@ -40,6 +40,88 @@ class BreakTradeService:
         self.leg_actions = LegActionsService(kite, db, user_id)
         self.market_data = MarketDataService(kite)
 
+    def calculate_exit_cost(self, entry_price: Decimal, exit_price: Decimal, lot_size: int) -> Decimal:
+        """Calculate the cost to exit a losing leg."""
+        return (exit_price - entry_price) * lot_size
+
+    def calculate_recovery_premiums(self, exit_price: Decimal, split_mode: str = "equal") -> Dict[str, Decimal]:
+        """Calculate required premium for each new leg to recover exit cost.
+
+        Args:
+            exit_price: Price at which the losing leg was exited
+            split_mode: How to split recovery premium (default: "equal")
+
+        Returns:
+            Dict with put_premium and call_premium
+        """
+        if split_mode == "equal":
+            premium_per_leg = exit_price / Decimal("2")
+        else:
+            # Future: could implement weighted split
+            premium_per_leg = exit_price / Decimal("2")
+
+        return {
+            "put_premium": premium_per_leg,
+            "call_premium": premium_per_leg
+        }
+
+    async def find_new_strikes(
+        self,
+        expiry: str,
+        put_premium: Decimal,
+        call_premium: Decimal,
+        underlying: str = "NIFTY",
+        tolerance: Decimal = Decimal("10.00")
+    ) -> dict:
+        """Find new CE and PE strikes for break trade.
+
+        Args:
+            expiry: Expiry date in isoformat
+            put_premium: Target premium for PUT
+            call_premium: Target premium for CALL
+            underlying: Underlying symbol (default: NIFTY)
+            tolerance: Premium tolerance
+
+        Returns:
+            Dict with put_strike and call_strike
+        """
+        # Convert expiry string to date if needed
+        if isinstance(expiry, str):
+            from datetime import datetime
+            expiry_date = datetime.fromisoformat(expiry).date()
+        else:
+            expiry_date = expiry
+
+        # Find PE strike
+        pe_result = await self.strike_finder.find_strike_by_premium(
+            underlying=underlying,
+            expiry=expiry_date,
+            option_type="PE",
+            target_premium=put_premium,
+            tolerance=tolerance,
+            prefer_round_strike=True
+        )
+
+        # Find CE strike
+        ce_result = await self.strike_finder.find_strike_by_premium(
+            underlying=underlying,
+            expiry=expiry_date,
+            option_type="CE",
+            target_premium=call_premium,
+            tolerance=tolerance,
+            prefer_round_strike=True
+        )
+
+        return {
+            "put_strike": pe_result["strike"] if pe_result else None,
+            "call_strike": ce_result["strike"] if ce_result else None,
+            "put_premium": pe_result.get("premium") if pe_result else None,
+            "call_premium": ce_result.get("premium") if ce_result else None,
+            "pe_premium": pe_result["premium"] if pe_result else None,
+            "ce_strike": ce_result["strike"] if ce_result else None,
+            "ce_premium": ce_result["premium"] if ce_result else None
+        }
+
     async def break_trade(
         self,
         strategy_id: int,

@@ -13,7 +13,13 @@ import math
 from app.database import get_db
 from app.models import User, BrokerConnection, Instrument
 from app.services.kite_orders import KiteOrderService
+from app.services.strike_finder_service import StrikeFinderService
 from app.utils.dependencies import get_current_user, get_current_broker_connection
+from app.schemas.autopilot import (
+    StrikeFindByDeltaRequest,
+    StrikeFindByPremiumRequest,
+    StrikeFindResponse
+)
 
 router = APIRouter()
 
@@ -442,3 +448,103 @@ async def get_oi_analysis(
         "data": oi_data,
         "summary": chain_data["summary"]
     }
+
+
+@router.post("/find-by-delta", response_model=StrikeFindResponse)
+async def find_strike_by_delta(
+    request: StrikeFindByDeltaRequest,
+    user: User = Depends(get_current_user),
+    broker: BrokerConnection = Depends(get_current_broker_connection),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Find option strike by target delta.
+
+    Searches for the strike with delta closest to the target value.
+    Optionally prefers round strikes (divisible by 100).
+    """
+    try:
+        from kiteconnect import KiteConnect
+
+        # Initialize Kite client
+        kite = KiteConnect(api_key="placeholder")
+        kite.set_access_token(broker.access_token)
+
+        # Initialize Strike Finder service
+        strike_finder = StrikeFinderService(kite, db)
+
+        # Find strike by delta
+        result = await strike_finder.find_strike_by_delta(
+            underlying=request.underlying,
+            expiry=request.expiry,
+            option_type=request.option_type,
+            target_delta=request.target_delta,
+            tolerance=request.tolerance if hasattr(request, 'tolerance') else 0.02,
+            prefer_round_strike=request.prefer_round_strike
+        )
+
+        if not result:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No strike found matching the criteria"
+            )
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to find strike by delta: {str(e)}"
+        )
+
+
+@router.post("/find-by-premium", response_model=StrikeFindResponse)
+async def find_strike_by_premium(
+    request: StrikeFindByPremiumRequest,
+    user: User = Depends(get_current_user),
+    broker: BrokerConnection = Depends(get_current_broker_connection),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Find option strike by target premium (LTP).
+
+    Searches for the strike with premium closest to the target value.
+    Optionally prefers round strikes (divisible by 100).
+    """
+    try:
+        from kiteconnect import KiteConnect
+
+        # Initialize Kite client
+        kite = KiteConnect(api_key="placeholder")
+        kite.set_access_token(broker.access_token)
+
+        # Initialize Strike Finder service
+        strike_finder = StrikeFinderService(kite, db)
+
+        # Find strike by premium
+        result = await strike_finder.find_strike_by_premium(
+            underlying=request.underlying,
+            expiry=request.expiry,
+            option_type=request.option_type,
+            target_premium=request.target_premium,
+            tolerance=request.tolerance if hasattr(request, 'tolerance') else 10,
+            prefer_round_strike=request.prefer_round_strike
+        )
+
+        if not result:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No strike found matching the criteria"
+            )
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to find strike by premium: {str(e)}"
+        )

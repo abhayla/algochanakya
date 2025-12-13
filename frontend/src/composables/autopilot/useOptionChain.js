@@ -51,8 +51,8 @@ export function useOptionChain() {
 
       const response = await api.get(`/api/v1/autopilot/option-chain/expiries/${underlying.value}`)
 
-      if (response.data.success && response.data.data) {
-        expiries.value = response.data.data.expiries
+      if (response.data && response.data.expiries) {
+        expiries.value = response.data.expiries
 
         // Auto-select first (nearest) expiry
         if (expiries.value.length > 0 && !selectedExpiry.value) {
@@ -84,8 +84,8 @@ export function useOptionChain() {
         { params: { use_cache: useCache.value } }
       )
 
-      if (response.data.success && response.data.data) {
-        optionChainData.value = response.data.data
+      if (response.data) {
+        optionChainData.value = response.data
       }
     } catch (err) {
       console.error('Error fetching option chain:', err)
@@ -97,31 +97,41 @@ export function useOptionChain() {
 
   /**
    * Find strike by delta
+   * @param {Object} params - Optional parameters object (if not provided, uses internal state)
    */
-  const findStrikeByDelta = async () => {
-    if (!underlying.value || !selectedExpiry.value) {
-      return
+  const findStrikeByDelta = async (params = null) => {
+    const payload = params || {
+      underlying: underlying.value,
+      expiry: selectedExpiry.value,
+      option_type: strikeFinder.value.optionType,
+      target_delta: strikeFinder.value.targetDelta,
+      tolerance: strikeFinder.value.tolerance,
+      prefer_round_strike: strikeFinder.value.preferRoundStrikes
+    }
+
+    if (!payload.underlying || !payload.expiry) {
+      return null
     }
 
     try {
       strikeFinder.value.loading = true
       strikeFinder.value.result = null
 
-      const response = await api.post('/api/v1/autopilot/option-chain/find-by-delta', {
-        underlying: underlying.value,
-        expiry: selectedExpiry.value,
-        option_type: strikeFinder.value.optionType,
-        target_delta: strikeFinder.value.targetDelta,
-        tolerance: strikeFinder.value.tolerance,
-        prefer_round_strike: strikeFinder.value.preferRoundStrikes
-      })
+      const response = await api.post('/api/v1/autopilot/option-chain/find-by-delta', payload)
 
-      if (response.data.success && response.data.data) {
-        strikeFinder.value.result = response.data.data
+      if (response.data) {
+        if (params) {
+          // If called with params (from StrikeFinder component), return the data
+          return response.data
+        } else {
+          // If called without params (internal use), update state
+          strikeFinder.value.result = response.data
+        }
       }
     } catch (err) {
       console.error('Error finding strike by delta:', err)
       error.value = err.response?.data?.message || 'Failed to find strike'
+      throw err
     } finally {
       strikeFinder.value.loading = false
     }
@@ -129,31 +139,41 @@ export function useOptionChain() {
 
   /**
    * Find strike by premium
+   * @param {Object} params - Optional parameters object (if not provided, uses internal state)
    */
-  const findStrikeByPremium = async () => {
-    if (!underlying.value || !selectedExpiry.value) {
-      return
+  const findStrikeByPremium = async (params = null) => {
+    const payload = params || {
+      underlying: underlying.value,
+      expiry: selectedExpiry.value,
+      option_type: strikeFinder.value.optionType,
+      target_premium: strikeFinder.value.targetPremium,
+      tolerance: 10,
+      prefer_round_strike: strikeFinder.value.preferRoundStrikes
+    }
+
+    if (!payload.underlying || !payload.expiry) {
+      return null
     }
 
     try {
       strikeFinder.value.loading = true
       strikeFinder.value.result = null
 
-      const response = await api.post('/api/v1/autopilot/option-chain/find-by-premium', {
-        underlying: underlying.value,
-        expiry: selectedExpiry.value,
-        option_type: strikeFinder.value.optionType,
-        target_premium: strikeFinder.value.targetPremium,
-        tolerance: 10,
-        prefer_round_strike: strikeFinder.value.preferRoundStrikes
-      })
+      const response = await api.post('/api/v1/autopilot/option-chain/find-by-premium', payload)
 
-      if (response.data.success && response.data.data) {
-        strikeFinder.value.result = response.data.data
+      if (response.data) {
+        if (params) {
+          // If called with params (from StrikeFinder component), return the data
+          return response.data
+        } else {
+          // If called without params (internal use), update state
+          strikeFinder.value.result = response.data
+        }
       }
     } catch (err) {
       console.error('Error finding strike by premium:', err)
       error.value = err.response?.data?.message || 'Failed to find strike'
+      throw err
     } finally {
       strikeFinder.value.loading = false
     }
@@ -172,8 +192,8 @@ export function useOptionChain() {
         `/api/v1/autopilot/option-chain/find-atm/${underlying.value}/${selectedExpiry.value}`
       )
 
-      if (response.data.success && response.data.data) {
-        return response.data.data.atm_strike
+      if (response.data && response.data.atm_strike) {
+        return response.data.atm_strike
       }
     } catch (err) {
       console.error('Error finding ATM strike:', err)
@@ -195,8 +215,8 @@ export function useOptionChain() {
         `/api/v1/autopilot/option-chain/${underlying.value}/${selectedExpiry.value}/strikes`
       )
 
-      if (response.data.success && response.data.data) {
-        return response.data.data
+      if (response.data && Array.isArray(response.data)) {
+        return response.data
       }
     } catch (err) {
       console.error('Error fetching strikes:', err)
