@@ -96,3 +96,7 @@ backend/requirements_fixed.txt
 
 # Temporary test files
 backend/backend_test.txt
+
+# Temporary prompt and report files
+*_PROMPT.md
+*_REPORT.md

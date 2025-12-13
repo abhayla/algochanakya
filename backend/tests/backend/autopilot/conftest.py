@@ -3184,6 +3184,67 @@ async def test_break_trade_scenario(
 
 
 @pytest_asyncio.fixture
+async def test_short_strangle_entry(
+    db_session: AsyncSession,
+    test_strategy_active: AutoPilotStrategy
+) -> tuple[AutoPilotStrategy, AutoPilotPositionLeg, AutoPilotPositionLeg]:
+    """
+    Short strangle entry with exact transcript values.
+
+    Creates a short strangle position with exact values from the
+    "Short Strangle Adjustments" use case:
+    - 25000 PE @ ₹82, delta 0.15
+    - 26800 CE @ ₹145, delta 0.15
+    """
+    # Create PE leg
+    pe_leg = AutoPilotPositionLeg(
+        strategy_id=test_strategy_active.id,
+        leg_id="short_strangle_pe",
+        underlying="NIFTY",
+        expiry=date(2024, 10, 31),  # October expiry
+        strike=25000,
+        option_type="PE",
+        transaction_type="SELL",
+        quantity=25,
+        entry_price=Decimal("82.00"),
+        delta=Decimal("-0.15"),  # PE delta is negative
+        gamma=Decimal("0.003"),
+        theta=Decimal("-10.00"),
+        vega=Decimal("8.00"),
+        iv=Decimal("0.18"),
+        status=PositionLegStatus.OPEN,
+        entry_time=datetime.utcnow()
+    )
+
+    # Create CE leg
+    ce_leg = AutoPilotPositionLeg(
+        strategy_id=test_strategy_active.id,
+        leg_id="short_strangle_ce",
+        underlying="NIFTY",
+        expiry=date(2024, 10, 31),  # October expiry
+        strike=26800,
+        option_type="CE",
+        transaction_type="SELL",
+        quantity=25,
+        entry_price=Decimal("145.00"),
+        delta=Decimal("0.15"),  # CE delta is positive
+        gamma=Decimal("0.003"),
+        theta=Decimal("-10.00"),
+        vega=Decimal("8.00"),
+        iv=Decimal("0.18"),
+        status=PositionLegStatus.OPEN,
+        entry_time=datetime.utcnow()
+    )
+
+    db_session.add_all([pe_leg, ce_leg])
+    await db_session.commit()
+    await db_session.refresh(pe_leg)
+    await db_session.refresh(ce_leg)
+
+    return test_strategy_active, pe_leg, ce_leg
+
+
+@pytest_asyncio.fixture
 async def test_shift_leg_scenario(
     db_session: AsyncSession,
     test_strategy_active: AutoPilotStrategy
