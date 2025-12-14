@@ -1,13 +1,24 @@
 """
-Adjustment Engine Service - Phase 3
+Adjustment Engine Service - Phase 3 + Phase 5D
 
 Auto-adjust positions based on configurable triggers:
+
+EXISTING (Phase 3):
 - PNL-based: When P&L reaches threshold
 - Delta-based: When position delta exceeds threshold
 - Time-based: At specific time
 - Premium-based: When premium decays to threshold
 - VIX-based: When VIX crosses threshold
 - Spot-based: When spot price crosses threshold
+
+NEW (Phase 5D - Exit Rules):
+- profit_pct_based: Close at X% of max profit (#18-19)
+- premium_captured_pct: Exit when X% of premium captured (#20)
+- return_on_margin: Exit when trade returns X% of margin (#21)
+- capital_recycling: Close early to recycle capital (#22)
+- dte_based: Close at specific DTE (#23)
+- days_in_trade: Exit after X days in trade (#24)
+- theta_curve_based: Exit based on theta decay curve (#25)
 
 Action Types:
 - add_hedge: Add protective leg
@@ -19,7 +30,7 @@ Action Types:
 - scale_up: Increase position size by X%
 """
 import logging
-from datetime import datetime, timezone, time
+from datetime import datetime, timezone, time, date
 from typing import List, Optional, Dict, Any, Tuple
 from uuid import UUID
 from decimal import Decimal
@@ -37,6 +48,7 @@ from app.models.autopilot import (
     ExecutionMode,
     LogSeverity
 )
+from app.services.theta_curve_service import get_theta_curve_service
 
 logger = logging.getLogger(__name__)
 
@@ -245,6 +257,44 @@ class AdjustmentEngine:
             current_value = market_data.get('spot', 0)
             triggered = self._check_numeric_condition(current_value, condition, target_value)
 
+        # Phase 5D: New Exit Rule Triggers
+
+        elif trigger_type == 'profit_pct_based':
+            # #18-19: Close at X% of max profit
+            current_value = await self._get_profit_pct_of_max(strategy, market_data)
+            triggered = self._check_numeric_condition(current_value, condition, target_value)
+
+        elif trigger_type == 'premium_captured_pct':
+            # #20: Exit when X% of premium captured
+            current_value = await self._get_premium_captured_pct(strategy, market_data)
+            triggered = self._check_numeric_condition(current_value, condition, target_value)
+
+        elif trigger_type == 'return_on_margin':
+            # #21: Exit when trade returns X% of margin
+            current_value = await self._get_return_on_margin(strategy, market_data)
+            triggered = self._check_numeric_condition(current_value, condition, target_value)
+
+        elif trigger_type == 'capital_recycling':
+            # #22: Close early for capital recycling
+            current_value = await self._get_capital_recycling_score(strategy, market_data)
+            triggered = self._check_numeric_condition(current_value, condition, target_value)
+
+        elif trigger_type == 'dte_based':
+            # #23: Close at specific DTE
+            current_value = await self._get_days_to_expiry(strategy)
+            triggered = self._check_numeric_condition(current_value, condition, target_value)
+
+        elif trigger_type == 'days_in_trade':
+            # #24: Exit after X days in trade
+            current_value = await self._get_days_in_trade(strategy)
+            triggered = self._check_numeric_condition(current_value, condition, target_value)
+
+        elif trigger_type == 'theta_curve_based':
+            # #25: Exit based on theta decay curve
+            theta_analysis = await self._analyze_theta_curve(strategy, market_data)
+            current_value = theta_analysis['should_exit']
+            triggered = theta_analysis['should_exit']
+
         return {
             'triggered': triggered,
             'trigger_type': trigger_type,
@@ -398,6 +448,226 @@ class AdjustmentEngine:
         """Calculate total premium received/paid"""
         runtime_state = strategy.runtime_state or {}
         return Decimal(str(runtime_state.get('total_premium', 0)))
+
+    # -------------------------------------------------------------------------
+    # Phase 5D: New Exit Rule Calculation Methods
+    # -------------------------------------------------------------------------
+
+    async def _get_profit_pct_of_max(
+        self,
+        strategy: AutoPilotStrategy,
+        market_data: Dict[str, Any]
+    ) -> float:
+        """
+        #18-19: Calculate current profit as percentage of max profit.
+
+        Example: If max profit is ₹10,000 and current P&L is ₹5,000,
+        returns 50.0 (50% of max profit captured)
+        """
+        current_pnl = await self._get_strategy_pnl(strategy, market_data)
+        max_profit = strategy.max_profit or 0
+
+        if max_profit <= 0:
+            return 0.0
+
+        profit_pct = (float(current_pnl) / float(max_profit)) * 100
+        return max(0.0, profit_pct)  # Don't return negative percentages
+
+    async def _get_premium_captured_pct(
+        self,
+        strategy: AutoPilotStrategy,
+        market_data: Dict[str, Any]
+    ) -> float:
+        """
+        #20: Calculate percentage of initial premium that has been captured.
+
+        For credit strategies (sell options):
+        - Entry premium: ₹500 (received)
+        - Current value: ₹100 (to buy back)
+        - Captured: ₹400 (80% of ₹500)
+
+        Example: If sold for ₹500 and current value is ₹100,
+        returns 80.0 (80% of premium captured)
+        """
+        runtime_state = strategy.runtime_state or {}
+        entry_premium = float(runtime_state.get('total_premium', 0))
+
+        if entry_premium == 0:
+            return 0.0
+
+        # Get current position value
+        current_value = await self._get_current_position_value(strategy, market_data)
+
+        # For credit strategies (entry_premium > 0), calculate captured premium
+        if entry_premium > 0:
+            captured_premium = entry_premium - current_value
+            captured_pct = (captured_premium / entry_premium) * 100
+        else:
+            # For debit strategies (entry_premium < 0), calculate differently
+            captured_premium = current_value - abs(entry_premium)
+            captured_pct = (captured_premium / abs(entry_premium)) * 100
+
+        return max(0.0, captured_pct)
+
+    async def _get_current_position_value(
+        self,
+        strategy: AutoPilotStrategy,
+        market_data: Dict[str, Any]
+    ) -> float:
+        """Calculate current market value of the position"""
+        runtime_state = strategy.runtime_state or {}
+        current_prices = market_data.get('option_prices', {})
+        positions = runtime_state.get('positions', [])
+
+        total_value = 0.0
+
+        for position in positions:
+            symbol = position.get('tradingsymbol')
+            current_price = float(current_prices.get(symbol, 0))
+            qty = position.get('quantity', 0)
+
+            # Value is always positive (what it costs to close)
+            value = current_price * qty
+            total_value += value
+
+        return total_value
+
+    async def _get_return_on_margin(
+        self,
+        strategy: AutoPilotStrategy,
+        market_data: Dict[str, Any]
+    ) -> float:
+        """
+        #21: Calculate return as percentage of margin used.
+
+        Example: If margin is ₹50,000 and current P&L is ₹10,000,
+        returns 20.0 (20% return on margin)
+        """
+        current_pnl = await self._get_strategy_pnl(strategy, market_data)
+        margin_used = strategy.margin_used or 0
+
+        if margin_used <= 0:
+            return 0.0
+
+        return_pct = (float(current_pnl) / float(margin_used)) * 100
+        return return_pct
+
+    async def _get_capital_recycling_score(
+        self,
+        strategy: AutoPilotStrategy,
+        market_data: Dict[str, Any]
+    ) -> float:
+        """
+        #22: Calculate capital recycling score.
+
+        Higher score = better to exit early and recycle capital.
+
+        Score factors:
+        - Profit captured % (higher = better to exit)
+        - Days in trade (longer = better to exit)
+        - DTE remaining (less = better to exit)
+        - Theta efficiency (lower = better to exit)
+
+        Returns: Score 0-100 (>70 suggests exit for capital recycling)
+        """
+        # Get component metrics
+        profit_pct = await self._get_profit_pct_of_max(strategy, market_data)
+        premium_captured = await self._get_premium_captured_pct(strategy, market_data)
+        days_in_trade = await self._get_days_in_trade(strategy)
+        dte = await self._get_days_to_expiry(strategy)
+
+        # Calculate score (weighted average)
+        # If profit > 50% and premium captured > 75%, strong signal to exit
+        profit_score = min(profit_pct, 100)  # Cap at 100
+        premium_score = min(premium_captured, 100)
+
+        # Days in trade score (more days = higher score, cap at 30 days)
+        days_score = min((days_in_trade / 30) * 50, 50)
+
+        # DTE score (less DTE = higher score)
+        if dte >= 45:
+            dte_score = 0
+        elif dte >= 21:
+            dte_score = 20
+        elif dte >= 14:
+            dte_score = 40
+        else:
+            dte_score = 60
+
+        # Weighted average
+        recycling_score = (
+            profit_score * 0.4 +
+            premium_score * 0.3 +
+            days_score * 0.15 +
+            dte_score * 0.15
+        )
+
+        return recycling_score
+
+    async def _get_days_to_expiry(self, strategy: AutoPilotStrategy) -> int:
+        """
+        #23: Calculate days to expiry.
+
+        Returns: Number of days until expiry
+        """
+        if not strategy.expiry_date:
+            return 999  # Default high value
+
+        if isinstance(strategy.expiry_date, str):
+            expiry = datetime.strptime(strategy.expiry_date, '%Y-%m-%d').date()
+        else:
+            expiry = strategy.expiry_date
+
+        today = date.today()
+        dte = (expiry - today).days
+
+        return max(0, dte)  # Don't return negative
+
+    async def _get_days_in_trade(self, strategy: AutoPilotStrategy) -> int:
+        """
+        #24: Calculate days since entry.
+
+        Returns: Number of days since strategy was entered
+        """
+        if not strategy.entry_time:
+            return 0
+
+        entry_date = strategy.entry_time.date()
+        today = date.today()
+        days = (today - entry_date).days
+
+        return max(0, days)
+
+    async def _analyze_theta_curve(
+        self,
+        strategy: AutoPilotStrategy,
+        market_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        #25: Analyze theta decay curve and recommend exit.
+
+        Uses ThetaCurveService to determine if exit is optimal based on:
+        - Current DTE
+        - Theta decay rate
+        - Profit captured %
+
+        Returns: Dict with should_exit and analysis details
+        """
+        theta_service = get_theta_curve_service()
+
+        # Get current metrics
+        dte = await self._get_days_to_expiry(strategy)
+        current_theta = strategy.net_theta or 0.0
+        profit_captured_pct = await self._get_profit_pct_of_max(strategy, market_data)
+
+        # Get theta curve recommendation
+        recommendation = theta_service.should_exit_based_on_theta_curve(
+            dte=dte,
+            current_theta=current_theta,
+            profit_captured_pct=profit_captured_pct
+        )
+
+        return recommendation
 
     # -------------------------------------------------------------------------
     # Action Execution Methods

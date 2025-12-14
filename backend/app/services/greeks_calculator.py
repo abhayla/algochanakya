@@ -553,6 +553,131 @@ class GreeksCalculatorService:
 
         return None
 
+    def calculate_probability_otm(
+        self,
+        spot: float,
+        strike: float,
+        time_to_expiry: float,
+        volatility: float,
+        is_call: bool
+    ) -> float:
+        """
+        Calculate the probability that the option expires Out-of-The-Money (OTM).
+
+        Used for entry criteria: "Only sell options with >75% probability OTM"
+
+        Args:
+            spot: Current spot price
+            strike: Strike price
+            time_to_expiry: Time to expiry in years
+            volatility: Implied volatility (as decimal, e.g., 0.20 for 20%)
+            is_call: True for call, False for put
+
+        Returns:
+            Probability OTM as percentage (e.g., 75.5 means 75.5% probability)
+
+        Theory:
+            For Call: P(OTM) = P(S_T < K) = N(-d2)
+            For Put:  P(OTM) = P(S_T > K) = N(d2)
+
+            Where:
+            - S_T = spot price at expiration
+            - K = strike price
+            - N() = standard normal CDF
+            - d2 = d1 - σ√T (from Black-Scholes)
+
+        Example:
+            - 68% probability OTM = ~1 standard deviation
+            - 84% probability OTM = ~1.5 standard deviations
+            - 95% probability OTM = ~2 standard deviations
+        """
+        if time_to_expiry <= 0:
+            # Expired - check if ITM or OTM
+            if is_call:
+                return 100.0 if spot < strike else 0.0
+            else:
+                return 100.0 if spot > strike else 0.0
+
+        if volatility <= 0:
+            # Zero volatility - deterministic outcome
+            if is_call:
+                return 100.0 if spot < strike else 0.0
+            else:
+                return 100.0 if spot > strike else 0.0
+
+        try:
+            # Calculate d2 from Black-Scholes
+            d1, d2 = self._calculate_d1_d2(spot, strike, time_to_expiry, volatility)
+
+            # Probability OTM
+            if is_call:
+                # Call is OTM if spot < strike at expiry
+                # P(S_T < K) = N(-d2)
+                prob_otm = self._norm_cdf(-d2)
+            else:
+                # Put is OTM if spot > strike at expiry
+                # P(S_T > K) = N(d2)
+                prob_otm = self._norm_cdf(d2)
+
+            # Return as percentage
+            return round(prob_otm * 100, 2)
+
+        except Exception as e:
+            logger.error(f"Error calculating probability OTM: {e}")
+            return 50.0  # Default to 50% if calculation fails
+
+    def calculate_probability_itm(
+        self,
+        spot: float,
+        strike: float,
+        time_to_expiry: float,
+        volatility: float,
+        is_call: bool
+    ) -> float:
+        """
+        Calculate the probability that the option expires In-the-Money (ITM).
+
+        Args:
+            spot: Current spot price
+            strike: Strike price
+            time_to_expiry: Time to expiry in years
+            volatility: Implied volatility (as decimal)
+            is_call: True for call, False for put
+
+        Returns:
+            Probability ITM as percentage (e.g., 24.5 means 24.5% probability)
+        """
+        prob_otm = self.calculate_probability_otm(
+            spot, strike, time_to_expiry, volatility, is_call
+        )
+        return 100.0 - prob_otm
+
+    def get_delta_to_probability_mapping(self) -> Dict[str, float]:
+        """
+        Get approximate mapping between delta and probability OTM.
+
+        Returns:
+            Dict mapping delta ranges to approximate probability OTM
+
+        Reference:
+            - 5 delta ≈ 95% OTM
+            - 10 delta ≈ 90% OTM
+            - 15 delta ≈ 85% OTM
+            - 20 delta ≈ 80% OTM
+            - 25 delta ≈ 75% OTM
+            - 30 delta ≈ 70% OTM
+        """
+        return {
+            "5_delta": 95.0,
+            "10_delta": 90.0,
+            "15_delta": 85.0,
+            "20_delta": 80.0,
+            "25_delta": 75.0,
+            "30_delta": 70.0,
+            "40_delta": 60.0,
+            "50_delta": 50.0,  # ATM
+        }
+
 
 # Factory function for dependency injection
 async def get_greeks_calculator_service(

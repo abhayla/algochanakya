@@ -42,6 +42,8 @@ from app.services.confirmation_service import ConfirmationService
 from app.services.trailing_stop import TrailingStopService
 from app.services.greeks_calculator import GreeksCalculatorService
 from app.services.position_leg_service import PositionLegService
+from app.services.iv_metrics_service import get_iv_metrics_service
+from app.services.delta_band_service import get_delta_band_service
 from app.websocket.manager import get_ws_manager
 
 logger = logging.getLogger(__name__)
@@ -236,18 +238,62 @@ class StrategyMonitor:
             # Phase 3: Calculate and store Greeks snapshot
             await self._update_greeks(db, strategy)
 
+            # Phase 5B: Update Phase 5B monitoring metrics
+            await self._update_phase5b_tracking(db, strategy)
+
+            # Phase 5C: Update Phase 5C entry enhancement metrics
+            await self._update_phase5c_tracking(db, strategy)
+
             # Phase 5: Update delta tracking and check thresholds
             await self._update_delta_tracking(db, strategy)
 
     async def _evaluate_and_execute(self, db: AsyncSession, strategy: AutoPilotStrategy):
         """Evaluate conditions and execute if met."""
 
+        # Prepare Greeks snapshot (Phase 5A + 5B + 5C)
+        runtime_state = strategy.runtime_state or {}
+        greeks_snapshot = {
+            # Phase 5A: Greeks
+            'delta': float(strategy.net_delta or 0.0),
+            'gamma': float(strategy.net_gamma or 0.0),
+            'theta': float(strategy.net_theta or 0.0),
+            'vega': float(strategy.net_vega or 0.0),
+
+            # Phase 5B #51: Theta tracking
+            'theta_tracking': runtime_state.get('theta_tracking', {}),
+
+            # Phase 5B #50: Premium decay
+            'entry_premium': runtime_state.get('entry_premium', 0.0),
+            'current_value': runtime_state.get('current_value', 0.0),
+
+            # Phase 5B #53: IV metrics
+            'iv_rank': runtime_state.get('iv_rank', 0.0),
+            'iv_percentile': runtime_state.get('iv_percentile', 0.0),
+
+            # Phase 5B #52: Breakevens (from payoff calculator if available)
+            'breakevens': runtime_state.get('breakevens', {}),
+
+            # Phase 5C #6-8: OI metrics
+            'oi_pcr': runtime_state.get('oi_pcr', 0.0),
+            'oi_max_pain': runtime_state.get('oi_max_pain', 0.0),
+            'oi_change': runtime_state.get('oi_change', 0.0),
+
+            # Phase 5C #11: Probability OTM
+            'probability_otm': runtime_state.get('probability_otm', 0.0),
+
+            # Phase 5C #14, #24: Days tracking
+            'dte': runtime_state.get('dte', 0),
+            'days_in_trade': runtime_state.get('days_in_trade', 0),
+            'entry_time': runtime_state.get('entry_time'),
+        }
+
         # Evaluate conditions
         eval_result = await self.condition_engine.evaluate(
             strategy_id=strategy.id,
             entry_conditions=strategy.entry_conditions or {},
             underlying=strategy.underlying,
-            legs_config=strategy.legs_config or []
+            legs_config=strategy.legs_config or [],
+            greeks_snapshot=greeks_snapshot
         )
 
         # Store condition evaluation results
@@ -977,6 +1023,274 @@ class StrategyMonitor:
 
         except Exception as e:
             logger.error(f"Error calculating Greeks for strategy {strategy.id}: {e}")
+
+    async def _update_phase5b_tracking(self, db: AsyncSession, strategy: AutoPilotStrategy):
+        """
+        Update Phase 5B monitoring metrics.
+        Tracks: Theta burn rate, premium decay, IV rank, delta bands.
+        Phase 5B Features #48-53.
+        """
+        try:
+            runtime_state = strategy.runtime_state or {}
+
+            # Get current spot price
+            spot_price = await self.market_data.get_spot_price(strategy.underlying)
+            if not spot_price:
+                return
+
+            # Phase 5B #51: Track Theta Burn Rate
+            current_theta = float(strategy.net_theta or 0.0)
+            dte = strategy.dte or 1
+            entry_premium = float(strategy.entry_premium or 0.0)
+
+            # Expected daily theta decay = total premium / days to expiry
+            expected_daily_theta = entry_premium / dte if dte > 0 and entry_premium > 0 else 0
+
+            theta_tracking = {
+                'current_theta': current_theta,
+                'expected_daily': expected_daily_theta,
+                'actual_vs_expected_pct': (current_theta / expected_daily_theta * 100) if expected_daily_theta != 0 else 0
+            }
+            runtime_state['theta_tracking'] = theta_tracking
+
+            # Phase 5B #50: Track Premium Decay
+            current_positions = runtime_state.get('current_positions', [])
+            current_value = 0.0
+            for pos in current_positions:
+                current_ltp = float(pos.get('current_ltp', 0))
+                quantity = int(pos.get('quantity', 0))
+                current_value += current_ltp * abs(quantity)
+
+            runtime_state['current_value'] = current_value
+            runtime_state['entry_premium'] = entry_premium
+
+            # Phase 5B #53: IV Rank and Percentile
+            try:
+                iv_metrics_service = get_iv_metrics_service(self.market_data)
+                iv_metrics = await iv_metrics_service.get_iv_metrics(strategy.underlying)
+                runtime_state['iv_rank'] = iv_metrics.get('iv_rank', 0.0)
+                runtime_state['iv_percentile'] = iv_metrics.get('iv_percentile', 0.0)
+            except Exception as e:
+                logger.warning(f"Could not fetch IV metrics for strategy {strategy.id}: {e}")
+                runtime_state['iv_rank'] = 0.0
+                runtime_state['iv_percentile'] = 0.0
+
+            # Phase 5B #49: Delta Band Monitoring
+            net_delta = float(strategy.net_delta or 0.0)
+            try:
+                delta_band_service = get_delta_band_service(self.market_data)
+
+                # Get leg Greeks from runtime state
+                greeks_data = runtime_state.get('greeks', {})
+                leg_greeks = greeks_data.get('leg_greeks', [])
+
+                # Check delta band
+                delta_band_status = await delta_band_service.check_delta_band(
+                    strategy_id=strategy.id,
+                    net_delta=net_delta,
+                    band_threshold=delta_band_service.get_delta_band_config(strategy.adjustment_rules or {}),
+                    leg_greeks=leg_greeks
+                )
+
+                runtime_state['delta_band'] = {
+                    'out_of_band': delta_band_status.out_of_band,
+                    'severity': delta_band_status.severity,
+                    'suggested_action': delta_band_status.suggested_action,
+                    'alternative_action': delta_band_status.alternative_action
+                }
+
+                # Send alert if out of band
+                if delta_band_status.out_of_band and delta_band_status.severity == 'critical':
+                    await self.ws_manager.send_system_alert(
+                        alert_type="delta_band_breach",
+                        message=f"Strategy {strategy.id}: Delta out of band ({net_delta:+.3f})",
+                        data={
+                            "strategy_id": strategy.id,
+                            "net_delta": net_delta,
+                            "threshold": delta_band_status.band_threshold,
+                            "suggested_action": delta_band_status.suggested_action
+                        }
+                    )
+
+            except Exception as e:
+                logger.warning(f"Could not check delta bands for strategy {strategy.id}: {e}")
+
+            strategy.runtime_state = runtime_state
+            await db.commit()
+
+        except Exception as e:
+            logger.error(f"Error updating Phase 5B tracking for strategy {strategy.id}: {e}")
+
+    async def _update_phase5c_tracking(self, db: AsyncSession, strategy: AutoPilotStrategy):
+        """
+        Update Phase 5C entry enhancement metrics.
+        Tracks: OI metrics, Probability OTM, DTE, Days in Trade.
+        Phase 5C Features #6-11, #14, #24.
+        """
+        try:
+            runtime_state = strategy.runtime_state or {}
+
+            # Phase 5C #14: DTE (Days to Expiry)
+            # Calculate from legs config
+            dte = 0
+            if strategy.legs_config:
+                for leg in strategy.legs_config:
+                    expiry = leg.get('expiry')
+                    if expiry:
+                        try:
+                            from datetime import date, datetime
+                            if isinstance(expiry, str):
+                                expiry_date = datetime.strptime(expiry, "%Y-%m-%d").date()
+                            elif isinstance(expiry, date):
+                                expiry_date = expiry
+                            else:
+                                continue
+
+                            today = date.today()
+                            dte = max(dte, (expiry_date - today).days)
+                        except Exception as e:
+                            logger.debug(f"Error calculating DTE: {e}")
+                            continue
+
+            runtime_state['dte'] = max(0, dte)
+
+            # Phase 5C #24: Days in Trade
+            if strategy.status == 'active' and strategy.entry_time:
+                try:
+                    from datetime import datetime
+                    if isinstance(strategy.entry_time, str):
+                        entry_dt = datetime.fromisoformat(strategy.entry_time.replace('Z', '+00:00'))
+                    else:
+                        entry_dt = strategy.entry_time
+
+                    now = datetime.now(entry_dt.tzinfo) if entry_dt.tzinfo else datetime.now()
+                    days_in_trade = (now - entry_dt).days
+                    runtime_state['days_in_trade'] = max(0, days_in_trade)
+                    runtime_state['entry_time'] = strategy.entry_time
+                except Exception as e:
+                    logger.debug(f"Error calculating days in trade: {e}")
+                    runtime_state['days_in_trade'] = 0
+            else:
+                runtime_state['days_in_trade'] = 0
+
+            # Phase 5C #6-8: OI Metrics (PCR, Max Pain, OI Change)
+            try:
+                from app.services.oi_analysis_service import OIAnalysisService
+
+                oi_service = OIAnalysisService(self.kite, db)
+
+                # Get expiry from legs
+                expiry_str = None
+                if strategy.legs_config and len(strategy.legs_config) > 0:
+                    first_leg_expiry = strategy.legs_config[0].get('expiry')
+                    if first_leg_expiry:
+                        if isinstance(first_leg_expiry, str):
+                            expiry_str = first_leg_expiry
+                        elif isinstance(first_leg_expiry, date):
+                            expiry_str = first_leg_expiry.strftime("%Y-%m-%d")
+
+                if expiry_str:
+                    # Get PCR
+                    pcr = await oi_service.get_pcr(strategy.underlying, expiry_str)
+                    runtime_state['oi_pcr'] = pcr
+
+                    # Get Max Pain
+                    max_pain = await oi_service.get_max_pain(strategy.underlying, expiry_str)
+                    runtime_state['oi_max_pain'] = max_pain
+
+                    # Get ATM OI Change
+                    oi_change = await oi_service.get_atm_oi_change(strategy.underlying, expiry_str)
+                    runtime_state['oi_change'] = oi_change
+
+                    logger.debug(
+                        f"Phase 5C OI Metrics for strategy {strategy.id}: "
+                        f"PCR={pcr:.2f}, Max Pain={max_pain}, OI Change={oi_change:.1f}%"
+                    )
+                else:
+                    runtime_state['oi_pcr'] = 0.0
+                    runtime_state['oi_max_pain'] = 0.0
+                    runtime_state['oi_change'] = 0.0
+
+            except Exception as e:
+                logger.warning(f"Could not fetch OI metrics for strategy {strategy.id}: {e}")
+                runtime_state['oi_pcr'] = 0.0
+                runtime_state['oi_max_pain'] = 0.0
+                runtime_state['oi_change'] = 0.0
+
+            # Phase 5C #11: Probability OTM
+            try:
+                from app.services.greeks_calculator import GreeksCalculatorService
+
+                greeks_calc = GreeksCalculatorService(db, strategy.user_id)
+
+                # Get spot price
+                spot_data = await self.market_data.get_spot_price(strategy.underlying)
+                spot_price = float(spot_data.price)
+
+                min_prob_otm = 100.0  # Start with 100% (most conservative)
+
+                # Calculate probability OTM for each leg
+                if strategy.legs_config:
+                    for leg in strategy.legs_config:
+                        strike = float(leg.get('strike', 0))
+                        option_type = leg.get('option_type', 'CE').upper()
+                        iv = float(leg.get('iv', 0.20))  # Default 20% IV
+                        expiry = leg.get('expiry')
+
+                        if strike and expiry:
+                            # Calculate time to expiry
+                            try:
+                                from datetime import date, datetime
+                                if isinstance(expiry, str):
+                                    expiry_date = datetime.strptime(expiry, "%Y-%m-%d").date()
+                                elif isinstance(expiry, date):
+                                    expiry_date = expiry
+                                else:
+                                    continue
+
+                                today = date.today()
+                                days_to_expiry = (expiry_date - today).days
+                                time_to_expiry = max(0, days_to_expiry / 365.0)
+
+                                if time_to_expiry > 0:
+                                    is_call = option_type in ('CE', 'CALL', 'C')
+
+                                    prob_otm = greeks_calc.calculate_probability_otm(
+                                        spot=spot_price,
+                                        strike=strike,
+                                        time_to_expiry=time_to_expiry,
+                                        volatility=iv,
+                                        is_call=is_call
+                                    )
+
+                                    # Track minimum (most conservative)
+                                    min_prob_otm = min(min_prob_otm, prob_otm)
+
+                                    # Also store per-leg
+                                    leg_id = leg.get('id') or leg.get('leg_id')
+                                    if leg_id:
+                                        runtime_state[f'probability_otm_{leg_id}'] = prob_otm
+
+                            except Exception as e:
+                                logger.debug(f"Error calculating probability OTM for leg: {e}")
+                                continue
+
+                runtime_state['probability_otm'] = min_prob_otm if min_prob_otm < 100.0 else 0.0
+
+                logger.debug(
+                    f"Phase 5C Probability OTM for strategy {strategy.id}: "
+                    f"Min={min_prob_otm:.1f}%"
+                )
+
+            except Exception as e:
+                logger.warning(f"Could not calculate probability OTM for strategy {strategy.id}: {e}")
+                runtime_state['probability_otm'] = 0.0
+
+            strategy.runtime_state = runtime_state
+            await db.commit()
+
+        except Exception as e:
+            logger.error(f"Error updating Phase 5C tracking for strategy {strategy.id}: {e}")
 
     async def _update_delta_tracking(self, db: AsyncSession, strategy: AutoPilotStrategy):
         """

@@ -1,18 +1,20 @@
 """
-Strike Finder Service - Phase 5
+Strike Finder Service - Phase 5C
 
-Finds option strikes by delta, premium, or other criteria.
+Finds option strikes by delta, premium, standard deviation, or expected move.
 Implements round strike preference logic.
 """
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Optional, List, Dict, Any, Tuple
 import logging
+import math
 
 from kiteconnect import KiteConnect
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services.option_chain_service import OptionChainService, OptionChainEntry
+from app.services.expected_move_service import ExpectedMoveService
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +26,7 @@ class StrikeFinderService:
         self.kite = kite
         self.db = db
         self.option_chain_service = OptionChainService(kite, db)
+        self.expected_move_service = ExpectedMoveService(kite, db)
 
     async def find_strike_by_delta(
         self,
@@ -370,6 +373,290 @@ class StrikeFinderService:
 
         except Exception as e:
             logger.error(f"Error finding ATM strike: {e}")
+            raise
+
+    async def find_strike_by_standard_deviation(
+        self,
+        underlying: str,
+        expiry: date,
+        option_type: str,
+        standard_deviations: float = 1.0,
+        prefer_round_strike: bool = True
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Find strike at X standard deviations from ATM.
+
+        Professional strategy entry: Sell options at 1σ, 1.5σ, or 2σ from spot.
+        Uses ATM IV and DTE to calculate standard deviation move.
+
+        Args:
+            underlying: Index name (NIFTY, BANKNIFTY, FINNIFTY)
+            expiry: Expiry date
+            option_type: CE or PE
+            standard_deviations: 1.0, 1.5, 2.0 (how many SDs from ATM)
+            prefer_round_strike: Prefer strikes divisible by 100
+
+        Returns:
+            Dict with strike details or None if not found
+
+        Example:
+            # Sell CE at 1σ: 68% probability OTM
+            # Sell CE at 2σ: 95% probability OTM
+        """
+        try:
+            # Get spot price
+            chain_data = await self.option_chain_service.get_option_chain(
+                underlying=underlying,
+                expiry=expiry,
+                use_cache=True
+            )
+
+            spot_price = chain_data.get('spot_price')
+            if not spot_price:
+                logger.warning(f"No spot price found for {underlying}")
+                return None
+
+            # Calculate DTE
+            today = date.today()
+            days_to_expiry = (expiry - today).days
+
+            if days_to_expiry <= 0:
+                logger.warning(f"Expiry {expiry} has passed or is today")
+                return None
+
+            # Get expected move (1 SD)
+            expiry_str = expiry.strftime("%Y-%m-%d")
+            expected_move_1sd = await self.expected_move_service.get_expected_move(
+                underlying, expiry_str
+            )
+
+            if expected_move_1sd == 0:
+                logger.warning(f"Could not calculate expected move for {underlying} {expiry}")
+                return None
+
+            # Calculate target strike
+            sd_move = expected_move_1sd * standard_deviations
+
+            if option_type == "CE":
+                target_strike = spot_price + sd_move
+            else:  # PE
+                target_strike = spot_price - sd_move
+
+            logger.info(
+                f"Finding {option_type} strike at {standard_deviations}σ from spot "
+                f"(Spot: {spot_price}, SD Move: {sd_move:.0f}, Target: {target_strike:.0f})"
+            )
+
+            # Get available strikes
+            strikes = await self.option_chain_service.get_strikes_list(underlying, expiry)
+            if not strikes:
+                logger.warning(f"No strikes found for {underlying} {expiry}")
+                return None
+
+            # Find closest strike to target
+            closest_strike = min(strikes, key=lambda s: abs(float(s) - target_strike))
+
+            # If prefer round strike, find nearest round strike
+            if prefer_round_strike:
+                round_strikes = [s for s in strikes if float(s) % 100 == 0]
+                if round_strikes:
+                    closest_round = min(round_strikes, key=lambda s: abs(float(s) - target_strike))
+                    # Use round strike if within 50 points of non-round strike
+                    if abs(float(closest_round) - target_strike) <= abs(float(closest_strike) - target_strike) + 50:
+                        closest_strike = closest_round
+
+            # Get strike details from option chain
+            options = chain_data.get('options', [])
+            if not options and 'strikes' in chain_data:
+                # Convert nested format
+                options = []
+                expiry_str_symbol = expiry.strftime("%y%b").upper()
+                for strike_data in chain_data['strikes']:
+                    strike = strike_data['strike']
+                    if 'pe' in strike_data and option_type == 'PE':
+                        tradingsymbol = f"{underlying}{expiry_str_symbol}{int(strike)}PE"
+                        options.append({
+                            'strike': strike,
+                            'option_type': 'PE',
+                            'tradingsymbol': tradingsymbol,
+                            'instrument_token': 0,
+                            **strike_data['pe']
+                        })
+                    if 'ce' in strike_data and option_type == 'CE':
+                        tradingsymbol = f"{underlying}{expiry_str_symbol}{int(strike)}CE"
+                        options.append({
+                            'strike': strike,
+                            'option_type': 'CE',
+                            'tradingsymbol': tradingsymbol,
+                            'instrument_token': 0,
+                            **strike_data['ce']
+                        })
+
+            # Find matching option
+            matching_option = None
+            for opt in options:
+                if (float(opt['strike']) == float(closest_strike) and
+                    opt['option_type'] == option_type):
+                    matching_option = opt
+                    break
+
+            if not matching_option:
+                logger.warning(f"Could not find option for strike {closest_strike}")
+                return None
+
+            return {
+                'strike': matching_option['strike'],
+                'tradingsymbol': matching_option['tradingsymbol'],
+                'instrument_token': matching_option['instrument_token'],
+                'ltp': matching_option.get('ltp'),
+                'delta': matching_option.get('delta'),
+                'iv': matching_option.get('iv'),
+                'standard_deviations': standard_deviations,
+                'expected_move_1sd': expected_move_1sd,
+                'distance_from_spot': abs(float(matching_option['strike']) - spot_price),
+            }
+
+        except Exception as e:
+            logger.error(f"Error finding strike by standard deviation: {e}")
+            raise
+
+    async def find_strike_by_expected_move(
+        self,
+        underlying: str,
+        expiry: date,
+        option_type: str,
+        outside_sd: float = 1.0,
+        prefer_round_strike: bool = True
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Find strike outside expected move range.
+
+        Professional strategy: Sell options OUTSIDE expected move for higher probability OTM.
+
+        Args:
+            underlying: Index name
+            expiry: Expiry date
+            option_type: CE or PE
+            outside_sd: How many SDs outside (1.0 = outside 1σ, 1.5 = outside 1.5σ)
+            prefer_round_strike: Prefer strikes divisible by 100
+
+        Returns:
+            Dict with strike details or None if not found
+
+        Example:
+            # For iron condor: sell CE/PE outside 1σ expected move
+            # This gives ~68% probability both stay OTM
+        """
+        try:
+            # Get expected move range
+            expiry_str = expiry.strftime("%Y-%m-%d")
+            move_range = await self.expected_move_service.get_expected_move_range(
+                underlying, expiry_str
+            )
+
+            spot_price = move_range['spot']
+            expected_move = move_range['expected_move']
+
+            if expected_move == 0:
+                logger.warning(f"Could not calculate expected move for {underlying} {expiry}")
+                return None
+
+            # Calculate target strike (outside expected move)
+            if option_type == "CE":
+                target_strike = spot_price + (expected_move * outside_sd)
+            else:  # PE
+                target_strike = spot_price - (expected_move * outside_sd)
+
+            logger.info(
+                f"Finding {option_type} strike OUTSIDE {outside_sd}σ expected move "
+                f"(Spot: {spot_price}, EM: {expected_move:.0f}, Target: {target_strike:.0f})"
+            )
+
+            # Get available strikes
+            strikes = await self.option_chain_service.get_strikes_list(underlying, expiry)
+            if not strikes:
+                return None
+
+            # For CE: find strikes ABOVE target
+            # For PE: find strikes BELOW target
+            if option_type == "CE":
+                valid_strikes = [s for s in strikes if float(s) >= target_strike]
+            else:
+                valid_strikes = [s for s in strikes if float(s) <= target_strike]
+
+            if not valid_strikes:
+                logger.warning(f"No strikes found outside expected move")
+                return None
+
+            # Find closest strike to target (but still outside)
+            closest_strike = min(valid_strikes, key=lambda s: abs(float(s) - target_strike))
+
+            # If prefer round strike
+            if prefer_round_strike:
+                round_strikes = [s for s in valid_strikes if float(s) % 100 == 0]
+                if round_strikes:
+                    closest_round = min(round_strikes, key=lambda s: abs(float(s) - target_strike))
+                    if abs(float(closest_round) - target_strike) <= abs(float(closest_strike) - target_strike) + 50:
+                        closest_strike = closest_round
+
+            # Get strike details
+            chain_data = await self.option_chain_service.get_option_chain(
+                underlying=underlying,
+                expiry=expiry,
+                use_cache=True
+            )
+
+            options = chain_data.get('options', [])
+            if not options and 'strikes' in chain_data:
+                options = []
+                expiry_str_symbol = expiry.strftime("%y%b").upper()
+                for strike_data in chain_data['strikes']:
+                    strike = strike_data['strike']
+                    if 'pe' in strike_data and option_type == 'PE':
+                        tradingsymbol = f"{underlying}{expiry_str_symbol}{int(strike)}PE"
+                        options.append({
+                            'strike': strike,
+                            'option_type': 'PE',
+                            'tradingsymbol': tradingsymbol,
+                            'instrument_token': 0,
+                            **strike_data['pe']
+                        })
+                    if 'ce' in strike_data and option_type == 'CE':
+                        tradingsymbol = f"{underlying}{expiry_str_symbol}{int(strike)}CE"
+                        options.append({
+                            'strike': strike,
+                            'option_type': 'CE',
+                            'tradingsymbol': tradingsymbol,
+                            'instrument_token': 0,
+                            **strike_data['ce']
+                        })
+
+            # Find matching option
+            matching_option = None
+            for opt in options:
+                if (float(opt['strike']) == float(closest_strike) and
+                    opt['option_type'] == option_type):
+                    matching_option = opt
+                    break
+
+            if not matching_option:
+                return None
+
+            return {
+                'strike': matching_option['strike'],
+                'tradingsymbol': matching_option['tradingsymbol'],
+                'instrument_token': matching_option['instrument_token'],
+                'ltp': matching_option.get('ltp'),
+                'delta': matching_option.get('delta'),
+                'iv': matching_option.get('iv'),
+                'expected_move': expected_move,
+                'outside_sd': outside_sd,
+                'is_outside_expected_move': True,
+                'distance_from_spot': abs(float(matching_option['strike']) - spot_price),
+            }
+
+        except Exception as e:
+            logger.error(f"Error finding strike by expected move: {e}")
             raise
 
     async def _prefer_round_strike(

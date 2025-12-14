@@ -96,6 +96,8 @@ class OrderExecutor:
         """
         Execute entry orders for a strategy.
 
+        Phase 5C #15: Validates Delta Neutral Entry if enabled.
+
         Args:
             db: Database session
             strategy: Strategy to execute
@@ -106,6 +108,42 @@ class OrderExecutor:
         """
         legs_config = strategy.legs_config or []
         order_settings = strategy.order_settings or {}
+
+        # Phase 5C #15: Delta Neutral Entry Validation
+        delta_neutral_entry = order_settings.get('delta_neutral_entry', False)
+        delta_neutral_threshold = order_settings.get('delta_neutral_threshold', 0.15)
+
+        if delta_neutral_entry:
+            validated, delta_info = await self._validate_delta_neutral_entry(
+                db=db,
+                strategy=strategy,
+                legs_config=legs_config,
+                threshold=delta_neutral_threshold
+            )
+
+            if not validated:
+                logger.warning(
+                    f"Strategy {strategy.id} failed delta neutral validation: "
+                    f"Net Delta={delta_info['net_delta']:.3f}, Threshold=±{delta_neutral_threshold}"
+                )
+
+                # Check if should block entry or just warn
+                strict_delta_neutral = order_settings.get('strict_delta_neutral', False)
+                if strict_delta_neutral:
+                    logger.error(f"Blocking entry for strategy {strategy.id} due to strict delta neutral requirement")
+                    return False, [OrderResult(
+                        strategy_id=strategy.id,
+                        order_id=None,
+                        success=False,
+                        error=f"Delta neutral validation failed: Net Delta {delta_info['net_delta']:.3f} exceeds threshold ±{delta_neutral_threshold}",
+                        slippage_pct=0,
+                        timestamp=datetime.now()
+                    )]
+                else:
+                    logger.warning(
+                        f"Proceeding with entry for strategy {strategy.id} despite delta neutral warning. "
+                        f"Consider adding hedge: {delta_info.get('suggested_hedge', 'N/A')}"
+                    )
 
         execution_style = order_settings.get('execution_style', 'sequential')
         leg_sequence = order_settings.get('leg_sequence', [])
@@ -572,6 +610,144 @@ class OrderExecutor:
         # Find last Thursday
         days_since_thursday = (last_day.weekday() - 3) % 7
         return last_day - __import__('datetime').timedelta(days=days_since_thursday)
+
+    async def _validate_delta_neutral_entry(
+        self,
+        db: AsyncSession,
+        strategy: AutoPilotStrategy,
+        legs_config: List[Dict[str, Any]],
+        threshold: float = 0.15
+    ) -> Tuple[bool, Dict[str, Any]]:
+        """
+        Validate if strategy entry is delta neutral (Phase 5C #15).
+
+        Args:
+            db: Database session
+            strategy: Strategy to validate
+            legs_config: Legs configuration
+            threshold: Maximum acceptable net delta (default ±0.15)
+
+        Returns:
+            Tuple of (is_valid, delta_info_dict)
+
+        Example delta_info:
+        {
+            "net_delta": 0.05,
+            "is_neutral": True,
+            "threshold": 0.15,
+            "leg_deltas": [...],
+            "suggested_hedge": "Sell 1 lot of futures" (if not neutral)
+        }
+        """
+        try:
+            from app.services.greeks_calculator import GreeksCalculatorService
+
+            greeks_calc = GreeksCalculatorService(db, strategy.user_id)
+
+            # Get spot price
+            spot_data = await self.market_data.get_spot_price(strategy.underlying)
+            spot_price = float(spot_data.price)
+
+            net_delta = 0.0
+            leg_deltas = []
+
+            # Calculate delta for each leg
+            for leg in legs_config:
+                strike = float(leg.get('strike', 0))
+                option_type = leg.get('option_type', 'CE').upper()
+                quantity = int(leg.get('quantity', 1))
+                action = leg.get('action', 'BUY').upper()
+                iv = float(leg.get('iv', 0.20))  # Default 20% IV
+                expiry = leg.get('expiry')
+
+                if not strike or not expiry:
+                    continue
+
+                # Calculate time to expiry
+                try:
+                    from datetime import date as date_type, datetime as datetime_type
+                    if isinstance(expiry, str):
+                        expiry_date = datetime_type.strptime(expiry, "%Y-%m-%d").date()
+                    elif isinstance(expiry, date_type):
+                        expiry_date = expiry
+                    else:
+                        continue
+
+                    today = date_type.today()
+                    days_to_expiry = (expiry_date - today).days
+                    time_to_expiry = max(0, days_to_expiry / 365.0)
+
+                    if time_to_expiry > 0:
+                        is_call = option_type in ('CE', 'CALL', 'C')
+
+                        # Calculate Greeks for this leg
+                        greeks = greeks_calc._calculate_greeks(
+                            spot=spot_price,
+                            strike=strike,
+                            time_to_expiry=time_to_expiry,
+                            volatility=iv,
+                            is_call=is_call
+                        )
+
+                        # Adjust for position direction (buy = +, sell = -)
+                        multiplier = quantity if action == 'BUY' else -quantity
+                        leg_delta = greeks['delta'] * multiplier
+
+                        net_delta += leg_delta
+
+                        leg_deltas.append({
+                            'strike': strike,
+                            'option_type': option_type,
+                            'action': action,
+                            'quantity': quantity,
+                            'delta': greeks['delta'],
+                            'net_delta': leg_delta
+                        })
+
+                except Exception as e:
+                    logger.debug(f"Error calculating delta for leg: {e}")
+                    continue
+
+            # Check if within threshold
+            is_neutral = abs(net_delta) <= threshold
+
+            # Generate suggested hedge if not neutral
+            suggested_hedge = None
+            if not is_neutral:
+                # Calculate hedge needed
+                hedge_delta = -net_delta  # Opposite sign
+                lot_size = LOT_SIZES.get(strategy.underlying.upper(), 25)
+
+                # Each futures contract has delta of ~1 per lot
+                lots_needed = abs(int(round(hedge_delta / lot_size)))
+
+                if lots_needed > 0:
+                    hedge_action = "BUY" if hedge_delta > 0 else "SELL"
+                    suggested_hedge = f"{hedge_action} {lots_needed} lot(s) of {strategy.underlying} futures"
+
+            delta_info = {
+                'net_delta': round(net_delta, 4),
+                'is_neutral': is_neutral,
+                'threshold': threshold,
+                'leg_deltas': leg_deltas,
+                'suggested_hedge': suggested_hedge
+            }
+
+            logger.info(
+                f"Delta Neutral Validation for strategy {strategy.id}: "
+                f"Net Delta={net_delta:.4f}, Threshold=±{threshold}, Valid={is_neutral}"
+            )
+
+            return is_neutral, delta_info
+
+        except Exception as e:
+            logger.error(f"Error validating delta neutral entry: {e}")
+            return True, {
+                'net_delta': 0.0,
+                'is_neutral': True,
+                'threshold': threshold,
+                'error': str(e)
+            }
 
 
 def get_order_executor(kite: KiteConnect, market_data: MarketDataService) -> OrderExecutor:

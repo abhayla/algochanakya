@@ -124,11 +124,18 @@ class TrailType(str, Enum):
 
 # Nested Models
 class StrikeSelection(BaseModel):
-    mode: str = Field(..., description="fixed | atm_offset | premium_based | delta_based")
+    mode: str = Field(..., description="fixed | atm_offset | premium_based | delta_based | premium_range | delta_range")
     offset: Optional[int] = None
     fixed_strike: Optional[Decimal] = None
     target_premium: Optional[Decimal] = None
     target_delta: Optional[float] = None
+    # Phase 5A: Range-based selection
+    premium_min: Optional[Decimal] = None
+    premium_max: Optional[Decimal] = None
+    delta_min: Optional[float] = None
+    delta_max: Optional[float] = None
+    # Phase 5A: Round strike preference
+    prefer_round_strike: bool = True
 
 
 class LegConfig(BaseModel):

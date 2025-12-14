@@ -9,6 +9,8 @@ import { useRouter, useRoute } from 'vue-router'
 import { useAutopilotStore } from '@/stores/autopilot'
 import { useStrategyTypes } from '@/constants/strategyTypes'
 import AutoPilotLegsTable from '@/components/autopilot/builder/AutoPilotLegsTable.vue'
+import ProfitTargetConfig from '@/components/autopilot/builder/ProfitTargetConfig.vue'
+import DTEExitConfig from '@/components/autopilot/builder/DTEExitConfig.vue'
 import KiteLayout from '@/components/layout/KiteLayout.vue'
 import '@/assets/css/strategy-table.css'
 
@@ -246,6 +248,14 @@ const handleActivate = async () => {
     await store.activateStrategy(strategyId.value)
     router.push(`/autopilot/strategies/${strategyId.value}`)
   }
+}
+
+// Phase 5D: Update exit rule configurations
+const updateExitRuleConfig = (ruleType, config) => {
+  if (!store.builder.strategy.exit_rules) {
+    store.builder.strategy.exit_rules = {}
+  }
+  store.builder.strategy.exit_rules[ruleType] = config
 }
 
 const canProceed = computed(() => {
@@ -497,10 +507,45 @@ const canProceed = computed(() => {
                   :data-testid="`autopilot-condition-variable-${index}`"
                   class="strategy-select compact"
                 >
-                  <option value="TIME.CURRENT">Time</option>
-                  <option value="SPOT.PRICE">Spot Price</option>
-                  <option value="VOLATILITY.VIX">India VIX</option>
-                  <option value="STRATEGY.PNL">Strategy P&L</option>
+                  <optgroup label="Time Conditions">
+                    <option value="TIME.CURRENT">Time</option>
+                    <option value="STRATEGY.DTE">Days to Expiry (DTE)</option>
+                    <option value="STRATEGY.DAYS_IN_TRADE">Days in Trade</option>
+                  </optgroup>
+
+                  <optgroup label="Market Conditions">
+                    <option value="SPOT.PRICE">Spot Price</option>
+                    <option value="SPOT.DISTANCE_TO.BREAKEVEN">Distance to Breakeven (%)</option>
+                    <option value="VOLATILITY.VIX">India VIX</option>
+                    <option value="IV.RANK">IV Rank (0-100)</option>
+                    <option value="IV.PERCENTILE">IV Percentile (0-100)</option>
+                  </optgroup>
+
+                  <optgroup label="Open Interest (Phase 5C)">
+                    <option value="OI.PCR">Put-Call Ratio (PCR)</option>
+                    <option value="OI.MAX_PAIN">Max Pain Strike</option>
+                    <option value="OI.CHANGE">OI Change (%)</option>
+                  </optgroup>
+
+                  <optgroup label="Position Greeks">
+                    <option value="STRATEGY.DELTA">Delta (Net)</option>
+                    <option value="STRATEGY.GAMMA">Gamma (Net)</option>
+                    <option value="STRATEGY.THETA">Theta (Net)</option>
+                    <option value="STRATEGY.VEGA">Vega (Net)</option>
+                  </optgroup>
+
+                  <optgroup label="Probability (Phase 5C)">
+                    <option value="PROBABILITY.OTM">Probability OTM (Min across legs)</option>
+                  </optgroup>
+
+                  <optgroup label="Profit & Loss">
+                    <option value="STRATEGY.PNL">Strategy P&L</option>
+                    <option value="PREMIUM.CAPTURED_PCT">Premium Captured (%)</option>
+                  </optgroup>
+
+                  <optgroup label="Risk Metrics">
+                    <option value="STRATEGY.THETA_BURN_RATE">Theta Burn Rate</option>
+                  </optgroup>
                 </select>
 
                 <select
@@ -629,8 +674,26 @@ const canProceed = computed(() => {
             </div>
           </div>
 
+          <!-- Phase 5D: Exit Rules Section -->
+          <div class="exit-rules-section mt-6" data-testid="autopilot-builder-exit-rules">
+            <h3 class="subsection-title mb-4">Exit Rules (Phase 5D)</h3>
+            <div class="space-y-6">
+              <!-- Profit Target Exit (#18-19) -->
+              <ProfitTargetConfig
+                :config="store.builder.strategy.exit_rules?.profit_target || {}"
+                @update="(config) => updateExitRuleConfig('profit_target', config)"
+              />
+
+              <!-- DTE & Days in Trade Exit (#23-24) -->
+              <DTEExitConfig
+                :config="store.builder.strategy.exit_rules?.time_based || {}"
+                @update="(config) => updateExitRuleConfig('time_based', config)"
+              />
+            </div>
+          </div>
+
           <!-- Schedule Settings Section -->
-          <div class="schedule-settings-section" data-testid="autopilot-builder-schedule">
+          <div class="schedule-settings-section mt-6" data-testid="autopilot-builder-schedule">
             <h3 class="subsection-title">Schedule Settings</h3>
             <div class="form-grid">
               <div class="form-field">
