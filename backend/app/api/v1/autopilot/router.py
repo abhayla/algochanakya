@@ -2295,3 +2295,106 @@ async def clone_shared_strategy(
         data=StrategyResponse.model_validate(clone),
         timestamp=datetime.now(timezone.utc)
     )
+
+
+# ============================================================================
+# PHASE 5G: STRATEGY CONVERSION (#40, #42, #43)
+# ============================================================================
+
+@router.post("/strategies/{strategy_id}/convert/preview", response_model=DataResponse)
+async def preview_strategy_conversion(
+    strategy_id: int,
+    request: dict,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Preview strategy conversion without executing.
+
+    Supported conversions:
+    - Iron Condor → Strangle
+    - Strangle → Iron Condor
+    - Strangle → Iron Fly
+    - Strangle → Ratio Spread
+    """
+    from app.services.strategy_converter import StrategyConverterService, StrategyType
+    from app.services.broker_integration import get_kite_client
+
+    target_type = request.get("target_type")
+    wing_width = request.get("wing_width", 100)
+    ratio = request.get("ratio", 2)
+
+    kite = await get_kite_client(db, current_user.id)
+    service = StrategyConverterService(kite, db, str(current_user.id))
+
+    try:
+        preview = await service.get_conversion_preview(
+            strategy_id=strategy_id,
+            target_type=StrategyType(target_type),
+            wing_width=wing_width,
+            ratio=ratio
+        )
+
+        return DataResponse(
+            data=preview.to_dict(),
+            timestamp=datetime.now(timezone.utc)
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/strategies/{strategy_id}/convert/execute", response_model=DataResponse)
+async def execute_strategy_conversion(
+    strategy_id: int,
+    request: dict,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Execute strategy conversion.
+
+    This will:
+    1. Close legs specified in the conversion plan
+    2. Open new legs as required
+    3. Update strategy configuration
+    """
+    from app.services.strategy_converter import StrategyConverterService, StrategyType
+    from app.services.broker_integration import get_kite_client
+
+    target_type = request.get("target_type")
+    execution_mode = request.get("execution_mode", "market")
+    wing_width = request.get("wing_width", 100)
+    ratio = request.get("ratio", 2)
+
+    kite = await get_kite_client(db, current_user.id)
+    service = StrategyConverterService(kite, db, str(current_user.id))
+
+    try:
+        result = await service.execute_conversion(
+            strategy_id=strategy_id,
+            target_type=StrategyType(target_type),
+            execution_mode=execution_mode,
+            wing_width=wing_width,
+            ratio=ratio
+        )
+
+        # Log conversion
+        if result.get("success"):
+            log = AutoPilotLog(
+                user_id=current_user.id,
+                strategy_id=strategy_id,
+                event_type="strategy_converted",
+                severity="info",
+                message=f"Strategy converted: {result.get('conversion_type')}",
+                event_data=result
+            )
+            db.add(log)
+            await db.commit()
+
+        return DataResponse(
+            message="Strategy conversion completed" if result.get("success") else "Conversion failed",
+            data=result,
+            timestamp=datetime.now(timezone.utc)
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
