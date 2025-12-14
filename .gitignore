@@ -102,9 +102,11 @@ backend/fix_tests.py
 *_PROMPT.md
 *_REPORT.md
 
-# Temporary Phase 5 test documentation
+# Temporary Phase 5 test documentation (root level only - docs/ versions are tracked)
 AUTOPILOT_TEST_ISSUES.md
 AUTOPILOT_PHASE5_TEST_STATUS.md
 AUTOPILOT_FINAL_TEST_SUMMARY.md
+PHASE5A_TEST_RESULTS.md
+PHASE5_TEST_IMPLEMENTATION_STATUS.md
 backend/phase5_test_results.txt
 backend/fix_test_mocks.py
