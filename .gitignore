@@ -101,3 +101,10 @@ backend/fix_tests.py
 # Temporary prompt and report files
 *_PROMPT.md
 *_REPORT.md
+
+# Temporary Phase 5 test documentation
+AUTOPILOT_TEST_ISSUES.md
+AUTOPILOT_PHASE5_TEST_STATUS.md
+AUTOPILOT_FINAL_TEST_SUMMARY.md
+backend/phase5_test_results.txt
+backend/fix_test_mocks.py

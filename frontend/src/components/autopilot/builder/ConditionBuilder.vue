@@ -255,6 +255,9 @@ const props = defineProps({
       'VOLATILITY.VIX',
       'STRATEGY.PNL',
       'STRATEGY.DELTA',
+      'STRATEGY.GAMMA',
+      'STRATEGY.THETA',
+      'STRATEGY.VEGA',
       'STRATEGY.DTE',
       'IV.RANK',
       'OI.PCR'

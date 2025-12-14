@@ -331,6 +331,16 @@ export class AutoPilotStrategyBuilderPage extends BasePage {
   }
 
   // ===========================================================================
+  // ACTIONS
+  // ===========================================================================
+
+  async waitForBuilderLoad() {
+    await this.page.waitForSelector('[data-testid="autopilot-builder-name"]', {
+      timeout: 10000
+    });
+  }
+
+  // ===========================================================================
   // LOCATORS - Strategy Info
   // ===========================================================================
 

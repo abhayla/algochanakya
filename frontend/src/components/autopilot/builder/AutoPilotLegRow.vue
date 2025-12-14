@@ -3,8 +3,9 @@
  * AutoPilot Leg Row Component
  * Individual leg row in the AutoPilot legs configuration table
  */
-import { computed, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useAutopilotStore } from '@/stores/autopilot'
+import api from '@/services/api'
 
 const props = defineProps({
   leg: {
@@ -20,6 +21,10 @@ const props = defineProps({
 const emit = defineEmits(['update', 'delete', 'toggle-select'])
 
 const store = useAutopilotStore()
+
+// Strike finder state
+const isSearchingStrike = ref(false)
+const strikeSearchError = ref('')
 
 // Get strikes for this leg's expiry
 const availableStrikes = computed(() => {
@@ -45,6 +50,9 @@ const rowClass = computed(() => ({
   'leg-sell': props.leg.transaction_type === 'SELL'
 }))
 
+// Strike selection mode
+const strikeMode = computed(() => props.leg.strike_selection_mode || 'fixed')
+
 // Handle field updates
 const handleUpdate = (field, value) => {
   emit('update', props.index, { [field]: value })
@@ -60,6 +68,172 @@ const handleUpdate = (field, value) => {
     if (leg.strike_price && leg.expiry_date && leg.contract_type) {
       fetchInstrumentForLeg(leg)
     }
+  }
+
+  // Reset strike when mode changes
+  if (field === 'strike_selection_mode') {
+    emit('update', props.index, { strike_price: null })
+    strikeSearchError.value = ''
+  }
+
+  // Validate delta range inputs
+  if (field === 'min_delta' || field === 'max_delta') {
+    const minDelta = parseFloat(field === 'min_delta' ? value : props.leg.min_delta)
+    const maxDelta = parseFloat(field === 'max_delta' ? value : props.leg.max_delta)
+
+    if (!isNaN(minDelta) && !isNaN(maxDelta) && minDelta >= maxDelta) {
+      strikeSearchError.value = 'Min delta must be less than max delta'
+    } else {
+      strikeSearchError.value = ''
+    }
+  }
+
+  // Validate premium range inputs
+  if (field === 'min_premium' || field === 'max_premium') {
+    const minPremium = parseFloat(field === 'min_premium' ? value : props.leg.min_premium)
+    const maxPremium = parseFloat(field === 'max_premium' ? value : props.leg.max_premium)
+
+    if (!isNaN(minPremium) && !isNaN(maxPremium) && minPremium >= maxPremium) {
+      strikeSearchError.value = 'Min premium must be less than max premium'
+    } else {
+      strikeSearchError.value = ''
+    }
+  }
+}
+
+// Find strike by delta range
+const findStrikeByDelta = async () => {
+  if (!props.leg.expiry_date || !props.leg.contract_type) {
+    strikeSearchError.value = 'Please select expiry and option type first'
+    return
+  }
+
+  const minDelta = parseFloat(props.leg.min_delta)
+  const maxDelta = parseFloat(props.leg.max_delta)
+
+  if (isNaN(minDelta) || isNaN(maxDelta)) {
+    strikeSearchError.value = 'Please enter valid delta values'
+    return
+  }
+
+  if (minDelta >= maxDelta) {
+    strikeSearchError.value = 'Min delta must be less than max delta'
+    return
+  }
+
+  isSearchingStrike.value = true
+  strikeSearchError.value = ''
+
+  try {
+    const underlying = store.builder.strategy.underlying || 'NIFTY'
+    const expiry = props.leg.expiry_date
+
+    if (!expiry) {
+      strikeSearchError.value = 'Please select an expiry date first'
+      isSearchingStrike.value = false
+      return
+    }
+
+    // Use the strikes-in-range endpoint
+    const response = await api.get(`/api/v1/autopilot/option-chain/strikes-in-range/${underlying}/${expiry}`, {
+      params: {
+        option_type: props.leg.contract_type,
+        min_value: minDelta,
+        max_value: maxDelta,
+        range_type: 'delta'
+      }
+    })
+
+    if (response.data.strikes && response.data.strikes.length > 0) {
+      let strikes = response.data.strikes
+
+      // Apply round strike preference if enabled
+      if (props.leg.prefer_round_strike) {
+        const roundStrikes = strikes.filter(s => s % 100 === 0)
+        if (roundStrikes.length > 0) {
+          strikes = roundStrikes
+        }
+      }
+
+      // Select the first (closest) strike
+      const selectedStrike = strikes[0]
+      emit('update', props.index, { strike_price: selectedStrike })
+      strikeSearchError.value = ''
+    } else {
+      strikeSearchError.value = 'No strike found in this delta range'
+    }
+  } catch (error) {
+    console.error('Error finding strike by delta:', error)
+    strikeSearchError.value = error.response?.data?.detail || 'Error finding strike'
+  } finally {
+    isSearchingStrike.value = false
+  }
+}
+
+// Find strike by premium range
+const findStrikeByPremium = async () => {
+  if (!props.leg.expiry_date || !props.leg.contract_type) {
+    strikeSearchError.value = 'Please select expiry and option type first'
+    return
+  }
+
+  const minPremium = parseFloat(props.leg.min_premium)
+  const maxPremium = parseFloat(props.leg.max_premium)
+
+  if (isNaN(minPremium) || isNaN(maxPremium)) {
+    strikeSearchError.value = 'Please enter valid premium values'
+    return
+  }
+
+  if (minPremium >= maxPremium) {
+    strikeSearchError.value = 'Min premium must be less than max premium'
+    return
+  }
+
+  isSearchingStrike.value = true
+  strikeSearchError.value = ''
+
+  try {
+    const underlying = store.builder.strategy.underlying || 'NIFTY'
+    const expiry = props.leg.expiry_date
+
+    if (!expiry) {
+      strikeSearchError.value = 'Please select an expiry date first'
+      isSearchingStrike.value = false
+      return
+    }
+
+    const response = await api.get(`/api/v1/autopilot/option-chain/strikes-in-range/${underlying}/${expiry}`, {
+      params: {
+        option_type: props.leg.contract_type,
+        min_value: minPremium,
+        max_value: maxPremium,
+        range_type: 'premium'
+      }
+    })
+
+    if (response.data.strikes && response.data.strikes.length > 0) {
+      let strikes = response.data.strikes
+
+      // Apply round strike preference if enabled
+      if (props.leg.prefer_round_strike) {
+        const roundStrikes = strikes.filter(s => s % 100 === 0)
+        if (roundStrikes.length > 0) {
+          strikes = roundStrikes
+        }
+      }
+
+      const selectedStrike = strikes[0]
+      emit('update', props.index, { strike_price: selectedStrike })
+      strikeSearchError.value = ''
+    } else {
+      strikeSearchError.value = 'No strike found in this premium range'
+    }
+  } catch (error) {
+    console.error('Error finding strike by premium:', error)
+    strikeSearchError.value = error.response?.data?.detail || 'Error finding strike'
+  } finally {
+    isSearchingStrike.value = false
   }
 }
 
@@ -144,19 +318,134 @@ const getPnLClass = (value) => {
       </select>
     </td>
 
-    <!-- Strike -->
-    <td>
-      <select
-        :value="leg.strike_price"
-        @change="handleUpdate('strike_price', parseFloat($event.target.value))"
-        class="strategy-select compact"
-        :data-testid="`autopilot-leg-strike-${index}`"
-      >
-        <option value="">Select</option>
-        <option v-for="s in availableStrikes" :key="s" :value="s">
-          {{ s }}
-        </option>
-      </select>
+    <!-- Strike Mode & Strike Selection -->
+    <td colspan="2" style="padding: 4px;">
+      <div class="strike-config">
+        <!-- Strike Selection Mode -->
+        <select
+          :value="strikeMode"
+          @change="handleUpdate('strike_selection_mode', $event.target.value)"
+          class="strategy-select compact mb-1"
+          :data-testid="`autopilot-leg-strike-mode-${index}`"
+        >
+          <option value="fixed">Fixed Strike</option>
+          <option value="delta_range">Delta Range</option>
+          <option value="premium_range">Premium Range</option>
+        </select>
+
+        <!-- Fixed Strike Mode -->
+        <div v-if="strikeMode === 'fixed'" class="strike-fixed">
+          <select
+            :value="leg.strike_price"
+            @change="handleUpdate('strike_price', parseFloat($event.target.value))"
+            class="strategy-select compact"
+            :data-testid="`autopilot-leg-strike-${index}`"
+          >
+            <option value="">Select</option>
+            <option v-for="s in availableStrikes" :key="s" :value="s">
+              {{ s }}
+            </option>
+          </select>
+        </div>
+
+        <!-- Delta Range Mode -->
+        <div v-if="strikeMode === 'delta_range'" class="strike-delta-range">
+          <div class="flex gap-1 mb-1">
+            <input
+              type="number"
+              :value="leg.min_delta"
+              @input="handleUpdate('min_delta', $event.target.value)"
+              placeholder="Min Δ"
+              step="0.01"
+              min="0"
+              max="1"
+              class="strategy-input compact text-xs"
+              :data-testid="`autopilot-leg-min-delta-${index}`"
+              style="width: 60px;"
+            />
+            <input
+              type="number"
+              :value="leg.max_delta"
+              @input="handleUpdate('max_delta', $event.target.value)"
+              placeholder="Max Δ"
+              step="0.01"
+              min="0"
+              max="1"
+              class="strategy-input compact text-xs"
+              :data-testid="`autopilot-leg-max-delta-${index}`"
+              style="width: 60px;"
+            />
+            <button
+              @click="findStrikeByDelta"
+              :disabled="isSearchingStrike"
+              class="btn-find-strike"
+              :data-testid="`autopilot-leg-find-strike-${index}`"
+            >
+              {{ isSearchingStrike ? '...' : 'Find' }}
+            </button>
+          </div>
+          <div v-if="leg.strike_price" class="selected-strike" :data-testid="`autopilot-leg-selected-strike-${index}`">
+            Strike: <strong>{{ leg.strike_price }}</strong>
+          </div>
+          <div v-if="strikeSearchError" class="error-message">
+            {{ strikeSearchError }}
+          </div>
+        </div>
+
+        <!-- Premium Range Mode -->
+        <div v-if="strikeMode === 'premium_range'" class="strike-premium-range">
+          <div class="flex gap-1 mb-1">
+            <input
+              type="number"
+              :value="leg.min_premium"
+              @input="handleUpdate('min_premium', $event.target.value)"
+              placeholder="Min ₹"
+              step="1"
+              class="strategy-input compact text-xs"
+              :data-testid="`autopilot-leg-min-premium-${index}`"
+              style="width: 60px;"
+            />
+            <input
+              type="number"
+              :value="leg.max_premium"
+              @input="handleUpdate('max_premium', $event.target.value)"
+              placeholder="Max ₹"
+              step="1"
+              class="strategy-input compact text-xs"
+              :data-testid="`autopilot-leg-max-premium-${index}`"
+              style="width: 60px;"
+            />
+            <button
+              @click="findStrikeByPremium"
+              :disabled="isSearchingStrike"
+              class="btn-find-strike"
+              :data-testid="`autopilot-leg-find-strike-${index}`"
+            >
+              {{ isSearchingStrike ? '...' : 'Find' }}
+            </button>
+          </div>
+          <div v-if="leg.strike_price" class="selected-strike" :data-testid="`autopilot-leg-selected-strike-${index}`">
+            Strike: <strong>{{ leg.strike_price }}</strong>
+          </div>
+          <div v-if="strikeSearchError" class="error-message">
+            {{ strikeSearchError }}
+          </div>
+        </div>
+
+        <!-- Round Strike Preference -->
+        <div class="round-strike-pref mt-1">
+          <label class="flex items-center gap-1 text-xs">
+            <input
+              type="checkbox"
+              :checked="leg.prefer_round_strike"
+              @change="handleUpdate('prefer_round_strike', $event.target.checked)"
+              :data-testid="`autopilot-leg-round-strike-${index}`"
+              class="text-xs"
+            />
+            <span>Round (÷100)</span>
+          </label>
+        </div>
+      </div>
     </td>
 
     <!-- CE/PE -->
@@ -314,5 +603,76 @@ const getPnLClass = (value) => {
 
 .font-semibold {
   font-weight: 600;
+}
+
+.text-xs {
+  font-size: 0.75rem;
+}
+
+.flex {
+  display: flex;
+}
+
+.items-center {
+  align-items: center;
+}
+
+.gap-1 {
+  gap: 0.25rem;
+}
+
+.mb-1 {
+  margin-bottom: 0.25rem;
+}
+
+.mt-1 {
+  margin-top: 0.25rem;
+}
+
+.strike-config {
+  min-width: 180px;
+}
+
+.btn-find-strike {
+  background-color: #3b82f6;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-find-strike:hover:not(:disabled) {
+  background-color: #2563eb;
+}
+
+.btn-find-strike:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.selected-strike {
+  font-size: 0.75rem;
+  color: #059669;
+  padding: 2px 4px;
+  background-color: #d1fae5;
+  border-radius: 4px;
+  text-align: center;
+}
+
+.error-message {
+  font-size: 0.7rem;
+  color: #dc2626;
+  padding: 2px 4px;
+  background-color: #fee2e2;
+  border-radius: 4px;
+  margin-top: 2px;
+}
+
+.round-strike-pref label {
+  cursor: pointer;
+  user-select: none;
 }
 </style>

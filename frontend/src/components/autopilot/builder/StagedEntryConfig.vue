@@ -1,5 +1,5 @@
 <template>
-  <div class="staged-entry-config" data-testid="staged-entry-config">
+  <div class="bg-white rounded-lg p-6 border border-gray-200" data-testid="staged-entry-config">
     <!-- Staged Entry Toggle -->
     <div class="flex items-center justify-between mb-4">
       <div>
@@ -411,8 +411,3 @@ export default {
 }
 </script>
 
-<style scoped>
-.staged-entry-config {
-  @apply bg-white rounded-lg p-6 border border-gray-200;
-}
-</style>

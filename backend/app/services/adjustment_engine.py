@@ -1330,6 +1330,54 @@ class AdjustmentEngine:
                 }
             )
 
+    # -------------------------------------------------------------------------
+    # Phase 5D: Profit-Based Exit Triggers
+    # -------------------------------------------------------------------------
+
+    async def _check_profit_pct_trigger(
+        self,
+        strategy: Any,
+        trigger: Dict[str, Any]
+    ) -> bool:
+        """
+        Check if profit percentage trigger is met (Phase 5D Feature #18-19).
+
+        Evaluates whether current P&L has reached a target percentage of max profit.
+
+        Args:
+            strategy: Strategy object with max_profit and current_pnl attributes
+            trigger: Trigger config with type="profit_pct_of_max" and value (percentage)
+
+        Returns:
+            bool: True if profit target reached
+
+        Example:
+            trigger = {"type": "profit_pct_of_max", "value": 50.0}
+            Max profit = 10000, Current P&L = 5000 → 50% captured → True
+        """
+        trigger_type = trigger.get('type')
+        if trigger_type != 'profit_pct_of_max':
+            return False
+
+        target_pct = float(trigger.get('value', 0))
+
+        # Get strategy's max profit and current P&L
+        max_profit = getattr(strategy, 'max_profit', None)
+        current_pnl = getattr(strategy, 'current_pnl', None)
+
+        if max_profit is None or current_pnl is None:
+            return False
+
+        # Avoid division by zero
+        if max_profit == 0:
+            return False
+
+        # Calculate percentage captured
+        pct_captured = (float(current_pnl) / float(max_profit)) * 100
+
+        # Trigger if captured >= target
+        return pct_captured >= target_pct
+
 
 # Factory function for dependency injection
 async def get_adjustment_engine(

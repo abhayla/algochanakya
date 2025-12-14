@@ -61,10 +61,10 @@ class OptionChainService:
     # Cache TTL (time to live) in seconds
     CACHE_TTL = 2  # 2 seconds for option chain cache
 
-    def __init__(self, kite: KiteConnect, db: AsyncSession):
+    def __init__(self, kite: KiteConnect, db: AsyncSession, user_id: Optional[str] = None):
         self.kite = kite
         self.db = db
-        self.greeks_calc = GreeksCalculatorService()
+        self.greeks_calc = GreeksCalculatorService(db, user_id) if user_id else None
         self.market_data = MarketDataService(kite)
 
     async def get_option_chain(

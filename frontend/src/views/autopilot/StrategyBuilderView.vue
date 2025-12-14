@@ -199,6 +199,17 @@ const goToStep = (step) => {
   store.setBuilderStep(step)
 }
 
+const getStepTestId = (stepId) => {
+  const stepNames = {
+    1: 'autopilot-builder-legs-tab',
+    2: 'autopilot-builder-conditions-tab',
+    3: 'autopilot-builder-adjustments-tab',
+    4: 'autopilot-builder-risk-tab',
+    5: 'autopilot-builder-review-tab'
+  }
+  return stepNames[stepId] || `autopilot-builder-step-${stepId}`
+}
+
 // Note: addLeg and removeLeg are now handled by AutoPilotLegsTable component
 
 const addCondition = () => {
@@ -318,9 +329,9 @@ const canProceed = computed(() => {
         <div
           v-for="step in steps"
           :key="step.id"
-          class="step-item"
-          :class="{ 'step-clickable': step.id <= store.builder.step }"
-          @click="step.id <= store.builder.step && goToStep(step.id)"
+          class="step-item step-clickable"
+          @click="goToStep(step.id)"
+          :data-testid="getStepTestId(step.id)"
         >
           <div class="step-content">
             <div
@@ -468,7 +479,7 @@ const canProceed = computed(() => {
           <h2 class="section-title">Entry Conditions</h2>
           <button
             @click="addCondition"
-            data-testid="autopilot-builder-add-condition"
+            data-testid="autopilot-add-condition-button"
             class="strategy-btn strategy-btn-primary"
           >
             + Add Condition
@@ -568,12 +579,33 @@ const canProceed = computed(() => {
                   <option value="between">Between</option>
                 </select>
 
+                <!-- Single value input for non-between operators -->
                 <input
+                  v-if="condition.operator !== 'between'"
                   v-model="condition.value"
                   :data-testid="`autopilot-condition-value-${index}`"
                   class="strategy-input compact"
                   placeholder="Value"
                 />
+
+                <!-- Min/Max inputs for between operator -->
+                <div v-else class="flex gap-2">
+                  <input
+                    v-model="condition.min_value"
+                    :data-testid="`autopilot-condition-min-value-${index}`"
+                    class="strategy-input compact"
+                    placeholder="Min"
+                    style="width: 80px;"
+                  />
+                  <span class="text-gray-500">to</span>
+                  <input
+                    v-model="condition.max_value"
+                    :data-testid="`autopilot-condition-max-value-${index}`"
+                    class="strategy-input compact"
+                    placeholder="Max"
+                    style="width: 80px;"
+                  />
+                </div>
               </div>
             </div>
           </div>

@@ -1,6 +1,6 @@
 <template>
-  <div class="profit-target-config" data-testid="profit-target-config">
-    <div class="config-header">
+  <div class="border border-gray-200 rounded-lg p-4" data-testid="profit-target-config">
+    <div>
       <h4 class="text-sm font-medium text-gray-900">Profit Target Exit (#18-19)</h4>
       <p class="text-xs text-gray-500 mt-1">
         Close position when profit reaches X% of max profit
@@ -175,30 +175,33 @@ function emitUpdate() {
 </script>
 
 <style scoped>
-.profit-target-config {
-  @apply border border-gray-200 rounded-lg p-4;
-}
-
-.config-header h4 {
-  @apply text-sm font-semibold text-gray-900;
-}
-
 /* Range slider styling */
 input[type="range"]::-webkit-slider-thumb {
-  @apply appearance-none w-4 h-4 bg-blue-600 rounded-full cursor-pointer;
+  appearance: none;
+  width: 1rem;
+  height: 1rem;
+  background-color: #2563eb;
+  border-radius: 9999px;
+  cursor: pointer;
 }
 
 input[type="range"]::-moz-range-thumb {
-  @apply w-4 h-4 bg-blue-600 rounded-full cursor-pointer border-0;
+  width: 1rem;
+  height: 1rem;
+  background-color: #2563eb;
+  border-radius: 9999px;
+  cursor: pointer;
+  border: 0;
 }
 
 /* Preset button hover effects */
 .preset-buttons button:hover {
-  @apply shadow-sm;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
 }
 
 /* Checkbox styling */
 input[type="checkbox"]:checked {
-  @apply bg-blue-600 border-blue-600;
+  background-color: #2563eb;
+  border-color: #2563eb;
 }
 </style>

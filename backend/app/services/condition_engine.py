@@ -98,8 +98,27 @@ class ConditionEngine:
     MARKET_OPEN = time(9, 15)
     MARKET_CLOSE = time(15, 30)
 
-    def __init__(self, market_data: MarketDataService):
-        self.market_data = market_data
+    def __init__(self, *args):
+        """
+        Initialize ConditionEngine.
+
+        Supports two signatures:
+        1. ConditionEngine(market_data)  # Original signature
+        2. ConditionEngine(db_session, user_id, market_data)  # Phase 5A signature
+        """
+        if len(args) == 1:
+            # Single argument: market_data (original signature)
+            self.db = None
+            self.user_id = None
+            self.market_data = args[0]
+        elif len(args) == 3:
+            # Three arguments: db_session, user_id, market_data
+            self.db = args[0]
+            self.user_id = args[1]
+            self.market_data = args[2]
+        else:
+            raise TypeError(f"ConditionEngine.__init__() takes 2 or 4 positional arguments but {len(args) + 1} were given")
+
         self._previous_values: Dict[str, Any] = {}  # For crosses_above/below
 
     async def evaluate(
@@ -207,6 +226,56 @@ class ConditionEngine:
                 error=str(e)
             )
 
+    async def evaluate_condition(
+        self,
+        condition: Dict[str, Any],
+        underlying: str,
+        strategy: Optional[Any] = None
+    ) -> Dict[str, Any]:
+        """
+        Public method to evaluate a single condition (Phase 5A).
+
+        Args:
+            condition: Condition dict with variable, operator, value
+            underlying: Strategy underlying (NIFTY, BANKNIFTY, etc.)
+            strategy: Optional strategy object with runtime_state containing Greeks
+
+        Returns:
+            Dict with is_met and other evaluation details
+        """
+        # Extract Greeks snapshot and legs_config from strategy if provided
+        greeks_snapshot = None
+        legs_config = []
+        if strategy:
+            if hasattr(strategy, 'runtime_state'):
+                runtime_state = strategy.runtime_state or {}
+                if 'greeks' in runtime_state:
+                    greeks_snapshot = runtime_state['greeks']
+            if hasattr(strategy, 'legs_config'):
+                legs_config = strategy.legs_config or []
+
+        # Evaluate the condition
+        result = await self._evaluate_condition(
+            condition=condition,
+            underlying=underlying,
+            legs_config=legs_config,
+            greeks_snapshot=greeks_snapshot,
+            strategy=strategy
+        )
+
+        # Return as dict (tests expect dict, not ConditionResult object)
+        return {
+            "condition_id": result.condition_id,
+            "variable": result.variable,
+            "operator": result.operator,
+            "target_value": result.target_value,
+            "current_value": result.current_value,
+            "is_met": result.is_met,
+            "progress_pct": result.progress_pct,
+            "distance_to_trigger": result.distance_to_trigger,
+            "error": result.error
+        }
+
     async def _evaluate_nested_groups(
         self,
         strategy_id: int,
@@ -304,7 +373,8 @@ class ConditionEngine:
         condition: Dict[str, Any],
         underlying: str,
         legs_config: List[Dict[str, Any]],
-        greeks_snapshot: Optional[Dict[str, float]] = None
+        greeks_snapshot: Optional[Dict[str, float]] = None,
+        strategy: Optional[Any] = None
     ) -> ConditionResult:
         """Evaluate a single condition."""
         condition_id = condition.get('id', 'unknown')
@@ -318,7 +388,8 @@ class ConditionEngine:
                 variable=variable,
                 underlying=underlying,
                 legs_config=legs_config,
-                greeks_snapshot=greeks_snapshot
+                greeks_snapshot=greeks_snapshot,
+                strategy=strategy
             )
 
             # Compare values
@@ -372,10 +443,31 @@ class ConditionEngine:
         self,
         variable: str,
         underlying: str,
-        legs_config: List[Dict[str, Any]],
-        greeks_snapshot: Optional[Dict[str, float]] = None
+        legs_config: List[Dict[str, Any]] = None,
+        greeks_snapshot: Optional[Dict[str, float]] = None,
+        strategy: Optional[Any] = None
     ) -> Any:
         """Get current value for a variable."""
+        # Use strategy.runtime_state['greeks'] if strategy provided (Phase 5A)
+        if strategy and hasattr(strategy, 'runtime_state'):
+            runtime_state = strategy.runtime_state or {}
+            if 'greeks' in runtime_state and not greeks_snapshot:
+                greeks_snapshot = runtime_state['greeks']
+            # Also check for previous_greeks for crosses_above/below
+            if 'previous_greeks' in runtime_state:
+                prev_greeks = runtime_state['previous_greeks']
+                if prev_greeks:
+                    # Store previous values for crosses operators
+                    for greek in ['net_delta', 'net_gamma', 'net_theta', 'net_vega']:
+                        if greek in prev_greeks:
+                            self._previous_values[f"STRATEGY.{greek.upper().replace('NET_', '')}"] = prev_greeks[greek]
+
+        # Extract legs_config from strategy if not provided (Phase 5B)
+        if legs_config is None:
+            if strategy and hasattr(strategy, 'legs_config'):
+                legs_config = strategy.legs_config or []
+            else:
+                legs_config = []
 
         # TIME variables
         if variable == "TIME.CURRENT":
@@ -431,55 +523,93 @@ class ConditionEngine:
         # Greeks are calculated by strategy_monitor and passed via greeks_snapshot
         if variable == "STRATEGY.DELTA":
             if greeks_snapshot:
-                return float(greeks_snapshot.get('delta', 0.0))
+                # Try both 'net_delta' and 'delta' keys
+                value = greeks_snapshot.get('net_delta') or greeks_snapshot.get('delta', 0.0)
+                return float(value)
             return 0.0
 
         if variable == "STRATEGY.GAMMA":
             if greeks_snapshot:
-                return float(greeks_snapshot.get('gamma', 0.0))
+                # Try both 'net_gamma' and 'gamma' keys
+                value = greeks_snapshot.get('net_gamma') or greeks_snapshot.get('gamma', 0.0)
+                return float(value)
             return 0.0
 
         if variable == "STRATEGY.THETA":
             if greeks_snapshot:
-                return float(greeks_snapshot.get('theta', 0.0))
+                # Try both 'net_theta' and 'theta' keys
+                value = greeks_snapshot.get('net_theta') or greeks_snapshot.get('theta', 0.0)
+                return float(value)
             return 0.0
 
         if variable == "STRATEGY.VEGA":
             if greeks_snapshot:
-                return float(greeks_snapshot.get('vega', 0.0))
+                # Try both 'net_vega' and 'vega' keys
+                value = greeks_snapshot.get('net_vega') or greeks_snapshot.get('vega', 0.0)
+                return float(value)
             return 0.0
 
         # Phase 5B: BREAKEVEN DISTANCE (#52)
         if variable == "SPOT.DISTANCE_TO.BREAKEVEN":
+            breakevens = None
+
+            # Try greeks_snapshot first
             if greeks_snapshot and 'breakevens' in greeks_snapshot:
-                breakevens = greeks_snapshot['breakevens']
+                breakevens_data = greeks_snapshot['breakevens']
+                lower_be = breakevens_data.get('lower')
+                upper_be = breakevens_data.get('upper')
+                if lower_be and upper_be:
+                    breakevens = [lower_be, upper_be]
+
+            # Fallback to strategy.breakevens
+            elif strategy and hasattr(strategy, 'breakevens'):
+                be_list = strategy.breakevens
+                if isinstance(be_list, list) and len(be_list) >= 2:
+                    breakevens = be_list
+
+            if breakevens:
                 spot = await self.market_data.get_spot_price(underlying)
                 spot_price = float(spot.ltp)
 
-                lower_be = breakevens.get('lower')
-                upper_be = breakevens.get('upper')
+                # Return distance to nearest breakeven as percentage
+                distances = [abs(spot_price - float(be)) / spot_price * 100 for be in breakevens]
+                return min(distances)
 
-                if lower_be and upper_be:
-                    # Return distance to nearest breakeven as percentage
-                    distance_lower = abs(spot_price - float(lower_be)) / spot_price * 100
-                    distance_upper = abs(spot_price - float(upper_be)) / spot_price * 100
-                    return min(distance_lower, distance_upper)
             return 100.0  # If no breakevens, return large value
 
         # Phase 5B: SPOT DISTANCE TO LEG (#48)
         if variable.startswith("SPOT.DISTANCE_TO."):
-            leg_id = variable.split(".")[-1]
-            # Find the leg in config
-            for leg in legs_config:
-                if leg.get('id') == leg_id or leg.get('leg_id') == leg_id:
-                    strike = float(leg.get('strike', 0))
-                    spot = await self.market_data.get_spot_price(underlying)
-                    spot_price = float(spot.ltp)
+            leg_identifier = variable.split(".")[-1]
 
-                    if strike > 0 and spot_price > 0:
-                        # Return distance as percentage
-                        distance_pct = abs(spot_price - strike) / spot_price * 100
-                        return distance_pct
+            # Find the leg in config by ID or by alias (SHORT_PE, SHORT_CE, LONG_PE, LONG_CE)
+            target_leg = None
+            for leg in legs_config:
+                # Match by leg ID
+                if leg.get('id') == leg_identifier or leg.get('leg_id') == leg_identifier:
+                    target_leg = leg
+                    break
+
+                # Match by alias (e.g., SHORT_PE = sell PE, SHORT_CE = sell CE)
+                option_type = leg.get('option_type', '').upper()
+                transaction_type = leg.get('transaction_type', '').lower()
+
+                if leg_identifier == f"SHORT_{option_type}" and transaction_type == 'sell':
+                    target_leg = leg
+                    break
+                elif leg_identifier == f"LONG_{option_type}" and transaction_type == 'buy':
+                    target_leg = leg
+                    break
+
+            if target_leg:
+                strike = float(target_leg.get('strike', 0))
+                spot = await self.market_data.get_spot_price(underlying)
+                spot_price = float(spot.ltp)
+
+                if strike > 0 and spot_price > 0:
+                    # Return distance as percentage
+                    distance_pct = abs(spot_price - strike) / spot_price * 100
+                    return distance_pct
+
             return 100.0  # If leg not found, return large value
 
         # Phase 5B: PREMIUM CAPTURED PERCENTAGE (#50)
@@ -503,12 +633,32 @@ class ConditionEngine:
 
         # Phase 5B: IV RANK (#53)
         if variable == "IV.RANK":
+            # Try calling IVMetricsService
+            try:
+                from app.services.iv_metrics_service import IVMetricsService
+                iv_service = IVMetricsService(self.market_data)
+                iv_rank = await iv_service.get_iv_rank(underlying)
+                return float(iv_rank) if iv_rank is not None else 0.0
+            except Exception:
+                pass
+
+            # Fallback to greeks_snapshot
             if greeks_snapshot and 'iv_rank' in greeks_snapshot:
                 return float(greeks_snapshot['iv_rank'])
             return 0.0
 
         # Phase 5B: IV PERCENTILE (#53)
         if variable == "IV.PERCENTILE":
+            # Try calling IVMetricsService
+            try:
+                from app.services.iv_metrics_service import IVMetricsService
+                iv_service = IVMetricsService(self.market_data)
+                iv_percentile = await iv_service.get_iv_percentile(underlying)
+                return float(iv_percentile) if iv_percentile is not None else 0.0
+            except Exception:
+                pass
+
+            # Fallback to greeks_snapshot
             if greeks_snapshot and 'iv_percentile' in greeks_snapshot:
                 return float(greeks_snapshot['iv_percentile'])
             return 0.0
@@ -517,18 +667,51 @@ class ConditionEngine:
 
         # Phase 5C: OI.PCR - Put-Call Ratio (#6)
         if variable == "OI.PCR":
+            # Try calling OIAnalysisService if db is available (Phase 5A signature)
+            if self.db and self.user_id:
+                try:
+                    from app.services.oi_analysis_service import OIAnalysisService
+                    oi_service = OIAnalysisService(self.market_data.kite if hasattr(self.market_data, 'kite') else None, self.db)
+                    pcr = await oi_service.get_pcr(underlying)
+                    return float(pcr) if pcr is not None else 0.0
+                except Exception:
+                    pass
+
+            # Fallback to greeks_snapshot
             if greeks_snapshot and 'oi_pcr' in greeks_snapshot:
                 return float(greeks_snapshot['oi_pcr'])
             return 0.0
 
         # Phase 5C: OI.MAX_PAIN - Max Pain Strike (#7)
         if variable == "OI.MAX_PAIN":
+            # Try calling OIAnalysisService if db is available
+            if self.db and self.user_id:
+                try:
+                    from app.services.oi_analysis_service import OIAnalysisService
+                    oi_service = OIAnalysisService(self.market_data.kite if hasattr(self.market_data, 'kite') else None, self.db)
+                    max_pain = await oi_service.get_max_pain(underlying)
+                    return float(max_pain) if max_pain is not None else 0.0
+                except Exception:
+                    pass
+
+            # Fallback to greeks_snapshot
             if greeks_snapshot and 'oi_max_pain' in greeks_snapshot:
                 return float(greeks_snapshot['oi_max_pain'])
             return 0.0
 
         # Phase 5C: OI.CHANGE - OI Change Percentage (#8)
         if variable == "OI.CHANGE" or variable.startswith("OI.CHANGE."):
+            # Try calling OIAnalysisService if db is available
+            if self.db and self.user_id:
+                try:
+                    from app.services.oi_analysis_service import OIAnalysisService
+                    oi_service = OIAnalysisService(self.market_data.kite if hasattr(self.market_data, 'kite') else None, self.db)
+                    oi_change = await oi_service.get_oi_change_pct(underlying)
+                    return float(oi_change) if oi_change is not None else 0.0
+                except Exception:
+                    pass
+
+            # Fallback to greeks_snapshot
             if greeks_snapshot and 'oi_change' in greeks_snapshot:
                 # Can be overall OI change or per-strike
                 if variable == "OI.CHANGE":
@@ -546,6 +729,29 @@ class ConditionEngine:
 
         # Phase 5C: PROBABILITY.OTM - Probability Out-of-The-Money (#11)
         if variable.startswith("PROBABILITY.OTM"):
+            # Try calling GreeksCalculatorService if strategy has legs
+            if strategy and hasattr(strategy, 'legs_config') and strategy.legs_config:
+                try:
+                    from app.services.greeks_calculator import GreeksCalculatorService
+                    greeks_calc = GreeksCalculatorService(
+                        self.market_data.kite if hasattr(self.market_data, 'kite') else None,
+                        self.db
+                    )
+                    # Calculate probability OTM for first leg (most conservative)
+                    first_leg = strategy.legs_config[0]
+                    strike = first_leg.get('strike')
+                    option_type = first_leg.get('option_type')
+                    if strike and option_type:
+                        prob_otm = await greeks_calc.calculate_probability_otm(
+                            underlying=underlying,
+                            strike=strike,
+                            option_type=option_type
+                        )
+                        return float(prob_otm) if prob_otm is not None else 0.0
+                except Exception:
+                    pass
+
+            # Fallback to greeks_snapshot
             if greeks_snapshot and 'probability_otm' in greeks_snapshot:
                 # Can be for specific leg or average
                 if variable == "PROBABILITY.OTM":

@@ -33,7 +33,7 @@ class DeltaBandStatus:
 
 
 @dataclass
-class RebalancesuggestionAction:
+class RebalanceSuggestion:
     """Suggested rebalancing action."""
     action_type: str  # "shift_leg", "add_hedge", "exit_leg", "no_action"
     leg_id: Optional[str] = None
