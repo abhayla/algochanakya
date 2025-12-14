@@ -25,12 +25,14 @@ from app.database import Base
 class StrategyStatus(str, enum.Enum):
     DRAFT = "draft"
     WAITING = "waiting"
+    WAITING_STAGED_ENTRY = "waiting_staged_entry"  # Phase 5I: Partial entry completed, waiting for stage 2+
     ACTIVE = "active"
     PENDING = "pending"
     PAUSED = "paused"
     COMPLETED = "completed"
     ERROR = "error"
     EXPIRED = "expired"
+    CANCELLED = "cancelled"  # Phase 5I: Strategy cancelled during staged entry
 
 
 class Underlying(str, enum.Enum):
@@ -228,6 +230,9 @@ class AutoPilotStrategy(Base):
 
     # Phase 3: Greeks Snapshot
     greeks_snapshot = Column(JSONB, nullable=True)
+
+    # Phase 5I: Staged Entry Configuration
+    staged_entry_config = Column(JSONB, nullable=True, comment="Configuration for staged entry (half-size or staggered mode)")
 
     # Phase 5: Position Legs & Greeks Tracking
     position_legs_snapshot = Column(JSONB, nullable=True)
@@ -1082,6 +1087,7 @@ class AutoPilotAdjustmentSuggestion(Base):
 
     urgency = Column(String(20), server_default="medium")
     confidence = Column(Integer, server_default='50')
+    category = Column(String(20), server_default="defensive")  # defensive, offensive, neutral
 
     one_click_action = Column(Boolean, server_default='false')
     action_params = Column(JSONB)

@@ -70,6 +70,10 @@ class MessageType(str, Enum):
     # Phase 3: Greeks
     GREEKS_UPDATE = "greeks_update"
 
+    # Phase 5G: Adjustment Cost Tracking
+    ADJUSTMENT_COST_ALERT = "adjustment_cost_alert"
+    ADJUSTMENT_COST_UPDATE = "adjustment_cost_update"
+
 
 @dataclass
 class WSMessage:

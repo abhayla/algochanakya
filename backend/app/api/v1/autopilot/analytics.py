@@ -1,19 +1,28 @@
 """
-AutoPilot Analytics API Routes - Phase 5C
+AutoPilot Analytics API Routes - Phase 5C + Phase 5G
 
-Endpoints for payoff charts, risk metrics, and position analysis.
+Endpoints for payoff charts, risk metrics, position analysis, and adjustment cost tracking.
+
+Phase 5G Additions:
+- GET /{strategy_id}/adjustment-costs - Get adjustment cost summary
+- GET /{strategy_id}/adjustment-costs/threshold-check - Check cost threshold
+- POST /{strategy_id}/adjustment-costs/project - Project cost impact
 """
 from decimal import Decimal
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Body
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from kiteconnect import KiteConnect
 
 from app.database import get_db
 from app.utils.dependencies import get_current_user, get_current_broker_connection
 from app.models import User, BrokerConnection
+from app.models.autopilot import AutoPilotStrategy
 from app.services.payoff_calculator import PayoffCalculator
 from app.services.market_data import MarketDataService
+from app.services.adjustment_cost_tracker import AdjustmentCostTracker
+from app.schemas.autopilot import AdjustmentCostSummary, AdjustmentCostThresholdCheck
 
 router = APIRouter()
 
@@ -475,4 +484,188 @@ async def get_greeks_heatmap(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error calculating Greeks heatmap: {str(e)}"
+        )
+
+
+# ============================================================================
+# PHASE 5G: ADJUSTMENT COST TRACKING
+# ============================================================================
+
+@router.get("/{strategy_id}/adjustment-costs", response_model=dict)
+async def get_adjustment_costs(
+    strategy_id: int,
+    warning_threshold_pct: float = Query(50.0, ge=0, le=100),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user)
+):
+    """
+    Get adjustment cost summary for a strategy (Phase 5G #46).
+
+    Tracks cumulative cost of adjustments relative to original premium.
+    Professional traders avoid exceeding 50% of original premium in adjustment costs.
+
+    Args:
+        strategy_id: Strategy ID
+        warning_threshold_pct: Warning threshold percentage (default: 50%)
+
+    Returns:
+        AdjustmentCostSummary with:
+        - original_premium: Initial premium collected
+        - total_adjustment_cost: Sum of all adjustment costs
+        - adjustment_cost_pct: Cost as percentage of original premium
+        - net_potential_profit: Original premium - adjustment costs
+        - adjustments: List of individual adjustments
+        - alert_level: "success" | "info" | "warning" | "danger"
+        - alert_message: Human-readable alert message
+    """
+    try:
+        # Get strategy
+        result = await db.execute(
+            select(AutoPilotStrategy).where(
+                AutoPilotStrategy.id == strategy_id,
+                AutoPilotStrategy.user_id == user.id
+            )
+        )
+        strategy = result.scalar_one_or_none()
+
+        if not strategy:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Strategy {strategy_id} not found"
+            )
+
+        # Get cost summary
+        tracker = AdjustmentCostTracker(db)
+        summary = await tracker.get_summary(strategy, warning_threshold_pct)
+
+        return summary.to_dict()
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching adjustment costs: {str(e)}"
+        )
+
+
+@router.get("/{strategy_id}/adjustment-costs/threshold-check", response_model=dict)
+async def check_adjustment_cost_threshold(
+    strategy_id: int,
+    threshold_pct: float = Query(50.0, ge=0, le=100),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user)
+):
+    """
+    Check if adjustment costs exceed threshold (Phase 5G #46).
+
+    Args:
+        strategy_id: Strategy ID
+        threshold_pct: Threshold percentage to check (default: 50%)
+
+    Returns:
+        {
+            "threshold_exceeded": bool,
+            "current_pct": float,
+            "threshold_pct": float,
+            "alert_level": str,
+            "alert_message": str,
+            "recommendation": str
+        }
+    """
+    try:
+        # Get strategy
+        result = await db.execute(
+            select(AutoPilotStrategy).where(
+                AutoPilotStrategy.id == strategy_id,
+                AutoPilotStrategy.user_id == user.id
+            )
+        )
+        strategy = result.scalar_one_or_none()
+
+        if not strategy:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Strategy {strategy_id} not found"
+            )
+
+        # Check threshold
+        tracker = AdjustmentCostTracker(db)
+        result = await tracker.check_cost_threshold(strategy, threshold_pct)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error checking cost threshold: {str(e)}"
+        )
+
+
+@router.post("/{strategy_id}/adjustment-costs/project", response_model=dict)
+async def project_adjustment_cost(
+    strategy_id: int,
+    action_type: str = Body(...),
+    estimated_cost: Decimal = Body(...),
+    notes: Optional[str] = Body(None),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user)
+):
+    """
+    Project cost impact of a new adjustment before execution (Phase 5G #46).
+
+    Helps traders decide if an adjustment is worth the cost.
+
+    Args:
+        strategy_id: Strategy ID
+        action_type: Type of adjustment action
+        estimated_cost: Estimated cost of the adjustment
+        notes: Optional notes about the adjustment
+
+    Returns:
+        {
+            "current_cost": float,
+            "current_pct": float,
+            "estimated_new_cost": float,
+            "projected_total_cost": float,
+            "projected_cost_pct": float,
+            "projected_profit": float,
+            "recommendation": "proceed" | "reconsider" | "do_not_adjust"
+        }
+    """
+    try:
+        # Get strategy
+        result = await db.execute(
+            select(AutoPilotStrategy).where(
+                AutoPilotStrategy.id == strategy_id,
+                AutoPilotStrategy.user_id == user.id
+            )
+        )
+        strategy = result.scalar_one_or_none()
+
+        if not strategy:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Strategy {strategy_id} not found"
+            )
+
+        # Project cost impact
+        tracker = AdjustmentCostTracker(db)
+        projection = await tracker.track_new_adjustment(
+            strategy=strategy,
+            action_type=action_type,
+            estimated_cost=estimated_cost,
+            notes=notes
+        )
+
+        return projection
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error projecting adjustment cost: {str(e)}"
         )

@@ -11,6 +11,7 @@ import { useStrategyTypes } from '@/constants/strategyTypes'
 import AutoPilotLegsTable from '@/components/autopilot/builder/AutoPilotLegsTable.vue'
 import ProfitTargetConfig from '@/components/autopilot/builder/ProfitTargetConfig.vue'
 import DTEExitConfig from '@/components/autopilot/builder/DTEExitConfig.vue'
+import StagedEntryConfig from '@/components/autopilot/builder/StagedEntryConfig.vue'
 import KiteLayout from '@/components/layout/KiteLayout.vue'
 import '@/assets/css/strategy-table.css'
 
@@ -257,6 +258,14 @@ const updateExitRuleConfig = (ruleType, config) => {
   }
   store.builder.strategy.exit_rules[ruleType] = config
 }
+
+// Available legs for staged entry configuration
+const availableLegsForStaging = computed(() => {
+  return store.builder.strategy.legs_config.map((leg, index) => ({
+    id: leg.id || `leg_${index + 1}`,
+    label: `${leg.contract_type} ${leg.strike_price} ${leg.transaction_type} (${leg.lots} lots)`
+  }))
+})
 
 const canProceed = computed(() => {
   const s = store.builder.strategy
@@ -568,6 +577,15 @@ const canProceed = computed(() => {
               </div>
             </div>
           </div>
+        </div>
+
+        <!-- Phase 5I: Staged Entry Configuration -->
+        <div class="mt-6">
+          <StagedEntryConfig
+            v-model="store.builder.strategy.staged_entry_config"
+            :available-legs="availableLegsForStaging"
+            data-testid="autopilot-staged-entry-config"
+          />
         </div>
       </div>
 

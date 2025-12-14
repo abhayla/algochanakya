@@ -22,6 +22,7 @@ from app.schemas.autopilot import (
 from app.services.position_leg_service import PositionLegService
 from app.services.leg_actions_service import LegActionsService
 from app.services.break_trade_service import BreakTradeService
+from app.services.delta_rebalance_service import DeltaRebalanceService
 
 router = APIRouter()
 
@@ -418,4 +419,219 @@ async def update_all_legs_greeks(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error updating legs Greeks: {str(e)}"
+        )
+
+
+@router.post("/strategies/{strategy_id}/assess-delta-risk")
+async def assess_delta_risk(
+    strategy_id: int,
+    delta_band_type: str = "moderate",
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+    kite: KiteConnect = Depends(get_kite_client)
+):
+    """
+    Assess delta risk for a strategy.
+
+    Feature #38: Delta Neutral Rebalance
+
+    Analyzes current delta and determines if rebalancing is needed.
+    Returns suggested actions if delta has drifted outside acceptable bands.
+
+    Args:
+        strategy_id: Strategy ID
+        delta_band_type: Band preset ('conservative', 'moderate', 'aggressive')
+
+    Returns:
+        {
+            "current_delta": float,
+            "delta_status": str,  # "safe", "warning", "critical"
+            "band_type": str,
+            "warning_threshold": float,
+            "critical_threshold": float,
+            "rebalance_needed": bool,
+            "suggested_actions": List[Dict],
+            "directional_bias": str  # "bullish", "bearish", "neutral"
+        }
+    """
+    try:
+        from app.models.autopilot import AutoPilotStrategy
+
+        # Get strategy
+        strategy = await db.get(AutoPilotStrategy, strategy_id)
+        if not strategy:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Strategy {strategy_id} not found"
+            )
+
+        # Verify ownership
+        if strategy.user_id != user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not authorized to access this strategy"
+            )
+
+        # Assess delta risk
+        service = DeltaRebalanceService(kite, db)
+        assessment = await service.assess_delta_risk(
+            strategy=strategy,
+            delta_band_type=delta_band_type
+        )
+
+        return assessment
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error assessing delta risk: {str(e)}"
+        )
+
+
+@router.post("/strategies/{strategy_id}/rebalance-delta")
+async def rebalance_delta(
+    strategy_id: int,
+    action_index: int = 0,
+    delta_band_type: str = "moderate",
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+    kite: KiteConnect = Depends(get_kite_client)
+):
+    """
+    Execute delta rebalancing action.
+
+    Feature #38: Delta Neutral Rebalance
+
+    Executes one of the suggested rebalancing actions to bring
+    delta back to neutral range.
+
+    Args:
+        strategy_id: Strategy ID
+        action_index: Index of suggested action to execute (default 0 = highest priority)
+        delta_band_type: Band preset used for assessment
+
+    Returns:
+        {
+            "action_executed": str,
+            "previous_delta": float,
+            "new_delta": float,
+            "delta_change": float,
+            "execution_details": Dict
+        }
+    """
+    try:
+        from app.models.autopilot import AutoPilotStrategy
+
+        # Get strategy
+        strategy = await db.get(AutoPilotStrategy, strategy_id)
+        if not strategy:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Strategy {strategy_id} not found"
+            )
+
+        # Verify ownership
+        if strategy.user_id != user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not authorized to access this strategy"
+            )
+
+        # Get assessment and suggested actions
+        service = DeltaRebalanceService(kite, db)
+        assessment = await service.assess_delta_risk(
+            strategy=strategy,
+            delta_band_type=delta_band_type
+        )
+
+        if not assessment.get('rebalance_needed'):
+            return {
+                "action_executed": "none",
+                "message": "Delta is within acceptable range, no rebalancing needed",
+                "current_delta": assessment['current_delta'],
+                "delta_status": assessment['delta_status']
+            }
+
+        suggested_actions = assessment.get('suggested_actions', [])
+        if not suggested_actions or action_index >= len(suggested_actions):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid action_index: {action_index}. Available actions: {len(suggested_actions)}"
+            )
+
+        # Get the selected action
+        selected_action = suggested_actions[action_index]
+        action_type = selected_action['action_type']
+        previous_delta = assessment['current_delta']
+
+        # Execute the action via adjustment engine
+        from app.services.adjustment_engine import AdjustmentEngine
+        adj_engine = AdjustmentEngine(kite, db, str(user.id))
+
+        execution_result = None
+
+        if action_type == "add_opposite_side":
+            # Execute add to opposite side action
+            execution_result = await adj_engine._action_add_to_opposite(
+                strategy=strategy,
+                params={
+                    'option_type': selected_action['option_type'],
+                    'strike': selected_action['strike'],
+                    'lots': 1,
+                    'execution_mode': 'market'
+                }
+            )
+
+        elif action_type == "shift_leg":
+            # Execute shift leg action
+            from app.services.leg_actions_service import LegActionsService
+            leg_service = LegActionsService(kite, db, str(user.id))
+
+            direction = selected_action['direction']
+            current_strike = selected_action['current_strike']
+
+            # Determine shift amount (move 1 strike in direction)
+            shift_amount = 100 if direction == "farther_up" else -100
+
+            execution_result = await leg_service.shift_leg(
+                strategy_id=strategy_id,
+                leg_id=selected_action['leg_id'],
+                shift_direction=direction,
+                shift_amount=shift_amount,
+                execution_mode='market'
+            )
+
+        elif action_type == "close_leg":
+            # Execute close leg action
+            from app.services.leg_actions_service import LegActionsService
+            leg_service = LegActionsService(kite, db, str(user.id))
+
+            execution_result = await leg_service.exit_leg(
+                strategy_id=strategy_id,
+                leg_id=selected_action['leg_id'],
+                execution_mode='market'
+            )
+
+        # Refresh strategy to get new delta
+        await db.refresh(strategy)
+        new_delta = float(strategy.net_delta) if strategy.net_delta else 0.0
+        delta_change = new_delta - previous_delta
+
+        return {
+            "action_executed": action_type,
+            "action_description": selected_action.get('description', ''),
+            "previous_delta": previous_delta,
+            "new_delta": new_delta,
+            "delta_change": delta_change,
+            "execution_details": execution_result
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error executing delta rebalance: {str(e)}"
         )

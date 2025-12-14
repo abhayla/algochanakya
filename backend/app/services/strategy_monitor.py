@@ -181,10 +181,10 @@ class StrategyMonitor:
                 )
                 return
 
-            # Get all waiting and active strategies
+            # Get all waiting, active, and waiting_staged_entry strategies
             result = await db.execute(
                 select(AutoPilotStrategy).where(
-                    AutoPilotStrategy.status.in_(["waiting", "active"])
+                    AutoPilotStrategy.status.in_(["waiting", "active", "waiting_staged_entry"])
                 )
             )
             strategies = result.scalars().all()
@@ -217,6 +217,10 @@ class StrategyMonitor:
         if strategy.status == "waiting":
             # Evaluate entry conditions
             await self._evaluate_and_execute(db, strategy)
+
+        elif strategy.status == "waiting_staged_entry":
+            # Phase 5I: Check staged entry conditions
+            await self._check_staged_entry(db, strategy)
 
         elif strategy.status == "active":
             # Update P&L
@@ -446,6 +450,124 @@ class StrategyMonitor:
                     new_status="error",
                     reason="Entry execution failed"
                 )
+
+    async def _check_staged_entry(self, db: AsyncSession, strategy: AutoPilotStrategy):
+        """
+        Phase 5I: Check if staged entry conditions are met for next stage.
+
+        Called when strategy status is 'waiting_staged_entry'.
+        Evaluates whether to execute the next stage of entry (half-size add or staggered leg).
+        """
+        try:
+            # Import staged entry service
+            from backend.app.services.staged_entry_service import StagedEntryService
+
+            # Initialize staged entry service
+            staged_service = StagedEntryService(
+                db=db,
+                market_data=self.market_data,
+                condition_engine=self.condition_engine,
+                order_executor=self.order_executor,
+                websocket_manager=self.ws_manager
+            )
+
+            # Check if any staged entry conditions are met
+            stage_info = await staged_service.check_staged_entries(strategy)
+
+            if not stage_info.get("should_execute"):
+                # Conditions not met yet, send progress update
+                progress_data = await staged_service.get_staged_entry_status(strategy)
+                await self.ws_manager.broadcast_to_user(
+                    user_id=strategy.user_id,
+                    message_type="STAGED_ENTRY_PROGRESS",
+                    data={
+                        "strategy_id": strategy.id,
+                        "status": progress_data,
+                        "reason": stage_info.get("reason", "Waiting for conditions")
+                    }
+                )
+                return
+
+            # Conditions met, execute the next stage
+            logger.info(
+                f"Staged entry conditions met for strategy {strategy.id}: "
+                f"{stage_info.get('reason')}"
+            )
+
+            # Log the staged entry trigger
+            log = AutoPilotLog(
+                user_id=strategy.user_id,
+                strategy_id=strategy.id,
+                event_type="staged_entry_triggered",
+                severity="info",
+                message=f"Staged entry stage {stage_info.get('stage_number')} triggered",
+                event_data=stage_info
+            )
+            db.add(log)
+            await db.commit()
+
+            # Execute the staged entry
+            result = await staged_service.execute_staged_entry(strategy, stage_info)
+
+            if result.get("success"):
+                logger.info(
+                    f"Staged entry executed successfully for strategy {strategy.id}, "
+                    f"stage {result.get('stage_completed')}"
+                )
+
+                # Log successful execution
+                log = AutoPilotLog(
+                    user_id=strategy.user_id,
+                    strategy_id=strategy.id,
+                    event_type="staged_entry_executed",
+                    severity="info",
+                    message=f"Staged entry stage {result.get('stage_completed')} executed",
+                    event_data={
+                        "stage": result.get('stage_completed'),
+                        "orders": result.get('orders_placed', []),
+                        "all_complete": result.get('all_stages_complete', False)
+                    }
+                )
+                db.add(log)
+                await db.commit()
+
+                # Send WebSocket notification (already sent by staged_service)
+                # Status already updated to 'active' if all stages complete
+
+            else:
+                # Execution failed
+                error_msg = result.get("error", "Unknown error")
+                logger.error(f"Staged entry execution failed for strategy {strategy.id}: {error_msg}")
+
+                # Log failure
+                log = AutoPilotLog(
+                    user_id=strategy.user_id,
+                    strategy_id=strategy.id,
+                    event_type="staged_entry_failed",
+                    severity="error",
+                    message=f"Staged entry execution failed: {error_msg}",
+                    event_data={"error": error_msg}
+                )
+                db.add(log)
+
+                # Update strategy status to error
+                strategy.status = "error"
+                await db.commit()
+
+                # Send WebSocket notification
+                await self.ws_manager.broadcast_to_user(
+                    user_id=strategy.user_id,
+                    message_type="STRATEGY_ERROR",
+                    data={
+                        "strategy_id": strategy.id,
+                        "error": error_msg,
+                        "reason": "Staged entry execution failed"
+                    }
+                )
+
+        except Exception as e:
+            logger.error(f"Error in _check_staged_entry for strategy {strategy.id}: {e}", exc_info=True)
+            # Don't crash the monitor, just log and continue
 
     async def _update_pnl(self, db: AsyncSession, strategy: AutoPilotStrategy):
         """Update P&L for active strategy."""

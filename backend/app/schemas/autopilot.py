@@ -16,12 +16,14 @@ from enum import Enum
 class StrategyStatus(str, Enum):
     draft = "draft"
     waiting = "waiting"
+    waiting_staged_entry = "waiting_staged_entry"  # Phase 5I: Partial entry completed, waiting for stage 2+
     active = "active"
     pending = "pending"
     paused = "paused"
     completed = "completed"
     error = "error"
     expired = "expired"
+    cancelled = "cancelled"  # Phase 5I: Strategy cancelled during staged entry
 
 
 class Underlying(str, Enum):
@@ -96,6 +98,22 @@ class AdjustmentTriggerType(str, Enum):
     premium_based = "premium_based"
     vix_based = "vix_based"
     spot_based = "spot_based"
+    # Phase 5D: Exit Rules
+    profit_pct_based = "profit_pct_based"
+    premium_captured_pct = "premium_captured_pct"
+    return_on_margin = "return_on_margin"
+    capital_recycling = "capital_recycling"
+    dte_based = "dte_based"
+    days_in_trade = "days_in_trade"
+    theta_curve_based = "theta_curve_based"
+    # Phase 5E: Risk-Based Exits
+    gamma_based = "gamma_based"
+    atr_based = "atr_based"
+    delta_doubles = "delta_doubles"
+    delta_change = "delta_change"
+    # Phase 5G: Greek-Based Triggers
+    theta_based = "theta_based"
+    vega_based = "vega_based"
 
 
 class AdjustmentActionType(str, Enum):
@@ -106,6 +124,11 @@ class AdjustmentActionType(str, Enum):
     exit_all = "exit_all"
     scale_down = "scale_down"
     scale_up = "scale_up"
+    # Phase 5F/5G additions
+    add_to_opposite_side = "add_to_opposite_side"
+    widen_spread = "widen_spread"
+    shift_leg = "shift_leg"
+    delta_neutral_rebalance = "delta_neutral_rebalance"
 
 
 class ConfirmationStatus(str, Enum):
@@ -1349,6 +1372,7 @@ class AdjustmentSuggestionBase(BaseModel):
     details: Optional[Dict[str, Any]] = None
     urgency: str = "medium"
     confidence: int = Field(50, ge=0, le=100)
+    category: str = "defensive"  # defensive, offensive, neutral (Phase 5H Feature #45)
     one_click_action: bool = False
     action_params: Optional[Dict[str, Any]] = None
 
@@ -1538,3 +1562,181 @@ class PayoffChartResponse(BaseModel):
     max_loss: Optional[Decimal]
     current_spot: Decimal
     current_pnl: Decimal
+
+
+# ========== PHASE 5G: ANALYTICS & INTELLIGENCE ==========
+
+class AdjustmentCategory(str, Enum):
+    """
+    Categorization of adjustment actions by risk impact (Phase 5G #45)
+
+    OFFENSIVE: Increase risk to collect more premium
+    DEFENSIVE: Reduce risk to protect capital
+    NEUTRAL: Rebalance position without major risk change
+    """
+    offensive = "offensive"
+    defensive = "defensive"
+    neutral = "neutral"
+
+
+class AdjustmentCostItem(BaseModel):
+    """Single adjustment cost entry"""
+    timestamp: datetime
+    order_id: int
+    action_type: str
+    cost: Decimal
+    reason: str
+    status: str
+
+
+class AdjustmentCostSummary(BaseModel):
+    """
+    Summary of adjustment costs for a strategy (Phase 5G #46)
+
+    Tracks cumulative cost of adjustments relative to original premium.
+    Professional traders avoid exceeding 50% of original premium in adjustment costs.
+    """
+    original_premium: Decimal = Field(..., description="Initial premium collected (credit strategies)")
+    total_adjustment_cost: Decimal = Field(..., description="Sum of all adjustment costs")
+    adjustment_cost_pct: float = Field(..., description="Cost as percentage of original premium")
+    net_potential_profit: Decimal = Field(..., description="Original premium - adjustment costs")
+    adjustments: List[AdjustmentCostItem] = Field(default_factory=list, description="List of adjustments")
+    warning_threshold_pct: float = Field(default=50.0, description="Warning threshold percentage")
+    alert_level: str = Field(..., description="success | info | warning | danger")
+    alert_message: str = Field(..., description="Human-readable alert message")
+
+
+class AdjustmentCostThresholdCheck(BaseModel):
+    """Result of checking adjustment cost threshold"""
+    threshold_exceeded: bool
+    current_pct: float
+    threshold_pct: float
+    alert_level: str
+    alert_message: str
+    recommendation: str
+
+
+class GreekConditionVariable(str, Enum):
+    """Greek variables for entry/exit conditions (Phase 5G)"""
+    STRATEGY_DELTA = "STRATEGY.DELTA"
+    STRATEGY_GAMMA = "STRATEGY.GAMMA"
+    STRATEGY_THETA = "STRATEGY.THETA"
+    STRATEGY_VEGA = "STRATEGY.VEGA"
+
+
+# =============================================================================
+# Phase 5I Schemas - Staged Entry (Half-Size & Staggered Entry)
+# =============================================================================
+
+class StagedEntryMode(str, Enum):
+    """
+    Entry mode for staged strategies (Phase 5I #12, #13)
+
+    half_size: Start with 50% position, add remaining when conditions met
+    staggered: Enter legs at different times based on independent conditions
+    """
+    half_size = "half_size"
+    staggered = "staggered"
+
+
+class HalfSizeStageConfig(BaseModel):
+    """Configuration for half-size entry stage"""
+    legs: List[str] = Field(["all"], description="Leg IDs to enter (or 'all' for all legs)")
+    lots_multiplier: float = Field(0.5, ge=0.1, le=1.0, description="Lot size multiplier (0.5 = 50%)")
+
+
+class HalfSizeAddCondition(BaseModel):
+    """Condition for adding remaining position in half-size entry"""
+    condition: Condition = Field(..., description="Condition to trigger adding remaining position")
+    lots_multiplier: float = Field(0.5, ge=0.1, le=1.0, description="Additional lot size multiplier")
+
+
+class HalfSizeEntryConfig(BaseModel):
+    """
+    Configuration for half-size entry strategy (Phase 5I #12)
+
+    Example: Start with 50% position on CE side, add remaining when spot rallies 1%
+    """
+    mode: StagedEntryMode = StagedEntryMode.half_size
+    initial_stage: HalfSizeStageConfig = Field(..., description="Initial entry configuration")
+    add_stage: HalfSizeAddCondition = Field(..., description="Add condition configuration")
+
+
+class StaggeredLegEntry(BaseModel):
+    """Single leg entry configuration for staggered entry"""
+    leg_ids: List[str] = Field(..., min_length=1, description="Leg IDs to enter in this stage")
+    condition: Optional[Condition] = Field(None, description="Entry condition (None = immediate entry)")
+    lots_multiplier: float = Field(1.0, ge=0.1, le=1.0, description="Lot size multiplier")
+
+
+class StaggeredEntryConfig(BaseModel):
+    """
+    Configuration for staggered entry strategy (Phase 5I #13)
+
+    Example: Enter PE side at 9:20 AM, enter CE side when VIX < 15
+    """
+    mode: StagedEntryMode = StagedEntryMode.staggered
+    leg_entries: List[StaggeredLegEntry] = Field(..., min_length=1, description="Leg entry configurations")
+
+
+class StagedEntryConfig(BaseModel):
+    """
+    Base configuration for staged entry strategies (Phase 5I)
+
+    Supports both half-size and staggered entry modes.
+    """
+    enabled: bool = Field(True, description="Enable staged entry")
+    mode: StagedEntryMode = Field(..., description="Entry mode: half_size or staggered")
+    config: Union[HalfSizeEntryConfig, StaggeredEntryConfig] = Field(
+        ...,
+        description="Mode-specific configuration"
+    )
+
+
+class StagedEntryStatus(BaseModel):
+    """
+    Current status of staged entry for display in UI
+    """
+    mode: Optional[StagedEntryMode] = None
+    current_stage: int = Field(0, description="Current stage number (0 = not started)")
+    total_stages: int = Field(0, description="Total number of stages")
+    entered_legs: List[str] = Field(default_factory=list, description="Leg IDs that have been entered")
+    pending_legs: List[str] = Field(default_factory=list, description="Leg IDs pending entry")
+    next_condition: Optional[Dict[str, Any]] = Field(None, description="Next condition to be met")
+    progress_pct: float = Field(0.0, ge=0, le=100, description="Overall progress percentage")
+
+
+class StagedEntryProgressUpdate(BaseModel):
+    """WebSocket message for staged entry progress updates"""
+    type: str = "staged_entry_progress"
+    strategy_id: int
+    stage: int
+    legs_entered: List[str] = []
+    is_complete: bool = False
+    reason: str
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+
+
+class StagedEntryCreateRequest(BaseModel):
+    """Request to create a strategy with staged entry"""
+    # Include all fields from StrategyCreateRequest
+    name: str = Field(..., min_length=1, max_length=100)
+    description: Optional[str] = Field(None, max_length=500)
+    underlying: Underlying
+    expiry_type: ExpiryType = ExpiryType.current_week
+    expiry_date: Optional[date] = None
+    lots: int = Field(1, ge=1, le=50)
+    position_type: PositionType = PositionType.intraday
+    legs_config: List[LegConfig] = Field(..., min_length=1, max_length=20)
+    entry_conditions: EntryConditions
+    adjustment_rules: List[Dict[str, Any]] = []
+    order_settings: Optional[OrderSettings] = None
+    risk_settings: Optional[RiskSettings] = None
+    schedule_config: Optional[ScheduleConfig] = None
+    priority: int = Field(100, ge=1, le=1000)
+    source_template_id: Optional[int] = None
+    # Phase 5I addition
+    staged_entry_config: Optional[StagedEntryConfig] = Field(
+        None,
+        description="Staged entry configuration (half-size or staggered)"
+    )

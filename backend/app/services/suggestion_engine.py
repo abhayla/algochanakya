@@ -1,8 +1,15 @@
 """
-Suggestion Engine - Phase 5C
+Suggestion Engine - Phase 5C + Phase 5E Enhancements
 
 Analyzes position state and generates intelligent adjustment suggestions.
 Considers delta, P&L, DTE, market conditions, and position Greeks.
+
+Phase 5E Enhancements:
+- Gamma risk exit suggestions (Feature #26, #35)
+- ATR-based trailing stop suggestions (Feature #27)
+- Delta doubles alerts (Feature #28)
+- Delta change alerts (Feature #29)
+- DTE-based exit suggestions (Feature #33)
 """
 from datetime import datetime, date
 from decimal import Decimal
@@ -26,6 +33,8 @@ from app.models.autopilot import (
 )
 from app.services.market_data import MarketDataService
 from app.services.position_leg_service import PositionLegService
+from app.services.gamma_risk_service import get_gamma_risk_service
+from app.services.dte_zone_service import get_dte_zone_service
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +45,30 @@ class DTEZone(str, Enum):
     MIDDLE = "middle"    # 7-14 days
     LATE = "late"        # 3-7 days
     EXPIRY = "expiry"    # < 3 days
+
+
+class AdjustmentCategory(str, Enum):
+    """
+    Adjustment categories based on risk impact (Phase 5H Feature #45).
+
+    - DEFENSIVE: Reduces risk, decreases or maintains premium
+    - OFFENSIVE: Increases risk for more premium
+    - NEUTRAL: Rebalances without changing risk profile
+    """
+    DEFENSIVE = "defensive"
+    OFFENSIVE = "offensive"
+    NEUTRAL = "neutral"
+
+
+# Mapping of suggestion types to categories
+SUGGESTION_CATEGORY_MAP = {
+    SuggestionType.EXIT: AdjustmentCategory.DEFENSIVE,
+    SuggestionType.ROLL: AdjustmentCategory.NEUTRAL,
+    SuggestionType.SHIFT: AdjustmentCategory.DEFENSIVE,  # Usually to reduce delta risk
+    SuggestionType.BREAK: AdjustmentCategory.DEFENSIVE,  # Exit losing leg
+    SuggestionType.ADD_HEDGE: AdjustmentCategory.DEFENSIVE,
+    SuggestionType.NO_ACTION: AdjustmentCategory.NEUTRAL,
+}
 
 
 class SuggestionEngine:
@@ -67,6 +100,17 @@ class SuggestionEngine:
         self.db = db
         self.market_data = market_data
         self.position_leg_service = PositionLegService(kite, db)
+        # Phase 5E: New risk assessment services
+        self.gamma_service = get_gamma_risk_service()
+        self.dte_service = get_dte_zone_service()
+
+    def _get_suggestion_category(self, suggestion_type: SuggestionType) -> str:
+        """
+        Get the category (offensive/defensive/neutral) for a suggestion type.
+
+        Phase 5H Feature #45: Offensive/Defensive Categorization
+        """
+        return SUGGESTION_CATEGORY_MAP.get(suggestion_type, AdjustmentCategory.DEFENSIVE).value
 
     async def generate_suggestions(
         self,
@@ -157,6 +201,24 @@ class SuggestionEngine:
                 strategy, position_legs, analysis, dte_zone
             )
             suggestions.extend(vega_suggestions)
+
+            # 7. Phase 5E: Gamma risk suggestions (Features #26, #35)
+            gamma_suggestions = await self._generate_gamma_risk_suggestions(
+                strategy, position_legs, analysis, dte
+            )
+            suggestions.extend(gamma_suggestions)
+
+            # 8. Phase 5E: Delta tracking suggestions (Features #28, #29)
+            delta_tracking_suggestions = await self._generate_delta_tracking_suggestions(
+                strategy, position_legs, analysis
+            )
+            suggestions.extend(delta_tracking_suggestions)
+
+            # 9. Phase 5E: DTE-aware exit suggestions (Feature #33)
+            dte_exit_suggestions = await self._generate_dte_exit_suggestions(
+                strategy, position_legs, analysis, dte
+            )
+            suggestions.extend(dte_exit_suggestions)
 
             # Clear old suggestions for this strategy
             await self.db.execute(
@@ -284,6 +346,7 @@ class SuggestionEngine:
                     strategy_id=strategy.id,
                     suggestion_type=SuggestionType.SHIFT,
                     urgency=SuggestionUrgency.CRITICAL,
+                    category=self._get_suggestion_category(SuggestionType.SHIFT),
                     trigger_reason=f"Shift {target_leg.contract_type} leg to reduce delta",
                     description=f"Net delta ({abs_delta:.2f}) exceeds danger threshold. "
                                f"Shift the {target_leg.strike} {target_leg.contract_type} leg "
@@ -306,6 +369,7 @@ class SuggestionEngine:
                 strategy_id=strategy.id,
                 suggestion_type=SuggestionType.SHIFT,
                 urgency=SuggestionUrgency.HIGH,
+                category=self._get_suggestion_category(SuggestionType.SHIFT),
                 trigger_reason="Consider adjusting position delta",
                 description=f"Net delta ({abs_delta:.2f}) is elevated. "
                            f"Consider shifting legs to reduce directional exposure.",
@@ -342,6 +406,7 @@ class SuggestionEngine:
                 strategy_id=strategy.id,
                 suggestion_type=SuggestionType.BREAK,
                 urgency=SuggestionUrgency.CRITICAL,
+                category=self._get_suggestion_category(SuggestionType.BREAK),
                 trigger_reason=f"Break trade on losing {worst_leg.contract_type} leg",
                 description=f"The {worst_leg.strike} {worst_leg.contract_type} leg has "
                            f"unrealized loss of ₹{abs(worst_pnl):.0f}. "
@@ -364,6 +429,7 @@ class SuggestionEngine:
                 strategy_id=strategy.id,
                 suggestion_type=SuggestionType.EXIT,
                 urgency=SuggestionUrgency.HIGH,
+                category=self._get_suggestion_category(SuggestionType.EXIT),
                 trigger_reason="Consider exiting position",
                 description=f"Current P&L (₹{current_pnl:.0f}) is approaching max loss limit "
                            f"(₹{max_loss}). Exit to preserve capital."
@@ -398,6 +464,7 @@ class SuggestionEngine:
                 strategy_id=strategy.id,
                 suggestion_type=SuggestionType.ROLL,
                 urgency=SuggestionUrgency.MEDIUM,
+                category=self._get_suggestion_category(SuggestionType.ROLL),
                 trigger_reason="Roll to next expiry",
                 description=f"Current expiry has only {dte} days remaining. "
                            f"Consider rolling positions to next expiry to maintain theta decay.",
@@ -422,6 +489,7 @@ class SuggestionEngine:
                 strategy_id=strategy.id,
                 suggestion_type=SuggestionType.EXIT,
                 urgency=urgency,
+                category=self._get_suggestion_category(SuggestionType.EXIT),
                 trigger_reason=trigger_msg,
                 description=description,
                 action_params={
@@ -453,6 +521,7 @@ class SuggestionEngine:
                 strategy_id=strategy.id,
                 suggestion_type=SuggestionType.ADD_HEDGE,
                 urgency=SuggestionUrgency.HIGH,
+                category=self._get_suggestion_category(SuggestionType.ADD_HEDGE),
                 trigger_reason="Add hedge to reduce gamma risk",
                 description=f"High gamma ({abs(net_gamma):.3f}) with {analysis['dte']} DTE "
                            f"creates significant risk from spot moves.",
@@ -469,6 +538,7 @@ class SuggestionEngine:
                 strategy_id=strategy.id,
                 suggestion_type=SuggestionType.NO_ACTION,
                 urgency=SuggestionUrgency.LOW,
+                category=self._get_suggestion_category(SuggestionType.NO_ACTION),
                 trigger_reason="Monitor position - High volatility environment",
                 description=f"VIX at {vix:.1f} indicates elevated market volatility. "
                            f"Monitor position closely but no immediate action needed."
@@ -498,6 +568,7 @@ class SuggestionEngine:
                 strategy_id=strategy.id,
                 suggestion_type=SuggestionType.EXIT,
                 urgency=SuggestionUrgency.HIGH,
+                category=self._get_suggestion_category(SuggestionType.EXIT),
                 trigger_reason="High theta burn on long positions",
                 description=f"Net theta ({net_theta:.2f}/day) indicates significant time decay loss. "
                            f"With only {dte} DTE remaining, consider exiting long options "
@@ -516,6 +587,7 @@ class SuggestionEngine:
                     strategy_id=strategy.id,
                     suggestion_type=SuggestionType.NO_ACTION,
                     urgency=SuggestionUrgency.LOW,
+                    category=self._get_suggestion_category(SuggestionType.NO_ACTION),
                     trigger_reason="Theta decay accelerating - favorable for short positions",
                     description=f"With {dte} DTE, theta decay is accelerating. "
                                f"Net theta (${net_theta:.2f}/day) is favorable. "
@@ -545,6 +617,7 @@ class SuggestionEngine:
                 strategy_id=strategy.id,
                 suggestion_type=SuggestionType.NO_ACTION,
                 urgency=SuggestionUrgency.MEDIUM,
+                category=self._get_suggestion_category(SuggestionType.NO_ACTION),
                 trigger_reason="High vega exposure in low volatility environment",
                 description=f"Net vega ({net_vega:.2f}) indicates significant volatility exposure. "
                            f"VIX is low ({vix:.1f}). If volatility increases, position will benefit. "
@@ -559,6 +632,7 @@ class SuggestionEngine:
                 strategy_id=strategy.id,
                 suggestion_type=SuggestionType.ADD_HEDGE,
                 urgency=SuggestionUrgency.HIGH,
+                category=self._get_suggestion_category(SuggestionType.ADD_HEDGE),
                 trigger_reason="High short vega exposure in elevated VIX environment",
                 description=f"Net vega ({net_vega:.2f}) indicates significant short volatility exposure. "
                            f"VIX is elevated ({vix:.1f}). Position vulnerable to volatility spikes. "
@@ -579,6 +653,7 @@ class SuggestionEngine:
                 strategy_id=strategy.id,
                 suggestion_type=SuggestionType.SHIFT,
                 urgency=urgency,
+                category=self._get_suggestion_category(SuggestionType.SHIFT),
                 trigger_reason=f"Extreme {direction} vega exposure",
                 description=f"Net vega ({net_vega:.2f}) is extremely {direction}. "
                            f"Position has significant volatility sensitivity. "
@@ -586,6 +661,241 @@ class SuggestionEngine:
                 action_params={
                     "target_vega": 50 if net_vega > 0 else -50,
                     "execution_mode": "limit"
+                }
+            )
+            suggestions.append(suggestion)
+
+        return suggestions
+
+    async def _generate_gamma_risk_suggestions(
+        self,
+        strategy: AutoPilotStrategy,
+        position_legs: List[AutoPilotPositionLeg],
+        analysis: Dict[str, Any],
+        dte: int
+    ) -> List[AutoPilotAdjustmentSuggestion]:
+        """
+        Generate gamma risk exit suggestions (Phase 5E Features #26, #35).
+
+        Uses gamma_risk_service to assess gamma explosion risk.
+        """
+        suggestions = []
+        net_gamma = analysis.get("net_gamma", 0)
+
+        # Get gamma risk assessment
+        assessment = self.gamma_service.assess_gamma_risk(
+            dte=dte,
+            net_gamma=net_gamma,
+            position_type="short"
+        )
+
+        # Critical: Danger zone (0-3 DTE)
+        if assessment['zone'] == 'danger':
+            suggestion = AutoPilotAdjustmentSuggestion(
+                strategy_id=strategy.id,
+                suggestion_type=SuggestionType.EXIT,
+                urgency=SuggestionUrgency.CRITICAL,
+                category=self._get_suggestion_category(SuggestionType.EXIT),
+                trigger_reason="GAMMA EXPLOSION RISK",
+                description=f"{assessment['recommendation']}. "
+                           f"Gamma multiplier: {assessment['multiplier']:.1f}x. "
+                           f"Exit immediately to avoid catastrophic losses from gamma risk.",
+                action_params={
+                    "exit_type": "market",
+                    "reason": "gamma_explosion_risk",
+                    "urgency": "immediate",
+                    "gamma_zone": assessment['zone'],
+                    "dte": dte
+                }
+            )
+            suggestions.append(suggestion)
+
+        # High: Warning zone (4-7 DTE)
+        elif assessment['zone'] == 'warning':
+            suggestion = AutoPilotAdjustmentSuggestion(
+                strategy_id=strategy.id,
+                suggestion_type=SuggestionType.ROLL,
+                urgency=SuggestionUrgency.HIGH,
+                category=self._get_suggestion_category(SuggestionType.ROLL),
+                trigger_reason="Gamma risk increasing - expiry week",
+                description=f"At {dte} DTE, gamma accelerating (multiplier: {assessment['multiplier']:.1f}x). "
+                           f"Consider rolling to next expiry or exiting position. "
+                           f"Adjustments become less effective in expiry week.",
+                action_params={
+                    "action_type": "roll_or_exit",
+                    "target_expiry": "+7days",
+                    "alternative": "exit_all",
+                    "gamma_zone": assessment['zone']
+                }
+            )
+            suggestions.append(suggestion)
+
+        # Check gamma explosion probability
+        prob = self.gamma_service.calculate_gamma_explosion_probability(
+            dte=dte,
+            net_gamma=net_gamma,
+            volatility=0.20  # Default IV
+        )
+
+        if prob > 0.60 and assessment['zone'] != 'danger':  # Don't duplicate danger zone suggestion
+            suggestion = AutoPilotAdjustmentSuggestion(
+                strategy_id=strategy.id,
+                suggestion_type=SuggestionType.EXIT,
+                urgency=SuggestionUrgency.HIGH,
+                category=self._get_suggestion_category(SuggestionType.EXIT),
+                trigger_reason=f"High gamma explosion probability ({prob:.0%})",
+                description=f"Based on current gamma ({net_gamma:.3f}) and DTE ({dte}), "
+                           f"probability of gamma explosion is {prob:.0%}. "
+                           f"Recommend exiting to avoid risk.",
+                action_params={
+                    "exit_type": "limit",
+                    "reason": "high_gamma_probability",
+                    "probability": prob
+                }
+            )
+            suggestions.append(suggestion)
+
+        return suggestions
+
+    async def _generate_delta_tracking_suggestions(
+        self,
+        strategy: AutoPilotStrategy,
+        position_legs: List[AutoPilotPositionLeg],
+        analysis: Dict[str, Any]
+    ) -> List[AutoPilotAdjustmentSuggestion]:
+        """
+        Generate delta tracking suggestions (Phase 5E Features #28, #29).
+
+        - Feature #28: Delta doubles from entry
+        - Feature #29: Delta change > 0.10/day
+        """
+        suggestions = []
+        net_delta = analysis.get("net_delta", 0)
+
+        # Get entry delta from strategy runtime_state
+        runtime_state = strategy.runtime_state or {}
+        entry_delta = runtime_state.get('entry_delta', 0)
+        previous_delta = runtime_state.get('previous_delta', entry_delta)
+
+        # Feature #28: Delta doubles from entry
+        if entry_delta != 0 and abs(net_delta) >= 2 * abs(entry_delta):
+            suggestion = AutoPilotAdjustmentSuggestion(
+                strategy_id=strategy.id,
+                suggestion_type=SuggestionType.SHIFT,
+                urgency=SuggestionUrgency.HIGH,
+                category=self._get_suggestion_category(SuggestionType.SHIFT),
+                trigger_reason=f"Delta doubled from entry",
+                description=f"Position delta has doubled from entry "
+                           f"({entry_delta:.3f} → {net_delta:.3f}). "
+                           f"Directional risk has significantly increased. "
+                           f"Consider shifting threatened leg or adding hedge.",
+                action_params={
+                    "action_type": "shift_or_hedge",
+                    "entry_delta": float(entry_delta),
+                    "current_delta": float(net_delta),
+                    "delta_change_pct": float((abs(net_delta) / abs(entry_delta) - 1) * 100)
+                }
+            )
+            suggestions.append(suggestion)
+
+        # Feature #29: Delta change > 0.10/day
+        delta_change = abs(net_delta - previous_delta)
+        if delta_change > 0.10:
+            suggestion = AutoPilotAdjustmentSuggestion(
+                strategy_id=strategy.id,
+                suggestion_type=SuggestionType.SHIFT,
+                urgency=SuggestionUrgency.MEDIUM,
+                category=self._get_suggestion_category(SuggestionType.SHIFT),
+                trigger_reason=f"Large delta shift ({delta_change:.3f})",
+                description=f"Delta changed by {delta_change:.3f} "
+                           f"({previous_delta:.3f} → {net_delta:.3f}). "
+                           f"Significant spot movement detected. Monitor closely.",
+                action_params={
+                    "delta_change": float(delta_change),
+                    "previous_delta": float(previous_delta),
+                    "current_delta": float(net_delta)
+                }
+            )
+            suggestions.append(suggestion)
+
+        return suggestions
+
+    async def _generate_dte_exit_suggestions(
+        self,
+        strategy: AutoPilotStrategy,
+        position_legs: List[AutoPilotPositionLeg],
+        analysis: Dict[str, Any],
+        dte: int
+    ) -> List[AutoPilotAdjustmentSuggestion]:
+        """
+        Generate DTE-aware exit suggestions (Phase 5E Feature #33).
+
+        Uses dte_zone_service to determine if exit is preferred over adjustment.
+        """
+        suggestions = []
+
+        # Get DTE zone configuration
+        zone_config = self.dte_service.get_zone_config(dte)
+
+        # Check if exit is preferred
+        should_exit, reason = self.dte_service.should_exit_instead_of_adjust(dte)
+
+        if should_exit:
+            net_delta = analysis.get("net_delta", 0)
+
+            # Determine urgency based on DTE and delta
+            if zone_config['zone'] == 'expiry_week':
+                if dte <= 3:
+                    urgency = SuggestionUrgency.CRITICAL
+                    time_frame = "immediately (within hours)"
+                elif abs(net_delta) > 0.25:
+                    urgency = SuggestionUrgency.CRITICAL
+                    time_frame = "within 24 hours"
+                else:
+                    urgency = SuggestionUrgency.HIGH
+                    time_frame = "within 1-2 days"
+
+                suggestion = AutoPilotAdjustmentSuggestion(
+                    strategy_id=strategy.id,
+                    suggestion_type=SuggestionType.EXIT,
+                    urgency=urgency,
+                    trigger_reason=reason,
+                    description=f"{reason}. "
+                               f"Adjustments are only {zone_config['adjustment_effectiveness']['percentage']}% effective. "
+                               f"Exit {time_frame} to avoid gamma risk.",
+                    action_params={
+                        "exit_type": "market" if urgency == SuggestionUrgency.CRITICAL else "limit",
+                        "reason": "dte_based_exit",
+                        "dte": dte,
+                        "zone": zone_config['zone'],
+                        "time_frame": time_frame
+                    }
+                )
+                suggestions.append(suggestion)
+
+        # Warn about restricted actions in current zone
+        restricted_actions = []
+        all_actions = ["roll_strike", "shift_strike", "break_trade", "add_hedge"]
+
+        for action in all_actions:
+            is_allowed, restriction_reason = self.dte_service.is_action_allowed(dte, action)
+            if not is_allowed:
+                restricted_actions.append(action)
+
+        if restricted_actions and zone_config['zone'] in ['late', 'expiry_week']:
+            suggestion = AutoPilotAdjustmentSuggestion(
+                strategy_id=strategy.id,
+                suggestion_type=SuggestionType.NO_ACTION,
+                urgency=SuggestionUrgency.LOW,
+                category=self._get_suggestion_category(SuggestionType.NO_ACTION),
+                trigger_reason=f"Limited adjustment options at {dte} DTE",
+                description=f"In {zone_config['display']['label']}, "
+                           f"actions {', '.join(restricted_actions)} are restricted. "
+                           f"Only exit and roll actions recommended.",
+                action_params={
+                    "restricted_actions": restricted_actions,
+                    "allowed_actions": zone_config['allowed_actions'],
+                    "zone": zone_config['zone']
                 }
             )
             suggestions.append(suggestion)

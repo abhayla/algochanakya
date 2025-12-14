@@ -13,6 +13,11 @@ import LegsPanel from '@/components/autopilot/legs/LegsPanel.vue'
 import SuggestionsPanel from '@/components/autopilot/suggestions/SuggestionsPanel.vue'
 import AnalyticsPanel from '@/components/autopilot/analytics/AnalyticsPanel.vue'
 import WhatIfModal from '@/components/autopilot/simulation/WhatIfModal.vue'
+import DTEZoneIndicator from '@/components/autopilot/monitoring/DTEZoneIndicator.vue'
+import GammaRiskAlert from '@/components/autopilot/monitoring/GammaRiskAlert.vue'
+import BreakTradeWizard from '@/components/autopilot/adjustments/BreakTradeWizard.vue'
+import ShiftLegModal from '@/components/autopilot/adjustments/ShiftLegModal.vue'
+import AdjustmentCostCard from '@/components/autopilot/analytics/AdjustmentCostCard.vue'
 import '@/assets/css/strategy-table.css'
 
 const router = useRouter()
@@ -26,6 +31,12 @@ const showDeleteModal = ref(false)
 const showShareModal = ref(false)
 const showWhatIfModal = ref(false)
 const activeTab = ref('configuration')
+
+// Phase 5F: Adjustment Modals
+const showBreakTradeWizard = ref(false)
+const showShiftLegModal = ref(false)
+const selectedLegForAdjustment = ref(null)
+const strategyLegs = ref([])
 
 onMounted(async () => {
   await store.fetchStrategy(strategyId.value)
@@ -127,6 +138,194 @@ const getStatusBadgeClass = (status) => {
     error: 'status-badge status-error'
   }
   return classes[status] || 'status-badge status-paused'
+}
+
+// Phase 5E: DTE and Gamma Risk Calculations
+const calculateDTE = computed(() => {
+  if (!store.currentStrategy?.legs_config || store.currentStrategy.legs_config.length === 0) {
+    return 0
+  }
+
+  // Get expiry from first leg (all legs should have same expiry in a strategy)
+  const firstLeg = store.currentStrategy.legs_config[0]
+  if (!firstLeg.expiry) return 0
+
+  const expiryDate = new Date(firstLeg.expiry)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  expiryDate.setHours(0, 0, 0, 0)
+
+  const diffTime = expiryDate - today
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+
+  return Math.max(0, diffDays)
+})
+
+const dteZoneConfig = computed(() => {
+  const dte = calculateDTE.value
+
+  // Determine zone
+  let zone = 'early'
+  let deltaWarning = 0.35
+  let adjustmentEffectiveness = { rating: 'high', percentage: 90, description: 'Adjustments are highly effective' }
+  let warnings = []
+  let allowedActions = ['roll_strike', 'shift_strike', 'break_trade', 'add_hedge', 'close_leg', 'exit_all']
+  let display = { color: 'green', icon: 'check-circle', label: 'Early Zone', badge_variant: 'success' }
+
+  if (dte >= 21 && dte <= 45) {
+    zone = 'early'
+    deltaWarning = 0.35
+    adjustmentEffectiveness = { rating: 'high', percentage: 90, description: 'Optimal time for adjustments' }
+    warnings = []
+    display = { color: 'green', icon: 'check-circle', label: 'Early Zone', badge_variant: 'success' }
+  } else if (dte >= 14 && dte < 21) {
+    zone = 'middle'
+    deltaWarning = 0.30
+    adjustmentEffectiveness = { rating: 'good', percentage: 70, description: 'Adjustments still effective' }
+    warnings = ['Monitor position more closely']
+    display = { color: 'blue', icon: 'info-circle', label: 'Middle Zone', badge_variant: 'info' }
+  } else if (dte >= 7 && dte < 14) {
+    zone = 'late'
+    deltaWarning = 0.25
+    adjustmentEffectiveness = { rating: 'moderate', percentage: 40, description: 'Adjustment effectiveness declining' }
+    warnings = ['Gamma risk increasing', 'Consider rolling or exiting']
+    allowedActions = ['close_leg', 'exit_all', 'roll_forward']
+    display = { color: 'orange', icon: 'exclamation-triangle', label: 'Late Zone', badge_variant: 'warning' }
+  } else {
+    zone = 'expiry_week'
+    deltaWarning = 0.20
+    adjustmentEffectiveness = { rating: 'very_low', percentage: 10, description: 'Exit preferred over adjustments' }
+    warnings = ['CRITICAL: Expiry week', 'Gamma explosion risk', 'Exit all positions to avoid assignment']
+    allowedActions = ['close_leg', 'exit_all']
+    display = { color: 'red', icon: 'exclamation-circle', label: 'Expiry Week', badge_variant: 'danger' }
+  }
+
+  return {
+    zone,
+    dte,
+    delta_warning: deltaWarning,
+    allowed_actions: allowedActions,
+    adjustment_effectiveness: adjustmentEffectiveness,
+    warnings,
+    display,
+    label: display.label,
+    icon: display.icon
+  }
+})
+
+const netGamma = computed(() => {
+  return store.currentStrategy?.net_gamma || 0
+})
+
+const gammaRiskAssessment = computed(() => {
+  const dte = calculateDTE.value
+  const gamma = netGamma.value
+
+  // Determine zone
+  let zone = 'safe'
+  if (dte <= 3) {
+    zone = 'danger'
+  } else if (dte <= 7) {
+    zone = 'warning'
+  }
+
+  // Calculate multiplier
+  let multiplier = 1.0
+  if (dte <= 1) {
+    multiplier = 20.0
+  } else if (dte <= 3) {
+    multiplier = 10.0
+  } else if (dte <= 7) {
+    multiplier = 3.0
+  }
+
+  // Determine risk level
+  let riskLevel = 'low'
+  let recommendation = 'Normal gamma behavior. Safe to hold.'
+
+  if (zone === 'danger') {
+    riskLevel = 'critical'
+    recommendation = 'URGENT: Exit position immediately to avoid gamma explosion'
+  } else if (zone === 'warning') {
+    if (Math.abs(gamma) > 0.05) {
+      riskLevel = 'high'
+      recommendation = 'Consider exiting position. Adjustments become ineffective.'
+    } else {
+      riskLevel = 'medium'
+      recommendation = 'Monitor closely. Gamma risk increasing.'
+    }
+  }
+
+  return {
+    zone,
+    risk_level: riskLevel,
+    multiplier,
+    recommendation,
+    dte,
+    net_gamma: gamma,
+    position_type: 'short' // Assuming short positions for now
+  }
+})
+
+const gammaExplosionProbability = computed(() => {
+  const dte = calculateDTE.value
+  const gamma = netGamma.value
+  const zone = gammaRiskAssessment.value.zone
+
+  // Base probability by zone
+  let baseProb = 0.05
+  if (zone === 'danger') {
+    baseProb = 0.80
+  } else if (zone === 'warning') {
+    baseProb = 0.40
+  }
+
+  // Adjust for gamma magnitude
+  const gammaAdjustment = Math.min(Math.abs(gamma) * 5, 0.2)
+
+  return Math.min(1.0, baseProb + gammaAdjustment)
+})
+
+const showRiskIndicators = computed(() => {
+  // Show risk indicators when strategy is active or waiting
+  return ['active', 'waiting', 'pending'].includes(store.currentStrategy?.status)
+})
+
+// Phase 5F: Adjustment Modal Handlers
+const handleBreakTrade = (leg) => {
+  selectedLegForAdjustment.value = leg
+  showBreakTradeWizard.value = true
+}
+
+const handleShiftLeg = (leg) => {
+  selectedLegForAdjustment.value = leg
+  showShiftLegModal.value = true
+}
+
+const handleBreakTradeSuccess = async (result) => {
+  console.log('Break trade executed:', result)
+  // Refresh strategy to show updated legs
+  await store.fetchStrategy(strategyId.value)
+  showBreakTradeWizard.value = false
+  selectedLegForAdjustment.value = null
+}
+
+const handleShiftLegSuccess = async (result) => {
+  console.log('Shift leg executed:', result)
+  // Refresh strategy to show updated legs
+  await store.fetchStrategy(strategyId.value)
+  showShiftLegModal.value = false
+  selectedLegForAdjustment.value = null
+}
+
+const closeBreakTradeWizard = () => {
+  showBreakTradeWizard.value = false
+  selectedLegForAdjustment.value = null
+}
+
+const closeShiftLegModal = () => {
+  showShiftLegModal.value = false
+  selectedLegForAdjustment.value = null
 }
 </script>
 
@@ -276,6 +475,24 @@ const getStatusBadgeClass = (status) => {
         </div>
       </div>
 
+      <!-- Phase 5E: Risk Monitoring Section -->
+      <div v-if="showRiskIndicators" class="risk-monitoring-section">
+        <!-- DTE Zone Indicator -->
+        <DTEZoneIndicator
+          :dte="calculateDTE"
+          :zone-config="dteZoneConfig"
+        />
+
+        <!-- Gamma Risk Alert -->
+        <GammaRiskAlert
+          :dte="calculateDTE"
+          :net-gamma="netGamma"
+          :assessment="gammaRiskAssessment"
+          :explosion-probability="gammaExplosionProbability"
+          :auto-hide="true"
+        />
+      </div>
+
       <!-- Tabs -->
       <div class="detail-card">
         <div class="tabs-header">
@@ -423,6 +640,15 @@ const getStatusBadgeClass = (status) => {
           <!-- Analytics Tab -->
           <div v-if="activeTab === 'analytics'">
             <AnalyticsPanel :strategy-id="strategyId" />
+
+            <!-- Phase 5G: Adjustment Cost Tracking -->
+            <div style="margin-top: 1.5rem;">
+              <AdjustmentCostCard
+                :strategy-id="strategyId"
+                :auto-refresh="store.currentStrategy?.status === 'active'"
+                :refresh-interval="10000"
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -517,6 +743,25 @@ const getStatusBadgeClass = (status) => {
       v-if="showWhatIfModal"
       :strategy-id="strategyId"
       @close="showWhatIfModal = false"
+    />
+
+    <!-- Phase 5F: Break Trade Wizard -->
+    <BreakTradeWizard
+      v-if="showBreakTradeWizard"
+      :strategy-id="strategyId"
+      :legs="strategyLegs"
+      @close="closeBreakTradeWizard"
+      @success="handleBreakTradeSuccess"
+    />
+
+    <!-- Phase 5F: Shift Leg Modal -->
+    <ShiftLegModal
+      v-if="showShiftLegModal && selectedLegForAdjustment"
+      :strategy-id="strategyId"
+      :leg="selectedLegForAdjustment"
+      :spot-price="store.currentStrategy?.runtime_state?.spot_price"
+      @close="closeShiftLegModal"
+      @success="handleShiftLegSuccess"
     />
   </div>
   </KiteLayout>
@@ -688,6 +933,11 @@ const getStatusBadgeClass = (status) => {
   font-size: 1.5rem;
   font-weight: 700;
   color: var(--kite-text-primary);
+}
+
+/* ===== Phase 5E: Risk Monitoring Section ===== */
+.risk-monitoring-section {
+  margin-bottom: 24px;
 }
 
 /* ===== Detail Card ===== */
