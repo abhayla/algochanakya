@@ -149,15 +149,20 @@ const findStrikeByDelta = async () => {
 
       // Apply round strike preference if enabled
       if (props.leg.prefer_round_strike) {
-        const roundStrikes = strikes.filter(s => s % 100 === 0)
+        const roundStrikes = strikes.filter(s => s.strike % 100 === 0)
         if (roundStrikes.length > 0) {
           strikes = roundStrikes
         }
       }
 
-      // Select the first (closest) strike
-      const selectedStrike = strikes[0]
-      emit('update', props.index, { strike_price: selectedStrike })
+      // Select the first (closest) strike - extract strike number from object
+      const selected = strikes[0]
+      emit('update', props.index, {
+        strike_price: selected.strike,
+        entry_price: selected.ltp,
+        instrument_token: selected.instrument_token,
+        tradingsymbol: selected.tradingsymbol
+      })
       strikeSearchError.value = ''
     } else {
       strikeSearchError.value = 'No strike found in this delta range'
@@ -217,14 +222,20 @@ const findStrikeByPremium = async () => {
 
       // Apply round strike preference if enabled
       if (props.leg.prefer_round_strike) {
-        const roundStrikes = strikes.filter(s => s % 100 === 0)
+        const roundStrikes = strikes.filter(s => s.strike % 100 === 0)
         if (roundStrikes.length > 0) {
           strikes = roundStrikes
         }
       }
 
-      const selectedStrike = strikes[0]
-      emit('update', props.index, { strike_price: selectedStrike })
+      // Select the first (closest) strike - extract strike number from object
+      const selected = strikes[0]
+      emit('update', props.index, {
+        strike_price: selected.strike,
+        entry_price: selected.ltp,
+        instrument_token: selected.instrument_token,
+        tradingsymbol: selected.tradingsymbol
+      })
       strikeSearchError.value = ''
     } else {
       strikeSearchError.value = 'No strike found in this premium range'
@@ -265,7 +276,12 @@ const findStrikeBySD = async () => {
     })
 
     if (response.data.strike) {
-      emit('update', props.index, { strike_price: response.data.strike })
+      emit('update', props.index, {
+        strike_price: response.data.strike,
+        entry_price: response.data.ltp,
+        instrument_token: response.data.instrument_token,
+        tradingsymbol: response.data.tradingsymbol
+      })
       strikeSearchError.value = ''
     } else {
       strikeSearchError.value = 'No strike found for this SD'
@@ -306,7 +322,12 @@ const findStrikeByEM = async () => {
     })
 
     if (response.data.strike) {
-      emit('update', props.index, { strike_price: response.data.strike })
+      emit('update', props.index, {
+        strike_price: response.data.strike,
+        entry_price: response.data.ltp,
+        instrument_token: response.data.instrument_token,
+        tradingsymbol: response.data.tradingsymbol
+      })
       strikeSearchError.value = ''
     } else {
       strikeSearchError.value = 'No strike found outside expected move'

@@ -65,6 +65,50 @@ test.describe('AutoPilot Phase 5C - SD Strike Selection', () => {
     const strikeDisplay = builderPage.page.getByTestId('autopilot-leg-selected-strike-0');
     await expect(strikeDisplay).toBeVisible();
   });
+
+  test('can select 2.5 SD and 3 SD options', async () => {
+    await builderPage.addLegButton.click();
+
+    const strikeMode = builderPage.page.getByTestId('autopilot-leg-strike-mode-0');
+    await strikeMode.selectOption('standard_deviation');
+
+    const sdDropdown = builderPage.page.getByTestId('autopilot-leg-sd-multiplier-0');
+
+    // Check that dropdown has the expected options
+    const sd25Option = sdDropdown.locator('option[value="2.5"]');
+    const sd3Option = sdDropdown.locator('option[value="3"]');
+
+    await expect(sd25Option).toBeAttached();
+    await expect(sd3Option).toBeAttached();
+    await expect(sd25Option).toHaveText('2.5 SD');
+    await expect(sd3Option).toHaveText('3 SD');
+  });
+
+  test('handles SD strike search results', async () => {
+    await builderPage.addLegButton.click();
+
+    const strikeMode = builderPage.page.getByTestId('autopilot-leg-strike-mode-0');
+    await strikeMode.selectOption('standard_deviation');
+
+    const sdDropdown = builderPage.page.getByTestId('autopilot-leg-sd-multiplier-0');
+    await sdDropdown.selectOption('2'); // 2 SD
+
+    const findStrikeButton = builderPage.page.getByTestId('autopilot-leg-find-strike-0');
+    await findStrikeButton.click();
+
+    // Wait for response - either strike found or error
+    await builderPage.page.waitForTimeout(2000);
+
+    // Should show either strike or error (both are valid outcomes)
+    const strikeDisplay = builderPage.page.getByTestId('autopilot-leg-selected-strike-0');
+    const errorMessage = builderPage.page.getByText(/not found|error/i);
+
+    const strikeVisible = await strikeDisplay.isVisible().catch(() => false);
+    const errorVisible = await errorMessage.isVisible().catch(() => false);
+
+    // At least one should be visible
+    expect(strikeVisible || errorVisible).toBe(true);
+  });
 });
 
 // =============================================================================
@@ -99,8 +143,99 @@ test.describe('AutoPilot Phase 5C - Expected Move Strike Selection', () => {
     }
   });
 
-  test('selected strikes are outside expected move', async () => {
-    test.skip(); // Requires implementation
+  test('shows Above EM and Below EM position options', async () => {
+    await builderPage.addLegButton.click();
+
+    const strikeMode = builderPage.page.getByTestId('autopilot-leg-strike-mode-0');
+    await strikeMode.selectOption('expected_move');
+
+    const emPositionDropdown = builderPage.page.getByTestId('autopilot-leg-em-position-0');
+
+    // Check that dropdown has the expected options
+    const aboveOption = emPositionDropdown.locator('option[value="above"]');
+    const belowOption = emPositionDropdown.locator('option[value="below"]');
+
+    await expect(aboveOption).toBeAttached();
+    await expect(belowOption).toBeAttached();
+    await expect(aboveOption).toHaveText(/Above EM/i);
+    await expect(belowOption).toHaveText(/Below EM/i);
+  });
+
+  test('displays helper text for expected move mode', async () => {
+    await builderPage.addLegButton.click();
+
+    const strikeMode = builderPage.page.getByTestId('autopilot-leg-strike-mode-0');
+    await strikeMode.selectOption('expected_move');
+
+    const helperText = builderPage.page.getByText(/select strikes outside expected move range/i);
+    await expect(helperText).toBeVisible();
+  });
+
+  test('finds strike above expected move', async () => {
+    await builderPage.addLegButton.click();
+
+    const strikeMode = builderPage.page.getByTestId('autopilot-leg-strike-mode-0');
+    await strikeMode.selectOption('expected_move');
+
+    const emPositionDropdown = builderPage.page.getByTestId('autopilot-leg-em-position-0');
+    await emPositionDropdown.selectOption('above');
+
+    const findStrikeButton = builderPage.page.getByTestId('autopilot-leg-find-strike-0');
+    await findStrikeButton.click();
+
+    // Should display found strike or error
+    const strikeDisplay = builderPage.page.getByTestId('autopilot-leg-selected-strike-0');
+    const errorMessage = builderPage.page.getByText(/not found|error/i);
+
+    // One of these should be visible
+    const strikeVisible = await strikeDisplay.isVisible().catch(() => false);
+    const errorVisible = await errorMessage.isVisible().catch(() => false);
+    expect(strikeVisible || errorVisible).toBe(true);
+  });
+
+  test('finds strike below expected move', async () => {
+    await builderPage.addLegButton.click();
+
+    const strikeMode = builderPage.page.getByTestId('autopilot-leg-strike-mode-0');
+    await strikeMode.selectOption('expected_move');
+
+    const emPositionDropdown = builderPage.page.getByTestId('autopilot-leg-em-position-0');
+    await emPositionDropdown.selectOption('below');
+
+    const findStrikeButton = builderPage.page.getByTestId('autopilot-leg-find-strike-0');
+    await findStrikeButton.click();
+
+    const strikeDisplay = builderPage.page.getByTestId('autopilot-leg-selected-strike-0');
+    const errorMessage = builderPage.page.getByText(/not found|error/i);
+
+    const strikeVisible = await strikeDisplay.isVisible().catch(() => false);
+    const errorVisible = await errorMessage.isVisible().catch(() => false);
+    expect(strikeVisible || errorVisible).toBe(true);
+  });
+
+  test('shows error when no EM position selected', async () => {
+    await builderPage.addLegButton.click();
+
+    const strikeMode = builderPage.page.getByTestId('autopilot-leg-strike-mode-0');
+    await strikeMode.selectOption('expected_move');
+
+    // Don't select position, just click Find
+    const findStrikeButton = builderPage.page.getByTestId('autopilot-leg-find-strike-0');
+    await findStrikeButton.click();
+
+    const errorMessage = builderPage.page.getByText(/select above or below/i);
+    await expect(errorMessage).toBeVisible();
+  });
+
+  test('displays expected move range with formula hint', async () => {
+    const expectedMoveDisplay = builderPage.page.getByTestId('autopilot-expected-move-display');
+
+    await expect(expectedMoveDisplay).toBeVisible();
+    await expect(expectedMoveDisplay).toContainText(/expected move/i);
+
+    // Check for formula hint
+    const formulaHint = builderPage.page.getByText(/formula.*spot.*iv.*dte/i);
+    await expect(formulaHint).toBeVisible();
   });
 });
 

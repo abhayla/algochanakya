@@ -4,9 +4,10 @@
  * Main table container for AutoPilot legs configuration
  * Matches UI/UX pattern from Strategy Builder
  */
-import { computed, onMounted, watch } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
 import { useAutopilotStore } from '@/stores/autopilot'
 import { useWatchlistStore } from '@/stores/watchlist'
+import api from '@/services/api'
 import AutoPilotLegRow from './AutoPilotLegRow.vue'
 import '@/assets/css/strategy-table.css'
 
@@ -29,6 +30,9 @@ const allLegsSelected = computed(() => {
     store.selectedLegIndices.length === legs.value.length
 })
 
+// Expected move data from API
+const expectedMoveData = ref({ lower_bound: 0, upper_bound: 0 })
+
 // Fetch expiries on mount
 onMounted(async () => {
   await store.fetchExpiries()
@@ -40,6 +44,28 @@ watch(
   async () => {
     await store.fetchExpiries()
   }
+)
+
+// Fetch expected move range when underlying or expiry changes
+watch(
+  () => [store.builder.strategy.underlying, store.builder.expiry],
+  async ([underlying, expiry]) => {
+    if (underlying && expiry) {
+      try {
+        const response = await api.get(
+          `/api/v1/autopilot/option-chain/expected-move-range/${underlying}/${expiry}`
+        )
+        expectedMoveData.value = {
+          lower_bound: response.data.lower_bound,
+          upper_bound: response.data.upper_bound
+        }
+      } catch (error) {
+        console.error('Error fetching expected move:', error)
+        // Keep previous values or defaults on error
+      }
+    }
+  },
+  { immediate: true }
 )
 
 // Subscribe to leg tokens for live prices
@@ -134,27 +160,12 @@ const deleteSelectedLegs = () => {
   store.removeSelectedLegs()
 }
 
-// Format expected move value (placeholder calculation)
-// Real calculation would come from backend API
+// Format expected move value from API data
 const formatExpectedMove = (position) => {
-  const underlying = store.builder.strategy.underlying
-  // Approximate spot prices for demo
-  const spotPrices = {
-    'NIFTY': 24500,
-    'BANKNIFTY': 52000,
-    'FINNIFTY': 24200,
-    'SENSEX': 81000
-  }
-  const spot = spotPrices[underlying] || 25000
-  // Assume 15% IV and 7 DTE for demo
-  const iv = 0.15
-  const dte = 7
-  const expectedMove = spot * iv * Math.sqrt(dte / 365)
-
   if (position === 'lower') {
-    return Math.round(spot - expectedMove).toLocaleString()
+    return Math.round(expectedMoveData.value.lower_bound || 0).toLocaleString()
   } else {
-    return Math.round(spot + expectedMove).toLocaleString()
+    return Math.round(expectedMoveData.value.upper_bound || 0).toLocaleString()
   }
 }
 </script>

@@ -13,6 +13,7 @@ from kiteconnect import KiteConnect
 from app.database import get_db
 from app.utils.dependencies import get_current_user, get_current_broker_connection
 from app.models import User, BrokerConnection
+from app.config import settings
 from app.schemas.autopilot import (
     OptionChainResponse,
     StrikeFindByDeltaRequest,
@@ -27,7 +28,7 @@ router = APIRouter()
 
 def get_kite_client(broker_connection: BrokerConnection = Depends(get_current_broker_connection)) -> KiteConnect:
     """Get Kite Connect client for current user."""
-    kite = KiteConnect(api_key=broker_connection.api_key)
+    kite = KiteConnect(api_key=settings.KITE_API_KEY)
     kite.set_access_token(broker_connection.access_token)
     return kite
 
@@ -321,6 +322,145 @@ async def find_strikes_in_range(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error finding strikes in range: {str(e)}"
+        )
+
+
+@router.get("/strike-by-sd/{underlying}/{expiry}")
+async def find_strike_by_sd(
+    underlying: str,
+    expiry: date,
+    option_type: str = Query(..., regex="^(CE|PE)$"),
+    sd_multiplier: float = Query(..., ge=0.5, le=3.0),
+    prefer_round_strike: bool = Query(True),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+    kite: KiteConnect = Depends(get_kite_client)
+):
+    """
+    Find strike at X standard deviations from ATM.
+
+    Args:
+        underlying: NIFTY, BANKNIFTY, FINNIFTY, or SENSEX
+        expiry: Expiry date
+        option_type: CE or PE
+        sd_multiplier: Standard deviation multiplier (0.5 to 3.0)
+        prefer_round_strike: Prefer strikes divisible by 100
+
+    Returns:
+        Strike details with price and Greeks
+    """
+    try:
+        service = StrikeFinderService(kite, db)
+        result = await service.find_strike_by_standard_deviation(
+            underlying=underlying.upper(),
+            expiry=expiry,
+            option_type=option_type.upper(),
+            standard_deviations=sd_multiplier,
+            prefer_round_strike=prefer_round_strike
+        )
+
+        if not result:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"No strike found for {sd_multiplier} SD"
+            )
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error finding strike by SD: {str(e)}"
+        )
+
+
+@router.get("/strike-by-expected-move/{underlying}/{expiry}")
+async def find_strike_by_expected_move(
+    underlying: str,
+    expiry: date,
+    option_type: str = Query(..., regex="^(CE|PE)$"),
+    position: str = Query(..., regex="^(above|below)$"),
+    prefer_round_strike: bool = Query(True),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+    kite: KiteConnect = Depends(get_kite_client)
+):
+    """
+    Find strike outside expected move range.
+
+    Args:
+        underlying: NIFTY, BANKNIFTY, FINNIFTY, or SENSEX
+        expiry: Expiry date
+        option_type: CE or PE
+        position: 'above' or 'below' expected move
+        prefer_round_strike: Prefer strikes divisible by 100
+
+    Returns:
+        Strike details outside expected move
+    """
+    try:
+        service = StrikeFinderService(kite, db)
+        result = await service.find_strike_by_expected_move(
+            underlying=underlying.upper(),
+            expiry=expiry,
+            option_type=option_type.upper(),
+            outside=True,
+            outside_sd=1.0,
+            prefer_round_strike=prefer_round_strike
+        )
+
+        if not result:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"No strike found outside expected move"
+            )
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error finding strike by expected move: {str(e)}"
+        )
+
+
+@router.get("/expected-move-range/{underlying}/{expiry}")
+async def get_expected_move_range(
+    underlying: str,
+    expiry: date,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+    kite: KiteConnect = Depends(get_kite_client)
+):
+    """
+    Get expected move range for display.
+
+    Calculates expected move using ATM straddle price or IV-based formula.
+
+    Args:
+        underlying: NIFTY, BANKNIFTY, FINNIFTY, or SENSEX
+        expiry: Expiry date
+
+    Returns:
+        Dict with spot, expected_move, upper_bound, lower_bound
+    """
+    try:
+        from app.services.expected_move_service import ExpectedMoveService
+
+        service = ExpectedMoveService(kite, db)
+        expiry_str = expiry.strftime("%Y-%m-%d")
+        result = await service.get_expected_move_range(underlying.upper(), expiry_str)
+
+        return result
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching expected move range: {str(e)}"
         )
 
 

@@ -113,3 +113,10 @@ backend/fix_test_mocks.py
 
 # Temporary analysis scripts
 analyze-failures.cjs
+
+# Temporary test scripts
+manual-test-strike-finders.js
+test-strike-finders*.js
+
+# Temporary screenshots/error images (root level)
+error-screenshot.png

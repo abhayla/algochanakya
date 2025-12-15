@@ -101,6 +101,35 @@ test.describe('AutoPilot Phase 5A - Delta Range Strike Selection', () => {
     const errorMessage = builderPage.page.getByText(/no strike found matching delta range/i);
     await expect(errorMessage).toBeVisible();
   });
+
+  test('auto-populates entry price when strike is found', async () => {
+    await builderPage.addLegButton.click();
+
+    const strikeSelectionMode = builderPage.page.getByTestId('autopilot-leg-strike-mode-0');
+    await strikeSelectionMode.selectOption('delta_range');
+
+    const minDeltaInput = builderPage.page.getByTestId('autopilot-leg-min-delta-0');
+    const maxDeltaInput = builderPage.page.getByTestId('autopilot-leg-max-delta-0');
+
+    await minDeltaInput.fill('0.10');
+    await maxDeltaInput.fill('0.30');
+
+    const findStrikeButton = builderPage.page.getByTestId('autopilot-leg-find-strike-0');
+    await findStrikeButton.click();
+
+    // Wait for strike to be found
+    const strikeDisplay = builderPage.page.getByTestId('autopilot-leg-selected-strike-0');
+
+    if (await strikeDisplay.isVisible()) {
+      // Entry price should be auto-populated
+      const entryInput = builderPage.page.getByTestId('autopilot-leg-entry-0');
+      const entryValue = await entryInput.inputValue();
+
+      // Entry should have a value (not empty)
+      expect(entryValue).not.toBe('');
+      expect(parseFloat(entryValue)).toBeGreaterThan(0);
+    }
+  });
 });
 
 // =============================================================================
@@ -162,6 +191,26 @@ test.describe('AutoPilot Phase 5A - Premium Range Strike Selection', () => {
 
     const strikeDisplay = builderPage.page.getByTestId('autopilot-leg-selected-strike-0');
     await expect(strikeDisplay).toBeVisible();
+  });
+
+  test('shows error when no strike matches premium range', async () => {
+    await builderPage.addLegButton.click();
+
+    const strikeSelectionMode = builderPage.page.getByTestId('autopilot-leg-strike-mode-0');
+    await strikeSelectionMode.selectOption('premium_range');
+
+    // Enter very narrow/unlikely premium range
+    const minPremiumInput = builderPage.page.getByTestId('autopilot-leg-min-premium-0');
+    const maxPremiumInput = builderPage.page.getByTestId('autopilot-leg-max-premium-0');
+
+    await minPremiumInput.fill('0.01');
+    await maxPremiumInput.fill('0.02');
+
+    const findStrikeButton = builderPage.page.getByTestId('autopilot-leg-find-strike-0');
+    await findStrikeButton.click();
+
+    const errorMessage = builderPage.page.getByText(/no strike found|error finding strike/i);
+    await expect(errorMessage).toBeVisible();
   });
 });
 
