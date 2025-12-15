@@ -1,5 +1,5 @@
 <template>
-  <div class="conversion-modal-overlay" @click.self="handleCancel">
+  <div class="conversion-modal-overlay" @click.self="handleCancel" data-testid="autopilot-conversion-modal">
     <div class="wizard-container">
       <!-- Header -->
       <div class="wizard-header">
@@ -7,7 +7,7 @@
           <i class="fas fa-exchange-alt"></i>
           Strategy Conversion
         </h2>
-        <button class="close-btn" @click="handleCancel" aria-label="Close wizard">
+        <button class="close-btn" @click="handleCancel" aria-label="Close wizard" data-testid="autopilot-conversion-cancel-button">
           <i class="fas fa-times"></i>
         </button>
       </div>
@@ -72,6 +72,7 @@
               class="strategy-card"
               :class="{ selected: selectedType === 'strangle', disabled: currentType === 'strangle' }"
               @click="selectStrategyType('strangle')"
+              data-testid="autopilot-conversion-type-strangle"
             >
               <div class="card-header">
                 <i class="fas fa-compress-arrows-alt"></i>
@@ -98,6 +99,7 @@
               class="strategy-card"
               :class="{ selected: selectedType === 'iron_fly', disabled: currentType === 'iron_fly' }"
               @click="selectStrategyType('iron_fly')"
+              data-testid="autopilot-convert-butterfly-button"
             >
               <div class="card-header">
                 <i class="fas fa-bullseye"></i>
@@ -124,6 +126,7 @@
               class="strategy-card"
               :class="{ selected: selectedType === 'ratio_spread' }"
               @click="selectStrategyType('ratio_spread')"
+              data-testid="autopilot-convert-ratio-spread-button"
             >
               <div class="card-header">
                 <i class="fas fa-chart-bar"></i>
@@ -466,6 +469,7 @@
           @click="executeConversion"
           class="btn-execute"
           :disabled="executing"
+          data-testid="autopilot-execute-conversion-button"
         >
           <i class="fas fa-bolt"></i>
           Execute Conversion

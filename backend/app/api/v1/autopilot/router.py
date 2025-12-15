@@ -164,11 +164,11 @@ async def list_strategies(
         AutoPilotStrategy.user_id == current_user.id
     )
 
-    # Apply filters
+    # Apply filters (use .in_() for PostgreSQL ENUM comparison)
     if status:
-        query = query.where(AutoPilotStrategy.status == status)
+        query = query.where(AutoPilotStrategy.status.in_([status]))
     if underlying:
-        query = query.where(AutoPilotStrategy.underlying == underlying)
+        query = query.where(AutoPilotStrategy.underlying.in_([underlying]))
 
     # Count total
     count_query = select(func.count()).select_from(query.subquery())
@@ -712,11 +712,11 @@ async def list_orders(
         AutoPilotOrder.user_id == current_user.id
     )
 
-    # Apply filters
+    # Apply filters (use .in_() for PostgreSQL ENUM comparison)
     if strategy_id:
         query = query.where(AutoPilotOrder.strategy_id == strategy_id)
     if status:
-        query = query.where(AutoPilotOrder.status == status)
+        query = query.where(AutoPilotOrder.status.in_([status]))
 
     # Count total
     count_query = select(func.count()).select_from(query.subquery())
@@ -783,11 +783,11 @@ async def list_logs(
         AutoPilotLog.user_id == current_user.id
     )
 
-    # Apply filters
+    # Apply filters (use .in_() for PostgreSQL ENUM comparison)
     if strategy_id:
         query = query.where(AutoPilotLog.strategy_id == strategy_id)
     if severity:
-        query = query.where(AutoPilotLog.severity == severity)
+        query = query.where(AutoPilotLog.severity.in_([severity]))
     if event_type:
         query = query.where(AutoPilotLog.event_type == event_type)
 

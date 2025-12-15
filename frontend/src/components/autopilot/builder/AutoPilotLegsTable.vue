@@ -133,6 +133,30 @@ const toggleSelectAll = () => {
 const deleteSelectedLegs = () => {
   store.removeSelectedLegs()
 }
+
+// Format expected move value (placeholder calculation)
+// Real calculation would come from backend API
+const formatExpectedMove = (position) => {
+  const underlying = store.builder.strategy.underlying
+  // Approximate spot prices for demo
+  const spotPrices = {
+    'NIFTY': 24500,
+    'BANKNIFTY': 52000,
+    'FINNIFTY': 24200,
+    'SENSEX': 81000
+  }
+  const spot = spotPrices[underlying] || 25000
+  // Assume 15% IV and 7 DTE for demo
+  const iv = 0.15
+  const dte = 7
+  const expectedMove = spot * iv * Math.sqrt(dte / 365)
+
+  if (position === 'lower') {
+    return Math.round(spot - expectedMove).toLocaleString()
+  } else {
+    return Math.round(spot + expectedMove).toLocaleString()
+  }
+}
 </script>
 
 <template>
@@ -140,6 +164,23 @@ const deleteSelectedLegs = () => {
     <!-- Section Header -->
     <div class="flex justify-between items-center mb-4">
       <h2 class="text-lg font-semibold">Strategy Legs</h2>
+    </div>
+
+    <!-- Expected Move Display -->
+    <div
+      v-if="store.builder.strategy.underlying"
+      class="expected-move-display"
+      data-testid="autopilot-expected-move-display"
+    >
+      <div class="expected-move-label">Expected Move Range:</div>
+      <div class="expected-move-range">
+        <span class="em-lower">{{ formatExpectedMove('lower') }}</span>
+        <span class="em-separator">-</span>
+        <span class="em-upper">{{ formatExpectedMove('upper') }}</span>
+      </div>
+      <div class="expected-move-hint">
+        Based on ATM IV and DTE (Formula: Spot × IV × √(DTE/365))
+      </div>
     </div>
 
     <!-- Table -->
@@ -292,5 +333,49 @@ const deleteSelectedLegs = () => {
 
 .items-center {
   align-items: center;
+}
+
+/* Expected Move Display */
+.expected-move-display {
+  background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.expected-move-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--kite-blue-dark, #1565c0);
+}
+
+.expected-move-range {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.em-lower,
+.em-upper {
+  background: white;
+  padding: 4px 12px;
+  border-radius: 4px;
+  color: var(--kite-text-primary);
+}
+
+.em-separator {
+  color: var(--kite-text-secondary);
+}
+
+.expected-move-hint {
+  font-size: 0.75rem;
+  color: var(--kite-text-secondary);
+  margin-left: auto;
 }
 </style>

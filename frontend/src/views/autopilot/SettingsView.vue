@@ -4,7 +4,7 @@
  *
  * Reference: docs/autopilot/ui-ux-design.md - Screen 4
  */
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAutopilotStore } from '@/stores/autopilot'
 import KiteLayout from '@/components/layout/KiteLayout.vue'
@@ -47,6 +47,27 @@ const formatCurrency = (value) => {
     maximumFractionDigits: 0
   }).format(value)
 }
+
+// Delta bands visual gauge computed properties
+// Scale: -1.0 to +1.0 maps to 0% to 100%
+const getNegativeZoneWidth = computed(() => {
+  const lower = localSettings.value?.delta_band_lower ?? -0.20
+  // -1.0 maps to 0%, lower band maps to its percentage
+  return ((lower + 1) / 2) * 100
+})
+
+const getNeutralZoneWidth = computed(() => {
+  const lower = localSettings.value?.delta_band_lower ?? -0.20
+  const upper = localSettings.value?.delta_band_upper ?? 0.20
+  // Width from lower to upper
+  return ((upper - lower) / 2) * 100
+})
+
+const getPositiveZoneWidth = computed(() => {
+  const upper = localSettings.value?.delta_band_upper ?? 0.20
+  // +1.0 maps to 100%, upper band maps to its percentage
+  return ((1 - upper) / 2) * 100
+})
 </script>
 
 <template>
@@ -149,6 +170,67 @@ const formatCurrency = (value) => {
               class="strategy-input"
             />
             <p class="form-hint">Maximum number of strategies that can be active at once (1-10).</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Delta Bands Settings -->
+      <div class="settings-card" data-testid="autopilot-settings-delta-bands">
+        <h2 class="section-title">Delta Bands</h2>
+        <p class="section-description">Configure delta band limits for position monitoring. When portfolio delta moves outside these bands, alerts will trigger.</p>
+
+        <div class="form-grid">
+          <div class="form-field">
+            <label class="form-label">Upper Delta Band</label>
+            <input
+              type="number"
+              v-model.number="localSettings.delta_band_upper"
+              @input="handleChange"
+              step="0.01"
+              min="-1"
+              max="1"
+              data-testid="autopilot-settings-delta-band-upper"
+              class="strategy-input"
+            />
+            <p class="form-hint">Maximum positive delta threshold (e.g., 0.20 for +20 delta).</p>
+          </div>
+
+          <div class="form-field">
+            <label class="form-label">Lower Delta Band</label>
+            <input
+              type="number"
+              v-model.number="localSettings.delta_band_lower"
+              @input="handleChange"
+              step="0.01"
+              min="-1"
+              max="1"
+              data-testid="autopilot-settings-delta-band-lower"
+              class="strategy-input"
+            />
+            <p class="form-hint">Minimum negative delta threshold (e.g., -0.20 for -20 delta).</p>
+          </div>
+        </div>
+
+        <!-- Visual Preview of Delta Bands -->
+        <div class="delta-bands-preview" data-testid="autopilot-settings-delta-bands-preview">
+          <div class="delta-gauge">
+            <div class="delta-gauge-track">
+              <div class="delta-gauge-zone delta-zone-negative" :style="{ width: getNegativeZoneWidth + '%' }"></div>
+              <div class="delta-gauge-zone delta-zone-neutral" :style="{ width: getNeutralZoneWidth + '%', left: getNegativeZoneWidth + '%' }"></div>
+              <div class="delta-gauge-zone delta-zone-positive" :style="{ width: getPositiveZoneWidth + '%', left: (getNegativeZoneWidth + getNeutralZoneWidth) + '%' }"></div>
+            </div>
+            <div class="delta-gauge-labels">
+              <span>-1.0</span>
+              <span class="delta-label-lower">{{ (localSettings.delta_band_lower || -0.20).toFixed(2) }}</span>
+              <span>0</span>
+              <span class="delta-label-upper">{{ (localSettings.delta_band_upper || 0.20).toFixed(2) }}</span>
+              <span>+1.0</span>
+            </div>
+          </div>
+          <div class="delta-legend">
+            <span class="legend-item"><span class="legend-color legend-negative"></span> Bearish Zone</span>
+            <span class="legend-item"><span class="legend-color legend-neutral"></span> Neutral Zone</span>
+            <span class="legend-item"><span class="legend-color legend-positive"></span> Bullish Zone</span>
           </div>
         </div>
       </div>
@@ -576,5 +658,97 @@ const formatCurrency = (value) => {
 .strategy-input:focus {
   outline: none;
   border-color: var(--kite-blue);
+}
+
+/* ===== Section Description ===== */
+.section-description {
+  font-size: 0.875rem;
+  color: var(--kite-text-secondary);
+  margin-bottom: 16px;
+}
+
+/* ===== Delta Bands Preview ===== */
+.delta-bands-preview {
+  margin-top: 24px;
+  padding: 16px;
+  background: var(--kite-bg-secondary, #f9fafb);
+  border-radius: 4px;
+}
+
+.delta-gauge {
+  margin-bottom: 12px;
+}
+
+.delta-gauge-track {
+  position: relative;
+  height: 24px;
+  background: var(--kite-border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.delta-gauge-zone {
+  position: absolute;
+  top: 0;
+  height: 100%;
+}
+
+.delta-zone-negative {
+  background: linear-gradient(90deg, var(--kite-red, #e53935), var(--kite-red-light, #ffcdd2));
+}
+
+.delta-zone-neutral {
+  background: linear-gradient(90deg, var(--kite-green-light, #c8e6c9), var(--kite-green, #43a047), var(--kite-green-light, #c8e6c9));
+}
+
+.delta-zone-positive {
+  background: linear-gradient(90deg, var(--kite-blue-light, #bbdefb), var(--kite-blue, #1e88e5));
+}
+
+.delta-gauge-labels {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 4px;
+  font-size: 0.75rem;
+  color: var(--kite-text-muted);
+}
+
+.delta-label-lower,
+.delta-label-upper {
+  font-weight: 500;
+  color: var(--kite-text-primary);
+}
+
+.delta-legend {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  font-size: 0.75rem;
+  color: var(--kite-text-secondary);
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.legend-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+}
+
+.legend-negative {
+  background: var(--kite-red, #e53935);
+}
+
+.legend-neutral {
+  background: var(--kite-green, #43a047);
+}
+
+.legend-positive {
+  background: var(--kite-blue, #1e88e5);
 }
 </style>

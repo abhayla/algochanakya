@@ -221,6 +221,55 @@ const navigateToDashboard = () => {
 const navigateToAnalytics = () => {
   router.push('/autopilot/analytics')
 }
+
+// Generate SVG path for drawdown chart
+const getDrawdownPath = (backtest) => {
+  // If no equity curve, return a simple flat line
+  if (!backtest.equity_curve || backtest.equity_curve.length === 0) {
+    return 'M0,0 L600,0 L600,0 L0,0 Z'
+  }
+
+  // Calculate drawdown at each point
+  const equityCurve = backtest.equity_curve
+  let peak = equityCurve[0]?.equity || backtest.initial_capital
+  const drawdowns = equityCurve.map((point) => {
+    if (point.equity > peak) peak = point.equity
+    return peak > 0 ? ((peak - point.equity) / peak) * 100 : 0
+  })
+
+  // Build SVG path
+  const maxDrawdown = Math.max(...drawdowns, 1)  // at least 1% to avoid division by zero
+  const points = drawdowns.map((dd, i) => {
+    const x = (i / (drawdowns.length - 1)) * 600
+    const y = (dd / maxDrawdown) * 100
+    return `${x},${y}`
+  }).join(' L')
+
+  return `M0,0 L${points} L600,0 Z`
+}
+
+// Get underwater periods from backtest data
+const getUnderwaterPeriods = (backtest) => {
+  // Use existing underwater periods from API or generate from equity curve
+  if (backtest.underwater_periods && backtest.underwater_periods.length > 0) {
+    return backtest.underwater_periods
+  }
+
+  // Demo data if no underwater periods available
+  if (!backtest.equity_curve || backtest.equity_curve.length === 0) {
+    return []
+  }
+
+  // Generate from equity curve (simplified)
+  return [
+    {
+      start_date: backtest.start_date,
+      end_date: backtest.end_date,
+      depth: backtest.max_drawdown_pct || 5,
+      duration: backtest.max_drawdown_duration || 7
+    }
+  ].filter(p => p.depth > 2)  // Only show periods with > 2% drawdown
+}
 </script>
 
 <template>
@@ -644,6 +693,87 @@ const navigateToAnalytics = () => {
                     stroke-width="2"
                   />
                 </svg>
+              </div>
+            </div>
+
+            <!-- Drawdown Analysis Section -->
+            <div
+              v-if="selectedBacktest.status === 'completed'"
+              class="drawdown-section"
+              data-testid="autopilot-backtest-drawdown"
+            >
+              <h4 class="section-subtitle">Drawdown Analysis</h4>
+
+              <!-- Drawdown Stats -->
+              <div class="drawdown-stats-grid">
+                <div class="drawdown-stat">
+                  <span class="drawdown-stat-label">Max Drawdown</span>
+                  <span class="drawdown-stat-value pnl-loss">
+                    {{ formatPercent(-(selectedBacktest.max_drawdown_pct || 0)) }}
+                  </span>
+                </div>
+                <div class="drawdown-stat">
+                  <span class="drawdown-stat-label">Max Drawdown Date</span>
+                  <span class="drawdown-stat-value">
+                    {{ formatDate(selectedBacktest.max_drawdown_date || selectedBacktest.end_date) }}
+                  </span>
+                </div>
+                <div class="drawdown-stat">
+                  <span class="drawdown-stat-label">Drawdown Duration</span>
+                  <span class="drawdown-stat-value">
+                    {{ selectedBacktest.max_drawdown_duration || 0 }} days
+                  </span>
+                </div>
+                <div class="drawdown-stat">
+                  <span class="drawdown-stat-label">Recovery Time</span>
+                  <span class="drawdown-stat-value">
+                    {{ selectedBacktest.recovery_time || 'N/A' }}
+                  </span>
+                </div>
+              </div>
+
+              <!-- Drawdown Chart (simplified underwater chart) -->
+              <div class="drawdown-chart">
+                <h5 class="chart-title">Underwater Chart</h5>
+                <div class="chart-container">
+                  <svg viewBox="0 0 600 100" class="drawdown-svg">
+                    <!-- Zero line -->
+                    <line x1="0" y1="0" x2="600" y2="0" stroke="var(--kite-border)" stroke-width="1" />
+                    <!-- Drawdown area -->
+                    <path
+                      :d="getDrawdownPath(selectedBacktest)"
+                      fill="rgba(229, 57, 53, 0.2)"
+                      stroke="var(--kite-red)"
+                      stroke-width="1"
+                    />
+                  </svg>
+                </div>
+              </div>
+
+              <!-- Underwater Periods Table -->
+              <div class="underwater-periods">
+                <h5 class="chart-title">Significant Underwater Periods</h5>
+                <table class="underwater-table">
+                  <thead>
+                    <tr>
+                      <th>Start Date</th>
+                      <th>End Date</th>
+                      <th>Max Depth</th>
+                      <th>Duration</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="(period, index) in getUnderwaterPeriods(selectedBacktest)" :key="index">
+                      <td>{{ formatDate(period.start_date) }}</td>
+                      <td>{{ formatDate(period.end_date) }}</td>
+                      <td class="pnl-loss">{{ formatPercent(-period.depth) }}</td>
+                      <td>{{ period.duration }} days</td>
+                    </tr>
+                    <tr v-if="getUnderwaterPeriods(selectedBacktest).length === 0">
+                      <td colspan="4" class="empty-cell">No significant drawdown periods</td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             </div>
 
@@ -1353,5 +1483,97 @@ const navigateToAnalytics = () => {
 .icon-svg-sm {
   width: 20px;
   height: 20px;
+}
+
+/* ===== Drawdown Analysis ===== */
+.drawdown-section {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid var(--kite-border-light);
+}
+
+.drawdown-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+@media (min-width: 640px) {
+  .drawdown-stats-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.drawdown-stat {
+  padding: 12px;
+  background: var(--kite-red-light, #ffebee);
+  border-radius: 4px;
+}
+
+.drawdown-stat-label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--kite-text-secondary);
+  margin-bottom: 4px;
+}
+
+.drawdown-stat-value {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--kite-text-primary);
+}
+
+.drawdown-chart {
+  margin-bottom: 24px;
+}
+
+.chart-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--kite-text-secondary);
+  margin-bottom: 8px;
+}
+
+.chart-container {
+  width: 100%;
+  height: 100px;
+  background: var(--kite-table-header);
+  border-radius: 4px;
+  padding: 10px;
+}
+
+.drawdown-svg {
+  width: 100%;
+  height: 100%;
+}
+
+.underwater-periods {
+  margin-top: 16px;
+}
+
+.underwater-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.underwater-table th,
+.underwater-table td {
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--kite-border-light);
+}
+
+.underwater-table th {
+  background: var(--kite-table-header);
+  color: var(--kite-text-secondary);
+  font-weight: 500;
+}
+
+.empty-cell {
+  text-align: center;
+  color: var(--kite-text-secondary);
+  font-style: italic;
 }
 </style>

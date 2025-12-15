@@ -1,7 +1,7 @@
 <template>
   <div class="border border-gray-200 rounded-lg p-4" data-testid="dte-exit-config">
     <div>
-      <h4 class="text-sm font-medium text-gray-900">Time-Based Exit Rules (#23-24)</h4>
+      <h4 class="text-sm font-medium text-gray-900">Time-Based Exit Rules (#23-25)</h4>
       <p class="text-xs text-gray-500 mt-1">
         Exit position based on DTE or days in trade
       </p>
@@ -21,7 +21,7 @@
             type="checkbox"
             v-model="localConfig.dte_exit.enabled"
             @change="emitUpdate"
-            data-testid="dte-exit-enabled"
+            data-testid="autopilot-exit-dte-enable"
             class="h-4 w-4 text-blue-600 rounded focus:ring-blue-500"
           />
         </div>
@@ -72,6 +72,16 @@
               Custom DTE Threshold
             </label>
             <div class="flex items-center space-x-3">
+              <input
+                type="number"
+                v-model.number="localConfig.dte_exit.dte_threshold"
+                @input="emitUpdate"
+                min="1"
+                max="45"
+                step="1"
+                data-testid="autopilot-exit-dte-value"
+                class="w-20 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500"
+              />
               <input
                 type="range"
                 v-model="localConfig.dte_exit.dte_threshold"
@@ -135,7 +145,7 @@
             type="checkbox"
             v-model="localConfig.days_in_trade.enabled"
             @change="emitUpdate"
-            data-testid="days-in-trade-enabled"
+            data-testid="autopilot-exit-days-in-trade-enable"
             class="h-4 w-4 text-blue-600 rounded focus:ring-blue-500"
           />
         </div>
@@ -186,6 +196,16 @@
               Custom Days Threshold
             </label>
             <div class="flex items-center space-x-3">
+              <input
+                type="number"
+                v-model.number="localConfig.days_in_trade.max_days"
+                @input="emitUpdate"
+                min="1"
+                max="60"
+                step="1"
+                data-testid="autopilot-exit-days-in-trade-value"
+                class="w-20 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500"
+              />
               <input
                 type="range"
                 v-model="localConfig.days_in_trade.max_days"
@@ -250,6 +270,16 @@
             ℹ️ Whichever condition hits first will trigger the exit
           </li>
         </ul>
+      </div>
+
+      <!-- Optimal Exit Timing Suggestion (#25) -->
+      <div class="optimal-timing p-3 bg-amber-50 border border-amber-200 rounded-lg" data-testid="autopilot-exit-optimal-timing-suggestion">
+        <p class="text-xs font-medium text-amber-900 mb-1">💡 Optimal Exit Timing:</p>
+        <p class="text-xs text-amber-800">
+          For best results, combine <strong>50% profit target</strong> with <strong>21 DTE exit</strong>.
+          Exit whichever comes first for optimal risk-adjusted returns. This approach captures most of the premium
+          while avoiding gamma risk in expiry week.
+        </p>
       </div>
     </div>
   </div>

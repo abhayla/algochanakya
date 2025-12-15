@@ -55,11 +55,11 @@ test.describe('AutoPilot Builder - Validation Errors', () => {
     expect(hasError).toBe(true);
   });
 
-  // Skip: Risk settings step requires completing legs with expiry/strike
-  test.skip('shows validation error for invalid max loss', async () => {
+  // Unskipped: Updated to use complete leg params with strike
+  test('shows validation error for invalid max loss', async () => {
     // Step 1 now contains Basic Info + Legs (merged)
     await builderPage.fillStrategyInfo({ name: 'Test' });
-    await builderPage.addLeg({ optionType: 'CE' });
+    await builderPage.addLeg({ type: 'CE', strike: '25000', action: 'SELL' });
     await builderPage.goToNextStep(); // Step 2: Entry Conditions
     await builderPage.goToNextStep(); // Step 3: Adjustments
     await builderPage.goToNextStep(); // Step 4: Risk Settings

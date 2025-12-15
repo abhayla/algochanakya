@@ -12,6 +12,7 @@ import AutoPilotLegsTable from '@/components/autopilot/builder/AutoPilotLegsTabl
 import ProfitTargetConfig from '@/components/autopilot/builder/ProfitTargetConfig.vue'
 import DTEExitConfig from '@/components/autopilot/builder/DTEExitConfig.vue'
 import StagedEntryConfig from '@/components/autopilot/builder/StagedEntryConfig.vue'
+import ConversionModal from '@/components/autopilot/adjustments/ConversionModal.vue'
 import KiteLayout from '@/components/layout/KiteLayout.vue'
 import '@/assets/css/strategy-table.css'
 
@@ -33,6 +34,10 @@ const selectedStrategyType = ref('')
 const previousStrategyType = ref('')
 const showReplaceConfirm = ref(false)
 
+// Adjustment modals
+const showConversionModal = ref(false)
+const showWidenSpreadModal = ref(false)
+
 const isEditMode = computed(() => !!route.params.id)
 const strategyId = computed(() => route.params.id ? parseInt(route.params.id) : null)
 
@@ -42,7 +47,7 @@ const validationErrors = ref([])
 const steps = [
   { id: 1, name: 'Strategy Setup', description: 'Basic info and legs' },
   { id: 2, name: 'Entry Conditions', description: 'When to enter' },
-  { id: 3, name: 'Adjustments', description: 'Adjustment rules' },
+  { id: 3, name: 'Monitoring', description: 'Alerts and adjustments' },
   { id: 4, name: 'Risk Settings', description: 'Stop loss and targets' },
   { id: 5, name: 'Review', description: 'Review and save' }
 ]
@@ -203,8 +208,8 @@ const getStepTestId = (stepId) => {
   const stepNames = {
     1: 'autopilot-builder-legs-tab',
     2: 'autopilot-builder-conditions-tab',
-    3: 'autopilot-builder-adjustments-tab',
-    4: 'autopilot-builder-risk-tab',
+    3: 'autopilot-builder-monitoring-tab',  // Was adjustments, now monitoring/adjustments
+    4: 'autopilot-builder-settings-tab',  // Also aliased as risk-tab for backward compatibility
     5: 'autopilot-builder-review-tab'
   }
   return stepNames[stepId] || `autopilot-builder-step-${stepId}`
@@ -213,6 +218,57 @@ const getStepTestId = (stepId) => {
 // Note: addLeg and removeLeg are now handled by AutoPilotLegsTable component
 
 const addCondition = () => {
+  store.addCondition({
+    variable: 'TIME.CURRENT',
+    operator: 'greater_than',
+    value: '09:20'
+  })
+}
+
+// Condition order suggestion state
+const conditionSuggestionDismissed = ref(false)
+
+// Show condition order suggestion when conditions are not in optimal order
+const showConditionOrderSuggestion = computed(() => {
+  if (conditionSuggestionDismissed.value) return false
+  const conditions = store.builder.strategy.entry_conditions.conditions
+  if (conditions.length < 2) return false
+
+  // Check if conditions are in optimal order: TIME → VIX → SPOT → PREMIUM
+  const orderPriority = {
+    'TIME.CURRENT': 1,
+    'STRATEGY.DTE': 1,
+    'STRATEGY.DAYS_IN_TRADE': 1,
+    'VOLATILITY.VIX': 2,
+    'IV.RANK': 2,
+    'IV.PERCENTILE': 2,
+    'SPOT.PRICE': 3,
+    'SPOT.DISTANCE_TO.BREAKEVEN': 3,
+    'OI.PCR': 3,
+    'OI.MAX_PAIN': 3,
+    'PREMIUM.CAPTURED_PCT': 4,
+    'STRATEGY.PNL': 4
+  }
+
+  let lastPriority = 0
+  for (const condition of conditions) {
+    const priority = orderPriority[condition.variable] || 3
+    if (priority < lastPriority) {
+      return true  // Order is not optimal
+    }
+    lastPriority = priority
+  }
+  return false
+})
+
+const dismissConditionSuggestion = () => {
+  conditionSuggestionDismissed.value = true
+}
+
+// Add condition group (placeholder for nested groups feature)
+const addConditionGroup = () => {
+  // For now, just add a new condition
+  // In full implementation, this would create a new condition group
   store.addCondition({
     variable: 'TIME.CURRENT',
     operator: 'greater_than',
@@ -268,6 +324,23 @@ const updateExitRuleConfig = (ruleType, config) => {
     store.builder.strategy.exit_rules = {}
   }
   store.builder.strategy.exit_rules[ruleType] = config
+}
+
+// Scroll to section within Step 4 (Risk Settings)
+const scrollToSection = (sectionId) => {
+  const sectionMap = {
+    'entry-requirements': 'autopilot-builder-entry-requirements',
+    'risk-settings': 'autopilot-builder-risk',
+    'exit-rules': 'autopilot-builder-exit-rules',
+    'schedule-settings': 'autopilot-builder-schedule'
+  }
+  const testId = sectionMap[sectionId]
+  if (testId) {
+    const element = document.querySelector(`[data-testid="${testId}"]`)
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }
 }
 
 // Available legs for staged entry configuration
@@ -499,6 +572,53 @@ const canProceed = computed(() => {
             </select>
           </div>
 
+          <!-- Condition Order Suggestion Banner -->
+          <div
+            v-if="showConditionOrderSuggestion"
+            class="condition-order-suggestion"
+            data-testid="autopilot-condition-order-suggestion"
+          >
+            <div class="suggestion-icon">💡</div>
+            <div class="suggestion-content">
+              <p class="suggestion-text">Suggested condition order: <strong>TIME → VIX → SPOT → PREMIUM</strong></p>
+              <p class="suggestion-hint">Time and VIX conditions should be evaluated first for optimal performance.</p>
+            </div>
+            <button
+              @click="dismissConditionSuggestion"
+              class="suggestion-dismiss"
+              data-testid="autopilot-condition-order-dismiss"
+            >
+              Dismiss
+            </button>
+          </div>
+
+          <!-- Multi-condition Logic Toggle -->
+          <div
+            v-if="store.builder.strategy.entry_conditions.conditions.length > 1"
+            class="condition-logic-toggle-container"
+          >
+            <label class="form-label">Logic Between Conditions</label>
+            <select
+              v-model="store.builder.strategy.entry_conditions.logic"
+              data-testid="autopilot-condition-logic-operator"
+              class="strategy-select"
+            >
+              <option value="AND">AND - All conditions must match</option>
+              <option value="OR">OR - Any condition can match</option>
+            </select>
+          </div>
+
+          <!-- Add Condition Group Button (for nested groups) -->
+          <div v-if="store.builder.strategy.entry_conditions.conditions.length > 0" class="condition-group-actions">
+            <button
+              @click="addConditionGroup"
+              class="strategy-btn strategy-btn-outline"
+              data-testid="autopilot-condition-group-add"
+            >
+              + Add Condition Group
+            </button>
+          </div>
+
           <div v-if="store.builder.strategy.entry_conditions.conditions.length === 0" class="empty-state-message">
             No conditions added. The strategy will enter immediately when activated.
           </div>
@@ -621,18 +741,220 @@ const canProceed = computed(() => {
         </div>
       </div>
 
-      <!-- Step 3: Adjustments (was Step 4) -->
+      <!-- Step 3: Monitoring & Adjustments -->
       <div v-if="store.builder.step === 3" data-testid="autopilot-builder-step-3">
-        <h2 class="section-title">Adjustment Rules</h2>
-        <div class="empty-state-message">
-          <p>Adjustment rules configuration coming soon.</p>
-          <p class="empty-state-hint">You can add stop-loss and target rules in the Risk Settings step.</p>
+        <h2 class="section-title">Monitoring & Adjustments</h2>
+
+        <!-- Spot Distance Monitoring Section -->
+        <div class="monitoring-section" data-testid="autopilot-spot-distance-section">
+          <h3 class="subsection-title">Spot Distance Alerts</h3>
+          <p class="section-description">Configure alerts when spot price approaches your strike prices.</p>
+
+          <div class="form-grid">
+            <div class="form-field">
+              <label class="form-label">PE Strike Distance Threshold (%)</label>
+              <input
+                type="number"
+                v-model.number="store.builder.strategy.monitoring_config.spot_distance_pe_threshold"
+                data-testid="autopilot-spot-distance-pe-threshold"
+                class="strategy-input"
+                placeholder="e.g., 2.0"
+                step="0.1"
+                min="0"
+                max="100"
+              />
+              <p class="form-hint">Alert when spot is within this % of PE strike price.</p>
+            </div>
+
+            <div class="form-field">
+              <label class="form-label">CE Strike Distance Threshold (%)</label>
+              <input
+                type="number"
+                v-model.number="store.builder.strategy.monitoring_config.spot_distance_ce_threshold"
+                data-testid="autopilot-spot-distance-ce-threshold"
+                class="strategy-input"
+                placeholder="e.g., 2.0"
+                step="0.1"
+                min="0"
+                max="100"
+              />
+              <p class="form-hint">Alert when spot is within this % of CE strike price.</p>
+            </div>
+          </div>
+
+          <!-- Visual Indicator Preview -->
+          <div class="spot-distance-preview">
+            <div class="spot-distance-gauge">
+              <div class="gauge-track">
+                <div class="gauge-zone gauge-pe-zone" :style="{ width: (store.builder.strategy.monitoring_config.spot_distance_pe_threshold || 2) + '%' }"></div>
+                <div class="gauge-zone gauge-safe-zone"></div>
+                <div class="gauge-zone gauge-ce-zone" :style="{ width: (store.builder.strategy.monitoring_config.spot_distance_ce_threshold || 2) + '%' }"></div>
+              </div>
+              <div class="gauge-labels">
+                <span class="gauge-label-pe">PE Zone</span>
+                <span class="gauge-label-safe">Safe Zone</span>
+                <span class="gauge-label-ce">CE Zone</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Adjustment Menu Section -->
+        <div class="adjustment-menu-section" data-testid="autopilot-adjustment-menu">
+          <h3 class="subsection-title">Strategy Adjustments</h3>
+          <p class="section-description">Convert your strategy or apply adjustments.</p>
+
+          <div class="adjustment-actions">
+            <button
+              class="strategy-btn strategy-btn-outline"
+              data-testid="autopilot-convert-strategy-button"
+              @click="showConversionModal = true"
+            >
+              <svg class="icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+              </svg>
+              Convert Strategy
+            </button>
+            <button
+              class="strategy-btn strategy-btn-outline"
+              data-testid="autopilot-widen-spread-button"
+              @click="showWidenSpreadModal = true"
+            >
+              <svg class="icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+              </svg>
+              Widen Spread
+            </button>
+          </div>
+        </div>
+
+        <!-- Adjustment Rules Section -->
+        <div class="adjustment-rules-section">
+          <h3 class="subsection-title">Adjustment Rules</h3>
+          <div class="empty-state-message">
+            <p>Adjustment rules configuration coming soon.</p>
+            <p class="empty-state-hint">You can add stop-loss and target rules in the Risk Settings step.</p>
+          </div>
         </div>
       </div>
 
       <!-- Step 4: Risk Settings (was Step 5) -->
-      <div v-if="store.builder.step === 4" data-testid="autopilot-builder-step-4">
+      <div v-if="store.builder.step === 4" data-testid="autopilot-builder-step-4" data-testid-alias="autopilot-builder-settings-tab">
         <h2 class="section-title">Risk Settings</h2>
+
+        <!-- Quick Navigation Tabs -->
+        <div class="settings-tabs mb-6">
+          <button
+            class="settings-tab"
+            data-testid="autopilot-builder-entry-requirements-tab"
+            @click="scrollToSection('entry-requirements')"
+          >
+            Entry Requirements
+          </button>
+          <button
+            class="settings-tab"
+            data-testid="autopilot-builder-risk-tab"
+            @click="scrollToSection('risk-settings')"
+          >
+            Risk Limits
+          </button>
+          <button
+            class="settings-tab"
+            data-testid="autopilot-builder-exit-rules-tab"
+            @click="scrollToSection('exit-rules')"
+          >
+            Exit Rules
+          </button>
+          <button
+            class="settings-tab"
+            data-testid="autopilot-builder-schedule-tab"
+            @click="scrollToSection('schedule-settings')"
+          >
+            Schedule
+          </button>
+        </div>
+
+        <!-- Entry Requirements Section -->
+        <div class="entry-requirements-section" data-testid="autopilot-builder-entry-requirements">
+          <h3 class="subsection-title">Entry Requirements</h3>
+
+          <!-- DTE Enforcement -->
+          <div class="form-grid">
+            <div class="form-field">
+              <label class="form-label">Min DTE (Days to Expiry)</label>
+              <input
+                type="number"
+                v-model.number="store.builder.strategy.entry_requirements.min_dte"
+                data-testid="autopilot-settings-min-dte"
+                class="strategy-input"
+                placeholder="e.g., 30"
+                min="0"
+                max="365"
+              />
+              <p class="form-hint">Minimum days to expiry required for entry.</p>
+            </div>
+
+            <div class="form-field">
+              <label class="form-label">Max DTE (Days to Expiry)</label>
+              <input
+                type="number"
+                v-model.number="store.builder.strategy.entry_requirements.max_dte"
+                data-testid="autopilot-settings-max-dte"
+                class="strategy-input"
+                placeholder="e.g., 45"
+                min="0"
+                max="365"
+              />
+              <p class="form-hint">Maximum days to expiry allowed for entry.</p>
+            </div>
+          </div>
+
+          <!-- Delta Neutral Entry -->
+          <div class="delta-neutral-section">
+            <label class="checkbox-label">
+              <input
+                type="checkbox"
+                v-model="store.builder.strategy.entry_requirements.require_delta_neutral"
+                data-testid="autopilot-settings-delta-neutral-entry"
+                class="checkbox-input"
+              />
+              <span class="checkbox-text">Require Delta Neutral Entry</span>
+            </label>
+            <p class="form-hint checkbox-hint">When enabled, position will only be entered if net delta is within the specified range.</p>
+
+            <div
+              v-if="store.builder.strategy.entry_requirements.require_delta_neutral"
+              class="delta-neutral-range"
+            >
+              <div class="form-field">
+                <label class="form-label">Min Delta</label>
+                <input
+                  type="number"
+                  v-model.number="store.builder.strategy.entry_requirements.delta_neutral_min"
+                  data-testid="autopilot-settings-delta-neutral-min"
+                  class="strategy-input"
+                  placeholder="-0.10"
+                  step="0.01"
+                  min="-1"
+                  max="1"
+                />
+              </div>
+              <div class="form-field">
+                <label class="form-label">Max Delta</label>
+                <input
+                  type="number"
+                  v-model.number="store.builder.strategy.entry_requirements.delta_neutral_max"
+                  data-testid="autopilot-settings-delta-neutral-max"
+                  class="strategy-input"
+                  placeholder="0.10"
+                  step="0.01"
+                  min="-1"
+                  max="1"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
 
         <div class="risk-settings" data-testid="autopilot-builder-risk">
           <div class="form-grid">
@@ -912,6 +1234,16 @@ const canProceed = computed(() => {
         </div>
       </div>
     </div>
+
+    <!-- Strategy Conversion Modal -->
+    <ConversionModal
+      v-if="showConversionModal"
+      :strategy-id="strategyId || 'new'"
+      :current-type="store.builder.strategy.strategy_type || 'custom'"
+      :legs="store.builder.strategy.legs_config"
+      @close="showConversionModal = false"
+      @converted="showConversionModal = false"
+    />
   </div>
   </KiteLayout>
 </template>
@@ -921,6 +1253,34 @@ const canProceed = computed(() => {
 .autopilot-builder {
   padding: 24px;
   max-width: 100%;
+}
+
+/* ===== Settings Tabs (Step 4) ===== */
+.settings-tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 12px;
+  background: var(--kite-bg-secondary, #f5f5f5);
+  border-radius: 8px;
+}
+
+.settings-tab {
+  padding: 8px 16px;
+  background: white;
+  border: 1px solid var(--kite-border, #e0e0e0);
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--kite-text-secondary, #666);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.settings-tab:hover {
+  border-color: var(--kite-primary, #387ed1);
+  color: var(--kite-primary, #387ed1);
+  background: var(--kite-primary-light, #e8f0fe);
 }
 
 /* ===== Header ===== */
@@ -1152,6 +1512,180 @@ const canProceed = computed(() => {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 12px;
+}
+
+/* ===== Entry Requirements ===== */
+.entry-requirements-section {
+  background: var(--kite-bg-secondary, #f9fafb);
+  border-radius: 4px;
+  padding: 16px;
+  margin-bottom: 24px;
+}
+
+.subsection-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--kite-text-primary);
+  margin-bottom: 16px;
+}
+
+.delta-neutral-section {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--kite-border);
+}
+
+.delta-neutral-range {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.checkbox-hint {
+  margin-left: 24px;
+  margin-top: 4px;
+}
+
+.form-hint {
+  font-size: 0.75rem;
+  color: var(--kite-text-muted);
+  margin-top: 4px;
+}
+
+/* ===== Monitoring Section ===== */
+.monitoring-section {
+  background: var(--kite-bg-secondary, #f9fafb);
+  border-radius: 4px;
+  padding: 16px;
+  margin-bottom: 24px;
+}
+
+.section-description {
+  font-size: 0.875rem;
+  color: var(--kite-text-secondary);
+  margin-bottom: 16px;
+}
+
+.adjustment-rules-section {
+  margin-top: 24px;
+}
+
+/* Spot Distance Preview */
+.spot-distance-preview {
+  margin-top: 20px;
+  padding: 16px;
+  background: white;
+  border-radius: 4px;
+  border: 1px solid var(--kite-border);
+}
+
+.spot-distance-gauge {
+  width: 100%;
+}
+
+.gauge-track {
+  display: flex;
+  height: 24px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--kite-border-light);
+}
+
+.gauge-zone {
+  height: 100%;
+  transition: width 0.2s ease;
+}
+
+.gauge-pe-zone {
+  background: var(--kite-red, #e53935);
+  min-width: 10px;
+}
+
+.gauge-safe-zone {
+  flex: 1;
+  background: var(--kite-green, #43a047);
+}
+
+.gauge-ce-zone {
+  background: var(--kite-blue, #1e88e5);
+  min-width: 10px;
+}
+
+.gauge-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+  font-size: 0.75rem;
+  color: var(--kite-text-muted);
+}
+
+.gauge-label-pe {
+  color: var(--kite-red);
+}
+
+.gauge-label-safe {
+  color: var(--kite-green);
+}
+
+.gauge-label-ce {
+  color: var(--kite-blue);
+}
+
+/* ===== Condition Order Suggestion ===== */
+.condition-order-suggestion {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%);
+  border: 1px solid #ffc107;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+}
+
+.suggestion-icon {
+  font-size: 1.25rem;
+}
+
+.suggestion-content {
+  flex: 1;
+}
+
+.suggestion-text {
+  font-size: 0.875rem;
+  color: var(--kite-text-primary);
+  margin: 0;
+}
+
+.suggestion-hint {
+  font-size: 0.75rem;
+  color: var(--kite-text-secondary);
+  margin: 4px 0 0 0;
+}
+
+.suggestion-dismiss {
+  background: none;
+  border: none;
+  color: #f57f17;
+  font-size: 0.75rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.suggestion-dismiss:hover {
+  background: rgba(245, 127, 23, 0.1);
+}
+
+/* Condition Logic Toggle */
+.condition-logic-toggle-container {
+  margin-bottom: 16px;
+}
+
+/* Condition Group Actions */
+.condition-group-actions {
+  margin-bottom: 16px;
 }
 
 /* ===== Risk Settings ===== */
@@ -1420,5 +1954,30 @@ const canProceed = computed(() => {
   border-radius: 4px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   padding: 24px;
+}
+
+/* ===== Adjustment Menu Section ===== */
+.adjustment-menu-section {
+  margin-top: 24px;
+  padding: 16px;
+  background: var(--kite-body-bg, #f9fafb);
+  border-radius: 8px;
+}
+
+.adjustment-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.adjustment-actions .strategy-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.icon-svg {
+  width: 20px;
+  height: 20px;
 }
 </style>

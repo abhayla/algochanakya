@@ -237,6 +237,88 @@ const findStrikeByPremium = async () => {
   }
 }
 
+// Find strike by standard deviation
+const findStrikeBySD = async () => {
+  if (!props.leg.expiry_date || !props.leg.contract_type) {
+    strikeSearchError.value = 'Please select expiry and option type first'
+    return
+  }
+
+  const sdMultiplier = parseFloat(props.leg.sd_multiplier)
+  if (isNaN(sdMultiplier) || sdMultiplier <= 0) {
+    strikeSearchError.value = 'Please select a valid SD multiplier'
+    return
+  }
+
+  isSearchingStrike.value = true
+  strikeSearchError.value = ''
+
+  try {
+    const underlying = store.builder.strategy.underlying || 'NIFTY'
+    const expiry = props.leg.expiry_date
+
+    const response = await api.get(`/api/v1/autopilot/option-chain/strike-by-sd/${underlying}/${expiry}`, {
+      params: {
+        option_type: props.leg.contract_type,
+        sd_multiplier: sdMultiplier
+      }
+    })
+
+    if (response.data.strike) {
+      emit('update', props.index, { strike_price: response.data.strike })
+      strikeSearchError.value = ''
+    } else {
+      strikeSearchError.value = 'No strike found for this SD'
+    }
+  } catch (error) {
+    console.error('Error finding strike by SD:', error)
+    strikeSearchError.value = error.response?.data?.detail || 'Error finding strike'
+  } finally {
+    isSearchingStrike.value = false
+  }
+}
+
+// Find strike by expected move
+const findStrikeByEM = async () => {
+  if (!props.leg.expiry_date || !props.leg.contract_type) {
+    strikeSearchError.value = 'Please select expiry and option type first'
+    return
+  }
+
+  const emPosition = props.leg.em_position
+  if (!emPosition) {
+    strikeSearchError.value = 'Please select above or below expected move'
+    return
+  }
+
+  isSearchingStrike.value = true
+  strikeSearchError.value = ''
+
+  try {
+    const underlying = store.builder.strategy.underlying || 'NIFTY'
+    const expiry = props.leg.expiry_date
+
+    const response = await api.get(`/api/v1/autopilot/option-chain/strike-by-expected-move/${underlying}/${expiry}`, {
+      params: {
+        option_type: props.leg.contract_type,
+        position: emPosition  // 'above' or 'below'
+      }
+    })
+
+    if (response.data.strike) {
+      emit('update', props.index, { strike_price: response.data.strike })
+      strikeSearchError.value = ''
+    } else {
+      strikeSearchError.value = 'No strike found outside expected move'
+    }
+  } catch (error) {
+    console.error('Error finding strike by EM:', error)
+    strikeSearchError.value = error.response?.data?.detail || 'Error finding strike'
+  } finally {
+    isSearchingStrike.value = false
+  }
+}
+
 // Fetch instrument token for live prices
 const fetchInstrumentForLeg = async (leg) => {
   const result = await store.fetchInstrumentToken(
@@ -331,6 +413,8 @@ const getPnLClass = (value) => {
           <option value="fixed">Fixed Strike</option>
           <option value="delta_range">Delta Range</option>
           <option value="premium_range">Premium Range</option>
+          <option value="standard_deviation">Standard Deviation</option>
+          <option value="expected_move">Expected Move</option>
         </select>
 
         <!-- Fixed Strike Mode -->
@@ -417,6 +501,74 @@ const getPnLClass = (value) => {
             />
             <button
               @click="findStrikeByPremium"
+              :disabled="isSearchingStrike"
+              class="btn-find-strike"
+              :data-testid="`autopilot-leg-find-strike-${index}`"
+            >
+              {{ isSearchingStrike ? '...' : 'Find' }}
+            </button>
+          </div>
+          <div v-if="leg.strike_price" class="selected-strike" :data-testid="`autopilot-leg-selected-strike-${index}`">
+            Strike: <strong>{{ leg.strike_price }}</strong>
+          </div>
+          <div v-if="strikeSearchError" class="error-message">
+            {{ strikeSearchError }}
+          </div>
+        </div>
+
+        <!-- Standard Deviation Mode -->
+        <div v-if="strikeMode === 'standard_deviation'" class="strike-sd-mode">
+          <div class="flex gap-1 mb-1">
+            <select
+              :value="leg.sd_multiplier"
+              @change="handleUpdate('sd_multiplier', parseFloat($event.target.value))"
+              class="strategy-select compact text-xs"
+              :data-testid="`autopilot-leg-sd-multiplier-${index}`"
+              style="width: 80px;"
+            >
+              <option value="">Select SD</option>
+              <option value="1">1 SD</option>
+              <option value="1.5">1.5 SD</option>
+              <option value="2">2 SD</option>
+              <option value="2.5">2.5 SD</option>
+              <option value="3">3 SD</option>
+            </select>
+            <button
+              @click="findStrikeBySD"
+              :disabled="isSearchingStrike"
+              class="btn-find-strike"
+              :data-testid="`autopilot-leg-find-strike-${index}`"
+            >
+              {{ isSearchingStrike ? '...' : 'Find' }}
+            </button>
+          </div>
+          <div v-if="leg.strike_price" class="selected-strike" :data-testid="`autopilot-leg-selected-strike-${index}`">
+            Strike: <strong>{{ leg.strike_price }}</strong>
+          </div>
+          <div v-if="strikeSearchError" class="error-message">
+            {{ strikeSearchError }}
+          </div>
+        </div>
+
+        <!-- Expected Move Mode -->
+        <div v-if="strikeMode === 'expected_move'" class="strike-em-mode">
+          <div class="expected-move-info text-xs mb-1">
+            <span>Select strikes outside expected move range</span>
+          </div>
+          <div class="flex gap-1 mb-1">
+            <select
+              :value="leg.em_position"
+              @change="handleUpdate('em_position', $event.target.value)"
+              class="strategy-select compact text-xs"
+              :data-testid="`autopilot-leg-em-position-${index}`"
+              style="width: 100px;"
+            >
+              <option value="">Select</option>
+              <option value="above">Above EM</option>
+              <option value="below">Below EM</option>
+            </select>
+            <button
+              @click="findStrikeByEM"
               :disabled="isSearchingStrike"
               class="btn-find-strike"
               :data-testid="`autopilot-leg-find-strike-${index}`"

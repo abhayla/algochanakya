@@ -248,26 +248,26 @@ test.describe('AutoPilot Strategy Builder - Happy Path', () => {
     expect(await builderPage.getLegCount()).toBe(4);
   });
 
-  // Skip: Legs tests moved to autopilot.legs.happy.spec.js with new table-based UI
+  // Unskipped: Updated to use new table-based UI parameters
   // Step 1 now contains Basic Info + Legs (merged)
-  test.skip('adds leg to strategy', async () => {
+  test('adds leg to strategy', async () => {
     // Legs are now on Step 1 - no navigation needed
     await builderPage.addLeg({
-      optionType: 'CE',
-      strikeMethod: 'atm_offset',
-      transactionType: 'SELL'
+      type: 'CE',
+      action: 'SELL',
+      strike: '25000'
     });
 
     const legCount = await builderPage.getLegCount();
     expect(legCount).toBe(1);
   });
 
-  // Skip: Legs tests moved to autopilot.legs.happy.spec.js with new table-based UI
+  // Unskipped: Updated to use new table-based UI parameters
   // Step 1 now contains Basic Info + Legs (merged)
-  test.skip('removes leg from strategy', async () => {
+  test('removes leg from strategy', async () => {
     // Legs are now on Step 1 - no navigation needed
-    await builderPage.addLeg({ optionType: 'CE' });
-    await builderPage.addLeg({ optionType: 'PE' });
+    await builderPage.addLeg({ type: 'CE', strike: '25000' });
+    await builderPage.addLeg({ type: 'PE', strike: '24500' });
 
     await builderPage.removeLeg(0);
 

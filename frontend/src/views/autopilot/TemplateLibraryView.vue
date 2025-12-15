@@ -342,10 +342,76 @@
             Close
           </button>
           <button
+            class="btn-rate"
+            data-testid="autopilot-template-rate-btn"
+            @click="openRatingModal"
+          >
+            Rate Template
+          </button>
+          <button
             class="btn-primary"
             @click="showDeployModal(selectedTemplate)"
           >
             Deploy This Template
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Rating Modal -->
+    <div
+      v-if="showRatingModal"
+      class="modal-overlay"
+      data-testid="autopilot-template-rating-modal"
+      @click.self="closeRatingModal"
+    >
+      <div class="modal-content modal-sm">
+        <div class="modal-header">
+          <h3 class="modal-title">Rate Template</h3>
+          <button @click="closeRatingModal" class="close-btn">
+            <svg class="icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div class="rating-content">
+          <p class="rating-prompt">How would you rate {{ selectedTemplate?.name }}?</p>
+
+          <div class="rating-stars">
+            <button
+              v-for="star in 5"
+              :key="star"
+              class="star-btn"
+              :class="{ 'star-filled': (ratingHover || ratingValue) >= star }"
+              :data-testid="`autopilot-template-rating-star-${star}`"
+              @click="setRating(star)"
+              @mouseenter="setRatingHover(star)"
+              @mouseleave="setRatingHover(0)"
+            >
+              <svg class="star-icon-lg" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+              </svg>
+            </button>
+          </div>
+
+          <p class="rating-text">{{ ratingValue > 0 ? `${ratingValue} star${ratingValue > 1 ? 's' : ''}` : 'Select a rating' }}</p>
+        </div>
+
+        <div class="modal-actions">
+          <button
+            class="btn-secondary"
+            @click="closeRatingModal"
+          >
+            Cancel
+          </button>
+          <button
+            class="btn-primary"
+            :disabled="ratingValue === 0 || submittingRating"
+            data-testid="autopilot-template-rating-submit"
+            @click="submitRating"
+          >
+            {{ submittingRating ? 'Submitting...' : 'Submit Rating' }}
           </button>
         </div>
       </div>
@@ -370,6 +436,12 @@ const error = ref(null)
 const selectedTemplate = ref(null)
 const showDeployModalFlag = ref(false)
 const deploying = ref(false)
+
+// Rating modal state
+const showRatingModal = ref(false)
+const ratingValue = ref(0)
+const ratingHover = ref(0)
+const submittingRating = ref(false)
 
 const filters = reactive({
   search: '',
@@ -477,6 +549,44 @@ const getRiskClass = (level) => {
       return 'risk-high'
     default:
       return 'risk-medium'
+  }
+}
+
+// Rating modal functions
+const openRatingModal = () => {
+  ratingValue.value = 0
+  ratingHover.value = 0
+  showRatingModal.value = true
+}
+
+const closeRatingModal = () => {
+  showRatingModal.value = false
+  ratingValue.value = 0
+  ratingHover.value = 0
+}
+
+const setRating = (value) => {
+  ratingValue.value = value
+}
+
+const setRatingHover = (value) => {
+  ratingHover.value = value
+}
+
+const submitRating = async () => {
+  if (!selectedTemplate.value || ratingValue.value === 0) return
+
+  submittingRating.value = true
+
+  try {
+    await store.rateTemplate(selectedTemplate.value.id, ratingValue.value)
+    // Refresh the template data
+    await fetchTemplates()
+    closeRatingModal()
+  } catch (err) {
+    error.value = err.message || 'Failed to submit rating'
+  } finally {
+    submittingRating.value = false
   }
 }
 
@@ -1067,6 +1177,70 @@ onMounted(() => {
   list-style-position: inside;
   font-size: 0.875rem;
   color: var(--kite-text-secondary);
+}
+
+/* ===== Rate Button ===== */
+.btn-rate {
+  padding: 8px 16px;
+  background: var(--kite-orange-light, #fff3e0);
+  color: var(--kite-orange, #ff9800);
+  border: 1px solid var(--kite-orange, #ff9800);
+  border-radius: 4px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-rate:hover {
+  background: var(--kite-orange, #ff9800);
+  color: white;
+}
+
+/* ===== Rating Modal ===== */
+.rating-content {
+  text-align: center;
+  padding: 16px 0;
+}
+
+.rating-prompt {
+  font-size: 1rem;
+  color: var(--kite-text-primary);
+  margin-bottom: 20px;
+}
+
+.rating-stars {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.star-btn {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+  color: var(--kite-border, #e0e0e0);
+}
+
+.star-btn:hover {
+  transform: scale(1.15);
+}
+
+.star-btn.star-filled {
+  color: #ffc107;
+}
+
+.star-icon-lg {
+  width: 40px;
+  height: 40px;
+}
+
+.rating-text {
+  font-size: 0.875rem;
+  color: var(--kite-text-secondary);
+  font-weight: 500;
 }
 
 /* ===== Utilities ===== */

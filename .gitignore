@@ -110,3 +110,6 @@ backend/fix_tests.py
 /PHASE5_TEST_IMPLEMENTATION_STATUS.md
 backend/phase5_test_results.txt
 backend/fix_test_mocks.py
+
+# Temporary analysis scripts
+analyze-failures.cjs

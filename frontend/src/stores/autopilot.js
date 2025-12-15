@@ -1603,6 +1603,18 @@ function createEmptyStrategy() {
       max_margin: null,
       time_stop: null
     },
+    entry_requirements: {
+      min_dte: null,
+      max_dte: null,
+      require_delta_neutral: false,
+      delta_neutral_min: -0.10,
+      delta_neutral_max: 0.10
+    },
+    monitoring_config: {
+      spot_distance_pe_threshold: 2.0,
+      spot_distance_ce_threshold: 2.0,
+      enable_toast_alerts: true
+    },
     schedule_config: {
       activation_mode: 'always',
       active_days: ['MON', 'TUE', 'WED', 'THU', 'FRI'],
