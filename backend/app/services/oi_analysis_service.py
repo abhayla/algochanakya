@@ -95,7 +95,7 @@ class OIAnalysisService:
             # Get OI data and spot price
             oi_data = await self._get_oi_data(underlying, expiry)
             spot_data = await self.market_data.get_spot_price(underlying)
-            spot_price = spot_data.price
+            spot_price = spot_data.ltp
 
             # Calculate max pain using existing algorithm
             max_pain_strike = self._calculate_max_pain(oi_data, spot_price)
@@ -111,7 +111,7 @@ class OIAnalysisService:
             # Return spot price as fallback
             try:
                 spot_data = await self.market_data.get_spot_price(underlying)
-                return spot_data.price
+                return spot_data.ltp
             except:
                 return 0.0
 
@@ -182,7 +182,7 @@ class OIAnalysisService:
         try:
             # Get spot price to find ATM
             spot_data = await self.market_data.get_spot_price(underlying)
-            spot_price = spot_data.price
+            spot_price = spot_data.ltp
 
             # Get OI data
             oi_data = await self._get_oi_data(underlying, expiry)

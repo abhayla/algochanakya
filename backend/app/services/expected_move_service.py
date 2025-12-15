@@ -88,7 +88,7 @@ class ExpectedMoveService:
         try:
             # Get spot price
             spot_data = await self.market_data.get_spot_price(underlying)
-            spot_price = spot_data.price
+            spot_price = spot_data.ltp
 
             # Get expected move
             expected_move = await self.get_expected_move(underlying, expiry)
@@ -158,7 +158,7 @@ class ExpectedMoveService:
         try:
             # Get spot price
             spot_data = await self.market_data.get_spot_price(underlying)
-            spot_price = spot_data.price
+            spot_price = spot_data.ltp
 
             # Get ATM IV
             atm_iv = await self._get_atm_iv(underlying, expiry)
@@ -234,7 +234,7 @@ class ExpectedMoveService:
         try:
             # Get spot price to find ATM
             spot_data = await self.market_data.get_spot_price(underlying)
-            spot_price = spot_data.price
+            spot_price = spot_data.ltp
 
             # Parse expiry date
             if isinstance(expiry, str):
@@ -306,7 +306,7 @@ class ExpectedMoveService:
         try:
             # Get spot price to find ATM
             spot_data = await self.market_data.get_spot_price(underlying)
-            spot_price = spot_data.price
+            spot_price = spot_data.ltp
 
             # Parse expiry date
             if isinstance(expiry, str):

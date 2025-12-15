@@ -646,7 +646,7 @@ class OrderExecutor:
 
             # Get spot price
             spot_data = await self.market_data.get_spot_price(strategy.underlying)
-            spot_price = float(spot_data.price)
+            spot_price = float(spot_data.ltp)
 
             net_delta = 0.0
             leg_deltas = []

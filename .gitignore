@@ -117,6 +117,10 @@ analyze-failures.cjs
 # Temporary test scripts
 manual-test-strike-finders.js
 test-strike-finders*.js
+test_strike_finder_fix.js
+
+# Temporary fix summaries
+STRIKE_FINDER_FIX_SUMMARY.md
 
 # Temporary screenshots/error images (root level)
 error-screenshot.png
