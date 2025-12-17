@@ -124,3 +124,18 @@ STRIKE_FINDER_FIX_SUMMARY.md
 
 # Temporary screenshots/error images (root level)
 error-screenshot.png
+
+# Temporary implementation documentation (root level - docs/ versions are tracked)
+/IMPLEMENTATION_SUMMARY.md
+/PHASE1_TESTING_SUMMARY.md
+/PHASE_2_IMPLEMENTATION.md
+/PHASE_2_TEST_RESULTS.md
+/QUICK_TEST_GUIDE.md
+/STRIKE_LADDER_TEST_RESULTS.md
+/TESTING_STATUS.md
+/TEST_RESULTS_TEMPLATE.md
+
+# Temporary test scripts
+backend/test_phase1_strike_selection.py
+run-strike-ladder-tests.bat
+run-strike-ladder-tests.sh

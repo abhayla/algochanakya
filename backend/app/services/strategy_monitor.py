@@ -181,10 +181,10 @@ class StrategyMonitor:
                 )
                 return
 
-            # Get all waiting, active, and waiting_staged_entry strategies
+            # Get all waiting, active, waiting_staged_entry, and reentry_waiting strategies
             result = await db.execute(
                 select(AutoPilotStrategy).where(
-                    AutoPilotStrategy.status.in_(["waiting", "active", "waiting_staged_entry"])
+                    AutoPilotStrategy.status.in_(["waiting", "active", "waiting_staged_entry", "reentry_waiting"])
                 )
             )
             strategies = result.scalars().all()
@@ -221,6 +221,10 @@ class StrategyMonitor:
         elif strategy.status == "waiting_staged_entry":
             # Phase 5I: Check staged entry conditions
             await self._check_staged_entry(db, strategy)
+
+        elif strategy.status == "reentry_waiting":
+            # Phase 3: Check re-entry conditions
+            await self._check_reentry(db, strategy)
 
         elif strategy.status == "active":
             # Update P&L
@@ -1587,6 +1591,157 @@ class StrategyMonitor:
 
         except Exception as e:
             logger.error(f"Error checking delta thresholds for strategy {strategy.id}: {e}")
+
+    async def _check_reentry(self, db: AsyncSession, strategy: AutoPilotStrategy):
+        """
+        Check if exited strategy should re-enter.
+
+        Phase 3: Re-Entry Logic
+        - Check if re-entry is enabled
+        - Check cooldown period
+        - Check max re-entries limit
+        - Evaluate re-entry conditions
+        - Execute re-entry if all checks pass
+        """
+        try:
+            reentry_config = strategy.reentry_config or {}
+
+            # Check if re-entry is enabled
+            if not reentry_config.get('enabled', False):
+                logger.debug(f"Re-entry disabled for strategy {strategy.id}")
+                return
+
+            # Check max re-entries limit
+            max_reentries = reentry_config.get('max_reentries', 1)
+            reentry_count = reentry_config.get('reentry_count', 0)
+
+            if reentry_count >= max_reentries:
+                logger.info(f"Strategy {strategy.id} reached max re-entries ({max_reentries})")
+                # Mark as completed since no more re-entries allowed
+                strategy.status = "completed"
+                strategy.completed_at = datetime.now(timezone.utc)
+
+                # Log completion
+                log = AutoPilotLog(
+                    user_id=strategy.user_id,
+                    strategy_id=strategy.id,
+                    event_type="reentry_limit_reached",
+                    severity="info",
+                    message=f"Strategy completed: Max re-entries ({max_reentries}) reached",
+                    event_data={
+                        "reentry_count": reentry_count,
+                        "max_reentries": max_reentries
+                    }
+                )
+                db.add(log)
+                await db.commit()
+
+                # Send WebSocket update
+                await self.ws_manager.send_strategy_update(
+                    user_id=str(strategy.user_id),
+                    strategy_id=strategy.id,
+                    status="completed",
+                    message="Strategy completed: Max re-entries reached"
+                )
+                return
+
+            # Check cooldown period
+            cooldown_minutes = reentry_config.get('cooldown_minutes', 15)
+            if strategy.completed_at:
+                time_since_exit = datetime.now(timezone.utc) - strategy.completed_at
+                cooldown_seconds = cooldown_minutes * 60
+
+                if time_since_exit.total_seconds() < cooldown_seconds:
+                    remaining_seconds = cooldown_seconds - time_since_exit.total_seconds()
+                    logger.debug(
+                        f"Strategy {strategy.id} in cooldown period: "
+                        f"{remaining_seconds:.0f}s remaining"
+                    )
+                    return
+
+            # Evaluate re-entry conditions
+            reentry_conditions = reentry_config.get('conditions', {})
+
+            if not reentry_conditions or not reentry_conditions.get('conditions'):
+                logger.warning(f"No re-entry conditions defined for strategy {strategy.id}")
+                return
+
+            # Evaluate conditions using condition engine
+            eval_result = await self.condition_engine.evaluate(
+                strategy_id=strategy.id,
+                entry_conditions=reentry_conditions,
+                underlying=strategy.underlying,
+                legs_config=strategy.legs_config
+            )
+
+            # Save condition evaluation
+            condition_eval = AutoPilotConditionEval(
+                strategy_id=strategy.id,
+                user_id=strategy.user_id,
+                underlying=strategy.underlying,
+                all_conditions_met=eval_result.all_conditions_met,
+                condition_results=eval_result.condition_results,
+                spot_price=eval_result.market_context.get('spot_price'),
+                vix_value=eval_result.market_context.get('vix'),
+                iv_rank=eval_result.market_context.get('iv_rank')
+            )
+            db.add(condition_eval)
+            await db.commit()
+
+            # Send WebSocket update with condition status
+            await self.ws_manager.send_condition_evaluated(
+                user_id=str(strategy.user_id),
+                strategy_id=strategy.id,
+                all_conditions_met=eval_result.all_conditions_met,
+                condition_results=eval_result.condition_results,
+                market_context=eval_result.market_context
+            )
+
+            if not eval_result.all_conditions_met:
+                logger.debug(f"Re-entry conditions not met for strategy {strategy.id}")
+                return
+
+            # All checks passed - execute re-entry
+            logger.info(f"Re-entry conditions met for strategy {strategy.id}, executing re-entry")
+
+            # Increment re-entry count
+            reentry_config['reentry_count'] = reentry_count + 1
+            strategy.reentry_config = reentry_config
+
+            # Change status back to waiting (will be processed in next cycle)
+            strategy.status = "waiting"
+            strategy.completed_at = None
+
+            # Log re-entry
+            log = AutoPilotLog(
+                user_id=strategy.user_id,
+                strategy_id=strategy.id,
+                event_type="reentry_triggered",
+                severity="info",
+                message=f"Re-entry triggered (attempt {reentry_count + 1}/{max_reentries})",
+                event_data={
+                    "reentry_count": reentry_count + 1,
+                    "max_reentries": max_reentries,
+                    "condition_results": eval_result.condition_results
+                }
+            )
+            db.add(log)
+            await db.commit()
+
+            # Send WebSocket update
+            await self.ws_manager.send_strategy_update(
+                user_id=str(strategy.user_id),
+                strategy_id=strategy.id,
+                status="waiting",
+                message=f"Re-entry triggered (attempt {reentry_count + 1}/{max_reentries})",
+                data={
+                    "reentry_count": reentry_count + 1,
+                    "max_reentries": max_reentries
+                }
+            )
+
+        except Exception as e:
+            logger.error(f"Error checking re-entry for strategy {strategy.id}: {e}")
 
 
 # Singleton instance

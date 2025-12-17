@@ -1740,3 +1740,103 @@ class StagedEntryCreateRequest(BaseModel):
         None,
         description="Staged entry configuration (half-size or staggered)"
     )
+
+
+# ============================================================================
+# STRIKE PREVIEW SCHEMAS (Phase 1 - Redesign)
+# ============================================================================
+
+class StrikeMode(str, Enum):
+    """Strike selection modes"""
+    fixed = "fixed"
+    atm_offset = "atm_offset"
+    delta_based = "delta_based"
+    premium_based = "premium_based"
+    sd_based = "sd_based"
+
+
+class StrikePreviewRequest(BaseModel):
+    """Request for strike preview"""
+    underlying: Underlying
+    expiry: date
+    option_type: ContractType
+    mode: StrikeMode
+
+    # Mode-specific parameters
+    target_delta: Optional[Decimal] = Field(None, description="Target delta for delta_based mode")
+    target_premium: Optional[Decimal] = Field(None, description="Target premium for premium_based mode")
+    standard_deviations: Optional[Decimal] = Field(None, description="Standard deviations for sd_based mode")
+    outside_sd: Optional[bool] = Field(False, description="Whether to select outside SD")
+    prefer_round_strike: bool = Field(True, description="Prefer strikes divisible by 100")
+
+
+class ExpectedMove(BaseModel):
+    """Expected move range"""
+    sd_1_lower: int
+    sd_1_upper: int
+    sd_2_lower: int
+    sd_2_upper: int
+
+
+class StrikePreviewResponse(BaseModel):
+    """Response for strike preview"""
+    strike: int
+    ltp: Decimal
+    delta: Optional[Decimal] = None
+    gamma: Optional[Decimal] = None
+    theta: Optional[Decimal] = None
+    vega: Optional[Decimal] = None
+    iv: Optional[Decimal] = None
+    expected_move: Optional[ExpectedMove] = None
+    probability_otm: Optional[Decimal] = None
+
+
+# ============================================================================
+# PREMIUM TRACKING SCHEMAS (Phase 2: Premium Monitoring)
+# ============================================================================
+
+class LegPremiumData(BaseModel):
+    """Premium data for a single leg"""
+    leg_index: int
+    contract_type: str
+    strike: float
+    quantity: int
+    ltp: float
+    premium: float
+
+
+class PremiumSnapshotResponse(BaseModel):
+    """Single point-in-time premium snapshot"""
+    timestamp: datetime
+    total_premium: Decimal
+    ce_premium: Decimal
+    pe_premium: Decimal
+    legs_data: List[LegPremiumData]
+
+
+class StraddlePremiumResponse(BaseModel):
+    """Current straddle premium response"""
+    ce_premium: Decimal
+    pe_premium: Decimal
+    total_premium: Decimal
+    ce_strike: Optional[int] = None
+    pe_strike: Optional[int] = None
+    underlying: Optional[str] = None
+
+
+class DecayCurveResponse(BaseModel):
+    """Theta decay curve data"""
+    entry_premium: Decimal
+    current_premium: Decimal
+    expected_premium: Decimal
+    days_to_expiry: int
+    decay_rate: float
+    expected_decay_rate: float
+    premium_captured_pct: float
+
+
+class PremiumHistoryResponse(BaseModel):
+    """Historical premium data for charting"""
+    snapshots: List[PremiumSnapshotResponse]
+    interval: str
+    lookback_hours: int

@@ -9,6 +9,7 @@ import { useAutopilotStore } from '@/stores/autopilot'
 import { useWatchlistStore } from '@/stores/watchlist'
 import api from '@/services/api'
 import AutoPilotLegRow from './AutoPilotLegRow.vue'
+import StrikeLadder from './StrikeLadder.vue'
 import '@/assets/css/strategy-table.css'
 
 const store = useAutopilotStore()
@@ -32,6 +33,57 @@ const allLegsSelected = computed(() => {
 
 // Expected move data from API
 const expectedMoveData = ref({ lower_bound: 0, upper_bound: 0 })
+
+// StrikeLadder modal state
+const showStrikeLadder = ref(false)
+const currentLegIndex = ref(null)
+const currentSpotPrice = ref(0)
+const loadingSpotPrice = ref(false)
+const loadingOptionChain = ref(false)
+
+// Open strike ladder for a specific leg
+const openStrikeLadder = async (legIndex) => {
+  currentLegIndex.value = legIndex
+  loadingSpotPrice.value = true
+
+  // Fetch current spot price from API
+  try {
+    const underlying = store.builder.strategy.underlying || 'NIFTY'
+    const response = await api.get(`/api/v1/autopilot/spot-price/${underlying}`)
+    currentSpotPrice.value = response.data.data.ltp
+  } catch (error) {
+    console.error('Error fetching spot price:', error)
+    // Fallback to approximate values
+    const fallbackPrices = {
+      'NIFTY': 24200,
+      'BANKNIFTY': 52000,
+      'FINNIFTY': 21000,
+      'SENSEX': 80000
+    }
+    currentSpotPrice.value = fallbackPrices[store.builder.strategy.underlying] || 24200
+  } finally {
+    loadingSpotPrice.value = false
+  }
+
+  showStrikeLadder.value = true
+}
+
+// Handle strike selection from ladder
+const onStrikeSelected = (strikeData) => {
+  if (currentLegIndex.value !== null) {
+    const leg = legs.value[currentLegIndex.value]
+    handleLegUpdate(currentLegIndex.value, {
+      strike_price: strikeData.strike,
+      entry_price: strikeData.ltp,
+      strike_selection: {
+        mode: 'fixed',
+        fixed_strike: strikeData.strike
+      }
+    })
+    showStrikeLadder.value = false
+    currentLegIndex.value = null
+  }
+}
 
 // Fetch expiries on mount
 onMounted(async () => {
@@ -236,6 +288,7 @@ const formatExpectedMove = (position) => {
               @update="handleLegUpdate"
               @delete="handleLegDelete"
               @toggle-select="toggleLegSelection"
+              @open-strike-ladder="openStrikeLadder"
             />
 
             <!-- Empty State -->
@@ -283,6 +336,31 @@ const formatExpectedMove = (position) => {
         <span class="text-sm text-gray-500">
           {{ legs.length }} leg(s) | Total Qty: {{ store.totalQty }}
         </span>
+      </div>
+    </div>
+
+    <!-- StrikeLadder Modal -->
+    <div v-if="showStrikeLadder" class="modal-overlay" data-testid="autopilot-strike-ladder-modal" @click.self="showStrikeLadder = false">
+      <div class="modal-content-large">
+        <div class="modal-header">
+          <h3 class="modal-title">Strike Ladder - {{ store.builder.strategy.underlying }}</h3>
+          <button
+            @click="showStrikeLadder = false"
+            class="modal-close"
+            data-testid="autopilot-strike-ladder-close"
+          >
+            &times;
+          </button>
+        </div>
+        <StrikeLadder
+          v-if="currentLegIndex !== null && legs[currentLegIndex]"
+          :underlying="store.builder.strategy.underlying"
+          :expiry="legs[currentLegIndex].expiry_date"
+          :spot-price="currentSpotPrice"
+          :loading-spot-price="loadingSpotPrice"
+          :loading-option-chain="loadingOptionChain"
+          @strike-selected="onStrikeSelected"
+        />
       </div>
     </div>
   </div>
@@ -388,5 +466,61 @@ const formatExpectedMove = (position) => {
   font-size: 0.75rem;
   color: var(--kite-text-secondary);
   margin-left: auto;
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.modal-content-large {
+  background: white;
+  border-radius: 8px;
+  width: 100%;
+  max-width: 1200px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--kite-border, #e0e0e0);
+  position: sticky;
+  top: 0;
+  background: white;
+  z-index: 10;
+}
+
+.modal-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--kite-text-primary);
+  margin: 0;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--kite-text-secondary);
+  padding: 4px 8px;
+  transition: color 0.2s ease;
+}
+
+.modal-close:hover {
+  color: var(--kite-text-primary);
 }
 </style>

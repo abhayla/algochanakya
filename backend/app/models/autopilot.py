@@ -29,6 +29,7 @@ class StrategyStatus(str, enum.Enum):
     ACTIVE = "active"
     PENDING = "pending"
     PAUSED = "paused"
+    REENTRY_WAITING = "reentry_waiting"  # Phase 3: Exited, waiting for re-entry conditions
     COMPLETED = "completed"
     ERROR = "error"
     EXPIRED = "expired"
@@ -188,7 +189,8 @@ class AutoPilotStrategy(Base):
     name = Column(String(100), nullable=False)
     description = Column(String(500), nullable=True)
     status = Column(
-        PgEnum('draft', 'waiting', 'active', 'pending', 'paused', 'completed', 'error', 'expired',
+        PgEnum('draft', 'waiting', 'waiting_staged_entry', 'active', 'pending', 'paused', 'reentry_waiting',
+               'completed', 'error', 'expired', 'cancelled',
                name='autopilot_strategy_status', create_type=False),
         nullable=False,
         default="draft"
@@ -217,6 +219,9 @@ class AutoPilotStrategy(Base):
     order_settings = Column(JSONB, nullable=False, default=dict)
     risk_settings = Column(JSONB, nullable=False, default=dict)
     schedule_config = Column(JSONB, nullable=False, default=dict)
+
+    # Phase 3: Re-Entry Configuration
+    reentry_config = Column(JSONB, nullable=True, comment="Re-entry settings: enabled, max_reentries, cooldown_minutes, conditions, reentry_count")
 
     # Phase 3: Execution Mode (overrides user default)
     execution_mode = Column(

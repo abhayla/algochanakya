@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.autopilot import AutoPilotStrategy, AutoPilotOrder, AutoPilotLog
 from app.services.market_data import MarketDataService
+from app.services.strike_finder_service import StrikeFinderService
 
 logger = logging.getLogger(__name__)
 
@@ -83,9 +84,10 @@ class OrderExecutor:
     - Order tracking
     """
 
-    def __init__(self, kite: KiteConnect, market_data: MarketDataService):
+    def __init__(self, kite: KiteConnect, market_data: MarketDataService, strike_finder: StrikeFinderService = None):
         self.kite = kite
         self.market_data = market_data
+        self.strike_finder = strike_finder
 
     async def execute_entry(
         self,
@@ -280,7 +282,9 @@ class OrderExecutor:
             strike = await self._calculate_strike(
                 leg=leg,
                 spot_price=spot_price,
-                underlying=strategy.underlying
+                underlying=strategy.underlying,
+                expiry=expiry_date,
+                db=db
             )
 
             tradingsymbol = self._build_tradingsymbol(
@@ -476,11 +480,19 @@ class OrderExecutor:
         self,
         leg: Dict[str, Any],
         spot_price: float,
-        underlying: str
+        underlying: str,
+        expiry: date,
+        db: AsyncSession
     ) -> float:
-        """Calculate strike price based on leg configuration."""
+        """
+        Calculate strike price based on leg configuration.
+
+        Uses StrikeFinderService when available for accurate delta, premium, and SD-based selection.
+        Falls back to rough estimates for backward compatibility.
+        """
         strike_selection = leg.get('strike_selection', {})
         mode = strike_selection.get('mode', 'atm_offset')
+        contract_type = leg.get('contract_type', 'CE')
 
         # Get strike step
         strike_step = STRIKE_STEPS.get(underlying.upper(), 50)
@@ -495,26 +507,90 @@ class OrderExecutor:
             offset = strike_selection.get('offset', 0)
             return atm_strike + (offset * strike_step)
 
-        elif mode == 'premium_based':
-            # Would need to search for strike with target premium
-            # For now, return ATM with offset based on target
-            target_premium = strike_selection.get('target_premium', 100)
-            # Rough estimate: each step away from ATM changes premium by ~20-30
-            steps_away = int(target_premium / 25)
-            contract_type = leg.get('contract_type', 'CE')
+        elif mode == 'delta_based':
+            target_delta = Decimal(str(strike_selection.get('target_delta', 0.3)))
+
+            # Use StrikeFinderService if available
+            if self.strike_finder:
+                try:
+                    result = await self.strike_finder.find_strike_by_delta(
+                        underlying=underlying,
+                        expiry=expiry,
+                        option_type=contract_type,
+                        target_delta=target_delta,
+                        prefer_round_strike=strike_selection.get('prefer_round_strike', True)
+                    )
+                    if result:
+                        logger.info(f"Found strike {result['strike']} for delta {target_delta} (actual delta: {result.get('delta', 'N/A')})")
+                        return float(result['strike'])
+                    else:
+                        logger.warning(f"StrikeFinder couldn't find strike for delta {target_delta}, using fallback")
+                except Exception as e:
+                    logger.error(f"Error in find_strike_by_delta: {e}, using fallback")
+
+            # Fallback: rough estimate
+            steps_away = int((0.5 - abs(float(target_delta))) / 0.05)
             if contract_type == 'PE':
                 return atm_strike - (steps_away * strike_step)
             return atm_strike + (steps_away * strike_step)
 
-        elif mode == 'delta_based':
-            # Would need option chain with Greeks
-            # For now, return ATM with rough delta estimate
-            target_delta = strike_selection.get('target_delta', 0.5)
-            steps_away = int((0.5 - abs(target_delta)) / 0.05)
-            contract_type = leg.get('contract_type', 'CE')
+        elif mode == 'premium_based':
+            target_premium = Decimal(str(strike_selection.get('target_premium', 100)))
+
+            # Use StrikeFinderService if available
+            if self.strike_finder:
+                try:
+                    result = await self.strike_finder.find_strike_by_premium(
+                        underlying=underlying,
+                        expiry=expiry,
+                        option_type=contract_type,
+                        target_premium=target_premium,
+                        prefer_round_strike=strike_selection.get('prefer_round_strike', True)
+                    )
+                    if result:
+                        logger.info(f"Found strike {result['strike']} for premium {target_premium} (actual premium: {result.get('ltp', 'N/A')})")
+                        return float(result['strike'])
+                    else:
+                        logger.warning(f"StrikeFinder couldn't find strike for premium {target_premium}, using fallback")
+                except Exception as e:
+                    logger.error(f"Error in find_strike_by_premium: {e}, using fallback")
+
+            # Fallback: rough estimate
+            steps_away = int(float(target_premium) / 25)
             if contract_type == 'PE':
                 return atm_strike - (steps_away * strike_step)
             return atm_strike + (steps_away * strike_step)
+
+        elif mode == 'sd_based':
+            standard_deviations = Decimal(str(strike_selection.get('standard_deviations', 1.0)))
+            outside_sd = strike_selection.get('outside_sd', False)
+
+            # Use StrikeFinderService if available
+            if self.strike_finder:
+                try:
+                    result = await self.strike_finder.find_strike_by_standard_deviation(
+                        underlying=underlying,
+                        expiry=expiry,
+                        option_type=contract_type,
+                        standard_deviations=standard_deviations,
+                        outside_sd=outside_sd,
+                        prefer_round_strike=strike_selection.get('prefer_round_strike', True)
+                    )
+                    if result:
+                        logger.info(f"Found strike {result['strike']} for {standard_deviations}SD (probability OTM: {result.get('probability_otm', 'N/A')})")
+                        return float(result['strike'])
+                    else:
+                        logger.warning(f"StrikeFinder couldn't find strike for {standard_deviations}SD, using fallback")
+                except Exception as e:
+                    logger.error(f"Error in find_strike_by_standard_deviation: {e}, using fallback")
+
+            # Fallback: rough estimate using ATM
+            # 1 SD ≈ ATM ± (ATM * 0.02) for short-term options
+            sd_distance = int(atm_strike * 0.02 * float(standard_deviations))
+            sd_distance = round(sd_distance / strike_step) * strike_step
+            if contract_type == 'PE':
+                return atm_strike - sd_distance if outside_sd else atm_strike + sd_distance
+            return atm_strike + sd_distance if outside_sd else atm_strike - sd_distance
 
         return atm_strike
 
@@ -750,6 +826,7 @@ class OrderExecutor:
             }
 
 
-def get_order_executor(kite: KiteConnect, market_data: MarketDataService) -> OrderExecutor:
+def get_order_executor(kite: KiteConnect, market_data: MarketDataService, db: AsyncSession = None) -> OrderExecutor:
     """Create OrderExecutor instance."""
-    return OrderExecutor(kite, market_data)
+    strike_finder = StrikeFinderService(kite, db) if db else None
+    return OrderExecutor(kite, market_data, strike_finder)

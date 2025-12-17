@@ -6,6 +6,7 @@
 import { computed, ref, watch } from 'vue'
 import { useAutopilotStore } from '@/stores/autopilot'
 import api from '@/services/api'
+import StrikeSelector from './StrikeSelector.vue'
 
 const props = defineProps({
   leg: {
@@ -18,7 +19,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['update', 'delete', 'toggle-select'])
+const emit = defineEmits(['update', 'delete', 'toggle-select', 'open-strike-ladder'])
 
 const store = useAutopilotStore()
 
@@ -52,6 +53,37 @@ const rowClass = computed(() => ({
 
 // Strike selection mode
 const strikeMode = computed(() => props.leg.strike_selection_mode || 'fixed')
+
+// Strike selection config for StrikeSelector component
+const strikeSelection = computed({
+  get() {
+    return props.leg.strike_selection || {
+      mode: 'atm_offset',
+      offset: 0,
+      target_delta: 0.30,
+      target_premium: 100,
+      standard_deviations: 1.0,
+      outside_sd: false,
+      prefer_round_strike: true,
+      fixed_strike: props.leg.strike_price
+    }
+  },
+  set(value) {
+    handleStrikeSelectorChange(value)
+  }
+})
+
+// Handle StrikeSelector changes
+const handleStrikeSelectorChange = (strikeConfig) => {
+  emit('update', props.index, {
+    strike_selection: strikeConfig,
+    strike_selection_mode: strikeConfig.mode,
+    // For fixed mode, update strike_price immediately
+    ...(strikeConfig.mode === 'fixed' && strikeConfig.fixed_strike ? {
+      strike_price: strikeConfig.fixed_strike
+    } : {})
+  })
+}
 
 // Handle field updates
 const handleUpdate = (field, value) => {
@@ -424,166 +456,53 @@ const getPnLClass = (value) => {
     <!-- Strike Mode & Strike Selection -->
     <td colspan="2" style="padding: 4px;">
       <div class="strike-config">
-        <!-- Strike Selection Mode -->
-        <select
-          :value="strikeMode"
-          @change="handleUpdate('strike_selection_mode', $event.target.value)"
-          class="strategy-select compact mb-1"
-          :data-testid="`autopilot-leg-strike-mode-${index}`"
-        >
-          <option value="fixed">Fixed Strike</option>
-          <option value="delta_range">Delta Range</option>
-          <option value="premium_range">Premium Range</option>
-          <option value="standard_deviation">Standard Deviation</option>
-          <option value="expected_move">Expected Move</option>
-        </select>
+        <!-- StrikeSelector Component -->
+        <StrikeSelector
+          v-model="strikeSelection"
+          :underlying="store.builder.strategy.underlying || 'NIFTY'"
+          :expiry="leg.expiry_date || store.expiries[0] || ''"
+          :option-type="leg.contract_type"
+          :data-testid="`autopilot-leg-strike-selector-${index}`"
+        />
 
-        <!-- Fixed Strike Mode -->
-        <div v-if="strikeMode === 'fixed'" class="strike-fixed">
-          <select
-            :value="leg.strike_price"
-            @change="handleUpdate('strike_price', parseFloat($event.target.value))"
-            class="strategy-select compact"
-            :data-testid="`autopilot-leg-strike-${index}`"
+        <!-- Open Strike Ladder Button -->
+        <div class="strike-ladder-btn-wrapper">
+          <button
+            @click="emit('open-strike-ladder', index)"
+            class="btn-strike-ladder-open"
+            :data-testid="`autopilot-leg-open-ladder-${index}`"
+            title="Open Strike Ladder (Visual Selection)"
           >
-            <option value="">Select</option>
-            <option v-for="s in availableStrikes" :key="s" :value="s">
-              {{ s }}
-            </option>
-          </select>
+            <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+              <path d="M2 1h12a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1zm0 1v3h12V2H2zm0 4v3h5V6H2zm6 0v3h6V6H8zM2 10v3h5v-3H2zm6 0v3h6v-3H8z"/>
+            </svg>
+            Open Strike Ladder
+          </button>
         </div>
 
-        <!-- Delta Range Mode -->
-        <div v-if="strikeMode === 'delta_range'" class="strike-delta-range">
-          <div class="flex gap-1 mb-1">
-            <input
-              type="number"
-              :value="leg.min_delta"
-              @input="handleUpdate('min_delta', $event.target.value)"
-              placeholder="Min Δ"
-              step="0.01"
-              min="0"
-              max="1"
-              class="strategy-input compact text-xs"
-              :data-testid="`autopilot-leg-min-delta-${index}`"
-              style="width: 60px;"
-            />
-            <input
-              type="number"
-              :value="leg.max_delta"
-              @input="handleUpdate('max_delta', $event.target.value)"
-              placeholder="Max Δ"
-              step="0.01"
-              min="0"
-              max="1"
-              class="strategy-input compact text-xs"
-              :data-testid="`autopilot-leg-max-delta-${index}`"
-              style="width: 60px;"
-            />
-            <button
-              @click="findStrikeByDelta"
-              :disabled="isSearchingStrike"
-              class="btn-find-strike"
-              :data-testid="`autopilot-leg-find-strike-${index}`"
-            >
-              {{ isSearchingStrike ? '...' : 'Find' }}
-            </button>
-          </div>
-          <div v-if="leg.strike_price" class="selected-strike" :data-testid="`autopilot-leg-selected-strike-${index}`">
-            Strike: <strong>{{ leg.strike_price }}</strong>
-          </div>
-          <div v-if="strikeSearchError" class="error-message">
-            {{ strikeSearchError }}
-          </div>
+        <!-- Selected Strike Display -->
+        <div v-if="leg.strike_price" class="selected-strike-display" :data-testid="`autopilot-leg-selected-strike-${index}`">
+          <span class="strike-label">Selected Strike:</span>
+          <strong class="strike-value">{{ leg.strike_price }}</strong>
+          <span v-if="leg.entry_price" class="strike-price">@ ₹{{ leg.entry_price }}</span>
         </div>
+      </div>
+    </td>
 
-        <!-- Premium Range Mode -->
-        <div v-if="strikeMode === 'premium_range'" class="strike-premium-range">
-          <div class="flex gap-1 mb-1">
-            <input
-              type="number"
-              :value="leg.min_premium"
-              @input="handleUpdate('min_premium', $event.target.value)"
-              placeholder="Min ₹"
-              step="1"
-              class="strategy-input compact text-xs"
-              :data-testid="`autopilot-leg-min-premium-${index}`"
-              style="width: 60px;"
-            />
-            <input
-              type="number"
-              :value="leg.max_premium"
-              @input="handleUpdate('max_premium', $event.target.value)"
-              placeholder="Max ₹"
-              step="1"
-              class="strategy-input compact text-xs"
-              :data-testid="`autopilot-leg-max-premium-${index}`"
-              style="width: 60px;"
-            />
-            <button
-              @click="findStrikeByPremium"
-              :disabled="isSearchingStrike"
-              class="btn-find-strike"
-              :data-testid="`autopilot-leg-find-strike-${index}`"
-            >
-              {{ isSearchingStrike ? '...' : 'Find' }}
-            </button>
-          </div>
-          <div v-if="leg.strike_price" class="selected-strike" :data-testid="`autopilot-leg-selected-strike-${index}`">
-            Strike: <strong>{{ leg.strike_price }}</strong>
-          </div>
-          <div v-if="strikeSearchError" class="error-message">
-            {{ strikeSearchError }}
-          </div>
+    <!-- Keep existing Expected Move Mode UI below if needed -->
+    <td v-if="false && strikeMode === 'expected_move'" style="padding: 4px;">
+      <div class="strike-em-mode">
+        <div class="expected-move-info text-xs mb-1">
+          <span>Select strikes outside expected move range</span>
         </div>
-
-        <!-- Standard Deviation Mode -->
-        <div v-if="strikeMode === 'standard_deviation'" class="strike-sd-mode">
-          <div class="flex gap-1 mb-1">
-            <select
-              :value="leg.sd_multiplier"
-              @change="handleUpdate('sd_multiplier', parseFloat($event.target.value))"
-              class="strategy-select compact text-xs"
-              :data-testid="`autopilot-leg-sd-multiplier-${index}`"
-              style="width: 80px;"
-            >
-              <option value="">Select SD</option>
-              <option value="1">1 SD</option>
-              <option value="1.5">1.5 SD</option>
-              <option value="2">2 SD</option>
-              <option value="2.5">2.5 SD</option>
-              <option value="3">3 SD</option>
-            </select>
-            <button
-              @click="findStrikeBySD"
-              :disabled="isSearchingStrike"
-              class="btn-find-strike"
-              :data-testid="`autopilot-leg-find-strike-${index}`"
-            >
-              {{ isSearchingStrike ? '...' : 'Find' }}
-            </button>
-          </div>
-          <div v-if="leg.strike_price" class="selected-strike" :data-testid="`autopilot-leg-selected-strike-${index}`">
-            Strike: <strong>{{ leg.strike_price }}</strong>
-          </div>
-          <div v-if="strikeSearchError" class="error-message">
-            {{ strikeSearchError }}
-          </div>
-        </div>
-
-        <!-- Expected Move Mode -->
-        <div v-if="strikeMode === 'expected_move'" class="strike-em-mode">
-          <div class="expected-move-info text-xs mb-1">
-            <span>Select strikes outside expected move range</span>
-          </div>
-          <div class="flex gap-1 mb-1">
-            <select
-              :value="leg.em_position"
-              @change="handleUpdate('em_position', $event.target.value)"
-              class="strategy-select compact text-xs"
-              :data-testid="`autopilot-leg-em-position-${index}`"
-              style="width: 100px;"
-            >
+        <div class="flex gap-1 mb-1">
+          <select
+            :value="leg.em_position"
+            @change="handleUpdate('em_position', $event.target.value)"
+            class="strategy-select compact text-xs"
+            :data-testid="`autopilot-leg-em-position-${index}`"
+            style="width: 100px;"
+          >
               <option value="">Select</option>
               <option value="above">Above EM</option>
               <option value="below">Below EM</option>
@@ -847,5 +766,96 @@ const getPnLClass = (value) => {
 .round-strike-pref label {
   cursor: pointer;
   user-select: none;
+}
+
+.btn-strike-ladder {
+  background-color: #10b981;
+  color: white;
+  padding: 4px 6px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease;
+  min-width: 32px;
+}
+
+.btn-strike-ladder:hover {
+  background-color: #059669;
+}
+
+.btn-strike-ladder svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* New StrikeSelector Integration Styles */
+.strike-config {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.strike-ladder-btn-wrapper {
+  margin-top: 8px;
+}
+
+.btn-strike-ladder-open {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #10b981;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+  justify-content: center;
+}
+
+.btn-strike-ladder-open:hover {
+  background: #059669;
+  box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);
+}
+
+.btn-strike-ladder-open svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.selected-strike-display {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+  border: 1px solid #6ee7b7;
+  border-radius: 6px;
+  font-size: 13px;
+  margin-top: 8px;
+}
+
+.selected-strike-display .strike-label {
+  color: #065f46;
+  font-weight: 500;
+}
+
+.selected-strike-display .strike-value {
+  color: #047857;
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.selected-strike-display .strike-price {
+  color: #059669;
+  font-weight: 600;
+  margin-left: auto;
 }
 </style>

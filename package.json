@@ -20,6 +20,8 @@
     "test:specs:navigation": "playwright test tests/e2e/specs/navigation/",
     "test:specs:autopilot": "playwright test tests/e2e/specs/autopilot/",
     "test:autopilot:fast": "playwright test tests/e2e/specs/autopilot/ --timeout=15000 --workers=4",
+    "test:autopilot:phase4": "playwright test tests/e2e/specs/autopilot/autopilot.phase4.spec.js",
+    "test:autopilot:phases123": "playwright test tests/e2e/specs/autopilot/autopilot.phases123.spec.js",
     "test:specs:legacy": "playwright test tests/e2e/specs/legacy/",
     "test:happy": "playwright test --grep @happy",
     "test:edge": "playwright test --grep @edge",

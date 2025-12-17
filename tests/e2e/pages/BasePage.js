@@ -23,10 +23,11 @@ export class BasePage {
   }
 
   /**
-   * Navigate to a specific URL
+   * Navigate to a specific URL (uses this.url as fallback)
    */
   async goto(url) {
-    await this.page.goto(url);
+    const targetUrl = url || this.url;
+    await this.page.goto(targetUrl);
     await this.page.waitForLoadState('networkidle');
   }
 

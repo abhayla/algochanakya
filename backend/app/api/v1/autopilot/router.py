@@ -36,7 +36,9 @@ from app.schemas.autopilot import (
     ManualAdjustmentRequest, AdjustmentLogResponse,
     TrailingStopStatus, TrailingStopConfig,
     PositionSizingRequest, PositionSizingResponse,
-    GreeksSnapshot, PositionGreeksResponse
+    GreeksSnapshot, PositionGreeksResponse,
+    # Phase 1 Redesign schemas
+    StrikeMode, StrikePreviewRequest, StrikePreviewResponse, ExpectedMove
 )
 from app.services.kill_switch import KillSwitchService
 from app.services.confirmation_service import ConfirmationService
@@ -44,6 +46,8 @@ from app.services.adjustment_engine import AdjustmentEngine
 from app.services.trailing_stop import TrailingStopService
 from app.services.position_sizing import PositionSizingService
 from app.services.greeks_calculator import GreeksCalculatorService
+from app.services.strike_finder_service import StrikeFinderService
+from app.utils.dependencies import get_kite_client
 
 # Phase 5 routers
 from app.api.v1.autopilot import legs, option_chain, suggestions, simulation, analytics
@@ -305,6 +309,151 @@ async def get_strategy(
         data=StrategyResponse.model_validate(strategy),
         timestamp=datetime.utcnow()
     )
+
+
+@router.get("/spot-price/{underlying}", response_model=DataResponse)
+async def get_spot_price(
+    underlying: str,
+    current_user: User = Depends(get_current_user),
+    kite = Depends(get_kite_client)
+):
+    """
+    Get current spot price for an underlying index.
+
+    Args:
+        underlying: NIFTY, BANKNIFTY, FINNIFTY, or SENSEX
+
+    Returns:
+        Spot price with change and change percentage
+    """
+    from app.services.market_data import MarketDataService
+
+    try:
+        market_data = MarketDataService(kite)
+        spot_data = await market_data.get_spot_price(underlying)
+
+        return DataResponse(
+            message=f"Spot price for {underlying} retrieved successfully",
+            data={
+                "symbol": spot_data.symbol,
+                "ltp": float(spot_data.ltp),
+                "change": float(spot_data.change),
+                "change_pct": spot_data.change_pct,
+                "timestamp": spot_data.timestamp.isoformat()
+            },
+            timestamp=datetime.utcnow()
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error fetching spot price: {str(e)}"
+        )
+
+
+@router.get("/strikes/preview", response_model=DataResponse)
+async def preview_strike(
+    underlying: str = Query(..., description="Underlying asset (NIFTY, BANKNIFTY, etc.)"),
+    expiry: date = Query(..., description="Expiry date (YYYY-MM-DD)"),
+    option_type: str = Query(..., description="Option type (CE or PE)"),
+    mode: str = Query(..., description="Strike selection mode"),
+    target_delta: Optional[float] = Query(None, description="Target delta for delta_based mode"),
+    target_premium: Optional[float] = Query(None, description="Target premium for premium_based mode"),
+    standard_deviations: Optional[float] = Query(None, description="Standard deviations for sd_based mode"),
+    outside_sd: bool = Query(False, description="Whether to select outside SD"),
+    prefer_round_strike: bool = Query(True, description="Prefer round strikes"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    kite = Depends(get_kite_client)
+):
+    """
+    Get strike preview based on selection mode.
+
+    Supports delta-based, premium-based, and standard deviation-based strike selection.
+    Returns strike details with Greeks, LTP, and expected move.
+    """
+    try:
+        # Initialize StrikeFinderService
+        strike_finder = StrikeFinderService(kite, db)
+
+        result = None
+
+        if mode == "delta_based" and target_delta is not None:
+            result = await strike_finder.find_strike_by_delta(
+                underlying=underlying.upper(),
+                expiry=expiry,
+                option_type=option_type.upper(),
+                target_delta=Decimal(str(target_delta)),
+                prefer_round_strike=prefer_round_strike
+            )
+
+        elif mode == "premium_based" and target_premium is not None:
+            result = await strike_finder.find_strike_by_premium(
+                underlying=underlying.upper(),
+                expiry=expiry,
+                option_type=option_type.upper(),
+                target_premium=Decimal(str(target_premium)),
+                prefer_round_strike=prefer_round_strike
+            )
+
+        elif mode == "sd_based" and standard_deviations is not None:
+            result = await strike_finder.find_strike_by_standard_deviation(
+                underlying=underlying.upper(),
+                expiry=expiry,
+                option_type=option_type.upper(),
+                standard_deviations=Decimal(str(standard_deviations)),
+                outside_sd=outside_sd,
+                prefer_round_strike=prefer_round_strike
+            )
+
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid mode '{mode}' or missing required parameters"
+            )
+
+        if not result:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No strike found matching criteria for {underlying} {expiry}"
+            )
+
+        # Build response
+        response_data = StrikePreviewResponse(
+            strike=result['strike'],
+            ltp=Decimal(str(result.get('ltp', 0))),
+            delta=Decimal(str(result['delta'])) if result.get('delta') is not None else None,
+            gamma=Decimal(str(result['gamma'])) if result.get('gamma') is not None else None,
+            theta=Decimal(str(result['theta'])) if result.get('theta') is not None else None,
+            vega=Decimal(str(result['vega'])) if result.get('vega') is not None else None,
+            iv=Decimal(str(result['iv'])) if result.get('iv') is not None else None,
+            probability_otm=Decimal(str(result['probability_otm'])) if result.get('probability_otm') is not None else None
+        )
+
+        # Add expected move if available
+        if result.get('expected_move'):
+            em = result['expected_move']
+            response_data.expected_move = ExpectedMove(
+                sd_1_lower=em.get('1sd', {}).get('lower', 0),
+                sd_1_upper=em.get('1sd', {}).get('upper', 0),
+                sd_2_lower=em.get('2sd', {}).get('lower', 0),
+                sd_2_upper=em.get('2sd', {}).get('upper', 0)
+            )
+
+        return DataResponse(
+            message="Strike preview retrieved successfully",
+            data=response_data,
+            timestamp=datetime.utcnow()
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error fetching strike preview: {str(e)}"
+        )
 
 
 @router.put("/strategies/{strategy_id}", response_model=DataResponse)
@@ -1328,6 +1477,108 @@ async def calculate_greeks(
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# PHASE 1 REDESIGN: STRIKE SELECTION
+# ============================================================================
+
+@router.get("/strikes/preview", response_model=DataResponse)
+async def get_strike_preview(
+    underlying: str = Query(..., description="Underlying symbol (NIFTY, BANKNIFTY, etc.)"),
+    expiry: str = Query(..., description="Expiry date (YYYY-MM-DD)"),
+    option_type: str = Query(..., description="Option type (CE or PE)"),
+    mode: str = Query(..., description="Strike selection mode"),
+    target_delta: Optional[float] = Query(None, description="Target delta for delta_based mode"),
+    target_premium: Optional[float] = Query(None, description="Target premium for premium_based mode"),
+    standard_deviations: Optional[float] = Query(None, description="Standard deviations for sd_based mode"),
+    outside_sd: Optional[bool] = Query(False, description="Select outside SD range"),
+    prefer_round_strike: bool = Query(True, description="Prefer round strikes (divisible by 100)"),
+    db: AsyncSession = Depends(get_db),
+    kite=Depends(get_kite_client),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get strike preview based on selection mode.
+
+    Supports modes:
+    - delta_based: Find strike by target delta
+    - premium_based: Find strike by target premium
+    - sd_based: Find strike by standard deviations from spot
+    """
+    try:
+        strike_finder = StrikeFinderService(kite, db)
+
+        # Parse expiry date
+        try:
+            expiry_date = datetime.strptime(expiry, "%Y-%m-%d").date()
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid expiry date format. Use YYYY-MM-DD")
+
+        # Find strike based on mode
+        if mode == "delta_based":
+            if not target_delta:
+                raise HTTPException(status_code=400, detail="target_delta is required for delta_based mode")
+
+            result = await strike_finder.find_strike_by_delta(
+                underlying=underlying,
+                expiry=expiry_date,
+                option_type=option_type,
+                target_delta=Decimal(str(target_delta)),
+                prefer_round_strike=prefer_round_strike
+            )
+
+        elif mode == "premium_based":
+            if not target_premium:
+                raise HTTPException(status_code=400, detail="target_premium is required for premium_based mode")
+
+            result = await strike_finder.find_strike_by_premium(
+                underlying=underlying,
+                expiry=expiry_date,
+                option_type=option_type,
+                target_premium=Decimal(str(target_premium)),
+                prefer_round_strike=prefer_round_strike
+            )
+
+        elif mode == "sd_based":
+            if not standard_deviations:
+                raise HTTPException(status_code=400, detail="standard_deviations is required for sd_based mode")
+
+            result = await strike_finder.find_strike_by_standard_deviation(
+                underlying=underlying,
+                expiry=expiry_date,
+                option_type=option_type,
+                standard_deviations=Decimal(str(standard_deviations)),
+                outside=outside_sd,
+                prefer_round_strike=prefer_round_strike
+            )
+
+        else:
+            raise HTTPException(status_code=400, detail=f"Unsupported mode: {mode}")
+
+        if not result.success:
+            raise HTTPException(status_code=404, detail=result.error or "Strike not found")
+
+        # Return preview data
+        preview_data = {
+            "strike": result.strike,
+            "ltp": result.ltp,
+            "delta": result.delta,
+            "gamma": result.gamma if hasattr(result, 'gamma') else None,
+            "theta": result.theta if hasattr(result, 'theta') else None,
+            "vega": result.vega if hasattr(result, 'vega') else None,
+            "iv": result.iv if hasattr(result, 'iv') else None
+        }
+
+        return DataResponse(
+            data=preview_data,
+            timestamp=datetime.now(timezone.utc)
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error finding strike: {str(e)}")
 
 
 # ============================================================================
@@ -2398,3 +2649,224 @@ async def execute_strategy_conversion(
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# PREMIUM TRACKING ENDPOINTS (Phase 2: Premium Monitoring)
+# ============================================================================
+
+@router.get("/strategies/{strategy_id}/premium/current", response_model=DataResponse)
+async def get_current_premium(
+    strategy_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get current total premium for all positions in a strategy.
+
+    Returns:
+        PremiumSnapshotResponse with current premiums for all legs
+    """
+    from app.services.premium_tracker import PremiumTracker
+
+    # Verify strategy belongs to user
+    result = await db.execute(
+        select(AutoPilotStrategy).where(
+            AutoPilotStrategy.id == strategy_id,
+            AutoPilotStrategy.user_id == current_user.id
+        )
+    )
+    strategy = result.scalar_one_or_none()
+
+    if not strategy:
+        raise HTTPException(status_code=404, detail="Strategy not found")
+
+    tracker = PremiumTracker(db)
+    snapshot = await tracker.get_strategy_current_premium(strategy_id)
+
+    if not snapshot:
+        return DataResponse(
+            message="No active positions found",
+            data=None,
+            timestamp=datetime.now(timezone.utc)
+        )
+
+    from app.schemas.autopilot import PremiumSnapshotResponse, LegPremiumData
+
+    response = PremiumSnapshotResponse(
+        timestamp=snapshot.timestamp,
+        total_premium=snapshot.total_premium,
+        ce_premium=snapshot.ce_premium,
+        pe_premium=snapshot.pe_premium,
+        legs_data=[LegPremiumData(**leg) for leg in snapshot.legs_data]
+    )
+
+    return DataResponse(
+        message="Current premium retrieved successfully",
+        data=response.model_dump(),
+        timestamp=datetime.now(timezone.utc)
+    )
+
+
+@router.get("/strategies/{strategy_id}/premium/history", response_model=DataResponse)
+async def get_premium_history(
+    strategy_id: int,
+    interval: str = Query("1m", description="Time interval (1m, 5m, 15m, 1h)"),
+    lookback_hours: int = Query(6, description="Hours of history to fetch"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get historical premium snapshots for charting.
+
+    NOTE: This is a simplified implementation that returns current premium only.
+    For production, implement a background task to capture premium every N seconds
+    and store in a new autopilot_premium_snapshots table.
+
+    Args:
+        strategy_id: AutoPilot strategy ID
+        interval: Time interval (1m, 5m, 15m, 1h)
+        lookback_hours: How many hours of history to fetch
+
+    Returns:
+        List of PremiumSnapshot ordered by timestamp
+    """
+    from app.services.premium_tracker import PremiumTracker
+    from app.schemas.autopilot import PremiumHistoryResponse, PremiumSnapshotResponse, LegPremiumData
+
+    # Verify strategy belongs to user
+    result = await db.execute(
+        select(AutoPilotStrategy).where(
+            AutoPilotStrategy.id == strategy_id,
+            AutoPilotStrategy.user_id == current_user.id
+        )
+    )
+    strategy = result.scalar_one_or_none()
+
+    if not strategy:
+        raise HTTPException(status_code=404, detail="Strategy not found")
+
+    tracker = PremiumTracker(db)
+    snapshots = await tracker.get_premium_history(strategy_id, interval, lookback_hours)
+
+    response_snapshots = [
+        PremiumSnapshotResponse(
+            timestamp=snap.timestamp,
+            total_premium=snap.total_premium,
+            ce_premium=snap.ce_premium,
+            pe_premium=snap.pe_premium,
+            legs_data=[LegPremiumData(**leg) for leg in snap.legs_data]
+        )
+        for snap in snapshots
+    ]
+
+    response = PremiumHistoryResponse(
+        snapshots=response_snapshots,
+        interval=interval,
+        lookback_hours=lookback_hours
+    )
+
+    return DataResponse(
+        message=f"Premium history retrieved ({len(snapshots)} snapshots)",
+        data=response.model_dump(),
+        timestamp=datetime.now(timezone.utc)
+    )
+
+
+@router.get("/strategies/{strategy_id}/premium/decay-curve", response_model=DataResponse)
+async def get_decay_curve(
+    strategy_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Calculate expected vs actual theta decay for a strategy.
+
+    Returns:
+        DecayCurveResponse with decay analysis
+    """
+    from app.services.premium_tracker import PremiumTracker
+    from app.schemas.autopilot import DecayCurveResponse
+
+    # Verify strategy belongs to user
+    result = await db.execute(
+        select(AutoPilotStrategy).where(
+            AutoPilotStrategy.id == strategy_id,
+            AutoPilotStrategy.user_id == current_user.id
+        )
+    )
+    strategy = result.scalar_one_or_none()
+
+    if not strategy:
+        raise HTTPException(status_code=404, detail="Strategy not found")
+
+    tracker = PremiumTracker(db)
+    decay_curve = await tracker.get_premium_decay_curve(strategy_id)
+
+    if not decay_curve:
+        return DataResponse(
+            message="Cannot calculate decay curve (no entry orders found)",
+            data=None,
+            timestamp=datetime.now(timezone.utc)
+        )
+
+    response = DecayCurveResponse(
+        entry_premium=decay_curve.entry_premium,
+        current_premium=decay_curve.current_premium,
+        expected_premium=decay_curve.expected_premium,
+        days_to_expiry=decay_curve.days_to_expiry,
+        decay_rate=decay_curve.decay_rate,
+        expected_decay_rate=decay_curve.expected_decay_rate,
+        premium_captured_pct=decay_curve.premium_captured_pct
+    )
+
+    return DataResponse(
+        message="Decay curve calculated successfully",
+        data=response.model_dump(),
+        timestamp=datetime.now(timezone.utc)
+    )
+
+
+@router.get("/premium/straddle", response_model=DataResponse)
+async def get_straddle_premium(
+    underlying: str = Query(..., description="NIFTY, BANKNIFTY, FINNIFTY, SENSEX"),
+    expiry: date = Query(..., description="Expiry date"),
+    strike: int = Query(..., description="Strike price"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get current combined CE+PE premium for a strike (straddle premium).
+
+    Args:
+        underlying: NIFTY, BANKNIFTY, FINNIFTY, SENSEX
+        expiry: Expiry date (YYYY-MM-DD)
+        strike: Strike price
+
+    Returns:
+        StraddlePremiumResponse with CE, PE, and total premium
+    """
+    from app.services.premium_tracker import PremiumTracker
+    from app.schemas.autopilot import StraddlePremiumResponse
+
+    tracker = PremiumTracker(db)
+    straddle = await tracker.get_straddle_premium(
+        underlying=underlying,
+        expiry=expiry.isoformat(),
+        strike=strike
+    )
+
+    response = StraddlePremiumResponse(
+        ce_premium=straddle.ce_premium,
+        pe_premium=straddle.pe_premium,
+        total_premium=straddle.total_premium,
+        ce_strike=straddle.ce_strike,
+        pe_strike=straddle.pe_strike,
+        underlying=straddle.underlying
+    )
+
+    return DataResponse(
+        message="Straddle premium retrieved successfully",
+        data=response.model_dump(),
+        timestamp=datetime.now(timezone.utc)
+    )

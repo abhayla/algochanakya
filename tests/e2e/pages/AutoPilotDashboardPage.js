@@ -122,7 +122,55 @@ export class AutoPilotDashboardPage extends BasePage {
   }
 
   // ===========================================================================
-  // LOCATORS - Activity Feed
+  // LOCATORS - Risk Overview Panel (Phase 4)
+  // ===========================================================================
+
+  get riskOverviewPanel() {
+    return this.getByTestId('autopilot-risk-overview');
+  }
+
+  get marginUsageBar() {
+    return this.getByTestId('risk-margin-usage-bar');
+  }
+
+  get marginUsageValue() {
+    return this.getByTestId('risk-margin-usage-value');
+  }
+
+  get netDeltaGauge() {
+    return this.getByTestId('risk-net-delta-gauge');
+  }
+
+  get netDeltaValue() {
+    return this.getByTestId('risk-net-delta-value');
+  }
+
+  get totalPnlDisplay() {
+    return this.getByTestId('risk-total-pnl');
+  }
+
+  get realizedPnlDisplay() {
+    return this.getByTestId('risk-realized-pnl');
+  }
+
+  get unrealizedPnlDisplay() {
+    return this.getByTestId('risk-unrealized-pnl');
+  }
+
+  get activeStrategiesCount() {
+    return this.getByTestId('risk-active-strategies');
+  }
+
+  get waitingStrategiesCount() {
+    return this.getByTestId('risk-waiting-strategies');
+  }
+
+  get totalPositionsCount() {
+    return this.getByTestId('risk-total-positions');
+  }
+
+  // ===========================================================================
+  // LOCATORS - Activity Feed (Phase 4 - ActivityTimeline)
   // ===========================================================================
 
   get activityFeed() {
@@ -131,6 +179,74 @@ export class AutoPilotDashboardPage extends BasePage {
 
   get activityItems() {
     return this.page.locator('[data-testid^="autopilot-activity-item-"]');
+  }
+
+  get activityTimeline() {
+    return this.getByTestId('autopilot-activity-feed');
+  }
+
+  get activityTimelineHeader() {
+    return this.page.locator('.activity-timeline .timeline-header');
+  }
+
+  get activityEventCount() {
+    return this.page.locator('.activity-timeline .timeline-count');
+  }
+
+  get activityEmptyState() {
+    return this.page.locator('.activity-timeline .empty-state');
+  }
+
+  get viewAllActivitiesButton() {
+    return this.page.locator('.activity-timeline .view-all-btn');
+  }
+
+  // ===========================================================================
+  // LOCATORS - Enhanced Strategy Card (Phase 4)
+  // ===========================================================================
+
+  get strategyGrid() {
+    return this.page.locator('.strategy-grid');
+  }
+
+  getEnhancedStrategyCard(id) {
+    return this.getByTestId(`autopilot-strategy-card-${id}`);
+  }
+
+  getStrategyCardHeader(id) {
+    return this.getEnhancedStrategyCard(id).locator('.strategy-header');
+  }
+
+  getStrategyCardName(id) {
+    return this.getEnhancedStrategyCard(id).locator('.strategy-name');
+  }
+
+  getStrategyCardStatus(id) {
+    return this.getEnhancedStrategyCard(id).locator('.status-badge');
+  }
+
+  getStrategyCardPnl(id) {
+    return this.getEnhancedStrategyCard(id).locator('.pnl-value');
+  }
+
+  getStrategyCardDeltaGauge(id) {
+    return this.getEnhancedStrategyCard(id).locator('.delta-gauge');
+  }
+
+  getStrategyCardActions(id) {
+    return this.getEnhancedStrategyCard(id).locator('.action-buttons');
+  }
+
+  getStrategyCardPauseButton(id) {
+    return this.getEnhancedStrategyCard(id).locator('.pause-btn');
+  }
+
+  getStrategyCardResumeButton(id) {
+    return this.getEnhancedStrategyCard(id).locator('.resume-btn');
+  }
+
+  getStrategyCardExitButton(id) {
+    return this.getEnhancedStrategyCard(id).locator('.exit-btn');
   }
 
   // ===========================================================================
@@ -521,6 +637,271 @@ export class AutoPilotStrategyBuilderPage extends BasePage {
   }
 
   // ===========================================================================
+  // LOCATORS - Condition Builder Enhancements (Phase 4)
+  // ===========================================================================
+
+  get naturalLanguageSummary() {
+    return this.getByTestId('natural-language-summary');
+  }
+
+  get naturalLanguageText() {
+    return this.page.locator('.natural-language-summary .summary-text');
+  }
+
+  get treeViewToggleButton() {
+    return this.getByTestId('tree-view-toggle');
+  }
+
+  get treeView() {
+    return this.getByTestId('tree-view');
+  }
+
+  get treeViewBody() {
+    return this.page.locator('.tree-view-body');
+  }
+
+  get treeRootNode() {
+    return this.page.locator('.tree-root');
+  }
+
+  get treeGroupNodes() {
+    return this.page.locator('.tree-group-node');
+  }
+
+  get treeConditionNodes() {
+    return this.page.locator('.tree-condition-node');
+  }
+
+  get conditionStatusIndicators() {
+    return this.page.locator('.condition-status-indicator');
+  }
+
+  getConditionStatus(groupIndex, conditionIndex) {
+    return this.page.locator(`.status-icon[data-group="${groupIndex}"][data-condition="${conditionIndex}"]`);
+  }
+
+  // ===========================================================================
+  // LOCATORS - Phase 1: Strike Selection
+  // ===========================================================================
+
+  getStrikeSelector(legIndex) {
+    return this.getByTestId(`autopilot-leg-strike-selector-${legIndex}`);
+  }
+
+  getStrikeSelectorModeDropdown(legIndex) {
+    return this.getByTestId(`autopilot-leg-strike-selector-${legIndex}`).locator('[data-testid="strike-selector-mode-dropdown"]');
+  }
+
+  getStrikeSelectorModeOption(mode) {
+    return this.getByTestId(`strike-mode-${mode}`);
+  }
+
+  getStrikeSelectorDeltaInput(legIndex) {
+    return this.getByTestId('strike-selector-delta-input');
+  }
+
+  getStrikeSelectorPremiumInput(legIndex) {
+    return this.getByTestId('strike-selector-premium-input');
+  }
+
+  getStrikeSelectorSDInput(legIndex) {
+    return this.getByTestId('strike-selector-sd-input');
+  }
+
+  getDeltaPresetButton(delta) {
+    return this.getByTestId(`delta-preset-${delta}`);
+  }
+
+  getStrikeSelectorPreview() {
+    return this.getByTestId('strike-selector-preview');
+  }
+
+  getOpenStrikeLadderButton(legIndex) {
+    return this.getByTestId(`autopilot-leg-open-ladder-${legIndex}`);
+  }
+
+  getSelectedStrikeDisplay(legIndex) {
+    return this.getByTestId(`autopilot-leg-selected-strike-${legIndex}`);
+  }
+
+  // Strike Ladder Modal
+  get strikeLadderModal() {
+    return this.getByTestId('strike-ladder-modal');
+  }
+
+  get strikeLadderClose() {
+    return this.getByTestId('strike-ladder-close');
+  }
+
+  getStrikeLadderRow(strike) {
+    return this.getByTestId(`strike-ladder-row-${strike}`);
+  }
+
+  getStrikeLadderSelectCE(strike) {
+    return this.getByTestId(`strike-ladder-select-ce-${strike}`);
+  }
+
+  getStrikeLadderSelectPE(strike) {
+    return this.getByTestId(`strike-ladder-select-pe-${strike}`);
+  }
+
+  // ===========================================================================
+  // LOCATORS - Phase 3: Re-Entry Configuration
+  // ===========================================================================
+
+  get reentryConfigSection() {
+    return this.getByTestId('autopilot-reentry-config');
+  }
+
+  get reentryToggle() {
+    return this.getByTestId('autopilot-reentry-toggle');
+  }
+
+  get reentryMaxReentries() {
+    return this.getByTestId('autopilot-reentry-max-reentries');
+  }
+
+  get reentryCooldown() {
+    return this.getByTestId('autopilot-reentry-cooldown');
+  }
+
+  get reentryConditions() {
+    return this.getByTestId('autopilot-reentry-conditions');
+  }
+
+  get reentryCount() {
+    return this.getByTestId('autopilot-reentry-count');
+  }
+
+  get reentryInfoBox() {
+    return this.page.locator('.reentry-info-box');
+  }
+
+  // ===========================================================================
+  // LOCATORS - Phase 3: Adjustment Rule Builder
+  // ===========================================================================
+
+  get adjustmentRuleBuilder() {
+    return this.getByTestId('autopilot-adjustment-rule-builder');
+  }
+
+  get addRuleButton() {
+    return this.getByTestId('autopilot-add-rule-btn');
+  }
+
+  get addFirstRuleButton() {
+    return this.getByTestId('autopilot-add-first-rule-btn');
+  }
+
+  get ruleModal() {
+    return this.getByTestId('autopilot-rule-modal');
+  }
+
+  get ruleNameInput() {
+    return this.getByTestId('autopilot-rule-name');
+  }
+
+  get ruleTriggerTypeSelect() {
+    return this.getByTestId('autopilot-rule-trigger-type');
+  }
+
+  get ruleActionTypeSelect() {
+    return this.getByTestId('autopilot-rule-action-type');
+  }
+
+  get ruleCooldownInput() {
+    return this.getByTestId('autopilot-rule-cooldown');
+  }
+
+  get ruleMaxExecutionsInput() {
+    return this.getByTestId('autopilot-rule-max-executions');
+  }
+
+  get ruleEnabledToggle() {
+    return this.getByTestId('autopilot-rule-enabled');
+  }
+
+  get ruleSaveButton() {
+    return this.getByTestId('autopilot-rule-save');
+  }
+
+  get ruleCancelButton() {
+    return this.getByTestId('autopilot-rule-cancel');
+  }
+
+  getRuleCard(index) {
+    return this.getByTestId(`autopilot-rule-card-${index}`);
+  }
+
+  getEditRuleButton(index) {
+    return this.getByTestId(`autopilot-edit-rule-${index}`);
+  }
+
+  getDeleteRuleButton(index) {
+    return this.getByTestId(`autopilot-delete-rule-${index}`);
+  }
+
+  getMoveRuleUpButton(index) {
+    return this.getByTestId(`autopilot-move-rule-up-${index}`);
+  }
+
+  getMoveRuleDownButton(index) {
+    return this.getByTestId(`autopilot-move-rule-down-${index}`);
+  }
+
+  // ===========================================================================
+  // LOCATORS - Phase 3: Roll Wizard
+  // ===========================================================================
+
+  get rollWizardModal() {
+    return this.getByTestId('autopilot-roll-wizard');
+  }
+
+  get rollWizardClose() {
+    return this.getByTestId('autopilot-roll-close');
+  }
+
+  get rollModeNextWeekSame() {
+    return this.getByTestId('autopilot-roll-mode-next-week-same');
+  }
+
+  get rollModeSameExpiry() {
+    return this.getByTestId('autopilot-roll-mode-same-expiry');
+  }
+
+  get rollModeNextWeekNew() {
+    return this.getByTestId('autopilot-roll-mode-next-week-new');
+  }
+
+  get rollTargetExpiry() {
+    return this.getByTestId('autopilot-roll-target-expiry');
+  }
+
+  get rollCEStrike() {
+    return this.getByTestId('autopilot-roll-ce-strike');
+  }
+
+  get rollPEStrike() {
+    return this.getByTestId('autopilot-roll-pe-strike');
+  }
+
+  get rollEstimatedCredit() {
+    return this.getByTestId('autopilot-roll-estimated-credit');
+  }
+
+  get rollPreviewButton() {
+    return this.getByTestId('autopilot-roll-preview');
+  }
+
+  get rollCancelButton() {
+    return this.getByTestId('autopilot-roll-cancel');
+  }
+
+  get rollExecuteButton() {
+    return this.getByTestId('autopilot-roll-execute');
+  }
+
+  // ===========================================================================
   // LOCATORS - Risk Settings
   // ===========================================================================
 
@@ -896,6 +1277,102 @@ export class AutoPilotStrategyDetailPage extends BasePage {
 
   get exitButton() {
     return this.getByTestId('autopilot-detail-exit');
+  }
+
+  // ===========================================================================
+  // LOCATORS - Tab Navigation (Phase 4)
+  // ===========================================================================
+
+  get chartsTab() {
+    return this.getByTestId('autopilot-charts-tab');
+  }
+
+  get activityTab() {
+    return this.getByTestId('autopilot-activity-tab');
+  }
+
+  get configurationTab() {
+    return this.getByTestId('autopilot-configuration-tab');
+  }
+
+  get legsTab() {
+    return this.getByTestId('autopilot-legs-tab');
+  }
+
+  get conditionsTab() {
+    return this.getByTestId('autopilot-conditions-tab');
+  }
+
+  get analyticsTab() {
+    return this.getByTestId('autopilot-analytics-tab');
+  }
+
+  // ===========================================================================
+  // LOCATORS - Charts Tab (Phase 4)
+  // ===========================================================================
+
+  get chartsSection() {
+    return this.page.locator('.charts-section');
+  }
+
+  get greeksGrid() {
+    return this.page.locator('.greeks-grid');
+  }
+
+  get deltaGreekCard() {
+    return this.page.locator('.greek-item').filter({ hasText: 'Delta' });
+  }
+
+  get gammaGreekCard() {
+    return this.page.locator('.greek-item').filter({ hasText: 'Gamma' });
+  }
+
+  get thetaGreekCard() {
+    return this.page.locator('.greek-item').filter({ hasText: 'Theta' });
+  }
+
+  get vegaGreekCard() {
+    return this.page.locator('.greek-item').filter({ hasText: 'Vega' });
+  }
+
+  get premiumChartPlaceholder() {
+    return this.page.locator('.chart-placeholder').filter({ hasText: 'Premium Chart' });
+  }
+
+  get deltaHistoryPlaceholder() {
+    return this.page.locator('.chart-placeholder').filter({ hasText: 'Delta History' });
+  }
+
+  get pnlCurvePlaceholder() {
+    return this.page.locator('.chart-placeholder').filter({ hasText: 'P&L Curve' });
+  }
+
+  // ===========================================================================
+  // LOCATORS - Phase 2: Premium Charts (Integrated)
+  // ===========================================================================
+
+  get straddlePremiumChart() {
+    return this.getByTestId('straddle-premium-chart');
+  }
+
+  get thetaDecayChart() {
+    return this.getByTestId('theta-decay-chart');
+  }
+
+  get chartLoadingState() {
+    return this.page.locator('.chart-loading');
+  }
+
+  // ===========================================================================
+  // LOCATORS - Activity Tab (Phase 4)
+  // ===========================================================================
+
+  get activityTabSection() {
+    return this.page.locator('.activity-timeline');
+  }
+
+  get activityTimelineItems() {
+    return this.page.locator('.activity-timeline .timeline-item');
   }
 
   // ===========================================================================

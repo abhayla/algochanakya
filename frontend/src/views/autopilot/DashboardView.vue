@@ -10,6 +10,9 @@ import { useAutopilotStore } from '@/stores/autopilot'
 import { useWebSocket } from '@/composables/autopilot/useWebSocket'
 import KiteLayout from '@/components/layout/KiteLayout.vue'
 import ShareModal from '@/components/autopilot/common/ShareModal.vue'
+import EnhancedStrategyCard from '@/components/autopilot/dashboard/EnhancedStrategyCard.vue'
+import RiskOverviewPanel from '@/components/autopilot/dashboard/RiskOverviewPanel.vue'
+import ActivityTimeline from '@/components/autopilot/dashboard/ActivityTimeline.vue'
 import '@/assets/css/strategy-table.css'
 
 const router = useRouter()
@@ -31,6 +34,15 @@ const showKillSwitchModal = ref(false)
 const showShareModal = ref(false)
 const selectedStrategyForShare = ref(null)
 
+// Premium monitoring data
+const premiumMonitoring = ref({
+  totalPremium: 0,
+  totalCaptured: 0,
+  capturedPct: 0,
+  topCapturers: [],
+  atRiskStrategies: []
+})
+
 // Unread notifications count
 const unreadCount = computed(() =>
   notifications.value.filter(n => !n.read).length
@@ -42,15 +54,117 @@ const hasActiveOrWaitingStrategies = computed(() => {
   return store.dashboardSummary.active_strategies > 0 || store.dashboardSummary.waiting_strategies > 0
 })
 
+// Format recent logs for ActivityTimeline component
+const formattedActivities = computed(() => {
+  if (!store.recentLogs || store.recentLogs.length === 0) return []
+
+  // Map severity to event_type for ActivityTimeline
+  const severityToEventType = {
+    'info': 'condition_met',
+    'warning': 'alert_triggered',
+    'error': 'order_rejected'
+  }
+
+  return store.recentLogs.map(log => ({
+    id: log.id,
+    event_type: log.event_type || severityToEventType[log.severity] || 'condition_met',
+    message: log.message,
+    description: log.message,
+    timestamp: log.created_at,
+    created_at: log.created_at,
+    strategy_name: log.strategy_name || null,
+    underlying: log.underlying || null
+  }))
+})
+
+// Fetch premium monitoring data for all active strategies
+const fetchPremiumMonitoring = async () => {
+  try {
+    // Get active and waiting strategies
+    const activeStrategies = store.strategies.filter(s =>
+      ['active', 'waiting'].includes(s.status)
+    )
+
+    if (activeStrategies.length === 0) {
+      premiumMonitoring.value = {
+        totalPremium: 0,
+        totalCaptured: 0,
+        capturedPct: 0,
+        topCapturers: [],
+        atRiskStrategies: []
+      }
+      return
+    }
+
+    // Fetch decay curve for each active strategy
+    const premiumPromises = activeStrategies.map(async (strategy) => {
+      try {
+        const response = await fetch(`/api/v1/autopilot/strategies/${strategy.id}/premium/decay-curve`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        })
+        const data = await response.json()
+
+        if (data.success && data.data) {
+          return {
+            strategyId: strategy.id,
+            strategyName: strategy.name,
+            underlying: strategy.underlying,
+            entryPremium: parseFloat(data.data.entry_premium),
+            currentPremium: parseFloat(data.data.current_premium),
+            capturedPct: parseFloat(data.data.premium_captured_pct),
+            daysToExpiry: data.data.days_to_expiry,
+            decayRate: data.data.decay_rate
+          }
+        }
+      } catch (err) {
+        console.error(`Error fetching premium for strategy ${strategy.id}:`, err)
+      }
+      return null
+    })
+
+    const results = (await Promise.all(premiumPromises)).filter(r => r !== null)
+
+    // Calculate totals
+    const totalCurrent = results.reduce((sum, r) => sum + r.currentPremium, 0)
+    const totalEntry = results.reduce((sum, r) => sum + r.entryPremium, 0)
+    const totalCaptured = totalEntry - totalCurrent
+    const capturedPct = totalEntry > 0 ? (totalCaptured / totalEntry) * 100 : 0
+
+    // Top capturers (sorted by captured %)
+    const topCapturers = results
+      .sort((a, b) => b.capturedPct - a.capturedPct)
+      .slice(0, 5)
+
+    // At risk strategies (decay rate > 1.5x or near SL)
+    const atRiskStrategies = results
+      .filter(r => r.decayRate > 1.5 || r.capturedPct < 10)
+      .slice(0, 5)
+
+    premiumMonitoring.value = {
+      totalPremium: totalCurrent,
+      totalCaptured,
+      capturedPct,
+      topCapturers,
+      atRiskStrategies
+    }
+  } catch (error) {
+    console.error('Error fetching premium monitoring data:', error)
+  }
+}
+
 onMounted(async () => {
   await store.fetchDashboardSummary()
   await store.fetchStrategies()
   await store.fetchRecentLogs()
+  await fetchPremiumMonitoring()
 
   // Only use polling as fallback when WebSocket is disconnected
   refreshInterval.value = setInterval(() => {
     if (!isConnected.value) {
       store.fetchDashboardSummary()
+      fetchPremiumMonitoring()
     }
   }, 10000) // Slower polling as fallback
 })
@@ -81,14 +195,25 @@ const navigateToSettings = () => {
   router.push('/autopilot/settings')
 }
 
-const handlePause = async (strategy) => {
-  if (confirm(`Pause strategy "${strategy.name}"?`)) {
-    await store.pauseStrategy(strategy.id)
+const handlePause = async (strategyOrId) => {
+  const strategyId = typeof strategyOrId === 'object' ? strategyOrId.id : strategyOrId
+  const strategy = store.strategies.find(s => s.id === strategyId)
+  if (confirm(`Pause strategy "${strategy?.name || 'this strategy'}"?`)) {
+    await store.pauseStrategy(strategyId)
   }
 }
 
-const handleResume = async (strategy) => {
-  await store.resumeStrategy(strategy.id)
+const handleResume = async (strategyOrId) => {
+  const strategyId = typeof strategyOrId === 'object' ? strategyOrId.id : strategyOrId
+  await store.resumeStrategy(strategyId)
+}
+
+const handleExit = async (strategyOrId) => {
+  const strategyId = typeof strategyOrId === 'object' ? strategyOrId.id : strategyOrId
+  const strategy = store.strategies.find(s => s.id === strategyId)
+  if (confirm(`Exit strategy "${strategy?.name || 'this strategy'}"? This will close all open positions.`)) {
+    await store.exitStrategy(strategyId)
+  }
 }
 
 const handleShare = (strategy) => {
@@ -114,6 +239,7 @@ const onStrategyUnshared = () => {
 const refreshDashboard = async () => {
   await store.fetchDashboardSummary()
   await store.fetchStrategies()
+  await fetchPremiumMonitoring()
 }
 
 const clearFilters = () => {
@@ -375,6 +501,118 @@ const getStatusBadgeClass = (status) => {
         </div>
       </div>
 
+      <!-- Risk Overview Panel -->
+      <div class="risk-overview-section" data-testid="autopilot-risk-overview">
+        <RiskOverviewPanel :summary="store.dashboardSummary" />
+      </div>
+
+      <!-- Premium Monitoring Widgets -->
+      <div
+        v-if="premiumMonitoring.topCapturers.length > 0"
+        class="premium-monitoring-section"
+        data-testid="autopilot-premium-monitoring"
+      >
+        <h2 class="section-title premium-section-title">Premium Monitoring</h2>
+
+        <div class="premium-widgets">
+          <!-- Combined Premium Tracker -->
+          <div class="premium-widget premium-widget-large" data-testid="autopilot-premium-tracker">
+            <div class="premium-widget-header">
+              <h3 class="premium-widget-title">Portfolio Premium</h3>
+              <span class="premium-widget-badge">{{ premiumMonitoring.topCapturers.length }} Active</span>
+            </div>
+            <div class="premium-widget-content">
+              <div class="premium-stat-large">
+                <span class="premium-stat-label">Current Premium</span>
+                <span class="premium-stat-value">₹{{ premiumMonitoring.totalPremium.toFixed(2) }}</span>
+              </div>
+              <div class="premium-stats-row">
+                <div class="premium-stat-small">
+                  <span class="premium-stat-label">Captured</span>
+                  <span class="premium-stat-value success">₹{{ premiumMonitoring.totalCaptured.toFixed(2) }}</span>
+                </div>
+                <div class="premium-stat-small">
+                  <span class="premium-stat-label">Captured %</span>
+                  <span class="premium-stat-value success">{{ premiumMonitoring.capturedPct.toFixed(1) }}%</span>
+                </div>
+              </div>
+              <div class="premium-progress-bar">
+                <div
+                  class="premium-progress-fill"
+                  :style="{ width: Math.min(premiumMonitoring.capturedPct, 100) + '%' }"
+                ></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Top Premium Capturers -->
+          <div class="premium-widget" data-testid="autopilot-top-capturers">
+            <div class="premium-widget-header">
+              <h3 class="premium-widget-title">Top Capturers</h3>
+              <svg class="premium-widget-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+              </svg>
+            </div>
+            <div class="premium-widget-content">
+              <div class="premium-list">
+                <div
+                  v-for="(capturer, index) in premiumMonitoring.topCapturers.slice(0, 5)"
+                  :key="capturer.strategyId"
+                  class="premium-list-item"
+                  :data-testid="`autopilot-top-capturer-${index}`"
+                >
+                  <div class="premium-list-left">
+                    <span class="premium-rank">{{ index + 1 }}</span>
+                    <div class="premium-list-info">
+                      <span class="premium-list-name">{{ capturer.strategyName }}</span>
+                      <span class="premium-list-meta">{{ capturer.underlying }}</span>
+                    </div>
+                  </div>
+                  <div class="premium-list-right">
+                    <span class="premium-list-value success">{{ capturer.capturedPct.toFixed(1) }}%</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Premium at Risk -->
+          <div class="premium-widget" data-testid="autopilot-premium-at-risk">
+            <div class="premium-widget-header">
+              <h3 class="premium-widget-title">At Risk</h3>
+              <svg class="premium-widget-icon premium-icon-warning" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+              </svg>
+            </div>
+            <div class="premium-widget-content">
+              <div v-if="premiumMonitoring.atRiskStrategies.length === 0" class="premium-empty">
+                <span class="premium-empty-icon">✓</span>
+                <span class="premium-empty-text">All strategies performing well</span>
+              </div>
+              <div v-else class="premium-list">
+                <div
+                  v-for="(risk, index) in premiumMonitoring.atRiskStrategies.slice(0, 5)"
+                  :key="risk.strategyId"
+                  class="premium-list-item"
+                  :data-testid="`autopilot-at-risk-${index}`"
+                >
+                  <div class="premium-list-left">
+                    <span class="premium-dot premium-dot-warning"></span>
+                    <div class="premium-list-info">
+                      <span class="premium-list-name">{{ risk.strategyName }}</span>
+                      <span class="premium-list-meta">{{ risk.underlying }} • {{ risk.daysToExpiry }}d to expiry</span>
+                    </div>
+                  </div>
+                  <div class="premium-list-right">
+                    <span class="premium-list-value warning">{{ risk.decayRate.toFixed(1) }}x decay</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Strategies List -->
       <div class="strategy-list-card" data-testid="autopilot-strategy-list">
         <div class="strategy-list-header">
@@ -428,105 +666,22 @@ const getStatusBadgeClass = (status) => {
           </button>
         </div>
 
-        <div v-else class="strategy-items">
-          <div
+        <div v-else class="strategy-grid">
+          <EnhancedStrategyCard
             v-for="strategy in store.strategies"
             :key="strategy.id"
-            class="strategy-item"
+            :strategy="strategy"
             :data-testid="`autopilot-strategy-card-${strategy.id}`"
-            @click="navigateToStrategy(strategy.id)"
-          >
-            <div class="strategy-item-content">
-              <div>
-                <div class="strategy-item-header">
-                  <h3 class="strategy-name">{{ strategy.name }}</h3>
-                  <span
-                    :class="getStatusBadgeClass(strategy.status)"
-                    :data-testid="`autopilot-strategy-status-${strategy.id}`"
-                  >
-                    {{ strategy.status }}
-                  </span>
-                </div>
-                <p class="strategy-meta">
-                  {{ strategy.underlying }} • {{ strategy.lots }} lot(s) • {{ strategy.leg_count }} legs
-                </p>
-              </div>
-
-              <div class="strategy-item-right">
-                <p :class="['strategy-pnl', getPnLClass(strategy.current_pnl)]" :data-testid="`autopilot-strategy-pnl-${strategy.id}`">
-                  {{ formatCurrency(strategy.current_pnl) }}
-                </p>
-                <div class="strategy-actions" @click.stop :data-testid="`autopilot-strategy-actions-${strategy.id}`">
-                  <button
-                    v-if="['active', 'waiting', 'pending'].includes(strategy.status)"
-                    @click="handlePause(strategy)"
-                    :data-testid="`autopilot-pause-strategy-${strategy.id}`"
-                    class="action-btn action-pause"
-                  >
-                    Pause
-                  </button>
-                  <button
-                    v-if="strategy.status === 'paused'"
-                    @click="handleResume(strategy)"
-                    :data-testid="`autopilot-resume-strategy-${strategy.id}`"
-                    class="action-btn action-resume"
-                  >
-                    Resume
-                  </button>
-                  <button
-                    v-if="strategy.share_token"
-                    @click="handleShare(strategy)"
-                    :data-testid="`autopilot-strategy-unshare-btn-${strategy.id}`"
-                    class="action-btn action-unshare"
-                  >
-                    Unshare
-                  </button>
-                  <button
-                    v-else
-                    @click="handleShare(strategy)"
-                    :data-testid="`autopilot-strategy-share-btn-${strategy.id}`"
-                    class="action-btn action-share"
-                  >
-                    Share
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
+            @pause="handlePause"
+            @resume="handleResume"
+            @exit="handleExit"
+          />
         </div>
       </div>
 
-      <!-- Activity Feed -->
-      <div class="activity-feed-card" data-testid="autopilot-activity-feed">
-        <div class="activity-feed-header">
-          <h2 class="section-title">Recent Activity</h2>
-        </div>
-        <div class="activity-feed-content">
-          <div v-if="store.recentLogs && store.recentLogs.length > 0" class="activity-list">
-            <div
-              v-for="(log, index) in store.recentLogs.slice(0, 5)"
-              :key="log.id"
-              class="activity-item"
-              :data-testid="`autopilot-activity-item-${index}`"
-            >
-              <span
-                class="activity-dot"
-                :class="{
-                  'dot-info': log.severity === 'info',
-                  'dot-warning': log.severity === 'warning',
-                  'dot-error': log.severity === 'error'
-                }"
-              ></span>
-              <div class="activity-text">
-                <p class="activity-message">{{ log.message }}</p>
-                <p class="activity-time">{{ new Date(log.created_at).toLocaleString() }}</p>
-              </div>
-            </div>
-          </div>
-          <div v-else class="activity-empty">
-            No recent activity
-          </div>
-        </div>
+      <!-- Activity Timeline -->
+      <div class="activity-timeline-section" data-testid="autopilot-activity-feed">
+        <ActivityTimeline :activities="formattedActivities" :max-items="10" />
       </div>
     </template>
 
@@ -984,100 +1139,24 @@ const getStatusBadgeClass = (status) => {
   margin-bottom: 16px;
 }
 
-/* ===== Strategy Items ===== */
-.strategy-items {
-  border-top: 1px solid var(--kite-border-light);
-}
-
-.strategy-item {
+/* ===== Strategy Grid ===== */
+.strategy-grid {
+  display: grid;
+  grid-template-columns: repeat(1, 1fr);
+  gap: 16px;
   padding: 16px;
-  border-bottom: 1px solid var(--kite-border-light);
-  cursor: pointer;
 }
 
-.strategy-item:hover {
-  background: var(--kite-table-hover);
+@media (min-width: 768px) {
+  .strategy-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
-.strategy-item-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-}
-
-.strategy-item-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.strategy-name {
-  font-weight: 500;
-  color: var(--kite-text-primary);
-}
-
-.strategy-meta {
-  font-size: 0.875rem;
-  color: var(--kite-text-secondary);
-  margin-top: 4px;
-}
-
-.strategy-item-right {
-  text-align: right;
-}
-
-.strategy-pnl {
-  font-weight: 500;
-}
-
-.strategy-actions {
-  display: flex;
-  gap: 8px;
-  margin-top: 8px;
-}
-
-.action-btn {
-  padding: 4px 8px;
-  font-size: 0.75rem;
-  border-radius: 4px;
-  border: none;
-  cursor: pointer;
-}
-
-.action-pause {
-  background: var(--kite-orange-light, #fff3e0);
-  color: var(--kite-orange);
-}
-
-.action-pause:hover {
-  background: #ffe0b2;
-}
-
-.action-resume {
-  background: var(--kite-green-light, #e8f5e9);
-  color: var(--kite-green);
-}
-
-.action-resume:hover {
-  background: #c8e6c9;
-}
-
-.action-share {
-  background: var(--kite-blue-light, #e3f2fd);
-  color: var(--kite-blue);
-}
-
-.action-share:hover {
-  background: #bbdefb;
-}
-
-.action-unshare {
-  background: var(--kite-purple-light, #f3e5f5);
-  color: #7b1fa2;
-}
-
-.action-unshare:hover {
-  background: #e1bee7;
+@media (min-width: 1200px) {
+  .strategy-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
 }
 
 /* ===== Status Badge ===== */
@@ -1122,61 +1201,14 @@ const getStatusBadgeClass = (status) => {
   color: var(--kite-red);
 }
 
-/* ===== Activity Feed ===== */
-.activity-feed-card {
+/* ===== Risk Overview Section ===== */
+.risk-overview-section {
+  margin-bottom: 24px;
+}
+
+/* ===== Activity Timeline Section ===== */
+.activity-timeline-section {
   margin-top: 24px;
-  background: white;
-  border-radius: 4px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.activity-feed-header {
-  padding: 16px;
-  border-bottom: 1px solid var(--kite-border);
-}
-
-.activity-feed-content {
-  padding: 16px;
-}
-
-.activity-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.activity-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-}
-
-.activity-dot {
-  width: 8px;
-  height: 8px;
-  margin-top: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.activity-text {
-  flex: 1;
-}
-
-.activity-message {
-  font-size: 0.875rem;
-  color: var(--kite-text-primary);
-}
-
-.activity-time {
-  font-size: 0.75rem;
-  color: var(--kite-text-secondary);
-}
-
-.activity-empty {
-  text-align: center;
-  color: var(--kite-text-secondary);
-  padding: 16px;
 }
 
 /* ===== Modal ===== */
@@ -1302,5 +1334,274 @@ const getStatusBadgeClass = (status) => {
 .strategy-select.compact {
   padding: 6px 10px;
   font-size: 0.75rem;
+}
+
+/* ===== Premium Monitoring Widgets ===== */
+.premium-monitoring-section {
+  margin-bottom: 24px;
+}
+
+.premium-section-title {
+  margin-bottom: 16px;
+}
+
+.premium-widgets {
+  display: grid;
+  grid-template-columns: repeat(1, 1fr);
+  gap: 16px;
+}
+
+@media (min-width: 768px) {
+  .premium-widgets {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1200px) {
+  .premium-widgets {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.premium-widget {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--kite-border);
+  overflow: hidden;
+}
+
+.premium-widget-large {
+  grid-column: span 1;
+}
+
+@media (min-width: 768px) {
+  .premium-widget-large {
+    grid-column: span 2;
+  }
+}
+
+@media (min-width: 1200px) {
+  .premium-widget-large {
+    grid-column: span 1;
+  }
+}
+
+.premium-widget-header {
+  padding: 16px;
+  border-bottom: 1px solid var(--kite-border-light);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.premium-widget-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--kite-text-primary);
+  margin: 0;
+}
+
+.premium-widget-badge {
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  background: var(--kite-blue-light, #e3f2fd);
+  color: var(--kite-blue);
+  border-radius: 9999px;
+}
+
+.premium-widget-icon {
+  width: 20px;
+  height: 20px;
+  color: var(--kite-blue);
+}
+
+.premium-icon-warning {
+  color: var(--kite-orange);
+}
+
+.premium-widget-content {
+  padding: 16px;
+}
+
+/* ===== Premium Stats ===== */
+.premium-stat-large {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 16px;
+}
+
+.premium-stat-label {
+  font-size: 0.875rem;
+  color: var(--kite-text-secondary);
+}
+
+.premium-stat-value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--kite-text-primary);
+}
+
+.premium-stat-value.success {
+  color: var(--kite-green);
+}
+
+.premium-stat-value.warning {
+  color: var(--kite-orange);
+}
+
+.premium-stats-row {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.premium-stat-small {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.premium-stat-small .premium-stat-value {
+  font-size: 1.25rem;
+}
+
+/* ===== Premium Progress Bar ===== */
+.premium-progress-bar {
+  width: 100%;
+  height: 8px;
+  background: var(--kite-border-light);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.premium-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--kite-green), var(--kite-blue));
+  transition: width 0.3s ease;
+  border-radius: 4px;
+}
+
+/* ===== Premium List ===== */
+.premium-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.premium-list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  background: var(--kite-table-hover);
+  border-radius: 6px;
+  transition: background 0.15s ease;
+}
+
+.premium-list-item:hover {
+  background: #f0f0f0;
+}
+
+.premium-list-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.premium-rank {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--kite-blue-light, #e3f2fd);
+  color: var(--kite-blue);
+  border-radius: 50%;
+  font-size: 0.75rem;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.premium-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.premium-dot-warning {
+  background: var(--kite-orange);
+  animation: pulse 2s infinite;
+}
+
+.premium-list-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.premium-list-name {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--kite-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.premium-list-meta {
+  font-size: 0.75rem;
+  color: var(--kite-text-secondary);
+}
+
+.premium-list-right {
+  flex-shrink: 0;
+}
+
+.premium-list-value {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--kite-text-primary);
+}
+
+.premium-list-value.success {
+  color: var(--kite-green);
+}
+
+.premium-list-value.warning {
+  color: var(--kite-orange);
+}
+
+/* ===== Premium Empty State ===== */
+.premium-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  gap: 8px;
+}
+
+.premium-empty-icon {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--kite-green-light, #e8f5e9);
+  color: var(--kite-green);
+  border-radius: 50%;
+  font-size: 24px;
+}
+
+.premium-empty-text {
+  font-size: 0.875rem;
+  color: var(--kite-text-secondary);
 }
 </style>

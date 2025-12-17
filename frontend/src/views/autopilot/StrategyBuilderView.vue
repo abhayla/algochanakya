@@ -12,7 +12,10 @@ import AutoPilotLegsTable from '@/components/autopilot/builder/AutoPilotLegsTabl
 import ProfitTargetConfig from '@/components/autopilot/builder/ProfitTargetConfig.vue'
 import DTEExitConfig from '@/components/autopilot/builder/DTEExitConfig.vue'
 import StagedEntryConfig from '@/components/autopilot/builder/StagedEntryConfig.vue'
+import ReentryConfig from '@/components/autopilot/builder/ReentryConfig.vue'
+import AdjustmentRuleBuilder from '@/components/autopilot/builder/AdjustmentRuleBuilder.vue'
 import ConversionModal from '@/components/autopilot/adjustments/ConversionModal.vue'
+import RollWizard from '@/components/autopilot/adjustments/RollWizard.vue'
 import KiteLayout from '@/components/layout/KiteLayout.vue'
 import '@/assets/css/strategy-table.css'
 
@@ -37,6 +40,7 @@ const showReplaceConfirm = ref(false)
 // Adjustment modals
 const showConversionModal = ref(false)
 const showWidenSpreadModal = ref(false)
+const showRollWizard = ref(false)
 
 const isEditMode = computed(() => !!route.params.id)
 const strategyId = computed(() => route.params.id ? parseInt(route.params.id) : null)
@@ -828,13 +832,12 @@ const canProceed = computed(() => {
           </div>
         </div>
 
-        <!-- Adjustment Rules Section -->
+        <!-- Adjustment Rules Section (Phase 3) -->
         <div class="adjustment-rules-section">
-          <h3 class="subsection-title">Adjustment Rules</h3>
-          <div class="empty-state-message">
-            <p>Adjustment rules configuration coming soon.</p>
-            <p class="empty-state-hint">You can add stop-loss and target rules in the Risk Settings step.</p>
-          </div>
+          <AdjustmentRuleBuilder
+            v-model="store.builder.strategy.adjustment_rules"
+            data-testid="autopilot-adjustment-rule-builder"
+          />
         </div>
       </div>
 
@@ -1064,6 +1067,13 @@ const canProceed = computed(() => {
             </div>
           </div>
 
+          <!-- Phase 3: Re-Entry Configuration Section -->
+          <div class="reentry-config-section mt-6" data-testid="autopilot-reentry-config">
+            <ReentryConfig
+              v-model="store.builder.strategy.reentry_config"
+            />
+          </div>
+
           <!-- Schedule Settings Section -->
           <div class="schedule-settings-section mt-6" data-testid="autopilot-builder-schedule">
             <h3 class="subsection-title">Schedule Settings</h3>
@@ -1243,6 +1253,18 @@ const canProceed = computed(() => {
       :legs="store.builder.strategy.legs_config"
       @close="showConversionModal = false"
       @converted="showConversionModal = false"
+    />
+
+    <!-- Roll Wizard Modal (Phase 3) -->
+    <RollWizard
+      v-if="showRollWizard"
+      :show="showRollWizard"
+      :strategy-id="strategyId"
+      :current-positions="store.builder.strategy.legs_config"
+      :underlying="store.builder.strategy.underlying"
+      :current-expiry="store.builder.strategy.expiry_type"
+      @close="showRollWizard = false"
+      @roll-executed="showRollWizard = false"
     />
   </div>
   </KiteLayout>

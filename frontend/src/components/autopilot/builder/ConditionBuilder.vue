@@ -74,6 +74,16 @@
                 <i class="fas fa-grip-vertical"></i>
               </div>
 
+              <!-- Status Indicator -->
+              <div class="condition-status-indicator">
+                <span
+                  :class="['status-icon', getStatusClass(getConditionStatus(groupIndex, conditionIndex))]"
+                  :title="`Condition ${getConditionStatus(groupIndex, conditionIndex)}`"
+                >
+                  {{ getStatusIcon(getConditionStatus(groupIndex, conditionIndex)) }}
+                </span>
+              </div>
+
               <!-- Variable -->
               <div class="condition-field">
                 <label class="text-xs text-gray-600">Variable</label>
@@ -196,8 +206,91 @@
         Add Condition Group
       </button>
 
+      <!-- Natural Language Summary -->
+      <div v-if="showNaturalLanguage" class="natural-language-summary" data-testid="natural-language-summary">
+        <div class="summary-header">
+          <i class="fas fa-comment-dots"></i>
+          <span class="font-medium">Plain English Summary</span>
+        </div>
+        <div class="summary-body">
+          <p class="summary-text">{{ generateNaturalLanguage() }}</p>
+        </div>
+      </div>
+
+      <!-- Tree View Toggle -->
+      <div class="view-controls">
+        <button
+          @click="toggleTreeView"
+          class="view-toggle-btn"
+          data-testid="tree-view-toggle"
+        >
+          <i :class="showTreeView ? 'fas fa-list' : 'fas fa-sitemap'"></i>
+          {{ showTreeView ? 'Show List View' : 'Show Tree View' }}
+        </button>
+      </div>
+
+      <!-- Visual Tree View -->
+      <div v-if="showTreeView" class="tree-view" data-testid="tree-view">
+        <div class="tree-view-header">
+          <i class="fas fa-sitemap"></i>
+          <span class="font-medium">Visual Flow</span>
+        </div>
+        <div class="tree-view-body">
+          <div class="tree-node tree-root">
+            <div class="tree-node-label">ENTRY POINT</div>
+            <div class="tree-children">
+              <div
+                v-for="(group, groupIndex) in localGroups"
+                :key="group.id"
+                class="tree-group"
+              >
+                <!-- Group Node -->
+                <div class="tree-node tree-group-node">
+                  <div class="tree-node-label">
+                    GROUP {{ groupIndex + 1 }}
+                    <span class="tree-operator-badge" :class="getOperatorClass(group.operator)">
+                      {{ group.operator }}
+                    </span>
+                  </div>
+                  <div class="tree-children">
+                    <div
+                      v-for="(condition, conditionIndex) in group.conditions.filter(c => c.variable && c.value)"
+                      :key="condition.id"
+                      class="tree-node tree-condition-node"
+                    >
+                      <span
+                        :class="['tree-status-icon', getStatusClass(getConditionStatus(groupIndex, conditionIndex))]"
+                      >
+                        {{ getStatusIcon(getConditionStatus(groupIndex, conditionIndex)) }}
+                      </span>
+                      <div class="tree-condition-content">
+                        <span class="tree-condition-variable">{{ condition.variable }}</span>
+                        <span class="tree-condition-operator">
+                          {{ ['equals', 'not_equals', 'greater_than', 'less_than', 'greater_equal', 'less_equal', 'between'].includes(condition.operator) ?
+                             { 'equals': '=', 'not_equals': '≠', 'greater_than': '>', 'less_than': '<', 'greater_equal': '≥', 'less_equal': '≤', 'between': 'BETWEEN' }[condition.operator] : condition.operator }}
+                        </span>
+                        <span class="tree-condition-value">
+                          {{ condition.operator === 'between' ? `${condition.value_min} - ${condition.value_max}` : condition.value }}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Between Groups Operator -->
+                <div v-if="groupIndex < localGroups.length - 1" class="tree-connector">
+                  <div class="tree-connector-line"></div>
+                  <span class="tree-connector-operator">{{ betweenGroupsOperator }}</span>
+                  <div class="tree-connector-line"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Expression Preview -->
-      <div class="expression-preview" data-testid="expression-preview">
+      <div v-if="!showTreeView" class="expression-preview" data-testid="expression-preview">
         <div class="preview-header">
           <i class="fas fa-code"></i>
           <span class="font-medium">Expression Preview</span>
@@ -277,6 +370,14 @@ const localGroups = ref(
 const betweenGroupsOperator = ref('OR')
 const validationError = ref(null)
 const draggedItem = ref(null)
+const showTreeView = ref(false)
+const showNaturalLanguage = ref(true)
+
+// Mock evaluation status (in real implementation, this would come from backend)
+const evaluationStatus = ref({
+  isEvaluating: false,
+  results: {}
+})
 
 watch(() => props.modelValue, (newValue) => {
   if (newValue.length > 0) {
@@ -458,6 +559,84 @@ function emitUpdate() {
   validateConditions()
   emit('update:modelValue', localGroups.value)
 }
+
+// Generate natural language summary
+function generateNaturalLanguage() {
+  if (localGroups.value.length === 0) {
+    return 'No conditions have been configured yet.'
+  }
+
+  const groupSummaries = localGroups.value.map((group, groupIndex) => {
+    const conditions = group.conditions
+      .filter(c => c.variable && c.value)
+      .map(c => {
+        const variable = c.variable.replace(/\./g, ' ').toLowerCase()
+        const operatorText = {
+          'equals': 'equals',
+          'not_equals': 'does not equal',
+          'greater_than': 'is greater than',
+          'less_than': 'is less than',
+          'greater_equal': 'is greater than or equal to',
+          'less_equal': 'is less than or equal to',
+          'between': 'is between'
+        }[c.operator] || c.operator
+
+        if (c.operator === 'between' && c.value_min && c.value_max) {
+          return `${variable} ${operatorText} ${c.value_min} and ${c.value_max}`
+        }
+
+        return `${variable} ${operatorText} ${c.value}`
+      })
+
+    if (conditions.length === 0) return ''
+    if (conditions.length === 1) return conditions[0]
+
+    const connector = group.operator === 'AND' ? ' and ' : ' or '
+    return conditions.join(connector)
+  }).filter(summary => summary.length > 0)
+
+  if (groupSummaries.length === 0) {
+    return 'Please complete at least one condition.'
+  }
+
+  if (groupSummaries.length === 1) {
+    return `Enter when ${groupSummaries[0]}.`
+  }
+
+  const connector = betweenGroupsOperator.value === 'AND' ? ', and ' : ', or '
+  return `Enter when ${groupSummaries.join(connector)}.`
+}
+
+// Toggle tree view
+function toggleTreeView() {
+  showTreeView.value = !showTreeView.value
+}
+
+// Get condition status (mock for now)
+function getConditionStatus(groupIndex, conditionIndex) {
+  const key = `${groupIndex}-${conditionIndex}`
+  return evaluationStatus.value.results[key] || 'unknown'
+}
+
+// Get status icon
+function getStatusIcon(status) {
+  const icons = {
+    'met': '✓',
+    'not_met': '✗',
+    'unknown': '○'
+  }
+  return icons[status] || '○'
+}
+
+// Get status class
+function getStatusClass(status) {
+  const classes = {
+    'met': 'status-met',
+    'not_met': 'status-not-met',
+    'unknown': 'status-unknown'
+  }
+  return classes[status] || 'status-unknown'
+}
 </script>
 
 <style scoped>
@@ -585,7 +764,7 @@ function emitUpdate() {
 
 .condition-row {
   display: grid;
-  grid-template-columns: auto 1fr 1fr 1.5fr auto;
+  grid-template-columns: auto auto 1fr 1fr 1.5fr auto;
   gap: 0.75rem;
   align-items: end;
   padding: 0.75rem;
@@ -823,5 +1002,255 @@ function emitUpdate() {
 
 .help-list li {
   line-height: 1.6;
+}
+
+/* ===== Status Indicators ===== */
+.condition-status-indicator {
+  display: flex;
+  align-items: center;
+  padding: 0.5rem 0;
+}
+
+.status-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.status-met {
+  background: #d1fae5;
+  color: #10b981;
+}
+
+.status-not-met {
+  background: #fee2e2;
+  color: #ef4444;
+}
+
+.status-unknown {
+  background: #f3f4f6;
+  color: #9ca3af;
+}
+
+/* ===== Natural Language Summary ===== */
+.natural-language-summary {
+  margin-top: 1.5rem;
+  border: 2px solid #bfdbfe;
+  border-radius: 8px;
+  overflow: hidden;
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+}
+
+.summary-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: #3b82f6;
+  color: white;
+  font-weight: 600;
+}
+
+.summary-body {
+  padding: 1rem;
+}
+
+.summary-text {
+  font-size: 1rem;
+  color: #1e40af;
+  line-height: 1.6;
+  margin: 0;
+  font-weight: 500;
+}
+
+/* ===== View Controls ===== */
+.view-controls {
+  margin-top: 1.5rem;
+  display: flex;
+  justify-content: center;
+}
+
+.view-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: white;
+  border: 2px solid #3b82f6;
+  border-radius: 6px;
+  color: #3b82f6;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.view-toggle-btn:hover {
+  background: #3b82f6;
+  color: white;
+}
+
+/* ===== Tree View ===== */
+.tree-view {
+  margin-top: 1rem;
+  border: 2px solid #d1d5db;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.tree-view-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: #f3f4f6;
+  border-bottom: 2px solid #d1d5db;
+  color: #1f2937;
+  font-weight: 600;
+}
+
+.tree-view-body {
+  padding: 1.5rem;
+  background: white;
+  overflow-x: auto;
+}
+
+.tree-node {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.tree-root {
+  width: 100%;
+}
+
+.tree-node-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.875rem;
+  letter-spacing: 0.5px;
+  box-shadow: 0 4px 6px rgba(59, 130, 246, 0.3);
+  margin-bottom: 1.5rem;
+}
+
+.tree-operator-badge {
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.tree-children {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  width: 100%;
+}
+
+.tree-group {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.tree-group-node .tree-node-label {
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+  box-shadow: 0 4px 6px rgba(139, 92, 246, 0.3);
+}
+
+.tree-condition-node {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: white;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  margin-bottom: 0.75rem;
+  transition: all 0.2s;
+  min-width: 300px;
+}
+
+.tree-condition-node:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);
+  transform: translateY(-2px);
+}
+
+.tree-status-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  font-size: 16px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.tree-condition-content {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+  font-size: 0.875rem;
+}
+
+.tree-condition-variable {
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.tree-condition-operator {
+  color: #3b82f6;
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.tree-condition-value {
+  font-weight: 600;
+  color: #10b981;
+}
+
+.tree-connector {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  margin: 0.5rem 0;
+}
+
+.tree-connector-line {
+  flex: 1;
+  height: 3px;
+  background: linear-gradient(90deg, #e5e7eb 0%, #d1d5db 50%, #e5e7eb 100%);
+  border-radius: 2px;
+}
+
+.tree-connector-operator {
+  padding: 0.5rem 1rem;
+  background: white;
+  border: 3px solid #f59e0b;
+  border-radius: 6px;
+  color: #f59e0b;
+  font-weight: 800;
+  font-size: 0.875rem;
+  box-shadow: 0 2px 4px rgba(245, 158, 11, 0.2);
 }
 </style>

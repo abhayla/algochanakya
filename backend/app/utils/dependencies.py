@@ -116,3 +116,23 @@ async def get_current_broker_connection(
         )
 
     return broker_connection
+
+
+def get_kite_client(
+    broker_connection: BrokerConnection = Depends(get_current_broker_connection)
+):
+    """
+    Dependency to get KiteConnect client for current user's broker connection.
+
+    Args:
+        broker_connection: Current user's active broker connection
+
+    Returns:
+        KiteConnect client instance with access token set
+    """
+    from kiteconnect import KiteConnect
+    from app.config import settings
+
+    kite = KiteConnect(api_key=settings.KITE_API_KEY)
+    kite.set_access_token(broker_connection.access_token)
+    return kite

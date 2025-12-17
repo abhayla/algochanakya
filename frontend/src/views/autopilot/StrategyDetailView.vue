@@ -18,6 +18,9 @@ import GammaRiskAlert from '@/components/autopilot/monitoring/GammaRiskAlert.vue
 import BreakTradeWizard from '@/components/autopilot/adjustments/BreakTradeWizard.vue'
 import ShiftLegModal from '@/components/autopilot/adjustments/ShiftLegModal.vue'
 import AdjustmentCostCard from '@/components/autopilot/analytics/AdjustmentCostCard.vue'
+import ActivityTimeline from '@/components/autopilot/dashboard/ActivityTimeline.vue'
+import StraddlePremiumChart from '@/components/autopilot/monitoring/StraddlePremiumChart.vue'
+import ThetaDecayChart from '@/components/autopilot/monitoring/ThetaDecayChart.vue'
 import '@/assets/css/strategy-table.css'
 
 const router = useRouter()
@@ -327,6 +330,32 @@ const closeShiftLegModal = () => {
   showShiftLegModal.value = false
   selectedLegForAdjustment.value = null
 }
+
+// Format activity logs for ActivityTimeline component
+const strategyActivities = computed(() => {
+  // In a real implementation, this would fetch logs specific to this strategy
+  // For now, using store.recentLogs filtered by strategy_id
+  if (!store.recentLogs || store.recentLogs.length === 0) return []
+
+  const severityToEventType = {
+    'info': 'condition_met',
+    'warning': 'alert_triggered',
+    'error': 'order_rejected'
+  }
+
+  return store.recentLogs
+    .filter(log => log.strategy_id === strategyId.value)
+    .map(log => ({
+      id: log.id,
+      event_type: log.event_type || severityToEventType[log.severity] || 'condition_met',
+      message: log.message,
+      description: log.message,
+      timestamp: log.created_at,
+      created_at: log.created_at,
+      strategy_name: log.strategy_name || store.currentStrategy?.name,
+      underlying: log.underlying || store.currentStrategy?.underlying
+    }))
+})
 </script>
 
 <template>
@@ -512,6 +541,20 @@ const closeShiftLegModal = () => {
               Position Legs
             </button>
             <button
+              @click="activeTab = 'charts'"
+              :class="['tab-btn', { 'tab-btn-active': activeTab === 'charts' }]"
+              data-testid="strategy-detail-charts-tab"
+            >
+              Charts
+            </button>
+            <button
+              @click="activeTab = 'activity'"
+              :class="['tab-btn', { 'tab-btn-active': activeTab === 'activity' }]"
+              data-testid="autopilot-activity-tab"
+            >
+              Activity
+            </button>
+            <button
               @click="activeTab = 'suggestions'"
               :class="['tab-btn', { 'tab-btn-active': activeTab === 'suggestions' }]"
               data-testid="autopilot-suggestions-tab"
@@ -630,6 +673,94 @@ const closeShiftLegModal = () => {
           <!-- Position Legs Tab -->
           <div v-if="activeTab === 'legs'">
             <LegsPanel :strategy-id="strategyId" />
+          </div>
+
+          <!-- Charts Tab -->
+          <div v-if="activeTab === 'charts'" data-testid="strategy-detail-charts-section">
+            <div class="charts-section">
+              <!-- Greeks Summary -->
+              <div class="chart-card">
+                <h3 class="chart-title">Greeks Summary</h3>
+                <div class="greeks-grid">
+                  <div class="greek-item">
+                    <span class="greek-label">Delta</span>
+                    <span class="greek-value">
+                      {{ store.currentStrategy?.net_delta?.toFixed(3) || '0.000' }}
+                    </span>
+                  </div>
+                  <div class="greek-item">
+                    <span class="greek-label">Gamma</span>
+                    <span class="greek-value">
+                      {{ store.currentStrategy?.net_gamma?.toFixed(4) || '0.0000' }}
+                    </span>
+                  </div>
+                  <div class="greek-item">
+                    <span class="greek-label">Theta</span>
+                    <span class="greek-value">
+                      {{ store.currentStrategy?.net_theta?.toFixed(2) || '0.00' }}
+                    </span>
+                  </div>
+                  <div class="greek-item">
+                    <span class="greek-label">Vega</span>
+                    <span class="greek-value">
+                      {{ store.currentStrategy?.net_vega?.toFixed(2) || '0.00' }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Premium Chart -->
+              <div class="chart-card">
+                <h3 class="chart-title">Premium Monitor</h3>
+                <div class="chart-content">
+                  <StraddlePremiumChart
+                    v-if="store.currentStrategy?.id"
+                    data-testid="straddle-premium-chart"
+                    :strategy-id="store.currentStrategy.id"
+                    :auto-refresh="store.currentStrategy.status === 'active'"
+                    :refresh-interval="5000"
+                  />
+                  <div v-else class="chart-loading">
+                    <p>Loading strategy data...</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Theta Decay Chart -->
+              <div class="chart-card">
+                <h3 class="chart-title">Theta Decay - Expected vs Actual</h3>
+                <div class="chart-content">
+                  <ThetaDecayChart
+                    v-if="store.currentStrategy?.id"
+                    data-testid="theta-decay-chart"
+                    :strategy-id="store.currentStrategy.id"
+                    :auto-refresh="store.currentStrategy.status === 'active'"
+                    :refresh-interval="5000"
+                  />
+                  <div v-else class="chart-loading">
+                    <p>Loading strategy data...</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- P&L Curve Placeholder -->
+              <div class="chart-card">
+                <h3 class="chart-title">P&L Curve</h3>
+                <div class="chart-placeholder">
+                  <div class="placeholder-icon">💹</div>
+                  <p class="placeholder-text">P&L curve will be displayed here</p>
+                  <p class="placeholder-subtext">Real-time P&L visualization across spot prices</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Activity Tab -->
+          <div v-if="activeTab === 'activity'">
+            <ActivityTimeline
+              :activities="strategyActivities"
+              :max-items="20"
+            />
           </div>
 
           <!-- Suggestions Tab -->
@@ -1211,5 +1342,115 @@ const closeShiftLegModal = () => {
 
 .strategy-btn-outline:hover:not(:disabled) {
   background: var(--kite-table-hover);
+}
+
+/* ===== Charts Section ===== */
+.charts-section {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.chart-card {
+  background: white;
+  border-radius: 8px;
+  border: 1px solid var(--kite-border);
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.chart-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--kite-text-primary);
+  margin: 0 0 16px 0;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--kite-border-light);
+}
+
+/* ===== Greeks Grid ===== */
+.greeks-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+@media (min-width: 768px) {
+  .greeks-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.greek-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+  border-radius: 8px;
+  border: 1px solid var(--kite-border-light);
+}
+
+.greek-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--kite-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.greek-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--kite-text-primary);
+}
+
+/* ===== Chart Content ===== */
+.chart-content {
+  min-height: 300px;
+  padding: 16px;
+  position: relative;
+}
+
+.chart-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  color: var(--kite-text-secondary);
+  font-size: 14px;
+}
+
+/* ===== Chart Placeholder ===== */
+.chart-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+  background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+  border-radius: 8px;
+  border: 2px dashed var(--kite-border);
+}
+
+.placeholder-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.6;
+}
+
+.placeholder-text {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--kite-text-primary);
+  margin: 0 0 8px 0;
+}
+
+.placeholder-subtext {
+  font-size: 14px;
+  color: var(--kite-text-secondary);
+  margin: 0;
+  max-width: 400px;
 }
 </style>
