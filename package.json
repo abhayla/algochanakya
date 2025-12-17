@@ -50,7 +50,9 @@
     "test:optionchain": "playwright test tests/e2e/specs/legacy/option-chain.spec.js --headed --timeout=300000 --workers=1",
     "test:positions": "playwright test tests/e2e/specs/legacy/positions.spec.js --headed --timeout=300000 --workers=1",
     "test:overflow": "playwright test tests/e2e/specs/legacy/overflow-all-screens.spec.js --headed --timeout=600000 --workers=1",
-    "generate:test": "node tests/e2e/scripts/generate-test.js"
+    "generate:test": "node tests/e2e/scripts/generate-test.js",
+    "capture:screenshots": "node tests/e2e/utils/screenshot-capture.js",
+    "capture:screenshots:autopilot": "node tests/e2e/utils/screenshot-capture.js"
   },
   "repository": {
     "type": "git",

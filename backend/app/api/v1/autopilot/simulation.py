@@ -21,7 +21,8 @@ router = APIRouter()
 
 def get_kite_client(broker_connection: BrokerConnection = Depends(get_current_broker_connection)) -> KiteConnect:
     """Get Kite Connect client for current user."""
-    kite = KiteConnect(api_key=broker_connection.api_key)
+    from app.config import settings
+    kite = KiteConnect(api_key=settings.KITE_API_KEY)
     kite.set_access_token(broker_connection.access_token)
     return kite
 
