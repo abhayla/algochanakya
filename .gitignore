@@ -139,3 +139,7 @@ error-screenshot.png
 backend/test_phase1_strike_selection.py
 run-strike-ladder-tests.bat
 run-strike-ladder-tests.sh
+
+# Temporary debug scripts
+backend/scripts/find_strategy.py
+tests/e2e/specs/get-token.spec.js

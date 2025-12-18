@@ -20,6 +20,18 @@ from sqlalchemy import select, func
 
 from app.database import get_db
 from app.utils.dependencies import get_current_user
+
+
+def convert_decimals_to_floats(obj):
+    """Recursively convert Decimal values to floats for JSON serialization."""
+    if isinstance(obj, Decimal):
+        return float(obj)
+    elif isinstance(obj, dict):
+        return {k: convert_decimals_to_floats(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [convert_decimals_to_floats(item) for item in obj]
+    else:
+        return obj
 from app.models.users import User
 from app.models.autopilot import (
     AutoPilotStrategy, AutoPilotUserSettings, AutoPilotOrder, AutoPilotLog,
@@ -243,7 +255,7 @@ async def create_strategy(
             detail="Maximum 50 strategies allowed per user"
         )
 
-    # Create strategy
+    # Create strategy - convert Decimals to floats to avoid JSON serialization issues
     strategy = AutoPilotStrategy(
         user_id=current_user.id,
         name=request.name,
@@ -254,12 +266,12 @@ async def create_strategy(
         expiry_date=request.expiry_date,
         lots=request.lots,
         position_type=request.position_type.value,
-        legs_config=[leg.model_dump() for leg in request.legs_config],
-        entry_conditions=request.entry_conditions.model_dump(),
-        adjustment_rules=request.adjustment_rules,
-        order_settings=request.order_settings.model_dump() if request.order_settings else {},
-        risk_settings=request.risk_settings.model_dump() if request.risk_settings else {},
-        schedule_config=request.schedule_config.model_dump() if request.schedule_config else {},
+        legs_config=convert_decimals_to_floats([leg.model_dump() for leg in request.legs_config]),
+        entry_conditions=convert_decimals_to_floats(request.entry_conditions.model_dump()),
+        adjustment_rules=convert_decimals_to_floats(request.adjustment_rules),
+        order_settings=convert_decimals_to_floats(request.order_settings.model_dump() if request.order_settings else {}),
+        risk_settings=convert_decimals_to_floats(request.risk_settings.model_dump() if request.risk_settings else {}),
+        schedule_config=convert_decimals_to_floats(request.schedule_config.model_dump() if request.schedule_config else {}),
         priority=request.priority,
         source_template_id=request.source_template_id
     )
