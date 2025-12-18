@@ -489,57 +489,6 @@ const getPnLClass = (value) => {
       </div>
     </td>
 
-    <!-- Keep existing Expected Move Mode UI below if needed -->
-    <td v-if="false && strikeMode === 'expected_move'" style="padding: 4px;">
-      <div class="strike-em-mode">
-        <div class="expected-move-info text-xs mb-1">
-          <span>Select strikes outside expected move range</span>
-        </div>
-        <div class="flex gap-1 mb-1">
-          <select
-            :value="leg.em_position"
-            @change="handleUpdate('em_position', $event.target.value)"
-            class="strategy-select compact text-xs"
-            :data-testid="`autopilot-leg-em-position-${index}`"
-            style="width: 100px;"
-          >
-              <option value="">Select</option>
-              <option value="above">Above EM</option>
-              <option value="below">Below EM</option>
-            </select>
-            <button
-              @click="findStrikeByEM"
-              :disabled="isSearchingStrike"
-              class="btn-find-strike"
-              :data-testid="`autopilot-leg-find-strike-${index}`"
-            >
-              {{ isSearchingStrike ? '...' : 'Find' }}
-            </button>
-          </div>
-          <div v-if="leg.strike_price" class="selected-strike" :data-testid="`autopilot-leg-selected-strike-${index}`">
-            Strike: <strong>{{ leg.strike_price }}</strong>
-          </div>
-          <div v-if="strikeSearchError" class="error-message">
-            {{ strikeSearchError }}
-          </div>
-        </div>
-
-        <!-- Round Strike Preference -->
-        <div class="round-strike-pref mt-1">
-          <label class="flex items-center gap-1 text-xs">
-            <input
-              type="checkbox"
-              :checked="leg.prefer_round_strike"
-              @change="handleUpdate('prefer_round_strike', $event.target.checked)"
-              :data-testid="`autopilot-leg-round-strike-${index}`"
-              class="text-xs"
-            />
-            <span>Round (÷100)</span>
-          </label>
-        </div>
-      </div>
-    </td>
-
     <!-- CE/PE -->
     <td>
       <select

@@ -14,6 +14,7 @@
             :value="mode.value"
             v-model="localValue.mode"
             @change="onModeChange"
+            :data-testid="`strike-selector-mode-${mode.value}`"
           />
           <span class="mode-label">{{ mode.label }}</span>
         </label>
@@ -31,6 +32,7 @@
           placeholder="Enter strike price"
           class="strike-input"
           :step="strikeStep"
+          data-testid="strike-selector-fixed-input"
         />
       </div>
 

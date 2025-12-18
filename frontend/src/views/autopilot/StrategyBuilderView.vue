@@ -1068,7 +1068,7 @@ const canProceed = computed(() => {
           </div>
 
           <!-- Phase 3: Re-Entry Configuration Section -->
-          <div class="reentry-config-section mt-6" data-testid="autopilot-reentry-config">
+          <div class="reentry-config-section mt-6" data-testid="autopilot-reentry-config-wrapper">
             <ReentryConfig
               v-model="store.builder.strategy.reentry_config"
             />
