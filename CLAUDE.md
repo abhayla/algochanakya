@@ -10,7 +10,7 @@ AlgoChanakya is an options trading platform (similar to Sensibull) built with Fa
 - Backend: FastAPI + SQLAlchemy (async) + PostgreSQL + Redis
 - Frontend: Vue.js 3 + Vite + Pinia + Vue Router + Tailwind CSS
 - Broker Integration: Zerodha Kite Connect API
-- Testing: Playwright (E2E ~290 tests) + pytest (backend ~70 tests)
+- Testing: Playwright (E2E ~1400 tests in 102 files) + pytest (backend)
 
 **Detailed Documentation:** See [docs/](docs/README.md) for comprehensive documentation including:
 - [Architecture](docs/architecture/) - System design, auth, WebSocket, database
@@ -68,12 +68,6 @@ npm run test:api:new    # All API tests
 npm run test:audit      # All style & accessibility audits
 npm run test:a11y       # Alias for audit tests
 
-# Legacy individual tests
-npm run test:positions      # F&O positions tests
-npm run test:optionchain    # Option chain tests
-npm run test:iron-condor    # Iron Condor strategy test
-npm run test:overflow       # All screens horizontal overflow test
-
 # Run a single test file
 npx playwright test tests/e2e/specs/positions/positions.happy.spec.js
 
@@ -84,8 +78,14 @@ npm run test:visual:update  # Update visual baselines
 npm run test:isolated       # Tests needing fresh browser context
 npm run generate:test -- --screen MyScreen --path /mypath  # Generate test scaffold
 
-# AutoPilot fast mode (parallel, shorter timeout)
-npm run test:autopilot:fast
+# AutoPilot tests
+npm run test:autopilot:fast      # Parallel, shorter timeout
+npm run test:autopilot:phase4    # Phase 4 tests only
+npm run test:autopilot:phases123 # Phases 1-3 tests only
+
+# Screenshot capture utilities
+npm run capture:screenshots           # Capture all screen screenshots
+npm run capture:screenshots:autopilot # Capture AutoPilot screenshots
 
 # Allure test reports
 npm run test:allure         # Run tests and open Allure report
@@ -348,9 +348,9 @@ Automated strategy execution with conditional entry, adjustments, and risk manag
 ### Database Connection
 
 - Backend uses **async PostgreSQL** via `asyncpg` driver
-- Alembic migrations use standard `psycopg2` (alembic.env.py:23 converts URL)
+- Alembic migrations use standard `psycopg2` (alembic/env.py converts URL automatically)
 - Redis is used for session storage and caching
-- Database tables are created via SQLAlchemy metadata (app.database.py:55)
+- Database tables are created via SQLAlchemy metadata (app/database.py)
 - Production uses remote PostgreSQL (103.118.16.189:5432) and Redis (103.118.16.189:6379)
 
 ## Important Patterns
@@ -408,82 +408,32 @@ Frontend requires `.env` file:
 
 **See [docs/testing/README.md](docs/testing/README.md) for complete documentation.**
 
-~360 tests total: 290 frontend E2E tests across 28 spec files covering 9 screens (Login, Dashboard, Positions, Watchlist, Option Chain, Strategy Builder, Strategy Library, AutoPilot, Integration), plus 70 backend pytest tests.
+~1400 E2E tests across 102 spec files covering 9 screens (Login, Dashboard, Positions, Watchlist, Option Chain, Strategy Builder, Strategy Library, AutoPilot, Integration), plus backend pytest tests.
 
-### Frontend E2E Tests (Playwright)
+### E2E Test Architecture
 
-**Architecture:**
-- **Page Object Model** - `tests/e2e/pages/` with BasePage.js and 8 screen-specific POMs
+- **Page Object Model** - `tests/e2e/pages/` with BasePage.js and screen-specific POMs
 - **Auth Fixture** - `tests/e2e/fixtures/auth.fixture.js` for token injection (bypasses OAuth)
 - **Single Browser Window** - Login once with TOTP, reuse auth for all tests
 - **Self-Healing Selectors** - All Vue components use `data-testid` attributes
-- **Organized Specs** - `tests/e2e/specs/{screen}/` with happy, edge, visual, api tests
 
-**Test Categories:**
-- `*.happy.spec.js` - Happy path tests (82 total)
-- `*.edge.spec.js` - Edge case tests (60 total)
-- `*.visual.spec.js` - Visual regression tests (45 total)
-- `*.api.spec.js` / `*.websocket.spec.js` - API/WebSocket tests (53 total)
-- `*.audit.spec.js` - Style & accessibility audits (7 files, ~50 tests)
-
-**Browser Configuration:**
-- All tests run with **maximized browser window** (via `--start-maximized`)
-- Credentials auto-filled from `tests/config/credentials.js`, only TOTP is manual
+**Test Categories:** `*.happy.spec.js` (normal flows), `*.edge.spec.js` (error/boundary), `*.visual.spec.js` (screenshots), `*.api.spec.js` (API validation), `*.audit.spec.js` (a11y/CSS)
 
 ### Backend Tests (pytest)
 
-Located in `backend/tests/`:
-- `conftest.py` - Fixtures: db_session, mock templates, mock Kite client
-- `test_strategy_templates.py` - Model CRUD, constraints, JSON legs (~15 tests)
-- `test_strategy_wizard_api.py` - All API endpoints (~35 tests)
-- `test_strategy_validation.py` - Legs config, characteristics (~15 tests)
-- `test_strategy_integration.py` - Full flows, concurrent requests (~5 tests)
-
-**Run backend tests:**
 ```bash
 cd backend
 pytest tests/ -v                    # Run all backend tests
-pytest tests/test_strategy*.py -v   # Run strategy-related tests
 pytest tests/ -v --cov=app          # Run with coverage
 ```
 
-### data-testid Convention
-```
-data-testid="[screen]-[component]-[element]"
-Examples:
-  data-testid="login-zerodha-button"
-  data-testid="strategy-add-row-button"
-  data-testid="positions-exit-modal"
-  data-testid="optionchain-strike-row-24500"
-  data-testid="strategy-library-wizard-button"
-  data-testid="strategy-card-iron_condor"
-```
+### E2E Test Rules
 
-### E2E Test Rules (Quick Reference)
+**See [docs/testing/e2e-test-rules.md](docs/testing/e2e-test-rules.md) for complete rules.**
 
-**See [docs/testing/e2e-test-rules.md](docs/testing/e2e-test-rules.md) for complete documentation.**
-
-**Selector Rules:**
 - Use `data-testid` ONLY - no CSS classes, tags, or text selectors
-- All selectors via Page Object `getByTestId()` method
-
-**Fixture Rules:**
 - Import from `auth.fixture.js` (NOT `@playwright/test`)
-- Use `authenticatedPage` for all authenticated tests
+- Use `authenticatedPage` fixture for all authenticated tests
+- Extend `BasePage.js` for Page Objects, set `this.url` property
 
-**Page Object Pattern:**
-- Extend `BasePage.js`, set `this.url` property
-- Structure: Getters → Actions → Assertions (assertions in tests, not POM)
-
-**Test File Suffixes:**
-- `.happy.spec.js` - Normal flows
-- `.edge.spec.js` - Error/boundary cases
-- `.visual.spec.js` - Screenshots
-- `.api.spec.js` - API validation
-- `.audit.spec.js` - A11y/CSS
-
-**Adding Tests Checklist:**
-1. Add `data-testid` to Vue component
-2. Add selector to Page Object
-3. Import from `auth.fixture.js`
-4. Use POM methods (no inline selectors)
+**data-testid Convention:** `[screen]-[component]-[element]` (e.g., `positions-exit-modal`, `strategy-add-row-button`)
