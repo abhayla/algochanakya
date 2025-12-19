@@ -245,8 +245,14 @@ class OptionChainService:
     ) -> Dict[str, Optional[Decimal]]:
         """Calculate Greeks for an option."""
         try:
+            # Check if Greeks calculator is initialized
+            if self.greeks_calc is None:
+                logger.warning("Greeks calculator not initialized (user_id not provided)")
+                return {}
+
             # Calculate time to expiry
-            tte = self.greeks_calc._calculate_time_to_expiry(str(expiry))
+            from datetime import datetime
+            tte = self.greeks_calc._calculate_time_to_expiry(expiry, datetime.now())
 
             if tte <= 0:
                 return {}

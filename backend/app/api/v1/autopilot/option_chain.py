@@ -69,7 +69,7 @@ async def get_option_chain(
                 detail=f"Invalid underlying. Must be one of: {', '.join(valid_underlyings)}"
             )
 
-        service = OptionChainService(kite, db)
+        service = OptionChainService(kite, db, str(user.id))
         chain_data = await service.get_option_chain(
             underlying=underlying.upper(),
             expiry=expiry,
@@ -106,7 +106,7 @@ async def get_strikes_list(
         List of strike prices
     """
     try:
-        service = OptionChainService(kite, db)
+        service = OptionChainService(kite, db, str(user.id))
         strikes = await service.get_strikes_list(
             underlying=underlying.upper(),
             expiry=expiry

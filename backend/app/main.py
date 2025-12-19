@@ -1,8 +1,10 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 from sqlalchemy import select, func
 import logging
+import traceback
 
 from app.config import settings
 from app.database import init_db, close_db, AsyncSessionLocal
@@ -12,6 +14,12 @@ from app.websocket.routes import router as autopilot_ws_router
 from app.models import Instrument
 
 logger = logging.getLogger(__name__)
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 
 
 async def check_and_download_instruments():
@@ -76,6 +84,22 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# Global exception handler
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Global exception handler for unhandled errors."""
+    logger.error(f"Unhandled exception on {request.method} {request.url.path}")
+    logger.error(f"Exception: {type(exc).__name__}: {str(exc)}")
+    logger.error(f"Traceback:\n{traceback.format_exc()}")
+
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": f"Internal server error: {str(exc)}",
+            "error_type": type(exc).__name__
+        }
+    )
+
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
@@ -97,7 +121,7 @@ app.include_router(optionchain.router, prefix="/api/optionchain", tags=["OptionC
 app.include_router(positions.router, prefix="/api/positions", tags=["Positions"])
 app.include_router(strategy_wizard.router, prefix="/api/strategy-library", tags=["Strategy Library"])
 app.include_router(constants.router, prefix="/api/constants", tags=["Constants"])
-app.include_router(autopilot_router, prefix="/api/v1", tags=["AutoPilot"])
+app.include_router(autopilot_router, prefix="/api/v1/autopilot", tags=["AutoPilot"])
 app.include_router(autopilot_ws_router, tags=["AutoPilot WebSocket"])
 app.include_router(websocket.router, tags=["WebSocket"])
 

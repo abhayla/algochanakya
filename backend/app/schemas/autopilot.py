@@ -210,6 +210,7 @@ class TrailingStop(BaseModel):
 class RiskSettings(BaseModel):
     max_loss: Optional[Decimal] = None
     max_loss_pct: Optional[float] = None
+    max_profit: Optional[Decimal] = None
     trailing_stop: TrailingStop = TrailingStop()
     max_margin: Optional[Decimal] = None
     time_stop: Optional[str] = None
@@ -222,6 +223,20 @@ class ScheduleConfig(BaseModel):
     end_time: str = "15:30"
     expiry_days_only: bool = False
     date_range: Optional[Dict[str, str]] = None
+
+
+class EntryRequirements(BaseModel):
+    min_dte: Optional[int] = None
+    max_dte: Optional[int] = None
+    require_delta_neutral: bool = False
+    delta_neutral_min: float = -0.10
+    delta_neutral_max: float = 0.10
+
+
+class MonitoringConfig(BaseModel):
+    spot_distance_pe_threshold: float = 2.0
+    spot_distance_ce_threshold: float = 2.0
+    enable_toast_alerts: bool = True
 
 
 # Request Schemas
@@ -238,9 +253,12 @@ class StrategyCreateRequest(BaseModel):
     adjustment_rules: List[Dict[str, Any]] = []
     order_settings: Optional[OrderSettings] = None
     risk_settings: Optional[RiskSettings] = None
+    entry_requirements: Optional[EntryRequirements] = None
+    monitoring_config: Optional[MonitoringConfig] = None
     schedule_config: Optional[ScheduleConfig] = None
     priority: int = Field(100, ge=1, le=1000)
     source_template_id: Optional[int] = None
+    strategy_type: Optional[str] = None
 
     @field_validator('legs_config')
     @classmethod

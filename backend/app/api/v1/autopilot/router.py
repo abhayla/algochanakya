@@ -14,24 +14,15 @@ Phase 3 Endpoints (Advanced Features):
 from datetime import datetime, date, timezone
 from typing import Optional, List
 from decimal import Decimal
+import logging
+import traceback
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
-from app.database import get_db
+from app.database import get_db, convert_decimals_to_float
 from app.utils.dependencies import get_current_user
 
-
-def convert_decimals_to_floats(obj):
-    """Recursively convert Decimal values to floats for JSON serialization."""
-    if isinstance(obj, Decimal):
-        return float(obj)
-    elif isinstance(obj, dict):
-        return {k: convert_decimals_to_floats(v) for k, v in obj.items()}
-    elif isinstance(obj, list):
-        return [convert_decimals_to_floats(item) for item in obj]
-    else:
-        return obj
 from app.models.users import User
 from app.models.autopilot import (
     AutoPilotStrategy, AutoPilotUserSettings, AutoPilotOrder, AutoPilotLog,
@@ -64,7 +55,8 @@ from app.utils.dependencies import get_kite_client
 # Phase 5 routers
 from app.api.v1.autopilot import legs, option_chain, suggestions, simulation, analytics
 
-router = APIRouter(prefix="/autopilot", tags=["autopilot"])
+router = APIRouter(tags=["autopilot"])
+logger = logging.getLogger(__name__)
 
 # Include Phase 5 sub-routers
 router.include_router(legs.router, prefix="/legs", tags=["autopilot-legs"])
@@ -241,62 +233,74 @@ async def create_strategy(
     current_user: User = Depends(get_current_user)
 ):
     """Create a new AutoPilot strategy."""
-    # Check strategy count limit
-    count_result = await db.execute(
-        select(func.count()).where(
-            AutoPilotStrategy.user_id == current_user.id
+    try:
+        # Check strategy count limit
+        count_result = await db.execute(
+            select(func.count()).where(
+                AutoPilotStrategy.user_id == current_user.id
+            )
         )
-    )
-    strategy_count = count_result.scalar()
+        strategy_count = count_result.scalar()
 
-    if strategy_count >= 50:
+        if strategy_count >= 50:
+            raise HTTPException(
+                status_code=400,
+                detail="Maximum 50 strategies allowed per user"
+            )
+
+        # Create strategy - Convert Decimals to floats for JSONB columns
+        strategy = AutoPilotStrategy(
+            user_id=current_user.id,
+            name=request.name,
+            description=request.description,
+            status="draft",
+            underlying=request.underlying.value,
+            expiry_type=request.expiry_type.value,
+            expiry_date=request.expiry_date,
+            lots=request.lots,
+            position_type=request.position_type.value,
+            legs_config=convert_decimals_to_float([leg.model_dump() for leg in request.legs_config]),
+            entry_conditions=convert_decimals_to_float(request.entry_conditions.model_dump()),
+            adjustment_rules=convert_decimals_to_float(request.adjustment_rules),
+            order_settings=convert_decimals_to_float(request.order_settings.model_dump() if request.order_settings else {}),
+            risk_settings=convert_decimals_to_float(request.risk_settings.model_dump() if request.risk_settings else {}),
+            schedule_config=convert_decimals_to_float(request.schedule_config.model_dump() if request.schedule_config else {}),
+            priority=request.priority,
+            source_template_id=request.source_template_id
+        )
+
+        db.add(strategy)
+        await db.commit()
+        await db.refresh(strategy)
+
+        # Log creation
+        log = AutoPilotLog(
+            user_id=current_user.id,
+            strategy_id=strategy.id,
+            event_type="strategy_created",
+            severity="info",
+            message=f"Strategy '{strategy.name}' created",
+            event_data={"strategy_id": strategy.id, "name": strategy.name}
+        )
+        db.add(log)
+        await db.commit()
+
+        return DataResponse(
+            message="Strategy created successfully",
+            data=StrategyResponse.model_validate(strategy),
+            timestamp=datetime.utcnow()
+        )
+
+    except HTTPException:
+        raise  # Re-raise HTTP exceptions as-is
+    except Exception as e:
+        logger.error(f"Failed to create strategy: {str(e)}")
+        logger.error(f"Request data: name={request.name}, underlying={request.underlying}")
+        logger.error(f"Full traceback:\n{traceback.format_exc()}")
         raise HTTPException(
-            status_code=400,
-            detail="Maximum 50 strategies allowed per user"
+            status_code=500,
+            detail=f"Failed to create strategy: {str(e)}"
         )
-
-    # Create strategy - convert Decimals to floats to avoid JSON serialization issues
-    strategy = AutoPilotStrategy(
-        user_id=current_user.id,
-        name=request.name,
-        description=request.description,
-        status="draft",
-        underlying=request.underlying.value,
-        expiry_type=request.expiry_type.value,
-        expiry_date=request.expiry_date,
-        lots=request.lots,
-        position_type=request.position_type.value,
-        legs_config=convert_decimals_to_floats([leg.model_dump() for leg in request.legs_config]),
-        entry_conditions=convert_decimals_to_floats(request.entry_conditions.model_dump()),
-        adjustment_rules=convert_decimals_to_floats(request.adjustment_rules),
-        order_settings=convert_decimals_to_floats(request.order_settings.model_dump() if request.order_settings else {}),
-        risk_settings=convert_decimals_to_floats(request.risk_settings.model_dump() if request.risk_settings else {}),
-        schedule_config=convert_decimals_to_floats(request.schedule_config.model_dump() if request.schedule_config else {}),
-        priority=request.priority,
-        source_template_id=request.source_template_id
-    )
-
-    db.add(strategy)
-    await db.commit()
-    await db.refresh(strategy)
-
-    # Log creation
-    log = AutoPilotLog(
-        user_id=current_user.id,
-        strategy_id=strategy.id,
-        event_type="strategy_created",
-        severity="info",
-        message=f"Strategy '{strategy.name}' created",
-        event_data={"strategy_id": strategy.id, "name": strategy.name}
-    )
-    db.add(log)
-    await db.commit()
-
-    return DataResponse(
-        message="Strategy created successfully",
-        data=StrategyResponse.model_validate(strategy),
-        timestamp=datetime.utcnow()
-    )
 
 
 @router.get("/strategies/{strategy_id}", response_model=DataResponse)
@@ -494,13 +498,15 @@ async def update_strategy(
             detail=f"Cannot update strategy in '{strategy.status}' status"
         )
 
-    # Apply updates
+    # Apply updates - Convert Decimals to floats for JSONB columns
     update_data = request.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         if key == 'legs_config' and value:
-            value = [leg.model_dump() if hasattr(leg, 'model_dump') else leg for leg in value]
+            value = convert_decimals_to_float([leg.model_dump() if hasattr(leg, 'model_dump') else leg for leg in value])
         elif key in ['entry_conditions', 'order_settings', 'risk_settings', 'schedule_config'] and value:
-            value = value.model_dump() if hasattr(value, 'model_dump') else value
+            value = convert_decimals_to_float(value.model_dump() if hasattr(value, 'model_dump') else value)
+        elif key == 'adjustment_rules' and value:
+            value = convert_decimals_to_float(value)
         setattr(strategy, key, value)
 
     await db.commit()
@@ -1359,8 +1365,8 @@ async def update_trailing_stop_config(
     if not strategy:
         raise HTTPException(status_code=404, detail="Strategy not found")
 
-    # Update configuration
-    strategy.trailing_stop_config = config.model_dump()
+    # Update configuration - Convert Decimals to floats for JSONB column
+    strategy.trailing_stop_config = convert_decimals_to_float(config.model_dump())
     await db.commit()
     await db.refresh(strategy)
 

@@ -634,6 +634,47 @@ const strategyActivities = computed(() => {
               <p v-else class="empty-text">No entry conditions configured. Strategy enters immediately.</p>
             </div>
 
+            <!-- Adjustment Rules -->
+            <div class="section">
+              <h3 class="section-title">Adjustment Rules</h3>
+              <div v-if="store.currentStrategy.adjustment_rules?.length > 0">
+                <div class="adjustment-rules-list">
+                  <div
+                    v-for="(rule, index) in store.currentStrategy.adjustment_rules"
+                    :key="rule.name || index"
+                    class="adjustment-rule-card"
+                  >
+                    <div class="rule-header">
+                      <span class="rule-number">{{ index + 1 }}.</span>
+                      <span class="rule-name">{{ rule.name }}</span>
+                      <span :class="['rule-status', rule.enabled ? 'rule-enabled' : 'rule-disabled']">
+                        {{ rule.enabled ? 'Active' : 'Disabled' }}
+                      </span>
+                    </div>
+                    <div class="rule-details">
+                      <div class="rule-detail">
+                        <span class="detail-label">Trigger:</span>
+                        <span class="detail-value">{{ rule.trigger_type }}</span>
+                      </div>
+                      <div class="rule-detail">
+                        <span class="detail-label">Action:</span>
+                        <span class="detail-value">{{ rule.action_type }}</span>
+                      </div>
+                      <div class="rule-detail" v-if="rule.cooldown_seconds">
+                        <span class="detail-label">Cooldown:</span>
+                        <span class="detail-value">{{ Math.floor(rule.cooldown_seconds / 60) }} min</span>
+                      </div>
+                      <div class="rule-detail" v-if="rule.max_executions">
+                        <span class="detail-label">Max Executions:</span>
+                        <span class="detail-value">{{ rule.max_executions }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <p v-else class="empty-text">No adjustment rules configured.</p>
+            </div>
+
             <!-- Risk Settings -->
             <div class="section">
               <h3 class="section-title">Risk Settings</h3>
@@ -643,6 +684,14 @@ const strategyActivities = computed(() => {
                   <dd class="risk-value">
                     {{ store.currentStrategy.risk_settings?.max_loss
                       ? formatCurrency(store.currentStrategy.risk_settings.max_loss)
+                      : 'Not set' }}
+                  </dd>
+                </div>
+                <div class="risk-item">
+                  <dt class="risk-label">Max Profit</dt>
+                  <dd class="risk-value">
+                    {{ store.currentStrategy.risk_settings?.max_profit
+                      ? formatCurrency(store.currentStrategy.risk_settings.max_profit)
                       : 'Not set' }}
                   </dd>
                 </div>
@@ -1171,6 +1220,76 @@ const strategyActivities = computed(() => {
 
 .empty-text {
   color: var(--kite-text-secondary);
+}
+
+/* ===== Adjustment Rules ===== */
+.adjustment-rules-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.adjustment-rule-card {
+  background: var(--kite-table-hover);
+  border-radius: 6px;
+  padding: 12px 16px;
+  border-left: 3px solid var(--kite-blue);
+}
+
+.rule-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.rule-number {
+  font-weight: 600;
+  color: var(--kite-text-secondary);
+}
+
+.rule-name {
+  font-weight: 500;
+  color: var(--kite-text-primary);
+}
+
+.rule-status {
+  margin-left: auto;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.rule-enabled {
+  background: var(--kite-green-light, #e8f5e9);
+  color: var(--kite-green);
+}
+
+.rule-disabled {
+  background: var(--kite-gray-light, #f5f5f5);
+  color: var(--kite-text-secondary);
+}
+
+.rule-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.rule-detail {
+  display: flex;
+  gap: 4px;
+  font-size: 0.875rem;
+}
+
+.detail-label {
+  color: var(--kite-text-secondary);
+}
+
+.detail-value {
+  color: var(--kite-text-primary);
+  font-weight: 500;
 }
 
 /* ===== Risk Settings ===== */

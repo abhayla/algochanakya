@@ -1,14 +1,37 @@
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
 import redis.asyncio as aioredis
+import json
+from decimal import Decimal
+from pydantic import BaseModel
 from app.config import settings
+from typing import Any, Dict, List, Union
+
+
+def convert_decimals_to_float(obj: Any) -> Any:
+    """Recursively convert all Decimal objects to float in a nested structure.
+    Also handles Pydantic BaseModel objects by calling model_dump() first.
+    """
+    # Handle Pydantic BaseModel objects first
+    if isinstance(obj, BaseModel):
+        return convert_decimals_to_float(obj.model_dump())
+    if isinstance(obj, Decimal):
+        return float(obj)
+    elif isinstance(obj, dict):
+        return {key: convert_decimals_to_float(value) for key, value in obj.items()}
+    elif isinstance(obj, (list, tuple)):
+        return [convert_decimals_to_float(item) for item in obj]
+    return obj
 
 
 # PostgreSQL AsyncEngine
 engine = create_async_engine(
     settings.DATABASE_URL,
     echo=settings.DEBUG,
-    future=True
+    future=True,
+    connect_args={
+        "server_settings": {"jit": "off"},
+    }
 )
 
 # Session maker
