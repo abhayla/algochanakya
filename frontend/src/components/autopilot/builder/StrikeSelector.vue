@@ -177,6 +177,8 @@
 </template>
 
 <script>
+import api from '@/services/api'
+
 export default {
   name: 'StrikeSelector',
   props: {
@@ -314,7 +316,7 @@ export default {
           params.outside_sd = this.localValue.outside_sd
         }
 
-        const response = await this.$axios.get('/api/v1/autopilot/strikes/preview', { params })
+        const response = await api.get('/api/v1/autopilot/strikes/preview', { params })
         this.preview = response.data.data
       } catch (error) {
         console.error('Error fetching strike preview:', error)

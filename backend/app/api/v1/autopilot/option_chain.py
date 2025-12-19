@@ -3,12 +3,15 @@ AutoPilot Option Chain API Routes - Phase 5
 
 Endpoints for accessing option chain data with Greeks and strike finding.
 """
+import logging
 from datetime import date
 from decimal import Decimal
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from kiteconnect import KiteConnect
+
+logger = logging.getLogger(__name__)
 
 from app.database import get_db
 from app.utils.dependencies import get_current_user, get_current_broker_connection
@@ -455,6 +458,7 @@ async def get_expected_move_range(
         expiry_str = expiry.strftime("%Y-%m-%d")
         result = await service.get_expected_move_range(underlying.upper(), expiry_str)
 
+        logger.info(f"Expected Move Range API returning for {underlying} {expiry_str}: {result}")
         return result
 
     except Exception as e:

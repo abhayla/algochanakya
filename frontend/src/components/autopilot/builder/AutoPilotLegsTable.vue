@@ -98,10 +98,18 @@ watch(
   }
 )
 
-// Fetch expected move range when underlying or expiry changes
+// Fetch expected move range when underlying, expiry_type, or expiries changes
 watch(
-  () => [store.builder.strategy.underlying, store.builder.expiry],
-  async ([underlying, expiry]) => {
+  () => [
+    store.builder.strategy.underlying,
+    store.builder.strategy.expiry_type,
+    store.builder.expiry,
+    store.expiries
+  ],
+  async ([underlying, expiryType]) => {
+    // Resolve expiry from expiry_type, or use explicit builder.expiry
+    const expiry = store.getExpiryFromType(expiryType) || store.builder.expiry
+
     if (underlying && expiry) {
       try {
         const response = await api.get(
@@ -113,7 +121,8 @@ watch(
         }
       } catch (error) {
         console.error('Error fetching expected move:', error)
-        // Keep previous values or defaults on error
+        // Reset on error
+        expectedMoveData.value = { lower_bound: 0, upper_bound: 0 }
       }
     }
   },
