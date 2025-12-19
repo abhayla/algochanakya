@@ -77,6 +77,7 @@ onMounted(async () => {
   if (strategyId.value) {
     const strategy = await store.fetchStrategy(strategyId.value)
     store.initBuilder(strategy)
+    // Note: AutoPilotLegsTable will call fetchExpiries() which will call populateLegExpiries()
     // Set strategy type if it was saved
     if (strategy?.strategy_type) {
       selectedStrategyType.value = strategy.strategy_type

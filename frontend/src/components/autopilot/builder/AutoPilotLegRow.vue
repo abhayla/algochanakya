@@ -463,20 +463,22 @@ const getPnLClass = (value) => {
           :expiry="leg.expiry_date || store.expiries[0] || ''"
           :option-type="leg.contract_type"
           :data-testid="`autopilot-leg-strike-selector-${index}`"
-        />
-
-        <!-- Open Strike Ladder Button -->
-        <button
-          @click="emit('open-strike-ladder', index)"
-          class="btn-strike-ladder-compact"
-          :data-testid="`autopilot-leg-open-ladder-${index}`"
-          title="Open Strike Ladder for Visual Selection"
         >
-          <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
-            <path d="M2 1h12a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1zm0 1v3h12V2H2zm0 4v3h5V6H2zm6 0v3h6V6H8zM2 10v3h5v-3H2zm6 0v3h6v-3H8z"/>
-          </svg>
-          Strike Ladder
-        </button>
+          <!-- Strike Ladder Icon -->
+          <template #ladder-icon>
+            <button
+              @click.stop="emit('open-strike-ladder', index)"
+              class="btn-strike-ladder-icon"
+              :data-testid="`autopilot-leg-open-ladder-${index}`"
+              title="Strike Ladder"
+              type="button"
+            >
+              <svg width="12" height="12" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M2 1h12a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1zm0 1v3h12V2H2zm0 4v3h5V6H2zm6 0v3h6V6H8zM2 10v3h5v-3H2zm6 0v3h6v-3H8z"/>
+              </svg>
+            </button>
+          </template>
+        </StrikeSelector>
       </div>
     </td>
 
@@ -738,30 +740,30 @@ const getPnLClass = (value) => {
   gap: 12px;
 }
 
-.btn-strike-ladder-compact {
-  display: flex;
+.btn-strike-ladder-icon {
+  display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  background: #10b981;
-  color: white;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
   border: none;
   border-radius: 4px;
-  font-size: 12px;
-  font-weight: 500;
+  background: transparent;
+  color: #6b7280;
   cursor: pointer;
-  transition: all 0.2s ease;
-  margin-top: 8px;
-}
-
-.btn-strike-ladder-compact:hover {
-  background: #059669;
-  box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
-}
-
-.btn-strike-ladder-compact svg {
-  width: 14px;
-  height: 14px;
+  transition: all 0.15s ease;
+  margin-left: 4px;
   flex-shrink: 0;
+}
+
+.btn-strike-ladder-icon:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.btn-strike-ladder-icon:active {
+  background: #e5e7eb;
+  transform: scale(0.95);
 }
 </style>

@@ -97,6 +97,9 @@
         </template>
       </div>
 
+      <!-- Slot for ladder icon -->
+      <slot name="ladder-icon"></slot>
+
       <!-- Preview (always visible) -->
       <div class="preview-inline" v-if="preview && !loadingPreview">
         <span class="arrow">→</span>

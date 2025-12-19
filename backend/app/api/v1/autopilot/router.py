@@ -374,6 +374,8 @@ async def preview_strike(
     expiry: date = Query(..., description="Expiry date (YYYY-MM-DD)"),
     option_type: str = Query(..., description="Option type (CE or PE)"),
     mode: str = Query(..., description="Strike selection mode"),
+    offset: Optional[int] = Query(None, description="Offset in strikes for atm_offset mode"),
+    fixed_strike: Optional[float] = Query(None, description="Fixed strike for fixed mode"),
     target_delta: Optional[float] = Query(None, description="Target delta for delta_based mode"),
     target_premium: Optional[float] = Query(None, description="Target premium for premium_based mode"),
     standard_deviations: Optional[float] = Query(None, description="Standard deviations for sd_based mode"),
@@ -422,6 +424,119 @@ async def preview_strike(
                 outside_sd=outside_sd,
                 prefer_round_strike=prefer_round_strike
             )
+
+        elif mode == "atm_offset":
+            # Get spot price from option chain
+            chain_data = await strike_finder.option_chain_service.get_option_chain(
+                underlying=underlying.upper(),
+                expiry=expiry,
+                use_cache=True
+            )
+
+            spot_price = chain_data.get('spot_price')
+            if not spot_price:
+                raise HTTPException(status_code=400, detail="Could not get spot price")
+
+            # Calculate ATM strike
+            strike_steps = {"NIFTY": 50, "BANKNIFTY": 100, "FINNIFTY": 50, "SENSEX": 100}
+            strike_step = strike_steps.get(underlying.upper(), 50)
+            atm_strike = round(float(spot_price) / strike_step) * strike_step
+
+            # Apply offset
+            offset_value = offset if offset is not None else 0
+            resolved_strike = atm_strike + (offset_value * strike_step)
+
+            # Get option data at resolved strike
+            options = chain_data.get('options', [])
+            if not options and 'strikes' in chain_data:
+                # Convert nested strikes format to flat options format
+                options = []
+                for strike_data in chain_data['strikes']:
+                    strike = strike_data['strike']
+                    if 'pe' in strike_data and option_type.upper() == 'PE':
+                        options.append({
+                            'strike': strike,
+                            'option_type': 'PE',
+                            **strike_data['pe']
+                        })
+                    if 'ce' in strike_data and option_type.upper() == 'CE':
+                        options.append({
+                            'strike': strike,
+                            'option_type': 'CE',
+                            **strike_data['ce']
+                        })
+
+            # Find matching option
+            matching_option = next(
+                (opt for opt in options if opt['option_type'] == option_type.upper() and opt['strike'] == resolved_strike),
+                None
+            )
+
+            if not matching_option:
+                raise HTTPException(status_code=404, detail=f"Strike {resolved_strike} not found")
+
+            # Create result dict
+            result = {
+                'strike': resolved_strike,
+                'ltp': matching_option.get('ltp'),
+                'delta': matching_option.get('delta'),
+                'gamma': matching_option.get('gamma'),
+                'theta': matching_option.get('theta'),
+                'vega': matching_option.get('vega'),
+                'iv': matching_option.get('iv'),
+            }
+
+        elif mode == "fixed":
+            if fixed_strike is None:
+                raise HTTPException(status_code=400, detail="fixed_strike is required for fixed mode")
+
+            resolved_strike = float(fixed_strike)
+
+            # Get option data at fixed strike
+            chain_data = await strike_finder.option_chain_service.get_option_chain(
+                underlying=underlying.upper(),
+                expiry=expiry,
+                use_cache=True
+            )
+
+            options = chain_data.get('options', [])
+            if not options and 'strikes' in chain_data:
+                # Convert nested strikes format to flat options format
+                options = []
+                for strike_data in chain_data['strikes']:
+                    strike = strike_data['strike']
+                    if 'pe' in strike_data and option_type.upper() == 'PE':
+                        options.append({
+                            'strike': strike,
+                            'option_type': 'PE',
+                            **strike_data['pe']
+                        })
+                    if 'ce' in strike_data and option_type.upper() == 'CE':
+                        options.append({
+                            'strike': strike,
+                            'option_type': 'CE',
+                            **strike_data['ce']
+                        })
+
+            # Find matching option
+            matching_option = next(
+                (opt for opt in options if opt['option_type'] == option_type.upper() and opt['strike'] == resolved_strike),
+                None
+            )
+
+            if not matching_option:
+                raise HTTPException(status_code=404, detail=f"Strike {resolved_strike} not found")
+
+            # Create result dict
+            result = {
+                'strike': resolved_strike,
+                'ltp': matching_option.get('ltp'),
+                'delta': matching_option.get('delta'),
+                'gamma': matching_option.get('gamma'),
+                'theta': matching_option.get('theta'),
+                'vega': matching_option.get('vega'),
+                'iv': matching_option.get('iv'),
+            }
 
         else:
             raise HTTPException(
