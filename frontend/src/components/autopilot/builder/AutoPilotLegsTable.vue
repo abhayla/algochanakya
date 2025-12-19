@@ -98,6 +98,17 @@ watch(
   }
 )
 
+// Watch for legs being loaded and populate their expiry dates
+watch(
+  () => store.builder.strategy.legs_config.length,
+  (newLength, oldLength) => {
+    // When legs are loaded (length changes from 0 to non-zero), populate expiries
+    if (newLength > 0 && oldLength === 0 && store.expiries.length > 0) {
+      store.populateLegExpiries()
+    }
+  }
+)
+
 // Fetch expected move range when underlying, expiry_type, or expiries changes
 watch(
   () => [

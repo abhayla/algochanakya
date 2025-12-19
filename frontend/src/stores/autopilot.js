@@ -714,17 +714,25 @@ export const useAutopilotStore = defineStore('autopilot', {
       try {
         const response = await api.get(`/api/options/expiries?underlying=${underlying}`)
         this.expiries = response.data.expiries
-        // Set builder.expiry to first available expiry
-        if (this.expiries.length > 0) {
+
+        // Only set builder.expiry if not already set (new strategy)
+        if (this.expiries.length > 0 && !this.builder.expiry) {
           this.builder.expiry = this.expiries[0]
           await this.fetchStrikes(this.expiries[0])
-        } else {
-          this.builder.expiry = null
+        } else if (this.builder.expiry) {
+          // Fetch strikes for the existing expiry
+          await this.fetchStrikes(this.builder.expiry)
         }
+
+        // Populate leg expiry dates after expiries are loaded
+        // This ensures legs get expiry_date when editing an existing strategy
+        this.populateLegExpiries()
       } catch (error) {
         console.error('Failed to fetch expiries:', error)
         this.expiries = []
-        this.builder.expiry = null
+        if (!this.builder.expiry) {
+          this.builder.expiry = null
+        }
       }
     },
 
@@ -758,15 +766,50 @@ export const useAutopilotStore = defineStore('autopilot', {
         // Find the second Thursday (or second available expiry)
         return sortedExpiries[1] || sortedExpiries[0] || null
       } else if (expiryType === 'monthly') {
-        // Find monthly expiry (last Thursday of month)
-        // Monthly expiries are typically at the end of month
-        const monthlyExpiry = sortedExpiries.find(exp => {
-          const d = new Date(exp)
-          return d.getDate() > 20 // Typically monthly expiry is after 20th
-        })
-        return monthlyExpiry || sortedExpiries[sortedExpiries.length - 1] || null
+        // Find monthly expiry (last expiry of each month)
+        // Group expiries by month and find the last one
+        const monthlyExpiries = []
+        let lastMonth = null
+
+        for (let i = 0; i < sortedExpiries.length; i++) {
+          const exp = sortedExpiries[i]
+          const [year, month] = exp.split('-').map(Number)
+          const monthKey = `${year}-${month.toString().padStart(2, '0')}`
+
+          // Check if next expiry is in a different month
+          const nextExp = sortedExpiries[i + 1]
+          if (nextExp) {
+            const [nextYear, nextMonth] = nextExp.split('-').map(Number)
+            const nextMonthKey = `${nextYear}-${nextMonth.toString().padStart(2, '0')}`
+
+            // If next expiry is in different month, current is last of this month
+            if (nextMonthKey !== monthKey) {
+              monthlyExpiries.push(exp)
+            }
+          } else {
+            // Last expiry overall
+            monthlyExpiries.push(exp)
+          }
+        }
+
+        return monthlyExpiries[0] || sortedExpiries[sortedExpiries.length - 1] || null
       }
       return sortedExpiries[0] || null
+    },
+
+    /**
+     * Populate expiry_date on all legs from strategy expiry_type
+     * Called after expiries are loaded when editing a strategy
+     */
+    populateLegExpiries() {
+      const expiry = this.getExpiryFromType(this.builder.strategy.expiry_type) || this.builder.expiry
+      if (!expiry) return
+
+      // Update legs to trigger reactivity
+      this.builder.strategy.legs_config = this.builder.strategy.legs_config.map(leg => ({
+        ...leg,
+        expiry_date: leg.expiry_date || expiry
+      }))
     },
 
     async fetchInstrumentToken(expiry, strike, contractType) {
