@@ -121,6 +121,9 @@ test_strike_finder_fix.js
 
 # Temporary fix summaries
 STRIKE_FINDER_FIX_SUMMARY.md
+STRIKE_PREVIEW_FIX_VERIFICATION.md
+STRIKE_PREVIEW_TEST_RESULTS.md
+TEMPLATE_WORKFLOW_VERIFICATION.md
 
 # Temporary screenshots/error images (root level)
 error-screenshot.png

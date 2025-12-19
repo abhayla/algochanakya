@@ -285,13 +285,17 @@ export default {
       }, 500)
     },
     async fetchPreview() {
+      // Clear previous error state first
+      this.previewError = null
+
       // Fetch preview for ALL modes now (including atm_offset and fixed)
       if (!this.underlying || !this.expiry || !this.optionType) {
+        this.preview = null
+        this.loadingPreview = false
         return
       }
 
       this.loadingPreview = true
-      this.previewError = null
 
       try {
         const params = {
