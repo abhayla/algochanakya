@@ -122,6 +122,92 @@ export class AutoPilotDashboardPage extends BasePage {
   }
 
   // ===========================================================================
+  // LOCATORS - Phase 2 Dashboard Enhancements
+  // ===========================================================================
+
+  // Market Status Indicator
+  get marketStatusIndicator() {
+    return this.getByTestId('autopilot-market-status');
+  }
+
+  get marketStatusDot() {
+    return this.getByTestId('autopilot-market-status-dot');
+  }
+
+  get marketCountdown() {
+    return this.getByTestId('autopilot-market-countdown');
+  }
+
+  get niftyPrice() {
+    return this.getByTestId('autopilot-nifty-price');
+  }
+
+  get bankniftyPrice() {
+    return this.getByTestId('autopilot-banknifty-price');
+  }
+
+  get vixPrice() {
+    return this.getByTestId('autopilot-vix-price');
+  }
+
+  // P&L Enhancements
+  get pnlSparkline() {
+    return this.getByTestId('autopilot-pnl-sparkline');
+  }
+
+  get pnlTrendArrow() {
+    return this.getByTestId('autopilot-pnl-trend-arrow');
+  }
+
+  // Capital Usage Progress
+  get capitalProgressBar() {
+    return this.getByTestId('autopilot-capital-progress-bar');
+  }
+
+  get capitalPercentage() {
+    return this.getByTestId('autopilot-capital-percentage');
+  }
+
+  // Broker Status Enhanced
+  get brokerSyncTime() {
+    return this.getByTestId('autopilot-broker-sync-time');
+  }
+
+  get brokerStaleWarning() {
+    return this.getByTestId('autopilot-broker-stale-warning');
+  }
+
+  // Quick Deploy Templates
+  get templateShortStraddle() {
+    return this.getByTestId('autopilot-template-short-straddle');
+  }
+
+  get templateIronCondor() {
+    return this.getByTestId('autopilot-template-iron-condor');
+  }
+
+  get templateBullCallSpread() {
+    return this.getByTestId('autopilot-template-bull-call-spread');
+  }
+
+  get templateShortStrangle() {
+    return this.getByTestId('autopilot-template-short-strangle');
+  }
+
+  // Activity Timeline Enhanced
+  get activityFilter() {
+    return this.getByTestId('autopilot-activity-filter');
+  }
+
+  get activityRealtimeIndicator() {
+    return this.getByTestId('autopilot-activity-realtime-indicator');
+  }
+
+  getActivityStrategyGroup(strategyName) {
+    return this.getByTestId(`autopilot-activity-strategy-group-${strategyName}`);
+  }
+
+  // ===========================================================================
   // LOCATORS - Risk Overview Panel (Phase 4)
   // ===========================================================================
 
@@ -430,6 +516,102 @@ export class AutoPilotDashboardPage extends BasePage {
   async isBrokerConnected() {
     const status = await this.brokerStatus.getAttribute('data-connected');
     return status === 'true';
+  }
+
+  // ===========================================================================
+  // PHASE 2 HELPER METHODS
+  // ===========================================================================
+
+  // Market Status methods
+  async getMarketStatus() {
+    const text = await this.marketStatusDot.getAttribute('class');
+    return text.includes('open') ? 'open' : 'closed';
+  }
+
+  async isMarketOpen() {
+    const status = await this.getMarketStatus();
+    return status === 'open';
+  }
+
+  async getMarketCountdown() {
+    return await this.marketCountdown.textContent();
+  }
+
+  async getNiftyPrice() {
+    return await this.niftyPrice.locator('.index-price').textContent();
+  }
+
+  async getBankniftyPrice() {
+    return await this.bankniftyPrice.locator('.index-price').textContent();
+  }
+
+  async getVixPrice() {
+    return await this.vixPrice.locator('.index-price').textContent();
+  }
+
+  // P&L Enhancements methods
+  async hasPnlSparkline() {
+    return await this.pnlSparkline.isVisible();
+  }
+
+  async getPnlTrendDirection() {
+    const classes = await this.pnlTrendArrow.getAttribute('class');
+    return classes.includes('trend-up') ? 'up' : 'down';
+  }
+
+  // Capital Progress methods
+  async getCapitalUtilizationPct() {
+    const text = await this.capitalPercentage.textContent();
+    return parseFloat(text.match(/[\d.]+/)[0]);
+  }
+
+  // Broker Status methods
+  async getBrokerSyncTime() {
+    return await this.brokerSyncTime.textContent();
+  }
+
+  async hasBrokerStaleWarning() {
+    return await this.brokerStaleWarning.isVisible().catch(() => false);
+  }
+
+  // Quick Deploy Template methods
+  async deployShortStraddle() {
+    await this.templateShortStraddle.click();
+    await this.page.waitForURL('**/autopilot/templates?strategy=short_straddle');
+  }
+
+  async deployIronCondor() {
+    await this.templateIronCondor.click();
+    await this.page.waitForURL('**/autopilot/templates?strategy=iron_condor');
+  }
+
+  async deployBullCallSpread() {
+    await this.templateBullCallSpread.click();
+    await this.page.waitForURL('**/autopilot/templates?strategy=bull_call_spread');
+  }
+
+  async deployShortStrangle() {
+    await this.templateShortStrangle.click();
+    await this.page.waitForURL('**/autopilot/templates?strategy=short_strangle');
+  }
+
+  // Activity Timeline methods
+  async filterActivities(type) {
+    await this.activityFilter.selectOption(type);
+    await this.page.waitForTimeout(300);
+  }
+
+  async isRealtimeConnected() {
+    return await this.activityRealtimeIndicator.isVisible().catch(() => false);
+  }
+
+  async getActivityFilteredCount() {
+    const text = await this.activityEventCount.textContent();
+    return parseInt(text.match(/\d+/)[0], 10);
+  }
+
+  async hasActivityStrategyGroup(strategyName) {
+    return await this.getActivityStrategyGroup(strategyName).isVisible().catch(() => false);
   }
 }
 

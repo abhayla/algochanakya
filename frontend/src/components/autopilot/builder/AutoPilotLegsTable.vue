@@ -167,7 +167,7 @@ const addLeg = () => {
     contract_type: 'CE',
     transaction_type: 'SELL',
     strike_price: null,
-    expiry_date: store.expiries[0] || null,
+    expiry_date: store.getExpiryFromType(store.builder.strategy.expiry_type) || store.expiries[0] || null,
     lots: 1,
     entry_price: null,
     instrument_token: null,

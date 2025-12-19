@@ -54,14 +54,32 @@ const props = defineProps({
 const chartCanvas = ref(null)
 const chartInstance = ref(null)
 const chartData = ref(null)
+const cachedChartData = ref(null)
 const loading = ref(false)
 const error = ref(null)
+const lastFetchTime = ref(null)
 const entryPremium = ref(null)
 const currentPremium = ref(null)
 const targetPremium = ref(null)
 const stopLossPremium = ref(null)
 const premiumCapturedPct = ref(0)
 const refreshTimer = ref(null)
+
+// Computed: show stale warning if data is old
+const isStale = computed(() => {
+  if (!lastFetchTime.value) return false
+  const ageMs = Date.now() - lastFetchTime.value
+  return ageMs > 60000 // Stale if > 1 minute old
+})
+
+const staleTimeText = computed(() => {
+  if (!lastFetchTime.value) return ''
+  const ageMs = Date.now() - lastFetchTime.value
+  const ageMin = Math.floor(ageMs / 60000)
+  if (ageMin < 1) return 'less than a minute'
+  if (ageMin === 1) return '1 minute'
+  return `${ageMin} minutes`
+})
 
 // Chart options
 const chartOptions = computed(() => ({
@@ -130,7 +148,6 @@ const chartOptions = computed(() => ({
 // Fetch premium history
 const fetchPremiumHistory = async () => {
   loading.value = true
-  error.value = null
 
   try {
     const response = await api.get(`/api/v1/autopilot/strategies/${props.strategyId}/premium/history`, {
@@ -143,10 +160,21 @@ const fetchPremiumHistory = async () => {
     if (response.data && response.data.data) {
       const data = response.data.data
       updateChartData(data.snapshots)
+      cachedChartData.value = chartData.value
+      lastFetchTime.value = Date.now()
+      error.value = null // Clear error on success
     }
   } catch (err) {
     console.error('Error fetching premium history:', err)
-    error.value = 'Failed to load premium data'
+
+    // If we have cached data, show it with stale warning
+    if (cachedChartData.value) {
+      chartData.value = cachedChartData.value
+      error.value = 'Unable to fetch live premium data'
+    } else {
+      // No cached data, show error
+      error.value = 'Failed to load premium data'
+    }
   } finally {
     loading.value = false
   }
@@ -378,20 +406,27 @@ watch(() => props.autoRefresh, (newValue) => {
       </div>
     </div>
 
-    <!-- Error State -->
-    <div v-if="error" class="error-state">
+    <!-- Stale Data Warning (only if we have cached data) -->
+    <div v-if="error && cachedChartData" class="stale-warning">
+      <span class="warning-icon">⚠️</span>
+      <span class="warning-text">{{ error }}. Showing last known data ({{ staleTimeText }} ago).</span>
+      <button @click="refresh" class="retry-btn">Retry</button>
+    </div>
+
+    <!-- Error State (no cached data) -->
+    <div v-else-if="error && !cachedChartData" class="error-state">
       <span class="error-icon">⚠️</span>
       <span class="error-message">{{ error }}</span>
       <button @click="refresh" class="retry-btn">Retry</button>
     </div>
 
     <!-- Chart -->
-    <div v-else-if="chartData" class="chart-container">
+    <div v-if="chartData" class="chart-container">
       <canvas ref="chartCanvas"></canvas>
     </div>
 
     <!-- Loading State -->
-    <div v-else class="loading-state">
+    <div v-else-if="loading" class="loading-state">
       <div class="spinner"></div>
       <span>Loading premium data...</span>
     </div>
@@ -523,6 +558,29 @@ watch(() => props.autoRefresh, (newValue) => {
 .error-message {
   font-size: 14px;
   color: #ef4444;
+}
+
+/* Stale Data Warning Banner */
+.stale-warning {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: #fef3c7;
+  border: 1px solid #fbbf24;
+  border-radius: 6px;
+  margin-bottom: 16px;
+}
+
+.warning-icon {
+  font-size: 20px;
+}
+
+.warning-text {
+  flex: 1;
+  font-size: 13px;
+  color: #92400e;
+  font-weight: 500;
 }
 
 .retry-btn {

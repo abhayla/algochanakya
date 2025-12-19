@@ -598,9 +598,23 @@ const strategyActivities = computed(() => {
                           </span>
                         </td>
                         <td>
-                          {{ leg.strike_selection?.mode }}
-                          <span v-if="leg.strike_selection?.offset !== undefined">
-                            ({{ leg.strike_selection.offset >= 0 ? '+' : '' }}{{ leg.strike_selection.offset }})
+                          <span v-if="leg.strike_price">
+                            {{ leg.strike_price }}
+                          </span>
+                          <span v-else-if="leg.strike_selection?.mode === 'fixed'">
+                            Fixed Strike
+                          </span>
+                          <span v-else-if="leg.strike_selection?.mode === 'atm_offset'">
+                            ATM{{ leg.strike_selection.offset >= 0 ? '+' : '' }}{{ leg.strike_selection.offset }}
+                          </span>
+                          <span v-else-if="leg.strike_selection?.mode === 'delta_based'">
+                            Delta {{ leg.strike_selection.target_delta }}
+                          </span>
+                          <span v-else-if="leg.strike_selection?.mode === 'premium_based'">
+                            Premium ₹{{ leg.strike_selection.target_premium }}
+                          </span>
+                          <span v-else>
+                            {{ leg.strike_selection?.mode || 'Not set' }}
                           </span>
                         </td>
                       </tr>
@@ -631,7 +645,12 @@ const strategyActivities = computed(() => {
                   </div>
                 </div>
               </div>
-              <p v-else class="empty-text">No entry conditions configured. Strategy enters immediately.</p>
+              <div v-else class="empty-state">
+                <p class="empty-text">No entry conditions configured. Strategy enters immediately.</p>
+                <button @click="router.push(`/autopilot/strategies/${store.currentStrategy.id}/edit`)" class="add-condition-btn">
+                  + Add Entry Condition
+                </button>
+              </div>
             </div>
 
             <!-- Adjustment Rules -->
@@ -1218,8 +1237,31 @@ const strategyActivities = computed(() => {
   color: var(--kite-text-secondary);
 }
 
+.empty-state {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .empty-text {
   color: var(--kite-text-secondary);
+  margin: 0;
+}
+
+.add-condition-btn {
+  padding: 6px 12px;
+  background: var(--kite-blue);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.add-condition-btn:hover {
+  background: var(--kite-primary-dark);
 }
 
 /* ===== Adjustment Rules ===== */

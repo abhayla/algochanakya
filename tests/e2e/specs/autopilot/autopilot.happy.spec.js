@@ -107,6 +107,130 @@ test.describe('AutoPilot Dashboard - Happy Path', () => {
 
 
 // =============================================================================
+// PHASE 2 DASHBOARD ENHANCEMENTS TESTS
+// =============================================================================
+
+test.describe('AutoPilot Dashboard - Phase 2 Enhancements', () => {
+  let dashboardPage;
+
+  test.beforeEach(async ({ authenticatedPage }) => {
+    dashboardPage = new AutoPilotDashboardPage(authenticatedPage);
+    await dashboardPage.navigate();
+    await dashboardPage.waitForDashboardLoad();
+  });
+
+  // Market Status Indicator Tests
+  test('displays market status indicator', async () => {
+    await expect(dashboardPage.marketStatusIndicator).toBeVisible();
+  });
+
+  test('shows market status dot with correct state', async () => {
+    await expect(dashboardPage.marketStatusDot).toBeVisible();
+    const status = await dashboardPage.getMarketStatus();
+    expect(['open', 'closed']).toContain(status);
+  });
+
+  test('displays market countdown timer', async () => {
+    await expect(dashboardPage.marketCountdown).toBeVisible();
+    const countdown = await dashboardPage.getMarketCountdown();
+    expect(countdown).toBeTruthy();
+  });
+
+  test('shows NIFTY index price', async () => {
+    await expect(dashboardPage.niftyPrice).toBeVisible();
+  });
+
+  test('shows BANKNIFTY index price', async () => {
+    await expect(dashboardPage.bankniftyPrice).toBeVisible();
+  });
+
+  test('shows VIX index price', async () => {
+    await expect(dashboardPage.vixPrice).toBeVisible();
+  });
+
+  // P&L Card Enhancements Tests
+  test('displays P&L sparkline chart', async () => {
+    await expect(dashboardPage.pnlSparkline).toBeVisible();
+  });
+
+  test('shows P&L trend arrow when P&L is non-zero', async () => {
+    const pnl = await dashboardPage.getTodayPnl();
+    if (pnl !== 0) {
+      await expect(dashboardPage.pnlTrendArrow).toBeVisible();
+      const direction = await dashboardPage.getPnlTrendDirection();
+      expect(['up', 'down']).toContain(direction);
+    }
+  });
+
+  // Capital Used Enhancements Tests
+  test('displays capital usage progress bar', async () => {
+    await expect(dashboardPage.capitalProgressBar).toBeVisible();
+  });
+
+  test('shows capital utilization percentage', async () => {
+    await expect(dashboardPage.capitalPercentage).toBeVisible();
+    const pct = await dashboardPage.getCapitalUtilizationPct();
+    expect(pct).toBeGreaterThanOrEqual(0);
+    expect(pct).toBeLessThanOrEqual(100);
+  });
+
+  // Broker Status Enhanced Tests
+  test('displays broker sync timestamp', async () => {
+    await expect(dashboardPage.brokerSyncTime).toBeVisible();
+    const syncTime = await dashboardPage.getBrokerSyncTime();
+    expect(syncTime).toBeTruthy();
+  });
+
+  // Activity Timeline Enhanced Tests
+  test('displays activity filter dropdown', async () => {
+    await expect(dashboardPage.activityFilter).toBeVisible();
+  });
+
+  test('filters activities by type', async () => {
+    const initialCount = await dashboardPage.getActivityFilteredCount();
+
+    await dashboardPage.filterActivities('orders');
+    await expect(dashboardPage.activityFilter).toHaveValue('orders');
+
+    await dashboardPage.filterActivities('all');
+    await expect(dashboardPage.activityFilter).toHaveValue('all');
+  });
+
+  test('shows real-time indicator when connected', async () => {
+    const isConnected = await dashboardPage.isConnected();
+    const hasRealtimeIndicator = await dashboardPage.isRealtimeConnected();
+    expect(hasRealtimeIndicator).toBe(isConnected);
+  });
+});
+
+
+// =============================================================================
+// PHASE 2 QUICK DEPLOY TEMPLATES TESTS
+// =============================================================================
+
+test.describe('AutoPilot Dashboard - Quick Deploy Templates', () => {
+  let dashboardPage;
+
+  test.beforeEach(async ({ authenticatedPage }) => {
+    dashboardPage = new AutoPilotDashboardPage(authenticatedPage);
+    await dashboardPage.navigate();
+    await dashboardPage.waitForDashboardLoad();
+  });
+
+  test('displays template buttons when no strategies exist', async () => {
+    const strategyCount = await dashboardPage.getStrategyCount();
+
+    if (strategyCount === 0) {
+      await expect(dashboardPage.templateShortStraddle).toBeVisible();
+      await expect(dashboardPage.templateIronCondor).toBeVisible();
+      await expect(dashboardPage.templateBullCallSpread).toBeVisible();
+      await expect(dashboardPage.templateShortStrangle).toBeVisible();
+    }
+  });
+});
+
+
+// =============================================================================
 // STRATEGY FILTERING TESTS
 // =============================================================================
 

@@ -10,6 +10,8 @@ import { useAutopilotStore } from '@/stores/autopilot'
 import { useWebSocket } from '@/composables/autopilot/useWebSocket'
 import KiteLayout from '@/components/layout/KiteLayout.vue'
 import ShareModal from '@/components/autopilot/common/ShareModal.vue'
+import MarketStatusIndicator from '@/components/autopilot/dashboard/MarketStatusIndicator.vue'
+import Sparkline from '@/components/autopilot/common/Sparkline.vue'
 import EnhancedStrategyCard from '@/components/autopilot/dashboard/EnhancedStrategyCard.vue'
 import RiskOverviewPanel from '@/components/autopilot/dashboard/RiskOverviewPanel.vue'
 import ActivityTimeline from '@/components/autopilot/dashboard/ActivityTimeline.vue'
@@ -24,6 +26,9 @@ const { isConnected, connectionStatus, notifications, clearNotifications } = use
 // Fallback polling interval (only when WS disconnected)
 const refreshInterval = ref(null)
 
+// Time tracking interval for sync status
+const timeInterval = ref(null)
+
 // Show notification panel
 const showNotifications = ref(false)
 
@@ -34,6 +39,11 @@ const showKillSwitchModal = ref(false)
 const showShareModal = ref(false)
 const selectedStrategyForShare = ref(null)
 
+// Confirmation modals
+const showPauseModal = ref(false)
+const showExitModal = ref(false)
+const selectedStrategy = ref(null)
+
 // Premium monitoring data
 const premiumMonitoring = ref({
   totalPremium: 0,
@@ -41,6 +51,70 @@ const premiumMonitoring = ref({
   capturedPct: 0,
   topCapturers: [],
   atRiskStrategies: []
+})
+
+// Index prices for market status
+const indexPrices = ref({
+  NIFTY: { ltp: null, change: null, change_percent: null },
+  BANKNIFTY: { ltp: null, change: null, change_percent: null },
+  VIX: { ltp: null, change: null, change_percent: null }
+})
+
+// P&L sparkline data (last 30 data points for intraday trend)
+const pnlSparklineData = computed(() => {
+  // TODO: In production, fetch actual intraday P&L history from API
+  // For now, generate sample data based on current P&L
+  const currentPnl = store.dashboardSummary?.today_total_pnl || 0
+  const points = []
+  const numPoints = 30
+
+  for (let i = 0; i < numPoints; i++) {
+    // Simulate a trend leading to current P&L
+    const progress = i / (numPoints - 1)
+    const randomVariation = (Math.random() - 0.5) * (Math.abs(currentPnl) * 0.3)
+    const value = currentPnl * progress + randomVariation
+    points.push(value)
+  }
+
+  // Ensure last point matches current P&L
+  points[points.length - 1] = currentPnl
+
+  return points
+})
+
+// Broker sync tracking
+const now = ref(Date.now())
+
+// Broker sync status
+const brokerSyncStatus = computed(() => {
+  if (!store.dashboardSummary?.kite_connected) {
+    return { text: 'Disconnected', isStale: false, showWarning: true }
+  }
+
+  const lastSyncTime = store.dashboardSummary?.last_sync_time
+  if (!lastSyncTime) {
+    return { text: 'Connected', isStale: false, showWarning: false }
+  }
+
+  const lastSync = new Date(lastSyncTime).getTime()
+  const diffMs = now.value - lastSync
+  const diffSec = Math.floor(diffMs / 1000)
+
+  let syncText = ''
+  if (diffSec < 10) syncText = 'just now'
+  else if (diffSec < 60) syncText = `${diffSec}s ago`
+  else {
+    const diffMin = Math.floor(diffSec / 60)
+    syncText = `${diffMin}m ago`
+  }
+
+  const isStale = diffSec > 30
+
+  return {
+    text: `Connected · Synced ${syncText}`,
+    isStale,
+    showWarning: isStale
+  }
 })
 
 // Unread notifications count
@@ -160,6 +234,11 @@ onMounted(async () => {
   await store.fetchRecentLogs()
   await fetchPremiumMonitoring()
 
+  // Update time for broker sync status (every 5 seconds)
+  timeInterval.value = setInterval(() => {
+    now.value = Date.now()
+  }, 5000)
+
   // Only use polling as fallback when WebSocket is disconnected
   refreshInterval.value = setInterval(() => {
     if (!isConnected.value) {
@@ -172,6 +251,9 @@ onMounted(async () => {
 onUnmounted(() => {
   if (refreshInterval.value) {
     clearInterval(refreshInterval.value)
+  }
+  if (timeInterval.value) {
+    clearInterval(timeInterval.value)
   }
 })
 
@@ -195,11 +277,18 @@ const navigateToSettings = () => {
   router.push('/autopilot/settings')
 }
 
-const handlePause = async (strategyOrId) => {
+const handlePause = (strategyOrId) => {
   const strategyId = typeof strategyOrId === 'object' ? strategyOrId.id : strategyOrId
   const strategy = store.strategies.find(s => s.id === strategyId)
-  if (confirm(`Pause strategy "${strategy?.name || 'this strategy'}"?`)) {
-    await store.pauseStrategy(strategyId)
+  selectedStrategy.value = strategy
+  showPauseModal.value = true
+}
+
+const confirmPause = async () => {
+  if (selectedStrategy.value) {
+    await store.pauseStrategy(selectedStrategy.value.id)
+    showPauseModal.value = false
+    selectedStrategy.value = null
   }
 }
 
@@ -208,11 +297,18 @@ const handleResume = async (strategyOrId) => {
   await store.resumeStrategy(strategyId)
 }
 
-const handleExit = async (strategyOrId) => {
+const handleExit = (strategyOrId) => {
   const strategyId = typeof strategyOrId === 'object' ? strategyOrId.id : strategyOrId
   const strategy = store.strategies.find(s => s.id === strategyId)
-  if (confirm(`Exit strategy "${strategy?.name || 'this strategy'}"? This will close all open positions.`)) {
-    await store.exitStrategy(strategyId)
+  selectedStrategy.value = strategy
+  showExitModal.value = true
+}
+
+const confirmExit = async () => {
+  if (selectedStrategy.value) {
+    await store.exitStrategy(selectedStrategy.value.id)
+    showExitModal.value = false
+    selectedStrategy.value = null
   }
 }
 
@@ -425,26 +521,57 @@ const getStatusBadgeClass = (status) => {
 
     <!-- Dashboard Content -->
     <template v-else-if="store.dashboardSummary">
+      <!-- Market Status Indicator -->
+      <MarketStatusIndicator :index-prices="indexPrices" />
+
       <!-- Summary Cards -->
       <div class="summary-cards" data-testid="autopilot-summary-section">
         <!-- Today's P&L -->
         <div class="summary-card" data-testid="autopilot-today-pnl-card">
           <p class="summary-label">Today's P&L</p>
-          <p :class="['summary-value', getPnLClass(store.dashboardSummary.today_total_pnl)]" data-testid="autopilot-today-pnl-value">
-            {{ formatCurrency(store.dashboardSummary.today_total_pnl) }}
-          </p>
+          <div class="summary-value-with-trend">
+            <p :class="['summary-value', getPnLClass(store.dashboardSummary.today_total_pnl)]" data-testid="autopilot-today-pnl-value">
+              {{ formatCurrency(store.dashboardSummary.today_total_pnl) }}
+              <!-- Trend Arrow -->
+              <span
+                v-if="store.dashboardSummary.today_total_pnl !== 0"
+                class="trend-arrow"
+                :class="store.dashboardSummary.today_total_pnl > 0 ? 'trend-up' : 'trend-down'"
+                data-testid="autopilot-pnl-trend-arrow"
+              >
+                {{ store.dashboardSummary.today_total_pnl > 0 ? '↑' : '↓' }}
+              </span>
+            </p>
+          </div>
+          <!-- Sparkline Chart -->
+          <div class="pnl-sparkline" data-testid="autopilot-pnl-sparkline">
+            <Sparkline
+              :data="pnlSparklineData"
+              :width="180"
+              :height="40"
+              :stroke-width="2"
+            />
+          </div>
         </div>
 
         <!-- Active Strategies -->
         <div class="summary-card" data-testid="autopilot-active-strategies-card">
-          <p class="summary-label">Active Strategies</p>
+          <p class="summary-label">
+            Active Strategies
+            <span class="tooltip">
+              <span class="tooltip-icon">ℹ️</span>
+              <span class="tooltip-text">Active + Waiting / Maximum Allowed</span>
+            </span>
+          </p>
           <p class="summary-value">
             <span data-testid="autopilot-active-count">{{ store.dashboardSummary.active_strategies }}</span>
-            <span class="summary-separator">+</span>
-            <span data-testid="autopilot-waiting-count">{{ store.dashboardSummary.waiting_strategies }}</span>
-            <span class="summary-secondary">
-              / {{ store.dashboardSummary.risk_metrics.max_active_strategies }}
-            </span>
+            <span class="summary-text"> Active</span>
+            <span class="summary-separator"> / </span>
+            <span data-testid="autopilot-max-count">{{ store.dashboardSummary.risk_metrics.max_active_strategies }}</span>
+            <span class="summary-text"> Max</span>
+          </p>
+          <p v-if="store.dashboardSummary.waiting_strategies > 0" class="summary-subtitle">
+            {{ store.dashboardSummary.waiting_strategies }} waiting
           </p>
         </div>
 
@@ -483,20 +610,51 @@ const getStatusBadgeClass = (status) => {
           <p class="summary-label">Capital Used</p>
           <p class="summary-value" data-testid="autopilot-capital-used-value">
             {{ formatCurrency(store.dashboardSummary.capital_deployed || 0) }}
+            <span class="summary-secondary"> / {{ formatCurrency(store.dashboardSummary.available_margin || 0) }}</span>
           </p>
+          <!-- Capital Usage Progress Bar -->
+          <div class="capital-progress-container" data-testid="autopilot-capital-progress-bar">
+            <div class="progress-bar-bg">
+              <div
+                class="progress-bar-fill fill-safe"
+                :style="{
+                  width: Math.min(((store.dashboardSummary.capital_deployed || 0) / (store.dashboardSummary.available_margin || 1)) * 100, 100) + '%'
+                }"
+              ></div>
+            </div>
+            <p class="capital-usage-pct" data-testid="autopilot-capital-percentage">
+              {{ (((store.dashboardSummary.capital_deployed || 0) / (store.dashboardSummary.available_margin || 1)) * 100).toFixed(1) }}% utilized
+            </p>
+          </div>
           <!-- Broker Status -->
           <div
-            class="broker-status"
+            class="broker-status-enhanced"
             data-testid="autopilot-broker-status"
             :data-connected="store.dashboardSummary.kite_connected"
+            :class="{ 'status-stale': brokerSyncStatus.isStale }"
           >
+            <div class="broker-status-content">
+              <span
+                class="broker-dot"
+                :class="store.dashboardSummary.kite_connected ? 'dot-connected' : 'dot-disconnected'"
+              ></span>
+              <div class="broker-status-text">
+                <span class="broker-label">Broker Connection</span>
+                <span
+                  class="broker-sync-text"
+                  :class="{ 'text-warning': brokerSyncStatus.showWarning }"
+                  data-testid="autopilot-broker-sync-time"
+                >
+                  {{ brokerSyncStatus.text }}
+                </span>
+              </div>
+            </div>
             <span
-              class="broker-dot"
-              :class="store.dashboardSummary.kite_connected ? 'dot-connected' : 'dot-disconnected'"
-            ></span>
-            <span class="broker-text">
-              Broker: {{ store.dashboardSummary.kite_connected ? 'Connected' : 'Disconnected' }}
-            </span>
+              v-if="brokerSyncStatus.showWarning"
+              class="warning-icon"
+              title="Sync is stale"
+              data-testid="autopilot-broker-stale-warning"
+            >⚠️</span>
           </div>
         </div>
       </div>
@@ -654,15 +812,79 @@ const getStatusBadgeClass = (status) => {
           </div>
         </div>
 
-        <!-- Empty State -->
-        <div v-if="store.strategies.length === 0" class="empty-state" data-testid="autopilot-empty-state">
-          <p class="empty-state-text">No strategies yet. Create your first AutoPilot strategy!</p>
+        <!-- Empty State with Quick Deploy Templates -->
+        <div v-if="store.strategies.length === 0" class="quick-start-section" data-testid="autopilot-empty-state">
+          <div class="quick-start-header">
+            <h3 class="quick-start-title">Quick Start</h3>
+            <p class="quick-start-subtitle">Deploy a popular options strategy with one click, or build your own from scratch</p>
+          </div>
+
+          <!-- Popular Strategy Templates -->
+          <div class="template-buttons">
+            <button
+              @click="$router.push('/autopilot/templates?strategy=short_straddle')"
+              class="template-btn"
+              data-testid="autopilot-template-short-straddle"
+            >
+              <span class="template-icon">📊</span>
+              <div class="template-info">
+                <span class="template-name">Short Straddle</span>
+                <span class="template-desc">Sell ATM CE + PE</span>
+              </div>
+            </button>
+
+            <button
+              @click="$router.push('/autopilot/templates?strategy=iron_condor')"
+              class="template-btn"
+              data-testid="autopilot-template-iron-condor"
+            >
+              <span class="template-icon">🦅</span>
+              <div class="template-info">
+                <span class="template-name">Iron Condor</span>
+                <span class="template-desc">Sell narrow range</span>
+              </div>
+            </button>
+
+            <button
+              @click="$router.push('/autopilot/templates?strategy=bull_call_spread')"
+              class="template-btn"
+              data-testid="autopilot-template-bull-call-spread"
+            >
+              <span class="template-icon">📈</span>
+              <div class="template-info">
+                <span class="template-name">Bull Call Spread</span>
+                <span class="template-desc">Buy ITM, sell OTM CE</span>
+              </div>
+            </button>
+
+            <button
+              @click="$router.push('/autopilot/templates?strategy=short_strangle')"
+              class="template-btn"
+              data-testid="autopilot-template-short-strangle"
+            >
+              <span class="template-icon">🎯</span>
+              <div class="template-info">
+                <span class="template-name">Short Strangle</span>
+                <span class="template-desc">Sell OTM CE + PE</span>
+              </div>
+            </button>
+          </div>
+
+          <!-- Divider -->
+          <div class="quick-start-divider">
+            <span class="divider-text">OR</span>
+          </div>
+
+          <!-- Custom Builder Button -->
           <button
             @click="navigateToBuilder"
             data-testid="autopilot-empty-create-btn"
-            class="strategy-btn strategy-btn-primary"
+            class="strategy-btn strategy-btn-primary strategy-btn-large"
           >
-            Create Strategy
+            <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+            </svg>
+            Build Custom Strategy
           </button>
         </div>
 
@@ -681,7 +903,12 @@ const getStatusBadgeClass = (status) => {
 
       <!-- Activity Timeline -->
       <div class="activity-timeline-section" data-testid="autopilot-activity-feed">
-        <ActivityTimeline :activities="formattedActivities" :max-items="10" />
+        <ActivityTimeline
+          :activities="formattedActivities"
+          :max-items="10"
+          :is-realtime="isConnected"
+          :group-by-strategy="store.strategies.length > 1"
+        />
       </div>
     </template>
 
@@ -710,6 +937,68 @@ const getStatusBadgeClass = (status) => {
             class="strategy-btn strategy-btn-danger"
           >
             Confirm Kill Switch
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pause Strategy Modal -->
+    <div
+      v-if="showPauseModal"
+      class="modal-overlay"
+      data-testid="autopilot-pause-modal"
+    >
+      <div class="modal-content">
+        <h3 class="modal-title">Pause Strategy</h3>
+        <p class="modal-text">
+          Are you sure you want to pause "{{ selectedStrategy?.name || 'this strategy' }}"?
+          The strategy will stop monitoring conditions and placing new orders.
+        </p>
+        <div class="modal-actions">
+          <button
+            @click="showPauseModal = false"
+            data-testid="autopilot-pause-cancel"
+            class="strategy-btn strategy-btn-outline"
+          >
+            Cancel
+          </button>
+          <button
+            @click="confirmPause"
+            data-testid="autopilot-pause-confirm"
+            class="strategy-btn strategy-btn-primary"
+          >
+            Pause Strategy
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Exit Strategy Modal -->
+    <div
+      v-if="showExitModal"
+      class="modal-overlay"
+      data-testid="autopilot-exit-modal"
+    >
+      <div class="modal-content">
+        <h3 class="modal-title modal-title-danger">Exit Strategy</h3>
+        <p class="modal-text">
+          Are you sure you want to exit "{{ selectedStrategy?.name || 'this strategy' }}"?
+          This will close all open positions at current market prices.
+        </p>
+        <div class="modal-actions">
+          <button
+            @click="showExitModal = false"
+            data-testid="autopilot-exit-cancel"
+            class="strategy-btn strategy-btn-outline"
+          >
+            Cancel
+          </button>
+          <button
+            @click="confirmExit"
+            data-testid="autopilot-exit-confirm"
+            class="strategy-btn strategy-btn-danger"
+          >
+            Exit Strategy
           </button>
         </div>
       </div>
@@ -1009,12 +1298,27 @@ const getStatusBadgeClass = (status) => {
 .summary-label {
   font-size: 0.875rem;
   color: var(--kite-text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .summary-value {
   font-size: 1.5rem;
   font-weight: 700;
   color: var(--kite-text-primary);
+}
+
+.summary-text {
+  font-size: 0.875rem;
+  font-weight: 400;
+  color: var(--kite-text-secondary);
+}
+
+.summary-subtitle {
+  font-size: 0.75rem;
+  color: var(--kite-text-muted);
+  margin-top: 4px;
 }
 
 .summary-separator {
@@ -1028,6 +1332,55 @@ const getStatusBadgeClass = (status) => {
   color: var(--kite-text-secondary);
 }
 
+/* Tooltip */
+.tooltip {
+  position: relative;
+  display: inline-flex;
+  cursor: help;
+}
+
+.tooltip-icon {
+  font-size: 12px;
+  opacity: 0.6;
+}
+
+.tooltip:hover .tooltip-icon {
+  opacity: 1;
+}
+
+.tooltip-text {
+  visibility: hidden;
+  position: absolute;
+  bottom: 125%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1f2937;
+  color: white;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  white-space: nowrap;
+  z-index: 1000;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.tooltip-text::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -4px;
+  border-width: 4px;
+  border-style: solid;
+  border-color: #1f2937 transparent transparent transparent;
+}
+
+.tooltip:hover .tooltip-text {
+  visibility: visible;
+  opacity: 1;
+}
+
 /* ===== P&L Colors ===== */
 .pnl-profit {
   color: var(--kite-green) !important;
@@ -1039,6 +1392,38 @@ const getStatusBadgeClass = (status) => {
 
 .pnl-neutral {
   color: var(--kite-text-secondary) !important;
+}
+
+/* ===== P&L Sparkline & Trend Arrow ===== */
+.summary-value-with-trend {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.trend-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  margin-left: 8px;
+  font-weight: 700;
+}
+
+.trend-up {
+  color: var(--kite-green);
+}
+
+.trend-down {
+  color: var(--kite-red);
+}
+
+.pnl-sparkline {
+  display: flex;
+  justify-content: center;
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid var(--kite-border-light, #f0f0f0);
 }
 
 /* ===== Risk Badge & Progress ===== */
@@ -1083,6 +1468,18 @@ const getStatusBadgeClass = (status) => {
 .fill-warning { background: var(--kite-orange); }
 .fill-critical { background: var(--kite-red); }
 
+/* ===== Capital Progress ===== */
+.capital-progress-container {
+  margin-top: 8px;
+}
+
+.capital-usage-pct {
+  margin-top: 4px;
+  font-size: 0.75rem;
+  color: var(--kite-text-secondary);
+  text-align: center;
+}
+
 /* ===== Broker Status ===== */
 .broker-status {
   display: flex;
@@ -1090,11 +1487,61 @@ const getStatusBadgeClass = (status) => {
   margin-top: 8px;
 }
 
+.broker-status-enhanced {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 12px;
+  padding: 10px;
+  background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+  border-radius: 6px;
+  border: 1px solid var(--kite-border-light, #e5e7eb);
+}
+
+.broker-status-enhanced.status-stale {
+  background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+  border-color: var(--kite-orange, #f57c00);
+}
+
+.broker-status-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.broker-status-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.broker-label {
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: var(--kite-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.broker-sync-text {
+  font-size: 0.813rem;
+  font-weight: 600;
+  color: var(--kite-green);
+}
+
+.broker-sync-text.text-warning {
+  color: var(--kite-red);
+}
+
 .broker-dot {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
-  margin-right: 8px;
+  flex-shrink: 0;
+}
+
+.warning-icon {
+  font-size: 1.125rem;
 }
 
 .broker-text {
@@ -1128,7 +1575,109 @@ const getStatusBadgeClass = (status) => {
   gap: 8px;
 }
 
-/* ===== Empty State ===== */
+/* ===== Quick Start / Empty State ===== */
+.quick-start-section {
+  padding: 40px 32px;
+  text-align: center;
+}
+
+.quick-start-header {
+  margin-bottom: 32px;
+}
+
+.quick-start-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--kite-text-primary);
+  margin-bottom: 8px;
+}
+
+.quick-start-subtitle {
+  font-size: 0.938rem;
+  color: var(--kite-text-secondary);
+  line-height: 1.5;
+}
+
+.template-buttons {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.template-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: white;
+  border: 2px solid var(--kite-border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.template-btn:hover {
+  border-color: var(--kite-blue);
+  background: linear-gradient(135deg, #f9fafb 0%, #ffffff 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.template-icon {
+  font-size: 2rem;
+  flex-shrink: 0;
+}
+
+.template-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.template-name {
+  font-size: 0.938rem;
+  font-weight: 600;
+  color: var(--kite-text-primary);
+}
+
+.template-desc {
+  font-size: 0.75rem;
+  color: var(--kite-text-secondary);
+}
+
+.quick-start-divider {
+  position: relative;
+  margin: 24px 0;
+  height: 1px;
+  background: var(--kite-border);
+}
+
+.divider-text {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  background: white;
+  padding: 0 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--kite-text-muted);
+}
+
+.strategy-btn-large {
+  padding: 14px 32px;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.btn-icon {
+  width: 20px;
+  height: 20px;
+  margin-right: 8px;
+}
+
 .empty-state {
   padding: 32px;
   text-align: center;

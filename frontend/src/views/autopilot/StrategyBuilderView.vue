@@ -87,6 +87,23 @@ onMounted(async () => {
   }
 })
 
+// Watch for expiry_type changes and update all legs
+watch(
+  () => store.builder.strategy.expiry_type,
+  (newExpiryType) => {
+    if (!newExpiryType) return
+    const calculatedExpiry = store.getExpiryFromType(newExpiryType)
+    if (calculatedExpiry) {
+      // Update builder.expiry for expected move range
+      store.builder.expiry = calculatedExpiry
+      // Update all existing legs
+      store.builder.strategy.legs_config.forEach(leg => {
+        leg.expiry_date = calculatedExpiry
+      })
+    }
+  }
+)
+
 // Handle strategy type change - auto-populate legs
 const onStrategyTypeChange = async () => {
   const newType = selectedStrategyType.value
@@ -123,7 +140,7 @@ const applyStrategyTypeLegs = (strategyTypeKey) => {
       offset: leg.strike_offset || 0
     },
     strike_price: null, // Will be calculated based on spot
-    expiry_date: null, // Will use expiry_type
+    expiry_date: store.getExpiryFromType(store.builder.strategy.expiry_type),
     lots: store.builder.strategy.lots || 1,
     entry_price: null,
     target_price: null,

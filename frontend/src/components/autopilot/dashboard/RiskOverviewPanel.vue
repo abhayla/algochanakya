@@ -4,13 +4,50 @@
  *
  * Displays margin usage, delta exposure, and risk metrics
  */
-import { computed } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 
 const props = defineProps({
   summary: {
     type: Object,
     required: true
+  },
+  loading: {
+    type: Boolean,
+    default: false
   }
+})
+
+// Update time tracking
+const now = ref(Date.now())
+let updateInterval = null
+
+onMounted(() => {
+  // Update "now" every 5 seconds for relative time calculation
+  updateInterval = setInterval(() => {
+    now.value = Date.now()
+  }, 5000)
+})
+
+onUnmounted(() => {
+  if (updateInterval) clearInterval(updateInterval)
+})
+
+// Calculate relative update time
+const updateTime = computed(() => {
+  if (!props.summary.last_updated) return 'Updated just now'
+
+  const lastUpdated = new Date(props.summary.last_updated).getTime()
+  const diffMs = now.value - lastUpdated
+  const diffSec = Math.floor(diffMs / 1000)
+
+  if (diffSec < 10) return 'Updated just now'
+  if (diffSec < 60) return `Updated ${diffSec}s ago`
+
+  const diffMin = Math.floor(diffSec / 60)
+  if (diffMin < 60) return `Updated ${diffMin}m ago`
+
+  const diffHour = Math.floor(diffMin / 60)
+  return `Updated ${diffHour}h ago`
 })
 
 // Calculate risk metrics
@@ -43,16 +80,38 @@ const pnlColor = computed(() => totalPnL.value >= 0 ? '#10b981' : '#ef4444')
   <div class="risk-panel">
     <div class="panel-header">
       <h3 class="panel-title">Risk Overview</h3>
-      <span class="update-time">Updated just now</span>
+      <span class="update-time">{{ updateTime }}</span>
     </div>
 
-    <div class="risk-metrics">
+    <!-- Loading Skeleton -->
+    <div v-if="loading" class="risk-metrics">
+      <div class="risk-metric" v-for="i in 3" :key="i">
+        <div class="skeleton-header">
+          <div class="skeleton-circle"></div>
+          <div class="skeleton-text-group">
+            <div class="skeleton-text skeleton-text-sm"></div>
+            <div class="skeleton-text skeleton-text-lg"></div>
+          </div>
+        </div>
+        <div class="skeleton-bar"></div>
+        <div class="skeleton-text skeleton-text-xs"></div>
+      </div>
+    </div>
+
+    <!-- Actual Content -->
+    <div v-else class="risk-metrics">
       <!-- Margin Usage -->
       <div class="risk-metric">
         <div class="metric-header">
           <span class="metric-icon">💰</span>
           <div>
-            <div class="metric-label">Margin Usage</div>
+            <div class="metric-label">
+              Margin Usage
+              <span class="tooltip">
+                <span class="tooltip-icon">ℹ️</span>
+                <span class="tooltip-text">Percentage of available margin currently blocked for active strategies</span>
+              </span>
+            </div>
             <div class="metric-value" :style="{ color: marginColor }">
               {{ marginUsage }}%
             </div>
@@ -78,7 +137,13 @@ const pnlColor = computed(() => totalPnL.value >= 0 ? '#10b981' : '#ef4444')
         <div class="metric-header">
           <span class="metric-icon">Δ</span>
           <div>
-            <div class="metric-label">Net Delta</div>
+            <div class="metric-label">
+              Net Delta
+              <span class="tooltip">
+                <span class="tooltip-icon">ℹ️</span>
+                <span class="tooltip-text">Combined directional exposure across all strategies (-1 to +1)</span>
+              </span>
+            </div>
             <div class="metric-value" :style="{ color: deltaColor }">
               {{ netDelta.toFixed(2) }}
             </div>
@@ -116,7 +181,13 @@ const pnlColor = computed(() => totalPnL.value >= 0 ? '#10b981' : '#ef4444')
         <div class="metric-header">
           <span class="metric-icon">📊</span>
           <div>
-            <div class="metric-label">Total P&L</div>
+            <div class="metric-label">
+              Total P&L
+              <span class="tooltip">
+                <span class="tooltip-icon">ℹ️</span>
+                <span class="tooltip-text">Combined realized and unrealized profit/loss across all AutoPilot strategies</span>
+              </span>
+            </div>
             <div class="metric-value large" :style="{ color: pnlColor }">
               {{ totalPnL >= 0 ? '+' : '' }}₹{{ totalPnL.toLocaleString() }}
             </div>
@@ -393,5 +464,119 @@ const pnlColor = computed(() => totalPnL.value >= 0 ? '#10b981' : '#ef4444')
 
 .compact-value.waiting {
   color: #3b82f6;
+}
+
+/* Tooltip Styles */
+.tooltip {
+  position: relative;
+  display: inline-flex;
+  cursor: help;
+  margin-left: 4px;
+}
+
+.tooltip-icon {
+  font-size: 10px;
+  opacity: 0.5;
+}
+
+.tooltip:hover .tooltip-icon {
+  opacity: 1;
+}
+
+.tooltip-text {
+  visibility: hidden;
+  position: absolute;
+  bottom: 125%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1f2937;
+  color: white;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  white-space: nowrap;
+  z-index: 1000;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.tooltip-text::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -4px;
+  border-width: 4px;
+  border-style: solid;
+  border-color: #1f2937 transparent transparent transparent;
+}
+
+.tooltip:hover .tooltip-text {
+  visibility: visible;
+  opacity: 1;
+}
+
+/* Loading Skeleton Styles */
+.skeleton-header {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.skeleton-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s infinite;
+}
+
+.skeleton-text-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.skeleton-text {
+  height: 16px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s infinite;
+}
+
+.skeleton-text-xs {
+  width: 60%;
+  height: 12px;
+}
+
+.skeleton-text-sm {
+  width: 40%;
+  height: 14px;
+}
+
+.skeleton-text-lg {
+  width: 60%;
+  height: 20px;
+}
+
+.skeleton-bar {
+  height: 8px;
+  border-radius: 4px;
+  margin: 8px 0;
+  background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s infinite;
+}
+
+@keyframes skeleton-loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
 }
 </style>

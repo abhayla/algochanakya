@@ -84,7 +84,7 @@ const exitStrategy = () => emit('exit', props.strategy.id)
     <div class="pnl-section">
       <div class="pnl-label">P&L</div>
       <div class="pnl-value" :style="{ color: pnlColor }">
-        {{ pnl >= 0 ? '+' : '' }}₹{{ pnl?.toFixed(2) || '0.00' }}
+        {{ strategy.pnl >= 0 ? '+' : '' }}₹{{ strategy.pnl?.toFixed(2) || '0.00' }}
       </div>
       <div class="pnl-pct" :style="{ color: pnlColor }">
         ({{ strategy.pnl_pct?.toFixed(2) || '0.00' }}%)

@@ -45,7 +45,8 @@ export const useAutopilotStore = defineStore('autopilot', {
     builder: {
       step: 1,
       strategy: createEmptyStrategy(),
-      validation: {}
+      validation: {},
+      expiry: null
     },
 
     // Options data for leg configuration
@@ -643,8 +644,10 @@ export const useAutopilotStore = defineStore('autopilot', {
     initBuilder(strategy = null) {
       if (strategy) {
         this.builder.strategy = { ...strategy }
+        this.builder.expiry = strategy.expiry_date || null
       } else {
         this.builder.strategy = createEmptyStrategy()
+        this.builder.expiry = null
       }
       this.builder.step = 1
       this.builder.validation = {}
@@ -711,13 +714,17 @@ export const useAutopilotStore = defineStore('autopilot', {
       try {
         const response = await api.get(`/api/options/expiries?underlying=${underlying}`)
         this.expiries = response.data.expiries
-        // Pre-fetch strikes for first expiry
+        // Set builder.expiry to first available expiry
         if (this.expiries.length > 0) {
+          this.builder.expiry = this.expiries[0]
           await this.fetchStrikes(this.expiries[0])
+        } else {
+          this.builder.expiry = null
         }
       } catch (error) {
         console.error('Failed to fetch expiries:', error)
         this.expiries = []
+        this.builder.expiry = null
       }
     },
 
@@ -730,6 +737,36 @@ export const useAutopilotStore = defineStore('autopilot', {
         console.error('Failed to fetch strikes:', error)
         this.strikes[expiry] = []
       }
+    },
+
+    /**
+     * Calculate expiry date from expiry type
+     * @param {string} expiryType - 'current_week', 'next_week', or 'monthly'
+     * @returns {string|null} Expiry date string or null
+     */
+    getExpiryFromType(expiryType) {
+      const expiries = this.expiries
+      if (!expiries || expiries.length === 0) return null
+
+      // Sort expiries by date
+      const sortedExpiries = [...expiries].sort((a, b) => new Date(a) - new Date(b))
+
+      if (expiryType === 'current_week') {
+        // Find the nearest Thursday (or first available expiry)
+        return sortedExpiries[0] || null
+      } else if (expiryType === 'next_week') {
+        // Find the second Thursday (or second available expiry)
+        return sortedExpiries[1] || sortedExpiries[0] || null
+      } else if (expiryType === 'monthly') {
+        // Find monthly expiry (last Thursday of month)
+        // Monthly expiries are typically at the end of month
+        const monthlyExpiry = sortedExpiries.find(exp => {
+          const d = new Date(exp)
+          return d.getDate() > 20 // Typically monthly expiry is after 20th
+        })
+        return monthlyExpiry || sortedExpiries[sortedExpiries.length - 1] || null
+      }
+      return sortedExpiries[0] || null
     },
 
     async fetchInstrumentToken(expiry, strike, contractType) {
