@@ -45,6 +45,23 @@ const showRollWizard = ref(false)
 const isEditMode = computed(() => !!route.params.id)
 const strategyId = computed(() => route.params.id ? parseInt(route.params.id) : null)
 
+// Template mode
+const isTemplateMode = computed(() => !!route.query.templateId)
+const templateId = computed(() => route.query.templateId ? parseInt(route.query.templateId) : null)
+const sourceTemplate = ref(null) // Store original template for reference
+
+// Save as Template modal state
+const showSaveTemplateModal = ref(false)
+const saveTemplateForm = ref({
+  name: '',
+  description: '',
+  category: '',
+  risk_level: 'moderate',
+  tagsInput: '',
+  is_public: false
+})
+const savingTemplate = ref(false)
+
 // Validation errors
 const validationErrors = ref([])
 
@@ -70,6 +87,37 @@ const positionTypes = [
   { value: 'positional', label: 'Positional' }
 ]
 
+// Convert template to strategy format for builder
+const convertTemplateToStrategy = (template) => {
+  const config = template.strategy_config || {}
+  return {
+    name: `${template.name} (Copy)`,
+    description: template.description || '',
+    underlying: config.underlying || template.underlying || 'NIFTY',
+    expiry_type: config.expiry_type || 'current_week',
+    expiry_date: config.expiry_date || null,
+    lots: 1,
+    position_type: config.position_type || template.position_type || 'intraday',
+    legs_config: config.legs_config || [],
+    entry_conditions: config.entry_conditions || { logic: 'AND', conditions: [] },
+    adjustment_rules: config.adjustment_rules || [],
+    order_settings: config.order_settings || {
+      execution_mode: 'simultaneous',
+      order_type: 'MARKET',
+      product_type: 'MIS'
+    },
+    risk_settings: config.risk_settings || {
+      max_loss: null,
+      max_loss_pct: null,
+      trailing_stop: { enabled: false },
+      max_margin: null,
+      time_stop: null
+    },
+    schedule_config: config.schedule_config || {},
+    priority: 100
+  }
+}
+
 onMounted(async () => {
   // Load strategy types from backend
   await loadStrategyTypes()
@@ -82,6 +130,19 @@ onMounted(async () => {
     if (strategy?.strategy_type) {
       selectedStrategyType.value = strategy.strategy_type
       previousStrategyType.value = strategy.strategy_type
+    }
+  } else if (templateId.value) {
+    // Template mode - load template and convert to builder format
+    const template = await store.fetchTemplate(templateId.value)
+    sourceTemplate.value = template
+
+    // Convert template to strategy format for builder
+    const strategyFromTemplate = convertTemplateToStrategy(template)
+    store.initBuilder(strategyFromTemplate)
+
+    if (template.category) {
+      selectedStrategyType.value = template.category
+      previousStrategyType.value = template.category
     }
   } else {
     store.initBuilder()
@@ -337,6 +398,68 @@ const handleActivate = async () => {
   } else {
     await store.activateStrategy(strategyId.value)
     router.push(`/autopilot/strategies/${strategyId.value}`)
+  }
+}
+
+// Save Template methods
+const openSaveTemplateModal = () => {
+  // Pre-populate from current strategy
+  const strategy = store.builder.strategy
+  saveTemplateForm.value = {
+    name: strategy.name ? `${strategy.name} Template` : '',
+    description: strategy.description || '',
+    category: selectedStrategyType.value || '',
+    risk_level: 'moderate',
+    tagsInput: '',
+    is_public: false
+  }
+  showSaveTemplateModal.value = true
+}
+
+const saveAsTemplate = async () => {
+  if (!saveTemplateForm.value.name) return
+
+  savingTemplate.value = true
+  try {
+    const strategy = store.builder.strategy
+
+    // Build template data
+    const templateData = {
+      name: saveTemplateForm.value.name,
+      description: saveTemplateForm.value.description,
+      category: saveTemplateForm.value.category || null,
+      underlying: strategy.underlying,
+      position_type: strategy.position_type,
+      risk_level: saveTemplateForm.value.risk_level,
+      tags: saveTemplateForm.value.tagsInput
+        ? saveTemplateForm.value.tagsInput.split(',').map(t => t.trim()).filter(Boolean)
+        : [],
+      is_public: saveTemplateForm.value.is_public,
+      strategy_config: {
+        underlying: strategy.underlying,
+        expiry_type: strategy.expiry_type,
+        position_type: strategy.position_type,
+        legs_config: strategy.legs_config,
+        entry_conditions: strategy.entry_conditions,
+        adjustment_rules: strategy.adjustment_rules,
+        order_settings: strategy.order_settings,
+        risk_settings: strategy.risk_settings,
+        schedule_config: strategy.schedule_config
+      }
+    }
+
+    const created = await store.createTemplate(templateData)
+    showSaveTemplateModal.value = false
+
+    // Show success message and optionally navigate to template library
+    alert('Template saved successfully!')
+    // Or: router.push('/autopilot/templates')
+
+  } catch (error) {
+    console.error('Failed to save template:', error)
+    alert('Failed to save template: ' + (error.message || 'Unknown error'))
+  } finally {
+    savingTemplate.value = false
   }
 }
 
@@ -1201,6 +1324,15 @@ const canProceed = computed(() => {
         <div class="navigation-actions">
           <button
             v-if="store.builder.step === steps.length"
+            @click="openSaveTemplateModal"
+            data-testid="autopilot-builder-save-template-btn"
+            class="strategy-btn strategy-btn-secondary"
+          >
+            Save as Template
+          </button>
+
+          <button
+            v-if="store.builder.step === steps.length"
             @click="handleSave"
             :disabled="store.saving"
             data-testid="autopilot-builder-save"
@@ -1258,6 +1390,102 @@ const canProceed = computed(() => {
             data-testid="autopilot-replace-legs-confirm"
           >
             Replace Legs
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Save as Template Modal -->
+    <div v-if="showSaveTemplateModal" class="modal-overlay" data-testid="autopilot-save-template-modal">
+      <div class="modal-content modal-md">
+        <div class="modal-header">
+          <h3 class="modal-title">Save as New Template</h3>
+          <button @click="showSaveTemplateModal = false" class="close-btn">
+            <svg class="icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label required">Template Name</label>
+            <input
+              v-model="saveTemplateForm.name"
+              type="text"
+              class="form-input"
+              placeholder="e.g., My Iron Condor Strategy"
+              data-testid="autopilot-save-template-name"
+            />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Description</label>
+            <textarea
+              v-model="saveTemplateForm.description"
+              class="form-textarea"
+              rows="3"
+              placeholder="Describe your strategy..."
+              data-testid="autopilot-save-template-description"
+            ></textarea>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Category</label>
+              <select v-model="saveTemplateForm.category" class="form-select">
+                <option value="">Select Category</option>
+                <option value="income">Income</option>
+                <option value="directional">Directional</option>
+                <option value="volatility">Volatility</option>
+                <option value="hedging">Hedging</option>
+                <option value="advanced">Advanced</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Risk Level</label>
+              <select v-model="saveTemplateForm.risk_level" class="form-select">
+                <option value="conservative">Conservative</option>
+                <option value="moderate">Moderate</option>
+                <option value="aggressive">Aggressive</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Tags (comma separated)</label>
+            <input
+              v-model="saveTemplateForm.tagsInput"
+              type="text"
+              class="form-input"
+              placeholder="e.g., weekly, neutral, low-risk"
+            />
+          </div>
+
+          <div class="form-group">
+            <label class="checkbox-label">
+              <input
+                type="checkbox"
+                v-model="saveTemplateForm.is_public"
+                class="checkbox-input"
+              />
+              Make template public (visible to all users)
+            </label>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn-secondary" @click="showSaveTemplateModal = false">
+            Cancel
+          </button>
+          <button
+            class="btn-primary"
+            @click="saveAsTemplate"
+            :disabled="!saveTemplateForm.name || savingTemplate"
+            data-testid="autopilot-save-template-submit"
+          >
+            {{ savingTemplate ? 'Saving...' : 'Save Template' }}
           </button>
         </div>
       </div>
@@ -2019,5 +2247,45 @@ const canProceed = computed(() => {
 .icon-svg {
   width: 20px;
   height: 20px;
+}
+
+/* ===== Save Template Modal Styles ===== */
+.modal-md {
+  max-width: 500px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.form-label.required::after {
+  content: ' *';
+  color: var(--kite-red, #d32f2f);
+}
+
+.form-textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--kite-border);
+  border-radius: 4px;
+  font-size: 0.875rem;
+  resize: vertical;
+  color: var(--kite-text-primary);
+  background: white;
+  transition: border-color 0.15s ease;
+}
+
+.form-textarea:focus {
+  outline: none;
+  border-color: var(--kite-blue);
+}
+
+.builder-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 24px;
 }
 </style>

@@ -270,19 +270,46 @@
 
     <!-- Template Detail Modal -->
     <div v-if="selectedTemplate && !showDeployModalFlag" class="modal-overlay" data-testid="autopilot-template-details-modal">
-      <div class="modal-content modal-lg">
-        <div class="modal-header">
-          <div>
+      <div class="modal-content modal-xl">
+        <!-- Header with Navigation -->
+        <div class="modal-header-nav">
+          <button
+            class="nav-btn"
+            :disabled="!hasPrev"
+            @click="navigateToPrev"
+            data-testid="autopilot-template-details-prev"
+          >
+            <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+
+          <div class="modal-header-content">
             <h3 class="modal-title">{{ selectedTemplate.name }}</h3>
             <div class="template-badges">
-              <span v-if="selectedTemplate.is_system" class="badge badge-system">
-                System
-              </span>
-              <span v-if="selectedTemplate.category" class="badge badge-category">
-                {{ selectedTemplate.category }}
+              <span v-if="selectedTemplate.is_system" class="badge badge-system">System</span>
+              <span v-if="selectedTemplate.category" class="badge badge-category">{{ selectedTemplate.category }}</span>
+              <span :class="['risk-badge', getRiskClass(selectedTemplate.risk_level)]">
+                {{ selectedTemplate.risk_level || 'Medium' }}
               </span>
             </div>
+            <!-- Tags -->
+            <div v-if="selectedTemplate.tags?.length" class="template-tags">
+              <span v-for="tag in selectedTemplate.tags" :key="tag" class="tag">{{ tag }}</span>
+            </div>
           </div>
+
+          <button
+            class="nav-btn"
+            :disabled="!hasNext"
+            @click="navigateToNext"
+            data-testid="autopilot-template-details-next"
+          >
+            <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+
           <button @click="selectedTemplate = null" class="close-btn" data-testid="autopilot-template-details-close">
             <svg class="icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -290,26 +317,95 @@
           </button>
         </div>
 
+        <!-- Description -->
         <p class="detail-description">{{ selectedTemplate.description }}</p>
 
-        <!-- Stats Grid -->
-        <div class="detail-stats">
-          <div class="detail-stat-box">
-            <div class="detail-stat-value">{{ selectedTemplate.underlying || 'NIFTY' }}</div>
-            <div class="stat-label">Underlying</div>
+        <!-- Two Column Layout -->
+        <div class="detail-grid">
+          <!-- Left: Payoff Chart -->
+          <div class="detail-chart" data-testid="autopilot-template-details-chart">
+            <div v-if="payoffLoading" class="chart-loading">
+              <div class="loading-spinner"></div>
+            </div>
+            <PayoffChart
+              v-else-if="payoffData.spotPrices.length"
+              :spotPrices="payoffData.spotPrices"
+              :totalPnl="payoffData.totalPnl"
+            />
+            <div v-else class="chart-placeholder">
+              Payoff diagram not available
+            </div>
           </div>
-          <div class="detail-stat-box">
-            <div class="detail-stat-value">{{ selectedTemplate.expected_return_pct || '--' }}%</div>
-            <div class="stat-label">Expected Return</div>
+
+          <!-- Right: Stats -->
+          <div class="detail-stats-vertical">
+            <div class="detail-stat-row">
+              <span class="stat-label">Underlying</span>
+              <span class="stat-value">{{ selectedTemplate.underlying || 'NIFTY' }}</span>
+            </div>
+            <div class="detail-stat-row">
+              <span class="stat-label">Expected Return</span>
+              <span class="stat-value">{{ selectedTemplate.expected_return_pct || '--' }}%</span>
+            </div>
+            <div class="detail-stat-row">
+              <span class="stat-label">Max Risk</span>
+              <span class="stat-value">{{ selectedTemplate.max_risk_pct || '--' }}%</span>
+            </div>
+            <div class="detail-stat-row">
+              <span class="stat-label">Risk Level</span>
+              <span :class="['stat-value', 'risk-' + (selectedTemplate.risk_level || 'medium').toLowerCase()]">
+                {{ selectedTemplate.risk_level || 'Medium' }}
+              </span>
+            </div>
+            <div class="detail-stat-row">
+              <span class="stat-label">Deployments</span>
+              <span class="stat-value">{{ selectedTemplate.usage_count || 0 }}</span>
+            </div>
+            <div class="detail-stat-row">
+              <span class="stat-label">Rating</span>
+              <span class="stat-value">
+                <svg class="star-icon-sm" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                </svg>
+                {{ selectedTemplate.avg_rating?.toFixed(1) || '0.0' }}
+              </span>
+            </div>
           </div>
-          <div class="detail-stat-box">
-            <div class="detail-stat-value">{{ selectedTemplate.max_risk_pct || '--' }}%</div>
-            <div class="stat-label">Max Risk</div>
-          </div>
-          <div class="detail-stat-box">
-            <div class="detail-stat-value capitalize">{{ selectedTemplate.risk_level || 'Medium' }}</div>
-            <div class="stat-label">Risk Level</div>
-          </div>
+        </div>
+
+        <!-- Legs Configuration Table -->
+        <div v-if="selectedTemplate.strategy_config?.legs_config?.length" class="legs-section" data-testid="autopilot-template-details-legs">
+          <h4 class="section-heading">Strategy Legs</h4>
+          <table class="legs-table">
+            <thead>
+              <tr>
+                <th>Leg</th>
+                <th>Type</th>
+                <th>Action</th>
+                <th>Strike Selection</th>
+                <th>Qty Multiplier</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(leg, idx) in selectedTemplate.strategy_config.legs_config" :key="leg.id || idx">
+                <td>{{ leg.id || `Leg ${idx + 1}` }}</td>
+                <td>
+                  <span :class="['leg-type', leg.contract_type === 'CE' ? 'leg-ce' : 'leg-pe']">
+                    {{ leg.contract_type }}
+                  </span>
+                </td>
+                <td>
+                  <span :class="['leg-action', leg.transaction_type === 'BUY' ? 'leg-buy' : 'leg-sell']">
+                    {{ leg.transaction_type }}
+                  </span>
+                </td>
+                <td>
+                  {{ formatStrikeSelection(leg.strike_selection) }}
+                </td>
+                <td>{{ leg.quantity_multiplier || 1 }}x</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
 
         <!-- Educational Content -->
@@ -319,39 +415,51 @@
             <p class="edu-text">{{ selectedTemplate.educational_content.when_to_use }}</p>
           </div>
 
-          <div v-if="selectedTemplate.educational_content.pros?.length" class="edu-section">
-            <h4 class="edu-heading edu-pros">Pros</h4>
+          <div class="edu-columns">
+            <div v-if="selectedTemplate.educational_content.pros?.length" class="edu-section">
+              <h4 class="edu-heading edu-pros">Pros</h4>
+              <ul class="edu-list">
+                <li v-for="(pro, idx) in selectedTemplate.educational_content.pros" :key="idx">{{ pro }}</li>
+              </ul>
+            </div>
+
+            <div v-if="selectedTemplate.educational_content.cons?.length" class="edu-section">
+              <h4 class="edu-heading edu-cons">Cons</h4>
+              <ul class="edu-list">
+                <li v-for="(con, idx) in selectedTemplate.educational_content.cons" :key="idx">{{ con }}</li>
+              </ul>
+            </div>
+          </div>
+
+          <div v-if="selectedTemplate.educational_content.exit_rules?.length" class="edu-section">
+            <h4 class="edu-heading">Exit Rules</h4>
             <ul class="edu-list">
-              <li v-for="(pro, idx) in selectedTemplate.educational_content.pros" :key="idx">{{ pro }}</li>
+              <li v-for="(rule, idx) in selectedTemplate.educational_content.exit_rules" :key="idx">{{ rule }}</li>
             </ul>
           </div>
 
-          <div v-if="selectedTemplate.educational_content.cons?.length" class="edu-section">
-            <h4 class="edu-heading edu-cons">Cons</h4>
+          <div v-if="selectedTemplate.educational_content.common_mistakes?.length" class="edu-section">
+            <h4 class="edu-heading edu-warning">Common Mistakes</h4>
             <ul class="edu-list">
-              <li v-for="(con, idx) in selectedTemplate.educational_content.cons" :key="idx">{{ con }}</li>
+              <li v-for="(mistake, idx) in selectedTemplate.educational_content.common_mistakes" :key="idx">{{ mistake }}</li>
             </ul>
           </div>
         </div>
 
+        <!-- Footer -->
         <div class="modal-footer">
-          <button
-            class="btn-secondary"
-            @click="selectedTemplate = null"
-          >
-            Close
-          </button>
-          <button
-            class="btn-rate"
-            data-testid="autopilot-template-rate-btn"
-            @click="openRatingModal"
-          >
+          <button class="btn-secondary" @click="selectedTemplate = null">Close</button>
+          <button class="btn-rate" @click="openRatingModal" data-testid="autopilot-template-rate-btn">
             Rate Template
           </button>
           <button
-            class="btn-primary"
-            @click="showDeployModal(selectedTemplate)"
+            class="btn-secondary btn-use-template"
+            @click="useTemplate(selectedTemplate)"
+            data-testid="autopilot-template-use-btn"
           >
+            Use Template
+          </button>
+          <button class="btn-primary" @click="showDeployModal(selectedTemplate)">
             Deploy This Template
           </button>
         </div>
@@ -421,10 +529,11 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useAutopilotStore } from '@/stores/autopilot'
 import { useRouter } from 'vue-router'
 import KiteLayout from '@/components/layout/KiteLayout.vue'
+import PayoffChart from '@/components/strategy/PayoffChart.vue'
 import '@/assets/css/strategy-table.css'
 
 const store = useAutopilotStore()
@@ -434,8 +543,13 @@ const templates = ref([])
 const loading = ref(false)
 const error = ref(null)
 const selectedTemplate = ref(null)
+const selectedTemplateIndex = ref(-1)
 const showDeployModalFlag = ref(false)
 const deploying = ref(false)
+
+// Payoff chart state
+const payoffData = ref({ spotPrices: [], totalPnl: [] })
+const payoffLoading = ref(false)
 
 // Rating modal state
 const showRatingModal = ref(false)
@@ -501,8 +615,95 @@ const changePage = (page) => {
   fetchTemplates()
 }
 
-const selectTemplate = (template) => {
-  selectedTemplate.value = template
+const selectTemplate = async (template) => {
+  loading.value = true
+  try {
+    // Fetch full template data with strategy_config and educational_content
+    const fullTemplate = await store.fetchTemplate(template.id)
+    selectedTemplate.value = fullTemplate
+    selectedTemplateIndex.value = templates.value.findIndex(t => t.id === template.id)
+
+    // Fetch payoff data
+    await fetchPayoffData(fullTemplate)
+  } catch (err) {
+    error.value = 'Failed to load template details'
+    console.error('Error fetching template:', err)
+  } finally {
+    loading.value = false
+  }
+}
+
+// Navigation methods
+const navigateToPrev = async () => {
+  if (selectedTemplateIndex.value > 0) {
+    await selectTemplate(templates.value[selectedTemplateIndex.value - 1])
+  }
+}
+
+const navigateToNext = async () => {
+  if (selectedTemplateIndex.value < templates.value.length - 1) {
+    await selectTemplate(templates.value[selectedTemplateIndex.value + 1])
+  }
+}
+
+const hasPrev = computed(() => selectedTemplateIndex.value > 0)
+const hasNext = computed(() => selectedTemplateIndex.value < templates.value.length - 1)
+
+// Fetch payoff data for template
+const fetchPayoffData = async (template) => {
+  if (!template.strategy_config?.legs_config || template.strategy_config.legs_config.length === 0) {
+    payoffData.value = { spotPrices: [], totalPnl: [] }
+    return
+  }
+
+  payoffLoading.value = true
+  try {
+    // For now, we'll use placeholder data since the template legs might not have actual strike prices yet
+    // In a real implementation, you'd need to resolve strikes based on current spot price
+    // and call the P/L calculation API
+
+    // Generate sample payoff data based on strategy type
+    const spotBase = 26000 // NIFTY approximate
+    const spotPrices = []
+    const totalPnl = []
+
+    // Generate spot price range
+    for (let i = -20; i <= 20; i++) {
+      spotPrices.push(spotBase + (i * 100))
+    }
+
+    // Generate sample P/L curve (simplified - would need actual Black-Scholes calculation)
+    const legsCount = template.strategy_config.legs_config.length
+    for (let spot of spotPrices) {
+      // This is a simplified placeholder - real implementation would calculate actual P/L
+      const pnl = Math.sin((spot - spotBase) / 500) * 5000 * legsCount
+      totalPnl.push(pnl)
+    }
+
+    payoffData.value = { spotPrices, totalPnl }
+  } catch (err) {
+    console.error('Error fetching payoff data:', err)
+    payoffData.value = { spotPrices: [], totalPnl: [] }
+  } finally {
+    payoffLoading.value = false
+  }
+}
+
+// Format strike selection for display
+const formatStrikeSelection = (selection) => {
+  if (!selection) return 'ATM'
+  if (selection.mode === 'atm_offset') {
+    const offset = selection.offset || 0
+    if (offset === 0) return 'ATM'
+    return offset > 0 ? `ATM +${offset}` : `ATM ${offset}`
+  }
+  if (selection.mode === 'delta_based') {
+    return `Delta ${selection.target_delta}`
+  }
+  if (selection.mode === 'fixed') {
+    return `Fixed ${selection.strike}`
+  }
+  return selection.mode
 }
 
 const showDeployModal = (template) => {
@@ -588,6 +789,15 @@ const submitRating = async () => {
   } finally {
     submittingRating.value = false
   }
+}
+
+// Use Template - navigate to Strategy Builder
+const useTemplate = (template) => {
+  if (!template) return
+  router.push({
+    path: '/autopilot/strategies/new',
+    query: { templateId: template.id }
+  })
 }
 
 onMounted(() => {
@@ -1246,5 +1456,205 @@ onMounted(() => {
 /* ===== Utilities ===== */
 .capitalize {
   text-transform: capitalize;
+}
+
+/* ===== Enhanced Modal Styles ===== */
+
+/* Modal XL size */
+.modal-xl {
+  width: 100%;
+  max-width: 900px;
+  padding: 24px;
+}
+
+/* Navigation Header */
+.modal-header-nav {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.modal-header-content {
+  flex: 1;
+}
+
+.nav-btn {
+  padding: 8px;
+  background: var(--kite-body-bg, #f9fafb);
+  border: 1px solid var(--kite-border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.nav-btn:hover:not(:disabled) {
+  background: var(--kite-table-hover, #f5f5f5);
+  border-color: var(--kite-blue);
+}
+
+.nav-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.nav-icon {
+  width: 20px;
+  height: 20px;
+}
+
+/* Tags */
+.template-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.tag {
+  padding: 2px 8px;
+  font-size: 0.75rem;
+  background: var(--kite-body-bg, #f9fafb);
+  border: 1px solid var(--kite-border);
+  border-radius: 4px;
+  color: var(--kite-text-secondary);
+}
+
+/* Two Column Grid */
+.detail-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+@media (min-width: 640px) {
+  .detail-grid {
+    grid-template-columns: 1.5fr 1fr;
+  }
+}
+
+.detail-chart {
+  min-height: 200px;
+  background: var(--kite-body-bg, #f9fafb);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.chart-loading, .chart-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: var(--kite-text-muted);
+}
+
+/* Vertical Stats */
+.detail-stats-vertical {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.detail-stat-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--kite-body-bg, #f9fafb);
+  border-radius: 4px;
+}
+
+/* Legs Table */
+.legs-section {
+  margin-bottom: 24px;
+}
+
+.section-heading {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--kite-text-primary);
+  margin-bottom: 12px;
+}
+
+.legs-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.legs-table th,
+.legs-table td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--kite-border);
+}
+
+.legs-table th {
+  background: var(--kite-body-bg, #f9fafb);
+  font-weight: 500;
+  color: var(--kite-text-secondary);
+}
+
+.leg-type {
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.leg-ce {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+.leg-pe {
+  background: #fce4ec;
+  color: #c2185b;
+}
+
+.leg-action {
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.leg-buy {
+  background: #e8f5e9;
+  color: #388e3c;
+}
+
+.leg-sell {
+  background: #ffebee;
+  color: #d32f2f;
+}
+
+/* Educational Columns */
+.edu-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.edu-warning {
+  color: var(--kite-orange, #ff9800);
+}
+
+.star-icon-sm {
+  width: 14px;
+  height: 14px;
+  color: #ffc107;
+  vertical-align: middle;
+  margin-right: 4px;
+}
+
+/* Use Template Button */
+.btn-use-template {
+  background: var(--kite-blue-light, #e3f2fd);
+  color: var(--kite-blue, #387ed1);
+  border: 1px solid var(--kite-blue, #387ed1);
+}
+
+.btn-use-template:hover {
+  background: var(--kite-blue, #387ed1);
+  color: white;
 }
 </style>
