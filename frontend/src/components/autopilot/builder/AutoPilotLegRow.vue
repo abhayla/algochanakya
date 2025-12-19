@@ -466,26 +466,17 @@ const getPnLClass = (value) => {
         />
 
         <!-- Open Strike Ladder Button -->
-        <div class="strike-ladder-btn-wrapper">
-          <button
-            @click="emit('open-strike-ladder', index)"
-            class="btn-strike-ladder-open"
-            :data-testid="`autopilot-leg-open-ladder-${index}`"
-            title="Open Strike Ladder (Visual Selection)"
-          >
-            <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-              <path d="M2 1h12a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1zm0 1v3h12V2H2zm0 4v3h5V6H2zm6 0v3h6V6H8zM2 10v3h5v-3H2zm6 0v3h6v-3H8z"/>
-            </svg>
-            Open Strike Ladder
-          </button>
-        </div>
-
-        <!-- Selected Strike Display -->
-        <div v-if="leg.strike_price" class="selected-strike-display" :data-testid="`autopilot-leg-selected-strike-${index}`">
-          <span class="strike-label">Selected Strike:</span>
-          <strong class="strike-value">{{ leg.strike_price }}</strong>
-          <span v-if="leg.entry_price" class="strike-price">@ ₹{{ leg.entry_price }}</span>
-        </div>
+        <button
+          @click="emit('open-strike-ladder', index)"
+          class="btn-strike-ladder-compact"
+          :data-testid="`autopilot-leg-open-ladder-${index}`"
+          title="Open Strike Ladder for Visual Selection"
+        >
+          <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
+            <path d="M2 1h12a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1zm0 1v3h12V2H2zm0 4v3h5V6H2zm6 0v3h6V6H8zM2 10v3h5v-3H2zm6 0v3h6v-3H8z"/>
+          </svg>
+          Strike Ladder
+        </button>
       </div>
     </td>
 
@@ -747,64 +738,30 @@ const getPnLClass = (value) => {
   gap: 12px;
 }
 
-.strike-ladder-btn-wrapper {
-  margin-top: 8px;
-}
-
-.btn-strike-ladder-open {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  background: #10b981;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  width: 100%;
-  justify-content: center;
-}
-
-.btn-strike-ladder-open:hover {
-  background: #059669;
-  box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);
-}
-
-.btn-strike-ladder-open svg {
-  width: 16px;
-  height: 16px;
-  flex-shrink: 0;
-}
-
-.selected-strike-display {
+.btn-strike-ladder-compact {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 12px;
-  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
-  border: 1px solid #6ee7b7;
-  border-radius: 6px;
-  font-size: 13px;
+  padding: 6px 10px;
+  background: #10b981;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
   margin-top: 8px;
 }
 
-.selected-strike-display .strike-label {
-  color: #065f46;
-  font-weight: 500;
+.btn-strike-ladder-compact:hover {
+  background: #059669;
+  box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
 }
 
-.selected-strike-display .strike-value {
-  color: #047857;
-  font-weight: 700;
-  font-size: 15px;
-}
-
-.selected-strike-display .strike-price {
-  color: #059669;
-  font-weight: 600;
-  margin-left: auto;
+.btn-strike-ladder-compact svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
 }
 </style>

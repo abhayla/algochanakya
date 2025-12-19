@@ -1,178 +1,176 @@
 <template>
-  <div class="strike-selector">
-    <div class="mode-selector">
-      <label class="section-label">Strike Selection Mode</label>
-      <div class="mode-options">
-        <label
-          v-for="mode in modes"
-          :key="mode.value"
-          class="mode-option"
-          :class="{ 'active': localValue.mode === mode.value }"
-        >
+  <div class="strike-selector-compact">
+    <!-- Main Row: Dropdown + Input + Preview + Ladder Button -->
+    <div class="selector-row">
+      <!-- Mode Dropdown -->
+      <select
+        v-model="localValue.mode"
+        @change="onModeChange"
+        class="mode-dropdown"
+        :data-testid="`strike-selector-mode-dropdown`"
+      >
+        <option value="fixed">Fixed Strike</option>
+        <option value="atm_offset">ATM Offset</option>
+        <option value="delta_based">Delta</option>
+        <option value="premium_based">Premium</option>
+        <option value="sd_based">SD</option>
+      </select>
+
+      <!-- Mode-specific inline configuration -->
+      <div class="config-inline">
+        <!-- Fixed Strike -->
+        <template v-if="localValue.mode === 'fixed'">
           <input
-            type="radio"
-            :value="mode.value"
-            v-model="localValue.mode"
-            @change="onModeChange"
-            :data-testid="`strike-selector-mode-${mode.value}`"
+            type="number"
+            v-model.number="localValue.fixed_strike"
+            @input="onConfigChange"
+            placeholder="Strike"
+            class="compact-input"
+            :step="strikeStep"
+            data-testid="strike-selector-fixed-input"
           />
-          <span class="mode-label">{{ mode.label }}</span>
-        </label>
-      </div>
-    </div>
+        </template>
 
-    <div class="mode-config" v-if="localValue.mode">
-      <!-- Fixed Strike -->
-      <div v-if="localValue.mode === 'fixed'" class="config-section">
-        <label>Strike Price</label>
-        <input
-          type="number"
-          v-model.number="localValue.fixed_strike"
-          @input="onConfigChange"
-          placeholder="Enter strike price"
-          class="strike-input"
-          :step="strikeStep"
-          data-testid="strike-selector-fixed-input"
-        />
-      </div>
-
-      <!-- ATM Offset -->
-      <div v-if="localValue.mode === 'atm_offset'" class="config-section">
-        <label>ATM Offset (strikes)</label>
-        <div class="offset-input-group">
+        <!-- ATM Offset -->
+        <template v-else-if="localValue.mode === 'atm_offset'">
           <input
             type="number"
             v-model.number="localValue.offset"
             @input="onConfigChange"
-            placeholder="0"
-            class="strike-input"
+            class="compact-input"
             :step="1"
+            placeholder="0"
           />
-          <span class="offset-hint">ATM {{ localValue.offset > 0 ? '+' : '' }}{{ localValue.offset || 0 }}</span>
-        </div>
-      </div>
+          <span class="unit">strikes</span>
+        </template>
 
-      <!-- Delta Based -->
-      <div v-if="localValue.mode === 'delta_based'" class="config-section">
-        <label>Target Delta</label>
-        <input
-          type="number"
-          v-model.number="localValue.target_delta"
-          @input="onConfigChange"
-          placeholder="0.30"
-          class="strike-input"
-          step="0.01"
-          min="0.01"
-          max="0.99"
-        />
-        <div class="quick-select">
-          <span class="quick-label">Quick Select:</span>
-          <button
-            v-for="preset in deltaPresets"
-            :key="preset"
-            @click="selectDeltaPreset(preset)"
-            class="preset-btn"
-            :class="{ 'active': localValue.target_delta === preset }"
-            type="button"
-          >
-            {{ preset }}
-          </button>
-        </div>
-      </div>
+        <!-- Delta Based -->
+        <template v-else-if="localValue.mode === 'delta_based'">
+          <input
+            type="number"
+            v-model.number="localValue.target_delta"
+            @input="onConfigChange"
+            class="compact-input"
+            step="0.01"
+            min="0.01"
+            max="0.99"
+            placeholder="0.30"
+          />
+          <span class="unit">Δ</span>
+        </template>
 
-      <!-- Premium Based -->
-      <div v-if="localValue.mode === 'premium_based'" class="config-section">
-        <label>Target Premium (₹)</label>
-        <input
-          type="number"
-          v-model.number="localValue.target_premium"
-          @input="onConfigChange"
-          placeholder="100"
-          class="strike-input"
-          :step="5"
-          min="1"
-        />
-        <div class="quick-select">
-          <span class="quick-label">Quick Select:</span>
-          <button
-            v-for="preset in premiumPresets"
-            :key="preset"
-            @click="selectPremiumPreset(preset)"
-            class="preset-btn"
-            :class="{ 'active': localValue.target_premium === preset }"
-            type="button"
-          >
-            ₹{{ preset }}
-          </button>
-        </div>
-      </div>
+        <!-- Premium Based -->
+        <template v-else-if="localValue.mode === 'premium_based'">
+          <span class="unit">₹</span>
+          <input
+            type="number"
+            v-model.number="localValue.target_premium"
+            @input="onConfigChange"
+            class="compact-input"
+            :step="5"
+            min="1"
+            placeholder="100"
+          />
+        </template>
 
-      <!-- Standard Deviation Based -->
-      <div v-if="localValue.mode === 'sd_based'" class="config-section">
-        <label>Standard Deviations</label>
-        <input
-          type="number"
-          v-model.number="localValue.standard_deviations"
-          @input="onConfigChange"
-          placeholder="1.0"
-          class="strike-input"
-          step="0.1"
-          min="0.1"
-          max="3.0"
-        />
-        <div class="checkbox-group">
-          <label class="checkbox-label">
+        <!-- Standard Deviation Based -->
+        <template v-else-if="localValue.mode === 'sd_based'">
+          <input
+            type="number"
+            v-model.number="localValue.standard_deviations"
+            @input="onConfigChange"
+            class="compact-input"
+            step="0.1"
+            min="0.1"
+            max="3.0"
+            placeholder="1.0"
+          />
+          <span class="unit">σ</span>
+          <label class="checkbox-inline">
             <input
               type="checkbox"
               v-model="localValue.outside_sd"
               @change="onConfigChange"
             />
-            <span>Outside (farther from spot)</span>
+            <span>Outside</span>
           </label>
-        </div>
-        <div class="quick-select">
-          <span class="quick-label">Quick Select:</span>
-          <button
-            v-for="preset in sdPresets"
-            :key="preset"
-            @click="selectSDPreset(preset)"
-            class="preset-btn"
-            :class="{ 'active': localValue.standard_deviations === preset }"
-            type="button"
-          >
-            {{ preset }}σ
-          </button>
-        </div>
+        </template>
       </div>
 
-      <!-- Preview -->
-      <div v-if="preview && !loadingPreview" class="preview-section">
-        <div class="preview-label">Preview:</div>
-        <div class="preview-content">
-          <span class="preview-strike">~{{ preview.strike }} {{ optionType }}</span>
-          <span class="preview-price">@ ₹{{ preview.ltp }}</span>
-          <span v-if="preview.delta" class="preview-delta">({{ preview.delta }}Δ)</span>
-        </div>
+      <!-- Preview (always visible) -->
+      <div class="preview-inline" v-if="preview && !loadingPreview">
+        <span class="arrow">→</span>
+        <span class="strike-value">{{ preview.strike }} {{ optionType }}</span>
+        <span class="price-value">@ ₹{{ preview.ltp }}</span>
+        <span class="delta-value" v-if="preview.delta">({{ preview.delta }}Δ)</span>
       </div>
 
-      <div v-if="loadingPreview" class="loading-preview">
-        <span class="spinner"></span> Loading preview...
+      <!-- Loading indicator -->
+      <div class="preview-loading" v-if="loadingPreview">
+        <span class="spinner-small"></span>
       </div>
 
-      <div v-if="previewError" class="preview-error">
-        {{ previewError }}
+      <!-- Error indicator -->
+      <div class="preview-error-inline" v-if="previewError">
+        <span class="error-text">{{ previewError }}</span>
       </div>
     </div>
 
-    <!-- Advanced Options -->
-    <div class="advanced-options" v-if="['delta_based', 'premium_based', 'sd_based'].includes(localValue.mode)">
-      <label class="checkbox-label">
+    <!-- Quick Presets Row (only for delta/premium/sd modes) -->
+    <div
+      class="quick-presets"
+      v-if="['delta_based', 'premium_based', 'sd_based'].includes(localValue.mode)"
+    >
+      <!-- Delta Presets -->
+      <template v-if="localValue.mode === 'delta_based'">
+        <button
+          v-for="preset in deltaPresets"
+          :key="preset"
+          @click="selectDeltaPreset(preset)"
+          class="preset-chip"
+          :class="{ 'active': localValue.target_delta === preset }"
+          type="button"
+        >
+          {{ preset }}
+        </button>
+      </template>
+
+      <!-- Premium Presets -->
+      <template v-if="localValue.mode === 'premium_based'">
+        <button
+          v-for="preset in premiumPresets"
+          :key="preset"
+          @click="selectPremiumPreset(preset)"
+          class="preset-chip"
+          :class="{ 'active': localValue.target_premium === preset }"
+          type="button"
+        >
+          ₹{{ preset }}
+        </button>
+      </template>
+
+      <!-- SD Presets -->
+      <template v-if="localValue.mode === 'sd_based'">
+        <button
+          v-for="preset in sdPresets"
+          :key="preset"
+          @click="selectSDPreset(preset)"
+          class="preset-chip"
+          :class="{ 'active': localValue.standard_deviations === preset }"
+          type="button"
+        >
+          {{ preset }}σ
+        </button>
+      </template>
+
+      <!-- Prefer Round Strikes Checkbox (for applicable modes) -->
+      <label class="checkbox-inline prefer-round">
         <input
           type="checkbox"
           v-model="localValue.prefer_round_strike"
           @change="onConfigChange"
         />
-        <span>Prefer round strikes (divisible by 100)</span>
+        <span>Round strikes</span>
       </label>
     </div>
   </div>
@@ -216,13 +214,6 @@ export default {
       loadingPreview: false,
       previewError: null,
       previewDebounce: null,
-      modes: [
-        { value: 'fixed', label: 'Fixed Strike' },
-        { value: 'atm_offset', label: 'ATM Offset' },
-        { value: 'delta_based', label: 'Delta' },
-        { value: 'premium_based', label: 'Premium' },
-        { value: 'sd_based', label: 'SD' }
-      ],
       deltaPresets: [0.15, 0.20, 0.25, 0.30, 0.35],
       premiumPresets: [50, 75, 100, 150, 200],
       sdPresets: [1.0, 1.5, 2.0, 2.5, 3.0]
@@ -289,13 +280,7 @@ export default {
       }, 500)
     },
     async fetchPreview() {
-      // Only fetch preview for modes that need it
-      if (!['delta_based', 'premium_based', 'sd_based'].includes(this.localValue.mode)) {
-        this.preview = null
-        return
-      }
-
-      // Validate required fields
+      // Fetch preview for ALL modes now (including atm_offset and fixed)
       if (!this.underlying || !this.expiry || !this.optionType) {
         return
       }
@@ -311,7 +296,16 @@ export default {
           mode: this.localValue.mode
         }
 
-        if (this.localValue.mode === 'delta_based') {
+        if (this.localValue.mode === 'fixed') {
+          if (!this.localValue.fixed_strike) {
+            this.preview = null
+            this.loadingPreview = false
+            return
+          }
+          params.fixed_strike = this.localValue.fixed_strike
+        } else if (this.localValue.mode === 'atm_offset') {
+          params.offset = this.localValue.offset || 0
+        } else if (this.localValue.mode === 'delta_based') {
           params.target_delta = this.localValue.target_delta
         } else if (this.localValue.mode === 'premium_based') {
           params.target_premium = this.localValue.target_premium
@@ -324,7 +318,7 @@ export default {
         this.preview = response.data.data
       } catch (error) {
         console.error('Error fetching strike preview:', error)
-        this.previewError = 'Unable to load preview'
+        this.previewError = 'Preview unavailable'
       } finally {
         this.loadingPreview = false
       }
@@ -337,208 +331,131 @@ export default {
 </script>
 
 <style scoped>
-.strike-selector {
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  padding: 16px;
-  background: #ffffff;
-}
-
-.section-label {
-  display: block;
-  font-weight: 600;
-  font-size: 14px;
-  color: #374151;
-  margin-bottom: 12px;
-}
-
-.mode-options {
+/* Container */
+.strike-selector-compact {
   display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.mode-option {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  border: 2px solid #e5e7eb;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.2s;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
   background: #f9fafb;
-}
-
-.mode-option:hover {
-  border-color: #3b82f6;
-  background: #eff6ff;
-}
-
-.mode-option.active {
-  border-color: #3b82f6;
-  background: #dbeafe;
-}
-
-.mode-option input[type="radio"] {
-  margin: 0;
-}
-
-.mode-label {
-  font-size: 14px;
-  font-weight: 500;
-  color: #1f2937;
-}
-
-.mode-config {
-  margin-top: 16px;
-}
-
-.config-section {
-  margin-bottom: 16px;
-}
-
-.config-section label {
-  display: block;
-  font-size: 13px;
-  font-weight: 500;
-  color: #6b7280;
-  margin-bottom: 6px;
-}
-
-.strike-input {
-  width: 100%;
-  padding: 8px 12px;
-  border: 1px solid #d1d5db;
+  border: 1px solid #e5e7eb;
   border-radius: 6px;
-  font-size: 14px;
-  transition: border-color 0.2s;
 }
 
-.strike-input:focus {
-  outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-.offset-input-group {
+/* Main Row */
+.selector-row {
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-.offset-hint {
-  font-size: 12px;
-  color: #6b7280;
-  white-space: nowrap;
-}
-
-.quick-select {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 8px;
   flex-wrap: wrap;
 }
 
-.quick-label {
-  font-size: 12px;
-  color: #6b7280;
-  font-weight: 500;
-}
-
-.preset-btn {
-  padding: 4px 12px;
+/* Mode Dropdown */
+.mode-dropdown {
+  padding: 6px 10px;
   border: 1px solid #d1d5db;
   border-radius: 4px;
   font-size: 12px;
   font-weight: 500;
-  background: #f9fafb;
-  color: #374151;
+  min-width: 110px;
+  background: white;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: border-color 0.2s;
 }
 
-.preset-btn:hover {
+.mode-dropdown:focus {
+  outline: none;
   border-color: #3b82f6;
-  background: #eff6ff;
-  color: #3b82f6;
 }
 
-.preset-btn.active {
-  border-color: #3b82f6;
-  background: #3b82f6;
-  color: #ffffff;
-}
-
-.checkbox-group,
-.advanced-options {
-  margin-top: 12px;
-}
-
-.checkbox-label {
+/* Config Inline */
+.config-inline {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 13px;
-  color: #6b7280;
-  cursor: pointer;
 }
 
-.checkbox-label input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
-  cursor: pointer;
-}
-
-.preview-section {
-  margin-top: 16px;
-  padding: 12px;
-  background: #f0f9ff;
-  border: 1px solid #bae6fd;
-  border-radius: 6px;
-}
-
-.preview-label {
+.compact-input {
+  width: 65px;
+  padding: 6px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
   font-size: 12px;
-  font-weight: 600;
-  color: #0369a1;
-  margin-bottom: 6px;
+  text-align: center;
+  background: white;
+  transition: border-color 0.2s;
 }
 
-.preview-content {
+.compact-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+.unit {
+  font-size: 12px;
+  font-weight: 500;
+  color: #6b7280;
+}
+
+/* Inline Checkbox */
+.checkbox-inline {
   display: flex;
   align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
+  gap: 4px;
+  font-size: 11px;
+  color: #6b7280;
+  cursor: pointer;
+  white-space: nowrap;
 }
 
-.preview-strike {
-  font-size: 14px;
-  font-weight: 600;
-  color: #0c4a6e;
+.checkbox-inline input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
 }
 
-.preview-price {
-  font-size: 14px;
-  color: #0369a1;
-}
-
-.preview-delta {
+/* Preview Inline */
+.preview-inline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  padding: 4px 10px;
+  background: #ecfdf5;
+  border-radius: 4px;
   font-size: 12px;
-  color: #0369a1;
+  flex-shrink: 0;
+}
+
+.arrow {
+  color: #059669;
+  font-weight: 600;
+}
+
+.strike-value {
+  font-weight: 600;
+  color: #065f46;
+}
+
+.price-value {
+  color: #059669;
   font-weight: 500;
 }
 
-.loading-preview {
-  margin-top: 16px;
-  padding: 12px;
-  text-align: center;
-  font-size: 13px;
-  color: #6b7280;
+.delta-value {
+  color: #047857;
+  font-size: 11px;
 }
 
-.spinner {
+/* Loading Spinner */
+.preview-loading {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+}
+
+.spinner-small {
   display: inline-block;
   width: 14px;
   height: 14px;
@@ -552,18 +469,50 @@ export default {
   to { transform: rotate(360deg); }
 }
 
-.preview-error {
-  margin-top: 16px;
-  padding: 12px;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  border-radius: 6px;
-  font-size: 13px;
-  color: #991b1b;
+/* Error Inline */
+.preview-error-inline {
+  margin-left: auto;
+  font-size: 11px;
+  color: #dc2626;
 }
 
-.advanced-options {
-  padding-top: 16px;
+/* Quick Presets Row */
+.quick-presets {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding-top: 4px;
   border-top: 1px solid #e5e7eb;
+}
+
+.preset-chip {
+  padding: 3px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
+  background: white;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.preset-chip:hover {
+  border-color: #3b82f6;
+  background: #eff6ff;
+  color: #3b82f6;
+}
+
+.preset-chip.active {
+  border-color: #3b82f6;
+  background: #3b82f6;
+  color: white;
+}
+
+.prefer-round {
+  margin-left: auto;
+  padding-left: 8px;
+  border-left: 1px solid #e5e7eb;
 }
 </style>
