@@ -454,7 +454,7 @@ const getPnLClass = (value) => {
     </td>
 
     <!-- Strike Mode & Strike Selection -->
-    <td colspan="2" style="padding: 4px;">
+    <td style="padding: 4px;">
       <div class="strike-config">
         <!-- StrikeSelector Component -->
         <StrikeSelector
