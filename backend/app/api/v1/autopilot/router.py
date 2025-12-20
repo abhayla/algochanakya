@@ -22,6 +22,7 @@ from sqlalchemy import select, func
 
 from app.database import get_db, convert_decimals_to_float
 from app.utils.dependencies import get_current_user
+from app.constants.trading import get_strike_step
 
 from app.models.users import User
 from app.models.autopilot import (
@@ -437,14 +438,13 @@ async def preview_strike(
             if not spot_price:
                 raise HTTPException(status_code=400, detail="Could not get spot price")
 
-            # Calculate ATM strike
-            strike_steps = {"NIFTY": 50, "BANKNIFTY": 100, "FINNIFTY": 50, "SENSEX": 100}
-            strike_step = strike_steps.get(underlying.upper(), 50)
+            # Calculate ATM strike using centralized strike step
+            strike_step = get_strike_step(underlying)
             atm_strike = round(float(spot_price) / strike_step) * strike_step
 
-            # Apply offset
+            # Apply offset (offset is already in points, not strike count)
             offset_value = offset if offset is not None else 0
-            resolved_strike = atm_strike + (offset_value * strike_step)
+            resolved_strike = int(atm_strike + offset_value)
 
             # Get option data at resolved strike
             options = chain_data.get('options', [])
@@ -466,25 +466,35 @@ async def preview_strike(
                             **strike_data['ce']
                         })
 
-            # Find matching option
+            # Find matching option (cast both to int for type-safe comparison)
             matching_option = next(
-                (opt for opt in options if opt['option_type'] == option_type.upper() and opt['strike'] == resolved_strike),
+                (opt for opt in options if opt['option_type'] == option_type.upper() and int(opt['strike']) == resolved_strike),
                 None
             )
 
-            if not matching_option:
-                raise HTTPException(status_code=404, detail=f"Strike {resolved_strike} not found")
-
-            # Create result dict
-            result = {
-                'strike': resolved_strike,
-                'ltp': matching_option.get('ltp'),
-                'delta': matching_option.get('delta'),
-                'gamma': matching_option.get('gamma'),
-                'theta': matching_option.get('theta'),
-                'vega': matching_option.get('vega'),
-                'iv': matching_option.get('iv'),
-            }
+            # Create result dict - return calculated strike even if not found in chain
+            if matching_option:
+                result = {
+                    'strike': resolved_strike,
+                    'ltp': matching_option.get('ltp'),
+                    'delta': matching_option.get('delta'),
+                    'gamma': matching_option.get('gamma'),
+                    'theta': matching_option.get('theta'),
+                    'vega': matching_option.get('vega'),
+                    'iv': matching_option.get('iv'),
+                }
+            else:
+                # Strike not found in option chain, but calculation is still valid
+                # Return strike without Greeks/LTP (graceful fallback)
+                result = {
+                    'strike': resolved_strike,
+                    'ltp': None,
+                    'delta': None,
+                    'gamma': None,
+                    'theta': None,
+                    'vega': None,
+                    'iv': None,
+                }
 
         elif mode == "fixed":
             if fixed_strike is None:

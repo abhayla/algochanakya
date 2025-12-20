@@ -104,7 +104,6 @@
       <div class="preview-inline" v-if="preview && !loadingPreview">
         <span class="arrow">→</span>
         <span class="strike-value">{{ preview.strike }} {{ optionType }}</span>
-        <span class="price-value">@ ₹{{ preview.ltp }}</span>
         <span class="delta-value" v-if="preview.delta">({{ preview.delta }}Δ)</span>
       </div>
 
@@ -198,7 +197,7 @@ export default {
       required: true,
       validator: (value) => ['CE', 'PE'].includes(value)
     },
-    value: {
+    modelValue: {
       type: Object,
       default: () => ({
         mode: 'atm_offset',
@@ -214,7 +213,7 @@ export default {
   },
   data() {
     return {
-      localValue: { ...this.value },
+      localValue: { ...this.modelValue },
       preview: null,
       loadingPreview: false,
       previewError: null,
@@ -227,16 +226,16 @@ export default {
   computed: {
     strikeStep() {
       const steps = {
-        'NIFTY': 50,
+        'NIFTY': 100,
         'BANKNIFTY': 100,
-        'FINNIFTY': 50,
+        'FINNIFTY': 100,
         'SENSEX': 100
       }
-      return steps[this.underlying?.toUpperCase()] || 50
+      return steps[this.underlying?.toUpperCase()] || 100
     }
   },
   watch: {
-    value: {
+    modelValue: {
       handler(newVal) {
         this.localValue = { ...newVal }
         this.fetchPreview()
@@ -263,7 +262,7 @@ export default {
       this.onConfigChange()
     },
     onConfigChange() {
-      this.$emit('input', { ...this.localValue })
+      this.$emit('update:modelValue', { ...this.localValue })
       this.debouncedFetchPreview()
     },
     selectDeltaPreset(delta) {

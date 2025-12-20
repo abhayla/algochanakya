@@ -73,6 +73,13 @@ const strikeSelection = computed({
   }
 })
 
+// Calculated lots (read-only, auto-calculated from base lots × multiplier)
+const calculatedLots = computed(() => {
+  const baseLots = store.builder.strategy.lots || 1
+  const multiplier = props.leg.quantity_multiplier || 1
+  return baseLots * multiplier
+})
+
 // Handle StrikeSelector changes
 const handleStrikeSelectorChange = (strikeConfig) => {
   emit('update', props.index, {
@@ -495,31 +502,9 @@ const getPnLClass = (value) => {
       </select>
     </td>
 
-    <!-- Lots -->
-    <td>
-      <input
-        type="number"
-        :value="leg.lots"
-        @input="handleUpdate('lots', parseInt($event.target.value) || 1)"
-        min="1"
-        class="strategy-input compact text-center"
-        style="width: 60px;"
-        :data-testid="`autopilot-leg-lots-${index}`"
-      />
-    </td>
-
-    <!-- Entry Price -->
-    <td>
-      <input
-        type="number"
-        :value="leg.entry_price"
-        @input="handleUpdate('entry_price', parseFloat($event.target.value))"
-        step="0.05"
-        placeholder="Entry"
-        class="strategy-input compact text-right"
-        style="width: 80px;"
-        :data-testid="`autopilot-leg-entry-${index}`"
-      />
+    <!-- Lots (Read-only, auto-calculated) -->
+    <td class="text-center">
+      <span class="lots-display" :data-testid="`autopilot-leg-lots-${index}`">{{ calculatedLots }}</span>
     </td>
 
     <!-- CMP -->

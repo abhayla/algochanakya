@@ -229,12 +229,12 @@ export default {
     },
     strikeStep() {
       const steps = {
-        'NIFTY': 50,
+        'NIFTY': 100,
         'BANKNIFTY': 100,
-        'FINNIFTY': 50,
+        'FINNIFTY': 100,
         'SENSEX': 100
       }
-      return steps[this.underlying?.toUpperCase()] || 50
+      return steps[this.underlying?.toUpperCase()] || 100
     }
   },
   watch: {

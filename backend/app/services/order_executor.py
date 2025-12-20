@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.autopilot import AutoPilotStrategy, AutoPilotOrder, AutoPilotLog, AutoPilotOrderBatch
 from app.services.market_data import MarketDataService
 from app.services.strike_finder_service import StrikeFinderService
+from app.constants.trading import STRIKE_STEPS, LOT_SIZES
 
 logger = logging.getLogger(__name__)
 
@@ -60,23 +61,6 @@ class OrderResult:
     executed_price: Optional[Decimal] = None
     slippage: Optional[Decimal] = None
     leg_id: str = ""
-
-
-# Lot sizes for different underlyings
-LOT_SIZES = {
-    "NIFTY": 25,
-    "BANKNIFTY": 15,
-    "FINNIFTY": 25,
-    "SENSEX": 10,
-}
-
-# Strike steps for different underlyings
-STRIKE_STEPS = {
-    "NIFTY": 50,
-    "BANKNIFTY": 100,
-    "FINNIFTY": 50,
-    "SENSEX": 100,
-}
 
 
 class OrderExecutor:

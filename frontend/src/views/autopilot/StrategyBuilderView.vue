@@ -36,6 +36,7 @@ const {
 const selectedStrategyType = ref('')
 const previousStrategyType = ref('')
 const showReplaceConfirm = ref(false)
+const isLoadingTemplate = ref(false) // Flag to prevent auto-population during template load
 
 // Adjustment modals
 const showConversionModal = ref(false)
@@ -90,6 +91,16 @@ const positionTypes = [
 // Convert template to strategy format for builder
 const convertTemplateToStrategy = (template) => {
   const config = template.strategy_config || {}
+
+  // Sort legs by strike offset (low to high)
+  let legs = config.legs_config || []
+
+  legs = [...legs].sort((a, b) => {
+    const offsetA = a.strike_selection?.offset || 0
+    const offsetB = b.strike_selection?.offset || 0
+    return offsetA - offsetB
+  })
+
   return {
     name: `${template.name} (Copy)`,
     description: template.description || '',
@@ -98,7 +109,7 @@ const convertTemplateToStrategy = (template) => {
     expiry_date: config.expiry_date || null,
     lots: 1,
     position_type: config.position_type || template.position_type || 'intraday',
-    legs_config: config.legs_config || [],
+    legs_config: legs,
     entry_conditions: config.entry_conditions || { logic: 'AND', conditions: [] },
     adjustment_rules: config.adjustment_rules || [],
     order_settings: config.order_settings || {
@@ -126,10 +137,12 @@ onMounted(async () => {
     const strategy = await store.fetchStrategy(strategyId.value)
     store.initBuilder(strategy)
     // Note: AutoPilotLegsTable will call fetchExpiries() which will call populateLegExpiries()
-    // Set strategy type if it was saved
+    // Set strategy type if it was saved (use flag to prevent auto-population)
     if (strategy?.strategy_type) {
+      isLoadingTemplate.value = true
       selectedStrategyType.value = strategy.strategy_type
       previousStrategyType.value = strategy.strategy_type
+      isLoadingTemplate.value = false
     }
   } else if (templateId.value) {
     // Template mode - load template and convert to builder format
@@ -140,9 +153,12 @@ onMounted(async () => {
     const strategyFromTemplate = convertTemplateToStrategy(template)
     store.initBuilder(strategyFromTemplate)
 
+    // Set flag to prevent auto-population when setting strategy type
     if (template.category) {
+      isLoadingTemplate.value = true
       selectedStrategyType.value = template.category
       previousStrategyType.value = template.category
+      isLoadingTemplate.value = false
     }
   } else {
     store.initBuilder()
@@ -169,6 +185,12 @@ watch(
 // Handle strategy type change - auto-populate legs
 const onStrategyTypeChange = async () => {
   const newType = selectedStrategyType.value
+
+  // Skip auto-population if loading from template
+  if (isLoadingTemplate.value) {
+    store.builder.strategy.strategy_type = newType
+    return
+  }
 
   // If custom or empty, don't auto-populate
   if (!newType || newType === 'custom') {

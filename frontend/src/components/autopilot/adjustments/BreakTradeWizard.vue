@@ -519,7 +519,7 @@ const simulation = ref(null)
 const useCustomStrikes = ref(false)
 const customPutStrike = ref(null)
 const customCallStrike = ref(null)
-const strikeStep = ref(50) // Strike increment
+const strikeStep = ref(100) // Strike increment
 
 // Step 5: Execution
 const executing = ref(false)

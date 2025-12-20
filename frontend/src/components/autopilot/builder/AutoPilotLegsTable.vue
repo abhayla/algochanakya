@@ -279,7 +279,6 @@ const formatExpectedMove = (position) => {
               <th>Strike</th>
               <th>Type</th>
               <th>Lots</th>
-              <th>Entry</th>
               <th>CMP</th>
               <th>Exit P/L</th>
               <th></th>

@@ -386,7 +386,7 @@ const shifting = ref(false)
 const error = ref(null)
 
 // Constants
-const strikeStep = ref(50)
+const strikeStep = ref(100)
 const deltaPresets = [
   { label: '0.10', value: 0.10 },
   { label: '0.20', value: 0.20 },

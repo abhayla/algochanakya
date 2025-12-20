@@ -387,8 +387,8 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="(leg, idx) in selectedTemplate.strategy_config.legs_config" :key="leg.id || idx">
-                <td>{{ leg.id || `Leg ${idx + 1}` }}</td>
+              <tr v-for="(leg, idx) in sortedLegsConfig" :key="leg.id || idx">
+                <td>leg_{{ leg.sortedIndex }}</td>
                 <td>
                   <span :class="['leg-type', leg.contract_type === 'CE' ? 'leg-ce' : 'leg-pe']">
                     {{ leg.contract_type }}
@@ -649,6 +649,21 @@ const navigateToNext = async () => {
 const hasPrev = computed(() => selectedTemplateIndex.value > 0)
 const hasNext = computed(() => selectedTemplateIndex.value < templates.value.length - 1)
 
+// Sorted legs configuration for display
+const sortedLegsConfig = computed(() => {
+  if (!selectedTemplate.value?.strategy_config?.legs_config) return []
+  return [...selectedTemplate.value.strategy_config.legs_config]
+    .sort((a, b) => {
+      const offsetA = a.strike_selection?.offset || 0
+      const offsetB = b.strike_selection?.offset || 0
+      return offsetA - offsetB // Lower strikes first
+    })
+    .map((leg, idx) => ({
+      ...leg,
+      sortedIndex: idx + 1 // Renumber legs 1, 2, 3, 4
+    }))
+})
+
 // Fetch payoff data for template
 const fetchPayoffData = async (template) => {
   if (!template.strategy_config?.legs_config || template.strategy_config.legs_config.length === 0) {
@@ -658,25 +673,61 @@ const fetchPayoffData = async (template) => {
 
   payoffLoading.value = true
   try {
-    // For now, we'll use placeholder data since the template legs might not have actual strike prices yet
-    // In a real implementation, you'd need to resolve strikes based on current spot price
-    // and call the P/L calculation API
+    // Calculate actual P/L based on template legs configuration
+    // Uses intrinsic value at expiry for each leg
 
-    // Generate sample payoff data based on strategy type
+    // Generate sample payoff data based on template legs
     const spotBase = 26000 // NIFTY approximate
     const spotPrices = []
     const totalPnl = []
+
+    // Lot size mapping for different underlyings
+    const lotSizes = { NIFTY: 25, BANKNIFTY: 15, FINNIFTY: 25, SENSEX: 10 }
+    const underlying = template.strategy_config?.underlying || 'NIFTY'
+    const lotSize = lotSizes[underlying] || 25
 
     // Generate spot price range
     for (let i = -20; i <= 20; i++) {
       spotPrices.push(spotBase + (i * 100))
     }
 
-    // Generate sample P/L curve (simplified - would need actual Black-Scholes calculation)
-    const legsCount = template.strategy_config.legs_config.length
+    // Calculate actual P/L for each spot price based on legs
+    const legs = template.strategy_config.legs_config
+
+    // Estimate credit received (for preview purposes)
+    // For Iron Condor, credit is typically 20-30% of spread width
+    const spreadWidth = 200 // Distance between sold and bought strikes
+    const estimatedCreditPerLot = spreadWidth * 0.25 // ~25% of spread width
+    const numSpreads = legs.filter(l => l.transaction_type === 'SELL').length
+    const totalCredit = estimatedCreditPerLot * numSpreads * lotSize
+
     for (let spot of spotPrices) {
-      // This is a simplified placeholder - real implementation would calculate actual P/L
-      const pnl = Math.sin((spot - spotBase) / 500) * 5000 * legsCount
+      let intrinsicPayout = 0
+
+      for (const leg of legs) {
+        // Get strike from ATM offset
+        const offset = leg.strike_selection?.offset || 0
+        const strike = spotBase + offset
+
+        // Calculate intrinsic value at expiry
+        let intrinsic = 0
+        if (leg.contract_type === 'CE') {
+          intrinsic = Math.max(0, spot - strike)
+        } else { // PE
+          intrinsic = Math.max(0, strike - spot)
+        }
+
+        // SELL: we pay out intrinsic, BUY: we receive intrinsic
+        if (leg.transaction_type === 'SELL') {
+          intrinsicPayout += intrinsic * lotSize
+        } else { // BUY
+          intrinsicPayout -= intrinsic * lotSize
+        }
+      }
+
+      // Net P/L = Credit - Payout
+      // Positive = profit, Negative = loss
+      const pnl = totalCredit - intrinsicPayout
       totalPnl.push(pnl)
     }
 

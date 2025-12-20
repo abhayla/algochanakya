@@ -185,8 +185,8 @@ const lotSize = computed(() => {
 })
 
 const strikeStep = computed(() => {
-  const steps = { NIFTY: 50, BANKNIFTY: 100, FINNIFTY: 50 }
-  return steps[deployConfig.value.underlying] || 50
+  const steps = { NIFTY: 100, BANKNIFTY: 100, FINNIFTY: 100, SENSEX: 100 }
+  return steps[deployConfig.value.underlying] || 100
 })
 
 const canDeploy = computed(() => {

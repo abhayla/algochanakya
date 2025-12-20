@@ -36,6 +36,7 @@ from app.schemas.strategy_templates import (
 )
 from app.utils.dependencies import get_current_user, get_current_broker_connection
 from app.models.broker_connections import BrokerConnection
+from app.constants.trading import LOT_SIZES, get_strike_step
 
 router = APIRouter()
 
@@ -377,8 +378,7 @@ async def deploy_template(
         if underlying == "BANKNIFTY":
             underlying_symbol = "NSE:NIFTY BANK"
 
-        lot_sizes = {"NIFTY": 25, "BANKNIFTY": 15, "FINNIFTY": 25, "SENSEX": 10}
-        lot_size = lot_sizes.get(underlying, 25)
+        lot_size = LOT_SIZES.get(underlying, 25)
 
         # Get spot price
         try:
@@ -389,7 +389,7 @@ async def deploy_template(
             spot_price = {"NIFTY": 24000, "BANKNIFTY": 52000, "FINNIFTY": 24000}.get(underlying, 24000)
 
         # Calculate ATM strike
-        strike_interval = 50 if underlying == "NIFTY" else 100
+        strike_interval = get_strike_step(underlying)
         atm_strike = request.atm_strike or Decimal(round(spot_price / strike_interval) * strike_interval)
 
         # Get expiry
