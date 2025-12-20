@@ -10,12 +10,13 @@ from decimal import Decimal
 from typing import Dict, List, Any, Optional, Tuple
 from dataclasses import dataclass
 from enum import Enum
+from uuid import UUID
 import logging
 
 from kiteconnect import KiteConnect
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.autopilot import AutoPilotStrategy, AutoPilotOrder, AutoPilotLog
+from app.models.autopilot import AutoPilotStrategy, AutoPilotOrder, AutoPilotLog, AutoPilotOrderBatch
 from app.services.market_data import MarketDataService
 from app.services.strike_finder_service import StrikeFinderService
 
@@ -41,6 +42,11 @@ class OrderRequest:
     contract_type: str = ""  # CE, PE, FUT
     strike: Optional[Decimal] = None
     expiry: Optional[date] = None
+    # Market context (captured at order time)
+    trading_mode: str = "paper"
+    batch_id: Optional[UUID] = None
+    batch_sequence: Optional[int] = None
+    triggered_condition: Optional[Dict[str, Any]] = None
 
 
 @dataclass
@@ -89,14 +95,155 @@ class OrderExecutor:
         self.market_data = market_data
         self.strike_finder = strike_finder
 
+    async def capture_market_snapshot(
+        self,
+        underlying: str,
+        tradingsymbol: str,
+        strike: Optional[Decimal],
+        expiry: date,
+        contract_type: str
+    ) -> Dict[str, Any]:
+        """
+        Capture complete market snapshot for an option at order time.
+
+        Returns dict with: spot, vix, ltp, greeks (delta, gamma, theta, vega, iv), bid, ask, oi
+        """
+        snapshot = {}
+
+        try:
+            # Get spot price
+            spot_data = await self.market_data.get_spot_price(underlying)
+            snapshot['spot_price'] = float(spot_data['ltp']) if isinstance(spot_data, dict) else float(spot_data.ltp)
+
+            # Get VIX
+            try:
+                vix = await self.market_data.get_vix()
+                snapshot['vix'] = float(vix) if vix else None
+            except Exception as e:
+                logger.debug(f"Failed to get VIX: {e}")
+                snapshot['vix'] = None
+
+            # Get option quote (LTP, OI)
+            instrument_key = f"NFO:{tradingsymbol}"
+            try:
+                quotes = await self.market_data.get_quote([instrument_key])
+                if instrument_key in quotes:
+                    quote = quotes[instrument_key]
+                    snapshot['ltp'] = float(quote.get('last_price', 0))
+                    snapshot['oi'] = int(quote.get('oi', 0))
+                    # Note: Kite doesn't provide bid/ask in basic quote
+                    snapshot['bid'] = None
+                    snapshot['ask'] = None
+            except Exception as e:
+                logger.debug(f"Failed to get quote for {tradingsymbol}: {e}")
+                snapshot['ltp'] = None
+                snapshot['oi'] = None
+
+            # Calculate Greeks (if we have strike and spot)
+            if strike and contract_type in ['CE', 'PE']:
+                try:
+                    time_to_expiry = (expiry - date.today()).days / 365.0
+                    if time_to_expiry > 0:
+                        # Import here to avoid circular dependency
+                        from app.services.pnl_calculator import PnLCalculator
+
+                        # Use a default IV for now (ideally fetch from option chain cache)
+                        iv = 0.20
+
+                        calculator = PnLCalculator()
+                        greeks = calculator.calculate_greeks(
+                            spot=snapshot['spot_price'],
+                            strike=float(strike),
+                            time_to_expiry=time_to_expiry,
+                            volatility=iv,
+                            option_type=contract_type
+                        )
+
+                        snapshot['delta'] = greeks.get('delta')
+                        snapshot['gamma'] = greeks.get('gamma')
+                        snapshot['theta'] = greeks.get('theta')
+                        snapshot['vega'] = greeks.get('vega')
+                        snapshot['iv'] = iv * 100  # Store as percentage
+                except Exception as e:
+                    logger.debug(f"Failed to calculate Greeks: {e}")
+                    snapshot['delta'] = None
+                    snapshot['gamma'] = None
+                    snapshot['theta'] = None
+                    snapshot['vega'] = None
+                    snapshot['iv'] = None
+
+        except Exception as e:
+            logger.error(f"Error capturing market snapshot: {e}")
+
+        return snapshot
+
+    async def create_order_batch(
+        self,
+        db: AsyncSession,
+        strategy: AutoPilotStrategy,
+        purpose: str,
+        orders_count: int,
+        trading_mode: str,
+        rule_name: Optional[str] = None,
+        triggered_condition: Optional[Dict] = None
+    ) -> AutoPilotOrderBatch:
+        """
+        Create a new order batch to group related orders.
+
+        Args:
+            db: Database session
+            strategy: Strategy instance
+            purpose: entry, adjustment, exit, etc.
+            orders_count: Number of orders in batch
+            trading_mode: 'live' or 'paper'
+            rule_name: Name of adjustment rule (if applicable)
+            triggered_condition: Condition that triggered this batch
+
+        Returns:
+            AutoPilotOrderBatch instance
+        """
+        try:
+            # Capture market snapshot for the batch
+            spot_data = await self.market_data.get_spot_price(strategy.underlying)
+            spot_price = float(spot_data['ltp']) if isinstance(spot_data, dict) else float(spot_data.ltp)
+
+            try:
+                vix = await self.market_data.get_vix()
+                vix_value = float(vix) if vix else None
+            except Exception:
+                vix_value = None
+
+            batch = AutoPilotOrderBatch(
+                strategy_id=strategy.id,
+                user_id=strategy.user_id,
+                purpose=purpose,
+                rule_name=rule_name,
+                status="pending",
+                total_orders=orders_count,
+                spot_price=Decimal(str(spot_price)),
+                vix=Decimal(str(vix_value)) if vix_value else None,
+                triggered_condition=triggered_condition,
+                trading_mode=trading_mode
+            )
+
+            db.add(batch)
+            await db.flush()  # Get the ID without committing
+
+            return batch
+        except Exception as e:
+            logger.error(f"Failed to create order batch: {e}")
+            raise
+
     async def execute_entry(
         self,
         db: AsyncSession,
         strategy: AutoPilotStrategy,
-        dry_run: bool = False
+        dry_run: bool = False,
+        trading_mode: str = "paper",
+        triggered_condition: Optional[Dict] = None
     ) -> Tuple[bool, List[OrderResult]]:
         """
-        Execute entry orders for a strategy.
+        Execute entry orders for a strategy with batch tracking.
 
         Phase 5C #15: Validates Delta Neutral Entry if enabled.
 
@@ -104,12 +251,24 @@ class OrderExecutor:
             db: Database session
             strategy: Strategy to execute
             dry_run: If True, simulate without placing real orders
+            trading_mode: 'live' or 'paper'
+            triggered_condition: Condition that triggered entry
 
         Returns:
             Tuple of (success, list of order results)
         """
         legs_config = strategy.legs_config or []
         order_settings = strategy.order_settings or {}
+
+        # Create order batch to group these entry orders
+        batch = await self.create_order_batch(
+            db=db,
+            strategy=strategy,
+            purpose="entry",
+            orders_count=len(legs_config),
+            trading_mode=trading_mode,
+            triggered_condition=triggered_condition
+        )
 
         # Phase 5C #15: Delta Neutral Entry Validation
         delta_neutral_entry = order_settings.get('delta_neutral_entry', False)
@@ -170,6 +329,13 @@ class OrderExecutor:
             purpose="entry"
         )
 
+        # Add batch info and trading mode to each request
+        for i, req in enumerate(order_requests):
+            req.trading_mode = trading_mode
+            req.batch_id = batch.id
+            req.batch_sequence = i + 1
+            req.triggered_condition = triggered_condition
+
         if execution_style == 'simultaneous':
             # Execute all orders at once
             tasks = [
@@ -196,6 +362,20 @@ class OrderExecutor:
                 if i < len(order_requests) - 1 and delay_between > 0:
                     await asyncio.sleep(delay_between)
 
+        # Update batch status
+        batch.completed_orders = sum(1 for r in results if r.success)
+        batch.failed_orders = sum(1 for r in results if not r.success)
+
+        if batch.failed_orders == 0:
+            batch.status = "complete"
+        elif batch.completed_orders > 0:
+            batch.status = "partial"
+        else:
+            batch.status = "failed"
+
+        batch.completed_at = datetime.now()
+        await db.commit()
+
         return all_success, results
 
     async def execute_exit(
@@ -204,10 +384,12 @@ class OrderExecutor:
         strategy: AutoPilotStrategy,
         exit_type: str = "market",
         reason: str = "manual",
-        dry_run: bool = False
+        dry_run: bool = False,
+        trading_mode: str = "paper",
+        triggered_condition: Optional[Dict] = None
     ) -> Tuple[bool, List[OrderResult]]:
         """
-        Execute exit orders to close all positions.
+        Execute exit orders to close all positions with batch tracking.
 
         Args:
             db: Database session
@@ -215,6 +397,8 @@ class OrderExecutor:
             exit_type: market, limit
             reason: Reason for exit
             dry_run: Simulate without real orders
+            trading_mode: 'live' or 'paper'
+            triggered_condition: Condition that triggered exit
 
         Returns:
             Tuple of (success, list of order results)
@@ -227,10 +411,20 @@ class OrderExecutor:
             logger.info(f"No positions to exit for strategy {strategy.id}")
             return True, []
 
+        # Create batch for exit orders
+        batch = await self.create_order_batch(
+            db=db,
+            strategy=strategy,
+            purpose="exit",
+            orders_count=len(current_positions),
+            trading_mode=trading_mode,
+            triggered_condition=triggered_condition
+        )
+
         results: List[OrderResult] = []
         all_success = True
 
-        for position in current_positions:
+        for i, position in enumerate(current_positions):
             # Create reverse order to close position
             req = OrderRequest(
                 strategy_id=strategy.id,
@@ -246,7 +440,12 @@ class OrderExecutor:
                 underlying=strategy.underlying,
                 contract_type=position.get('contract_type', ''),
                 strike=Decimal(str(position.get('strike', 0))) if position.get('strike') else None,
-                expiry=position.get('expiry')
+                expiry=position.get('expiry'),
+                # Batch info
+                trading_mode=trading_mode,
+                batch_id=batch.id,
+                batch_sequence=i + 1,
+                triggered_condition=triggered_condition
             )
 
             result = await self._place_order(db, req, strategy, dry_run)
@@ -254,6 +453,20 @@ class OrderExecutor:
 
             if not result.success:
                 all_success = False
+
+        # Update batch status
+        batch.completed_orders = sum(1 for r in results if r.success)
+        batch.failed_orders = sum(1 for r in results if not r.success)
+
+        if batch.failed_orders == 0:
+            batch.status = "complete"
+        elif batch.completed_orders > 0:
+            batch.status = "partial"
+        else:
+            batch.status = "failed"
+
+        batch.completed_at = datetime.now()
+        await db.commit()
 
         return all_success, results
 
@@ -326,27 +539,31 @@ class OrderExecutor:
         strategy: AutoPilotStrategy,
         dry_run: bool
     ) -> OrderResult:
-        """Place a single order."""
+        """Place a single order with full market snapshot capture."""
 
-        # Get LTP before order
-        ltp_at_order = None
-        try:
-            instrument_key = f"NFO:{request.tradingsymbol}"
-            ltp_data = await self.market_data.get_ltp([instrument_key])
-            ltp_at_order = ltp_data.get(instrument_key)
-        except Exception as e:
-            logger.warning(f"Could not get LTP before order: {e}")
+        # Capture full market snapshot before placing order
+        snapshot = await self.capture_market_snapshot(
+            underlying=request.underlying,
+            tradingsymbol=request.tradingsymbol,
+            strike=request.strike,
+            expiry=request.expiry,
+            contract_type=request.contract_type
+        )
 
-        if dry_run:
-            # Simulate order
-            logger.info(f"[DRY RUN] Would place order: {request.transaction_type} "
+        ltp_at_order = snapshot.get('ltp')
+        is_paper = request.trading_mode == "paper"
+
+        if dry_run or is_paper:
+            # Simulate order (paper trading or dry run)
+            mode_label = "PAPER" if is_paper else "DRY RUN"
+            logger.info(f"[{mode_label}] Would place order: {request.transaction_type} "
                        f"{request.quantity} {request.tradingsymbol}")
 
-            # Create simulated order record
+            # Create simulated order record with full snapshot
             order = AutoPilotOrder(
                 strategy_id=strategy.id,
                 user_id=strategy.user_id,
-                kite_order_id=f"DRY_{datetime.now().timestamp()}",
+                kite_order_id=f"PAPER_{datetime.now().timestamp()}" if is_paper else f"DRY_{datetime.now().timestamp()}",
                 purpose=request.purpose,
                 leg_index=request.leg_index,
                 exchange=request.exchange,
@@ -359,12 +576,28 @@ class OrderExecutor:
                 order_type=request.order_type,
                 product=request.product,
                 quantity=request.quantity,
-                ltp_at_order=ltp_at_order,
-                executed_price=ltp_at_order,
+                ltp_at_order=Decimal(str(ltp_at_order)) if ltp_at_order else None,
+                executed_price=Decimal(str(ltp_at_order)) if ltp_at_order else None,
                 executed_quantity=request.quantity,
                 status="complete",
                 order_placed_at=datetime.now(),
-                order_filled_at=datetime.now()
+                order_filled_at=datetime.now(),
+                # Trading mode and batch
+                trading_mode=request.trading_mode,
+                batch_id=request.batch_id,
+                batch_sequence=request.batch_sequence,
+                triggered_condition=request.triggered_condition,
+                # Market snapshot
+                spot_at_order=Decimal(str(snapshot['spot_price'])) if snapshot.get('spot_price') else None,
+                vix_at_order=Decimal(str(snapshot['vix'])) if snapshot.get('vix') else None,
+                delta_at_order=Decimal(str(snapshot['delta'])) if snapshot.get('delta') else None,
+                gamma_at_order=Decimal(str(snapshot['gamma'])) if snapshot.get('gamma') else None,
+                theta_at_order=Decimal(str(snapshot['theta'])) if snapshot.get('theta') else None,
+                vega_at_order=Decimal(str(snapshot['vega'])) if snapshot.get('vega') else None,
+                iv_at_order=Decimal(str(snapshot['iv'])) if snapshot.get('iv') else None,
+                oi_at_order=snapshot.get('oi'),
+                bid_at_order=Decimal(str(snapshot['bid'])) if snapshot.get('bid') else None,
+                ask_at_order=Decimal(str(snapshot['ask'])) if snapshot.get('ask') else None
             )
             db.add(order)
             await db.commit()
@@ -374,7 +607,7 @@ class OrderExecutor:
                 success=True,
                 order_id=str(order.id),
                 kite_order_id=order.kite_order_id,
-                message="Dry run - order simulated",
+                message=f"{mode_label} - order simulated",
                 executed_price=ltp_at_order,
                 leg_id=request.leg_id
             )
@@ -401,7 +634,7 @@ class OrderExecutor:
                 lambda: self.kite.place_order(variety="regular", **order_params)
             )
 
-            # Create order record in database
+            # Create order record in database with full snapshot
             order = AutoPilotOrder(
                 strategy_id=strategy.id,
                 user_id=strategy.user_id,
@@ -418,9 +651,25 @@ class OrderExecutor:
                 order_type=request.order_type,
                 product=request.product,
                 quantity=request.quantity,
-                ltp_at_order=ltp_at_order,
+                ltp_at_order=Decimal(str(ltp_at_order)) if ltp_at_order else None,
                 status="placed",
-                order_placed_at=datetime.now()
+                order_placed_at=datetime.now(),
+                # Trading mode and batch
+                trading_mode=request.trading_mode,
+                batch_id=request.batch_id,
+                batch_sequence=request.batch_sequence,
+                triggered_condition=request.triggered_condition,
+                # Market snapshot
+                spot_at_order=Decimal(str(snapshot['spot_price'])) if snapshot.get('spot_price') else None,
+                vix_at_order=Decimal(str(snapshot['vix'])) if snapshot.get('vix') else None,
+                delta_at_order=Decimal(str(snapshot['delta'])) if snapshot.get('delta') else None,
+                gamma_at_order=Decimal(str(snapshot['gamma'])) if snapshot.get('gamma') else None,
+                theta_at_order=Decimal(str(snapshot['theta'])) if snapshot.get('theta') else None,
+                vega_at_order=Decimal(str(snapshot['vega'])) if snapshot.get('vega') else None,
+                iv_at_order=Decimal(str(snapshot['iv'])) if snapshot.get('iv') else None,
+                oi_at_order=snapshot.get('oi'),
+                bid_at_order=Decimal(str(snapshot['bid'])) if snapshot.get('bid') else None,
+                ask_at_order=Decimal(str(snapshot['ask'])) if snapshot.get('ask') else None
             )
             db.add(order)
             await db.commit()

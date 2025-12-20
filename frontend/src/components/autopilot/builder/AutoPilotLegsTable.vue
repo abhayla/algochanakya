@@ -192,13 +192,6 @@ const addLeg = () => {
     entry_price: null,
     instrument_token: null,
     tradingsymbol: null,
-    // AutoPilot-specific fields
-    target_price: null,
-    stop_loss_price: null,
-    trailing_stop_loss: { enabled: false, trigger_profit: null, trail_amount: null },
-    target_pct: null,
-    stop_loss_pct: null,
-    max_loss_amount: null,
     execution_order: legs.value.length + 1
   })
 }
@@ -289,12 +282,6 @@ const formatExpectedMove = (position) => {
               <th>Entry</th>
               <th>CMP</th>
               <th>Exit P/L</th>
-              <th>Target ₹</th>
-              <th>SL ₹</th>
-              <th>Trail</th>
-              <th>Target %</th>
-              <th>SL %</th>
-              <th>Max Loss</th>
               <th></th>
             </tr>
           </thead>
@@ -313,7 +300,7 @@ const formatExpectedMove = (position) => {
 
             <!-- Empty State -->
             <tr v-if="legs.length === 0" class="empty-state" data-testid="autopilot-legs-empty-state">
-              <td colspan="16">
+              <td colspan="10">
                 No legs added. Click "+ Add Row" to start building your strategy.
               </td>
             </tr>
@@ -325,7 +312,7 @@ const formatExpectedMove = (position) => {
               <td></td>
               <td class="text-center">-</td>
               <td class="text-right font-bold">-</td>
-              <td colspan="7"></td>
+              <td colspan="1"></td>
             </tr>
           </tbody>
         </table>

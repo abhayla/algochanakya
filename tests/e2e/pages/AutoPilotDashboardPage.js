@@ -766,30 +766,6 @@ export class AutoPilotStrategyBuilderPage extends BasePage {
     return this.getByTestId(`autopilot-leg-exit-pnl-${index}`);
   }
 
-  getLegTargetPrice(index) {
-    return this.getByTestId(`autopilot-leg-target-price-${index}`);
-  }
-
-  getLegStopLossPrice(index) {
-    return this.getByTestId(`autopilot-leg-stop-loss-price-${index}`);
-  }
-
-  getLegTrailingSl(index) {
-    return this.getByTestId(`autopilot-leg-trailing-sl-${index}`);
-  }
-
-  getLegTargetPct(index) {
-    return this.getByTestId(`autopilot-leg-target-pct-${index}`);
-  }
-
-  getLegStopLossPct(index) {
-    return this.getByTestId(`autopilot-leg-stop-loss-pct-${index}`);
-  }
-
-  getLegMaxLoss(index) {
-    return this.getByTestId(`autopilot-leg-max-loss-${index}`);
-  }
-
   getLegDeleteButton(index) {
     return this.getByTestId(`autopilot-leg-delete-${index}`);
   }

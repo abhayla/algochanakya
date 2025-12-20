@@ -551,6 +551,75 @@ export const useAutopilotStore = defineStore('autopilot', {
     },
 
     // ========================================================================
+    // ORDER HISTORY
+    // ========================================================================
+
+    async fetchStrategyOrders(strategyId, options = {}) {
+      try {
+        const response = await api.get(`/api/v1/autopilot/strategies/${strategyId}/orders`, {
+          params: {
+            page: options.page || 1,
+            page_size: options.page_size || 20
+          }
+        })
+        return response.data.data
+      } catch (error) {
+        this.error = error.response?.data?.detail || error.message
+        throw error
+      }
+    },
+
+    async fetchAllOrders(options = {}) {
+      try {
+        const response = await api.get('/api/v1/autopilot/orders', {
+          params: {
+            strategy_id: options.strategy_id,
+            purpose: options.purpose,
+            trading_mode: options.trading_mode,
+            from_date: options.from_date,
+            to_date: options.to_date,
+            page: options.page || 1,
+            page_size: options.page_size || 20
+          }
+        })
+        return response.data.data
+      } catch (error) {
+        this.error = error.response?.data?.detail || error.message
+        throw error
+      }
+    },
+
+    async fetchOrderBatches(options = {}) {
+      try {
+        const response = await api.get('/api/v1/autopilot/orders/batches', {
+          params: {
+            strategy_id: options.strategy_id,
+            purpose: options.purpose,
+            trading_mode: options.trading_mode,
+            from_date: options.from_date,
+            to_date: options.to_date,
+            page: options.page || 1,
+            page_size: options.page_size || 20
+          }
+        })
+        return response.data.data
+      } catch (error) {
+        this.error = error.response?.data?.detail || error.message
+        throw error
+      }
+    },
+
+    async fetchOrderBatch(batchId) {
+      try {
+        const response = await api.get(`/api/v1/autopilot/orders/batches/${batchId}`)
+        return response.data.data
+      } catch (error) {
+        this.error = error.response?.data?.detail || error.message
+        throw error
+      }
+    },
+
+    // ========================================================================
     // TRAILING STOP (Phase 3)
     // ========================================================================
 

@@ -11,8 +11,10 @@ import re
 
 from app.database import get_db
 from app.models import User, BrokerConnection
+from app.models.autopilot import AutoPilotOrder, AutoPilotStrategy
 from app.services.kite_orders import KiteOrderService
 from app.utils.dependencies import get_current_user, get_current_broker_connection
+from sqlalchemy import select, and_
 
 router = APIRouter()
 
@@ -447,5 +449,90 @@ async def get_grouped_positions(
 
     return {
         "groups": grouped_list,
+        "summary": positions_data["summary"]
+    }
+
+
+@router.get("/annotated")
+async def get_annotated_positions(
+    position_type: str = Query("day", description="day or net"),
+    user: User = Depends(get_current_user),
+    broker: BrokerConnection = Depends(get_current_broker_connection),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get positions annotated with AutoPilot metadata.
+
+    Returns positions with additional fields:
+    - is_autopilot: Boolean indicating if position is from AutoPilot
+    - autopilot_strategy_id: ID of the strategy that created this position
+    - autopilot_strategy_name: Name of the strategy
+    - autopilot_trading_mode: 'live' or 'paper'
+    """
+
+    # Get base positions data
+    positions_data = await get_positions(position_type, user, broker, db)
+    positions = positions_data["positions"]
+
+    if not positions:
+        return positions_data
+
+    # Get all tradingsymbols
+    tradingsymbols = [pos["tradingsymbol"] for pos in positions]
+
+    # Query AutoPilot orders that match these tradingsymbols
+    # Join with strategies to get strategy info
+    query = (
+        select(
+            AutoPilotOrder.tradingsymbol,
+            AutoPilotOrder.trading_mode,
+            AutoPilotStrategy.id.label("strategy_id"),
+            AutoPilotStrategy.name.label("strategy_name")
+        )
+        .join(AutoPilotStrategy, AutoPilotOrder.strategy_id == AutoPilotStrategy.id)
+        .where(
+            and_(
+                AutoPilotOrder.user_id == user.id,
+                AutoPilotOrder.tradingsymbol.in_(tradingsymbols),
+                AutoPilotOrder.status.in_(["complete"])  # Only completed orders
+            )
+        )
+        .distinct(AutoPilotOrder.tradingsymbol)
+    )
+
+    result = await db.execute(query)
+    autopilot_data = result.all()
+
+    # Create lookup dict
+    autopilot_lookup = {
+        row.tradingsymbol: {
+            "strategy_id": row.strategy_id,
+            "strategy_name": row.strategy_name,
+            "trading_mode": row.trading_mode
+        }
+        for row in autopilot_data
+    }
+
+    # Annotate positions
+    annotated_positions = []
+    for pos in positions:
+        tradingsymbol = pos["tradingsymbol"]
+
+        if tradingsymbol in autopilot_lookup:
+            ap_data = autopilot_lookup[tradingsymbol]
+            pos["is_autopilot"] = True
+            pos["autopilot_strategy_id"] = ap_data["strategy_id"]
+            pos["autopilot_strategy_name"] = ap_data["strategy_name"]
+            pos["autopilot_trading_mode"] = ap_data["trading_mode"]
+        else:
+            pos["is_autopilot"] = False
+            pos["autopilot_strategy_id"] = None
+            pos["autopilot_strategy_name"] = None
+            pos["autopilot_trading_mode"] = None
+
+        annotated_positions.append(pos)
+
+    return {
+        "positions": annotated_positions,
         "summary": positions_data["summary"]
     }

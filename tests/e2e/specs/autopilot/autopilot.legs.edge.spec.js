@@ -69,18 +69,6 @@ test.describe('AutoPilot Legs Configuration - Edge Cases', () => {
     expect(parseInt(lotsValue) || 1).toBeGreaterThanOrEqual(1);
   });
 
-  test('should handle negative price values gracefully', async ({ authenticatedPage }) => {
-    // Add a leg
-    await builderPage.addLegButton.click();
-
-    // Try to enter negative target price
-    await builderPage.getLegTargetPrice(0).fill('-100');
-
-    // UI should accept the input (validation happens on submit)
-    const value = await builderPage.getLegTargetPrice(0).inputValue();
-    expect(value).toBe('-100');
-  });
-
   test('should delete all legs when select all and delete', async ({ authenticatedPage }) => {
     // Add 3 legs
     await builderPage.addLegButton.click();
@@ -103,9 +91,6 @@ test.describe('AutoPilot Legs Configuration - Edge Cases', () => {
       lots: 3
     });
 
-    // Fill some AutoPilot fields
-    await builderPage.getLegTargetPrice(0).fill('200');
-
     // Collapse and expand the Basic Info section to simulate UI interaction
     // This tests that leg data persists through UI state changes
     const basicInfoToggle = authenticatedPage.locator('[data-testid="autopilot-builder-basic-info-toggle"]');
@@ -116,7 +101,6 @@ test.describe('AutoPilot Legs Configuration - Edge Cases', () => {
     await expect(builderPage.getLegAction(0)).toHaveValue('BUY');
     await expect(builderPage.getLegType(0)).toHaveValue('CE');
     await expect(builderPage.getLegLots(0)).toHaveValue('3');
-    await expect(builderPage.getLegTargetPrice(0)).toHaveValue('200');
   });
 
   test('should update select all checkbox state when individual selections change', async ({ authenticatedPage }) => {
@@ -155,19 +139,6 @@ test.describe('AutoPilot Legs Configuration - Edge Cases', () => {
 
     count = await builderPage.getLegCount();
     expect(count).toBe(2);
-  });
-
-  test('should toggle trailing stop loss checkbox', async ({ authenticatedPage }) => {
-    // Add a leg
-    await builderPage.addLegButton.click();
-
-    // Check trailing SL
-    await builderPage.getLegTrailingSl(0).check();
-    await expect(builderPage.getLegTrailingSl(0)).toBeChecked();
-
-    // Uncheck trailing SL
-    await builderPage.getLegTrailingSl(0).uncheck();
-    await expect(builderPage.getLegTrailingSl(0)).not.toBeChecked();
   });
 
   test('should display CMP column with valid live prices', async ({ authenticatedPage }) => {
@@ -240,14 +211,11 @@ test.describe('AutoPilot Legs Configuration - Edge Cases', () => {
     // Wait for leg row to be visible
     await expect(builderPage.legRows.first()).toBeVisible();
 
-    // Enter decimal values
+    // Enter decimal value in entry field
     await builderPage.getLegEntry(0).fill('125.50');
-    await builderPage.getLegTargetPrice(0).fill('150.75');
 
-    // Verify values are preserved (browser may normalize 125.50 to 125.5)
+    // Verify value is preserved (browser may normalize 125.50 to 125.5)
     const entryValue = await builderPage.getLegEntry(0).inputValue();
-    const targetValue = await builderPage.getLegTargetPrice(0).inputValue();
     expect(parseFloat(entryValue)).toBe(125.5);
-    expect(parseFloat(targetValue)).toBe(150.75);
   });
 });

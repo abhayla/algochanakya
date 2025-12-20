@@ -70,7 +70,8 @@ export const usePositionsStore = defineStore('positions', {
       this.error = null;
 
       try {
-        const response = await api.get('/api/positions/', {
+        // Use annotated endpoint to get AutoPilot metadata
+        const response = await api.get('/api/positions/annotated', {
           params: { position_type: this.positionType }
         });
 

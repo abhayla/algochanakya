@@ -80,27 +80,6 @@ test.describe('AutoPilot Legs Configuration - Happy Path', () => {
     await expect(builderPage.getLegLots(0)).toHaveValue('2');
   });
 
-  test('should configure AutoPilot-specific fields', async ({ authenticatedPage }) => {
-    // Add a leg
-    await builderPage.addLegButton.click();
-
-    // Fill AutoPilot-specific fields
-    await builderPage.getLegTargetPrice(0).fill('150');
-    await builderPage.getLegStopLossPrice(0).fill('80');
-    await builderPage.getLegTrailingSl(0).check();
-    await builderPage.getLegTargetPct(0).fill('20');
-    await builderPage.getLegStopLossPct(0).fill('10');
-    await builderPage.getLegMaxLoss(0).fill('5000');
-
-    // Verify values
-    await expect(builderPage.getLegTargetPrice(0)).toHaveValue('150');
-    await expect(builderPage.getLegStopLossPrice(0)).toHaveValue('80');
-    await expect(builderPage.getLegTrailingSl(0)).toBeChecked();
-    await expect(builderPage.getLegTargetPct(0)).toHaveValue('20');
-    await expect(builderPage.getLegStopLossPct(0)).toHaveValue('10');
-    await expect(builderPage.getLegMaxLoss(0)).toHaveValue('5000');
-  });
-
   test('should delete a single leg', async ({ authenticatedPage }) => {
     // Add 2 legs
     await builderPage.addLegButton.click();
@@ -221,9 +200,6 @@ test.describe('AutoPilot Legs Configuration - Happy Path', () => {
     await expect(table).toContainText('Entry');
     await expect(table).toContainText('CMP');
     await expect(table).toContainText('Exit P/L');
-    await expect(table).toContainText('Target');
-    await expect(table).toContainText('SL');
-    await expect(table).toContainText('Trail');
   });
 
   test('should display valid CMP values from Kite live data', async ({ authenticatedPage }) => {

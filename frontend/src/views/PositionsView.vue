@@ -119,7 +119,17 @@
               <!-- Instrument -->
               <td class="instrument-col">
                 <div class="instrument-info">
-                  <span class="instrument-name">{{ pos.tradingsymbol }}</span>
+                  <div class="instrument-header">
+                    <span class="instrument-name">{{ pos.tradingsymbol }}</span>
+                    <AutoPilotBadge
+                      v-if="pos.is_autopilot"
+                      :strategy="{
+                        id: pos.autopilot_strategy_id,
+                        name: pos.autopilot_strategy_name,
+                        trading_mode: pos.autopilot_trading_mode
+                      }"
+                    />
+                  </div>
                   <div class="instrument-meta">
                     <span class="underlying">{{ pos.underlying }}</span>
                     <span v-if="pos.option_type" :class="['option-badge', pos.option_type.toLowerCase()]">
@@ -378,6 +388,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue';
 import KiteLayout from '@/components/layout/KiteLayout.vue';
+import AutoPilotBadge from '@/components/autopilot/positions/AutoPilotBadge.vue';
 import { usePositionsStore } from '@/stores/positions';
 import { useScrollIndicator } from '@/composables/useScrollIndicator';
 
@@ -738,6 +749,12 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+.instrument-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .instrument-name {

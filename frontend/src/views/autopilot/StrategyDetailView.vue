@@ -9,6 +9,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useAutopilotStore } from '@/stores/autopilot'
 import KiteLayout from '@/components/layout/KiteLayout.vue'
 import ShareModal from '@/components/autopilot/common/ShareModal.vue'
+import ActivateModal from '@/components/autopilot/common/ActivateModal.vue'
 import LegsPanel from '@/components/autopilot/legs/LegsPanel.vue'
 import SuggestionsPanel from '@/components/autopilot/suggestions/SuggestionsPanel.vue'
 import AnalyticsPanel from '@/components/autopilot/analytics/AnalyticsPanel.vue'
@@ -21,6 +22,7 @@ import AdjustmentCostCard from '@/components/autopilot/analytics/AdjustmentCostC
 import ActivityTimeline from '@/components/autopilot/dashboard/ActivityTimeline.vue'
 import StraddlePremiumChart from '@/components/autopilot/monitoring/StraddlePremiumChart.vue'
 import ThetaDecayChart from '@/components/autopilot/monitoring/ThetaDecayChart.vue'
+import OrdersTab from '@/components/autopilot/orders/OrdersTab.vue'
 import '@/assets/css/strategy-table.css'
 
 const router = useRouter()
@@ -33,6 +35,7 @@ const showExitModal = ref(false)
 const showDeleteModal = ref(false)
 const showShareModal = ref(false)
 const showWhatIfModal = ref(false)
+const showActivateModal = ref(false)
 const activeTab = ref('configuration')
 
 // Phase 5F: Adjustment Modals
@@ -75,8 +78,15 @@ const handleClone = async () => {
   router.push(`/autopilot/strategies/${cloned.id}/edit`)
 }
 
-const handleActivate = async () => {
-  await store.activateStrategy(strategyId.value)
+const handleActivate = () => {
+  showActivateModal.value = true
+}
+
+const handleActivateConfirmed = async () => {
+  // Modal will handle the activation and emit 'activated' event
+  // Just refresh the strategy after activation
+  await store.fetchStrategy(strategyId.value)
+  showActivateModal.value = false
 }
 
 const handleDelete = async () => {
@@ -541,6 +551,13 @@ const strategyActivities = computed(() => {
               Position Legs
             </button>
             <button
+              @click="activeTab = 'orders'"
+              :class="['tab-btn', { 'tab-btn-active': activeTab === 'orders' }]"
+              data-testid="autopilot-orders-tab-btn"
+            >
+              Orders
+            </button>
+            <button
               @click="activeTab = 'charts'"
               :class="['tab-btn', { 'tab-btn-active': activeTab === 'charts' }]"
               data-testid="strategy-detail-charts-tab"
@@ -743,6 +760,11 @@ const strategyActivities = computed(() => {
             <LegsPanel :strategy-id="strategyId" />
           </div>
 
+          <!-- Orders Tab -->
+          <div v-if="activeTab === 'orders'">
+            <OrdersTab :strategy-id="strategyId" />
+          </div>
+
           <!-- Charts Tab -->
           <div v-if="activeTab === 'charts'" data-testid="strategy-detail-charts-section">
             <div class="charts-section">
@@ -935,6 +957,15 @@ const strategyActivities = computed(() => {
       @close="closeShareModal"
       @shared="onStrategyShared"
       @unshared="onStrategyUnshared"
+    />
+
+    <!-- Activate Modal -->
+    <ActivateModal
+      :show="showActivateModal"
+      :strategy-id="store.currentStrategy?.id"
+      :strategy-name="store.currentStrategy?.name"
+      @close="showActivateModal = false"
+      @activated="handleActivateConfirmed"
     />
 
     <!-- What-If Modal -->

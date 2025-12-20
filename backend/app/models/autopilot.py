@@ -11,8 +11,9 @@ from typing import Optional, List
 from sqlalchemy import (
     Column, BigInteger, String, Integer, Boolean, Numeric,
     Date, DateTime, ForeignKey, Text, CheckConstraint,
-    UniqueConstraint, Index, Enum
+    UniqueConstraint, Index, Enum as SaEnum
 )
+import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import JSONB, ARRAY, UUID, ENUM as PgEnum
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -108,6 +109,11 @@ class ConfirmationStatus(str, enum.Enum):
     REJECTED = "rejected"
     EXPIRED = "expired"
     CANCELLED = "cancelled"
+
+
+class TradingMode(str, enum.Enum):
+    LIVE = "live"
+    PAPER = "paper"
 
 
 # Models
@@ -253,6 +259,16 @@ class AutoPilotStrategy(Base):
     priority = Column(Integer, nullable=False, default=100)
     runtime_state = Column(JSONB, nullable=True)
 
+    # Trading Mode
+    trading_mode = Column(
+        PgEnum('live', 'paper', name='autopilot_trading_mode', create_type=False),
+        nullable=True
+    )
+    activated_in_mode = Column(
+        PgEnum('live', 'paper', name='autopilot_trading_mode', create_type=False),
+        nullable=True
+    )
+
     # References
     source_template_id = Column(BigInteger, ForeignKey("autopilot_templates.id", ondelete="SET NULL"), nullable=True)
     cloned_from_id = Column(BigInteger, ForeignKey("autopilot_strategies.id", ondelete="SET NULL"), nullable=True)
@@ -365,6 +381,36 @@ class AutoPilotOrder(Base):
     # Metadata
     raw_response = Column(JSONB, nullable=True)
 
+    # Trading Mode
+    trading_mode = Column(
+        PgEnum('live', 'paper', name='autopilot_trading_mode', create_type=False),
+        nullable=True,
+        server_default="paper"
+    )
+
+    # Batch Reference
+    batch_id = Column(UUID(as_uuid=True), ForeignKey("autopilot_order_batches.id", ondelete="SET NULL"), nullable=True)
+    batch_sequence = Column(Integer, nullable=True)
+
+    # Triggered Condition
+    triggered_condition = Column(JSONB, nullable=True)
+
+    # Market Context at Order Time
+    spot_at_order = Column(Numeric(10, 2), nullable=True)
+    vix_at_order = Column(Numeric(6, 2), nullable=True)
+
+    # Greeks at Order Time
+    delta_at_order = Column(Numeric(6, 4), nullable=True)
+    gamma_at_order = Column(Numeric(8, 6), nullable=True)
+    theta_at_order = Column(Numeric(10, 2), nullable=True)
+    vega_at_order = Column(Numeric(8, 4), nullable=True)
+    iv_at_order = Column(Numeric(6, 2), nullable=True)
+
+    # Order Book Snapshot
+    oi_at_order = Column(BigInteger, nullable=True)
+    bid_at_order = Column(Numeric(10, 2), nullable=True)
+    ask_at_order = Column(Numeric(10, 2), nullable=True)
+
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
@@ -372,6 +418,71 @@ class AutoPilotOrder(Base):
     # Relationships
     strategy = relationship("AutoPilotStrategy", back_populates="orders")
     user = relationship("User")
+    batch = relationship("AutoPilotOrderBatch", back_populates="orders")
+
+
+class AutoPilotOrderBatch(Base):
+    """
+    Represents a batch of orders placed together for entry, adjustment, or exit.
+    Groups related orders and captures market snapshot at batch creation time.
+    """
+    __tablename__ = "autopilot_order_batches"
+
+    # Primary Key
+    id = Column(UUID(as_uuid=True), primary_key=True, server_default=sa.text('gen_random_uuid()'))
+
+    # Foreign Keys
+    strategy_id = Column(BigInteger, ForeignKey("autopilot_strategies.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+
+    # Batch Context
+    purpose = Column(
+        PgEnum('entry', 'adjustment', 'hedge', 'exit', 'roll_close', 'roll_open', 'kill_switch',
+               name='autopilot_order_purpose', create_type=False),
+        nullable=False
+    )
+    rule_name = Column(String(100), nullable=True)
+    adjustment_log_id = Column(BigInteger, nullable=True)
+
+    # Batch Status
+    status = Column(String(20), nullable=False, server_default="pending")
+    total_orders = Column(Integer, nullable=False, server_default=sa.text('0'))
+    completed_orders = Column(Integer, nullable=False, server_default=sa.text('0'))
+    failed_orders = Column(Integer, nullable=False, server_default=sa.text('0'))
+
+    # Market Snapshot (at batch creation)
+    spot_price = Column(Numeric(10, 2), nullable=True)
+    vix = Column(Numeric(6, 2), nullable=True)
+
+    # Greeks Snapshot (aggregate for all legs in batch)
+    net_delta = Column(Numeric(6, 4), nullable=True)
+    net_gamma = Column(Numeric(8, 6), nullable=True)
+    net_theta = Column(Numeric(10, 2), nullable=True)
+    net_vega = Column(Numeric(8, 4), nullable=True)
+
+    # Triggered Condition
+    triggered_condition = Column(JSONB, nullable=True)
+    trigger_value = Column(JSONB, nullable=True)
+
+    # Trading Mode
+    trading_mode = Column(
+        PgEnum('live', 'paper', name='autopilot_trading_mode', create_type=False),
+        nullable=False,
+        server_default="paper"
+    )
+
+    # Timing
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Execution Stats
+    total_slippage = Column(Numeric(12, 2), nullable=True)
+    execution_duration_ms = Column(Integer, nullable=True)
+
+    # Relationships
+    strategy = relationship("AutoPilotStrategy")
+    user = relationship("User")
+    orders = relationship("AutoPilotOrder", back_populates="batch")
 
 
 class AutoPilotLog(Base):

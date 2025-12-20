@@ -503,6 +503,13 @@ const getStatusBadgeClass = (status) => {
           Option Chain
         </button>
         <button
+          @click="$router.push('/autopilot/orders')"
+          data-testid="autopilot-nav-orders"
+          class="strategy-btn strategy-btn-outline"
+        >
+          Order History
+        </button>
+        <button
           @click="navigateToBuilder"
           :disabled="!store.canCreateStrategy"
           data-testid="autopilot-create-strategy-btn"

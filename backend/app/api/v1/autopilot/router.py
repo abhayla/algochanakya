@@ -26,7 +26,7 @@ from app.utils.dependencies import get_current_user
 from app.models.users import User
 from app.models.autopilot import (
     AutoPilotStrategy, AutoPilotUserSettings, AutoPilotOrder, AutoPilotLog,
-    AutoPilotPendingConfirmation, ConfirmationStatus
+    AutoPilotPendingConfirmation, ConfirmationStatus, AutoPilotOrderBatch
 )
 from app.schemas.autopilot import (
     StrategyCreateRequest, StrategyUpdateRequest, StrategyResponse,
@@ -711,11 +711,16 @@ async def activate_strategy(
             detail=f"Maximum active strategies limit ({max_active}) reached"
         )
 
+    # Determine trading mode
+    trading_mode = "paper" if request.paper_trading else "live"
+
     # Activate
     strategy.status = "waiting"
     strategy.activated_at = datetime.utcnow()
+    strategy.activated_in_mode = trading_mode
     strategy.runtime_state = {
         "paper_trading": request.paper_trading,
+        "trading_mode": trading_mode,
         "current_pnl": 0,
         "margin_used": 0,
         "current_positions": [],
@@ -731,8 +736,11 @@ async def activate_strategy(
         strategy_id=strategy.id,
         event_type="strategy_activated",
         severity="info",
-        message=f"Strategy '{strategy.name}' activated",
-        event_data={"paper_trading": request.paper_trading}
+        message=f"Strategy '{strategy.name}' activated in {trading_mode} mode",
+        event_data={
+            "paper_trading": request.paper_trading,
+            "trading_mode": trading_mode
+        }
     )
     db.add(log)
     await db.commit()
@@ -2899,5 +2907,422 @@ async def get_straddle_premium(
     return DataResponse(
         message="Straddle premium retrieved successfully",
         data=response.model_dump(),
+        timestamp=datetime.now(timezone.utc)
+    )
+
+
+# ============================================================================
+# ORDER HISTORY & BATCHES (Live/Paper Trading)
+# ============================================================================
+
+@router.get("/orders", response_model=PaginatedResponse)
+async def list_orders(
+    strategy_id: Optional[int] = Query(None, description="Filter by strategy ID"),
+    purpose: Optional[str] = Query(None, description="Filter by purpose: entry, adjustment, exit"),
+    trading_mode: Optional[str] = Query(None, description="Filter by mode: live, paper"),
+    status: Optional[str] = Query(None, description="Filter by status"),
+    from_date: Optional[date] = Query(None, description="Start date filter"),
+    to_date: Optional[date] = Query(None, description="End date filter"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=200),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    List all AutoPilot orders with filtering and pagination.
+    Returns orders grouped by batch with market snapshots.
+    """
+    # Build query
+    query = select(AutoPilotOrder).where(AutoPilotOrder.user_id == current_user.id)
+
+    if strategy_id:
+        query = query.where(AutoPilotOrder.strategy_id == strategy_id)
+    if purpose:
+        query = query.where(AutoPilotOrder.purpose == purpose)
+    if trading_mode:
+        query = query.where(AutoPilotOrder.trading_mode == trading_mode)
+    if status:
+        query = query.where(AutoPilotOrder.status == status)
+    if from_date:
+        query = query.where(AutoPilotOrder.created_at >= from_date)
+    if to_date:
+        query = query.where(AutoPilotOrder.created_at <= to_date)
+
+    # Count total
+    count_query = select(func.count()).select_from(query.subquery())
+    total_result = await db.execute(count_query)
+    total = total_result.scalar()
+
+    # Apply pagination and ordering
+    query = query.order_by(AutoPilotOrder.created_at.desc())
+    query = query.offset((page - 1) * page_size).limit(page_size)
+
+    result = await db.execute(query)
+    orders = result.scalars().all()
+
+    # Convert to dict and include market snapshot
+    orders_data = []
+    for order in orders:
+        order_dict = {
+            "id": order.id,
+            "strategy_id": order.strategy_id,
+            "batch_id": str(order.batch_id) if order.batch_id else None,
+            "batch_sequence": order.batch_sequence,
+            "kite_order_id": order.kite_order_id,
+            "trading_mode": order.trading_mode,
+            "purpose": order.purpose,
+            "tradingsymbol": order.tradingsymbol,
+            "underlying": order.underlying,
+            "contract_type": order.contract_type,
+            "strike": float(order.strike) if order.strike else None,
+            "transaction_type": order.transaction_type,
+            "order_type": order.order_type,
+            "quantity": order.quantity,
+            "status": order.status,
+            "ltp_at_order": float(order.ltp_at_order) if order.ltp_at_order else None,
+            "executed_price": float(order.executed_price) if order.executed_price else None,
+            "slippage_amount": float(order.slippage_amount) if order.slippage_amount else None,
+            "slippage_pct": float(order.slippage_pct) if order.slippage_pct else None,
+            # Market snapshot
+            "spot_at_order": float(order.spot_at_order) if order.spot_at_order else None,
+            "vix_at_order": float(order.vix_at_order) if order.vix_at_order else None,
+            "delta_at_order": float(order.delta_at_order) if order.delta_at_order else None,
+            "gamma_at_order": float(order.gamma_at_order) if order.gamma_at_order else None,
+            "theta_at_order": float(order.theta_at_order) if order.theta_at_order else None,
+            "vega_at_order": float(order.vega_at_order) if order.vega_at_order else None,
+            "iv_at_order": float(order.iv_at_order) if order.iv_at_order else None,
+            "oi_at_order": order.oi_at_order,
+            "triggered_condition": order.triggered_condition,
+            "created_at": order.created_at.isoformat() if order.created_at else None,
+            "order_placed_at": order.order_placed_at.isoformat() if order.order_placed_at else None,
+            "order_filled_at": order.order_filled_at.isoformat() if order.order_filled_at else None,
+        }
+        orders_data.append(order_dict)
+
+    return PaginatedResponse(
+        message="Orders retrieved successfully",
+        data=orders_data,
+        total=total,
+        page=page,
+        page_size=page_size,
+        total_pages=(total + page_size - 1) // page_size,
+        timestamp=datetime.now(timezone.utc)
+    )
+
+
+@router.get("/orders/batches", response_model=PaginatedResponse)
+async def list_order_batches(
+    strategy_id: Optional[int] = Query(None, description="Filter by strategy ID"),
+    purpose: Optional[str] = Query(None, description="Filter by purpose"),
+    trading_mode: Optional[str] = Query(None, description="Filter by trading mode"),
+    from_date: Optional[date] = Query(None, description="Start date filter"),
+    to_date: Optional[date] = Query(None, description="End date filter"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """List order batches with aggregate data."""
+    query = select(AutoPilotOrderBatch).where(AutoPilotOrderBatch.user_id == current_user.id)
+
+    if strategy_id:
+        query = query.where(AutoPilotOrderBatch.strategy_id == strategy_id)
+    if purpose:
+        query = query.where(AutoPilotOrderBatch.purpose == purpose)
+    if trading_mode:
+        query = query.where(AutoPilotOrderBatch.trading_mode == trading_mode)
+    if from_date:
+        query = query.where(AutoPilotOrderBatch.created_at >= from_date)
+    if to_date:
+        query = query.where(AutoPilotOrderBatch.created_at <= to_date)
+
+    # Count total
+    count_query = select(func.count()).select_from(query.subquery())
+    total_result = await db.execute(count_query)
+    total = total_result.scalar()
+
+    # Apply pagination and ordering
+    query = query.order_by(AutoPilotOrderBatch.created_at.desc())
+    query = query.offset((page - 1) * page_size).limit(page_size)
+
+    result = await db.execute(query)
+    batches = result.scalars().all()
+
+    batches_data = []
+    for batch in batches:
+        # Get strategy name
+        strategy_result = await db.execute(
+            select(AutoPilotStrategy.name).where(AutoPilotStrategy.id == batch.strategy_id)
+        )
+        strategy_name = strategy_result.scalar()
+
+        # Get all orders in this batch
+        orders_result = await db.execute(
+            select(AutoPilotOrder).where(
+                AutoPilotOrder.batch_id == batch.id
+            ).order_by(AutoPilotOrder.batch_sequence)
+        )
+        orders = orders_result.scalars().all()
+
+        # Calculate net P&L from orders
+        net_pnl = sum(
+            float(order.pnl) if order.pnl else 0.0
+            for order in orders
+        )
+
+        batch_dict = {
+            "id": str(batch.id),
+            "strategy_id": batch.strategy_id,
+            "strategy_name": strategy_name,
+            "purpose": batch.purpose,
+            "rule_name": batch.rule_name,
+            "status": batch.status,
+            "total_orders": batch.total_orders,
+            "completed_orders": batch.completed_orders,
+            "failed_orders": batch.failed_orders,
+            "trading_mode": batch.trading_mode,
+            "spot_price": float(batch.spot_price) if batch.spot_price else None,
+            "vix": float(batch.vix) if batch.vix else None,
+            "net_delta": float(batch.net_delta) if batch.net_delta else None,
+            "net_gamma": float(batch.net_gamma) if batch.net_gamma else None,
+            "net_theta": float(batch.net_theta) if batch.net_theta else None,
+            "net_vega": float(batch.net_vega) if batch.net_vega else None,
+            "net_pnl": net_pnl,
+            "triggered_condition": batch.triggered_condition,
+            "total_slippage": float(batch.total_slippage) if batch.total_slippage else None,
+            "execution_duration_ms": batch.execution_duration_ms,
+            "created_at": batch.created_at.isoformat() if batch.created_at else None,
+            "completed_at": batch.completed_at.isoformat() if batch.completed_at else None,
+            "orders": [
+                {
+                    "id": order.id,
+                    "batch_sequence": order.batch_sequence,
+                    "tradingsymbol": order.tradingsymbol,
+                    "strike": float(order.strike) if order.strike else None,
+                    "contract_type": order.contract_type,
+                    "transaction_type": order.transaction_type,
+                    "quantity": order.quantity,
+                    "order_type": order.order_type,
+                    "status": order.status,
+                    "entry_price": float(order.executed_price) if order.executed_price else None,
+                    "exit_price": None,  # Not applicable for entry orders
+                    "slippage": float(order.slippage_pct) if order.slippage_pct else 0.0,
+                    "delta_at_order": float(order.delta_at_order) if order.delta_at_order else None,
+                    "gamma_at_order": float(order.gamma_at_order) if order.gamma_at_order else None,
+                    "theta_at_order": float(order.theta_at_order) if order.theta_at_order else None,
+                    "vega_at_order": float(order.vega_at_order) if order.vega_at_order else None,
+                    "pnl": float(order.pnl) if order.pnl else 0.0,
+                }
+                for order in orders
+            ]
+        }
+        batches_data.append(batch_dict)
+
+    return PaginatedResponse(
+        message="Order batches retrieved successfully",
+        data=batches_data,
+        total=total,
+        page=page,
+        page_size=page_size,
+        total_pages=(total + page_size - 1) // page_size,
+        timestamp=datetime.now(timezone.utc)
+    )
+
+
+@router.get("/orders/batches/{batch_id}", response_model=DataResponse)
+async def get_batch_detail(
+    batch_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get detailed batch information including all orders."""
+    from uuid import UUID
+
+    try:
+        batch_uuid = UUID(batch_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid batch ID format")
+
+    result = await db.execute(
+        select(AutoPilotOrderBatch).where(
+            AutoPilotOrderBatch.id == batch_uuid,
+            AutoPilotOrderBatch.user_id == current_user.id
+        )
+    )
+    batch = result.scalar_one_or_none()
+
+    if not batch:
+        raise HTTPException(status_code=404, detail="Batch not found")
+
+    # Get all orders in this batch
+    orders_result = await db.execute(
+        select(AutoPilotOrder).where(
+            AutoPilotOrder.batch_id == batch_uuid
+        ).order_by(AutoPilotOrder.batch_sequence)
+    )
+    orders = orders_result.scalars().all()
+
+    # Get strategy name
+    strategy_result = await db.execute(
+        select(AutoPilotStrategy.name).where(AutoPilotStrategy.id == batch.strategy_id)
+    )
+    strategy_name = strategy_result.scalar()
+
+    # Build response
+    batch_data = {
+        "id": str(batch.id),
+        "strategy_id": batch.strategy_id,
+        "strategy_name": strategy_name,
+        "purpose": batch.purpose,
+        "rule_name": batch.rule_name,
+        "status": batch.status,
+        "total_orders": batch.total_orders,
+        "completed_orders": batch.completed_orders,
+        "failed_orders": batch.failed_orders,
+        "trading_mode": batch.trading_mode,
+        "spot_price": float(batch.spot_price) if batch.spot_price else None,
+        "vix": float(batch.vix) if batch.vix else None,
+        "net_delta": float(batch.net_delta) if batch.net_delta else None,
+        "triggered_condition": batch.triggered_condition,
+        "created_at": batch.created_at.isoformat() if batch.created_at else None,
+        "completed_at": batch.completed_at.isoformat() if batch.completed_at else None,
+        "orders": [
+            {
+                "id": order.id,
+                "batch_sequence": order.batch_sequence,
+                "tradingsymbol": order.tradingsymbol,
+                "strike": float(order.strike) if order.strike else None,
+                "contract_type": order.contract_type,
+                "transaction_type": order.transaction_type,
+                "quantity": order.quantity,
+                "order_type": order.order_type,
+                "status": order.status,
+                "executed_price": float(order.executed_price) if order.executed_price else None,
+                "slippage_pct": float(order.slippage_pct) if order.slippage_pct else None,
+                "delta_at_order": float(order.delta_at_order) if order.delta_at_order else None,
+                "gamma_at_order": float(order.gamma_at_order) if order.gamma_at_order else None,
+                "theta_at_order": float(order.theta_at_order) if order.theta_at_order else None,
+                "vega_at_order": float(order.vega_at_order) if order.vega_at_order else None,
+            }
+            for order in orders
+        ]
+    }
+
+    return DataResponse(
+        message="Batch details retrieved successfully",
+        data=batch_data,
+        timestamp=datetime.now(timezone.utc)
+    )
+
+
+@router.get("/strategies/{strategy_id}/orders", response_model=DataResponse)
+async def get_strategy_orders(
+    strategy_id: int,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get all order batches for a specific strategy."""
+    # Verify strategy belongs to user
+    strategy_result = await db.execute(
+        select(AutoPilotStrategy).where(
+            AutoPilotStrategy.id == strategy_id,
+            AutoPilotStrategy.user_id == current_user.id
+        )
+    )
+    strategy = strategy_result.scalar_one_or_none()
+
+    if not strategy:
+        raise HTTPException(status_code=404, detail="Strategy not found")
+
+    # Get batches for this strategy
+    query = select(AutoPilotOrderBatch).where(
+        AutoPilotOrderBatch.strategy_id == strategy_id
+    )
+
+    # Count total
+    count_query = select(func.count()).select_from(query.subquery())
+    total_result = await db.execute(count_query)
+    total = total_result.scalar()
+
+    # Apply pagination and ordering
+    query = query.order_by(AutoPilotOrderBatch.created_at.desc())
+    query = query.offset((page - 1) * page_size).limit(page_size)
+
+    result = await db.execute(query)
+    batches = result.scalars().all()
+
+    batches_data = []
+    for batch in batches:
+        # Get all orders in this batch
+        orders_result = await db.execute(
+            select(AutoPilotOrder).where(
+                AutoPilotOrder.batch_id == batch.id
+            ).order_by(AutoPilotOrder.batch_sequence)
+        )
+        orders = orders_result.scalars().all()
+
+        # Calculate net P&L from orders
+        net_pnl = sum(
+            float(order.pnl) if order.pnl else 0.0
+            for order in orders
+        )
+
+        batch_dict = {
+            "id": str(batch.id),
+            "strategy_id": batch.strategy_id,
+            "purpose": batch.purpose,
+            "rule_name": batch.rule_name,
+            "status": batch.status,
+            "total_orders": batch.total_orders,
+            "completed_orders": batch.completed_orders,
+            "failed_orders": batch.failed_orders,
+            "trading_mode": batch.trading_mode,
+            "spot_price": float(batch.spot_price) if batch.spot_price else None,
+            "vix": float(batch.vix) if batch.vix else None,
+            "net_delta": float(batch.net_delta) if batch.net_delta else None,
+            "net_gamma": float(batch.net_gamma) if batch.net_gamma else None,
+            "net_theta": float(batch.net_theta) if batch.net_theta else None,
+            "net_vega": float(batch.net_vega) if batch.net_vega else None,
+            "net_pnl": net_pnl,
+            "triggered_condition": batch.triggered_condition,
+            "total_slippage": float(batch.total_slippage) if batch.total_slippage else None,
+            "execution_duration_ms": batch.execution_duration_ms,
+            "created_at": batch.created_at.isoformat() if batch.created_at else None,
+            "completed_at": batch.completed_at.isoformat() if batch.completed_at else None,
+            "orders": [
+                {
+                    "id": order.id,
+                    "batch_sequence": order.batch_sequence,
+                    "tradingsymbol": order.tradingsymbol,
+                    "strike": float(order.strike) if order.strike else None,
+                    "contract_type": order.contract_type,
+                    "transaction_type": order.transaction_type,
+                    "quantity": order.quantity,
+                    "order_type": order.order_type,
+                    "status": order.status,
+                    "entry_price": float(order.executed_price) if order.executed_price else None,
+                    "exit_price": None,  # Not applicable for entry orders
+                    "slippage": float(order.slippage_pct) if order.slippage_pct else 0.0,
+                    "delta_at_order": float(order.delta_at_order) if order.delta_at_order else None,
+                    "gamma_at_order": float(order.gamma_at_order) if order.gamma_at_order else None,
+                    "theta_at_order": float(order.theta_at_order) if order.theta_at_order else None,
+                    "vega_at_order": float(order.vega_at_order) if order.vega_at_order else None,
+                    "pnl": float(order.pnl) if order.pnl else 0.0,
+                }
+                for order in orders
+            ]
+        }
+        batches_data.append(batch_dict)
+
+    return DataResponse(
+        message="Strategy order batches retrieved successfully",
+        data={
+            "batches": batches_data,
+            "total": total,
+            "page": page,
+            "page_size": page_size
+        },
         timestamp=datetime.now(timezone.utc)
     )
