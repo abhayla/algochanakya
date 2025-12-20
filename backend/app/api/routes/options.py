@@ -14,6 +14,7 @@ from app.database import get_db
 from app.models import User, Instrument
 from app.schemas.strategies import ExpiryResponse, StrikeResponse, OptionChainItem, OptionChainResponse
 from app.utils.dependencies import get_current_user
+from app.constants import LOT_SIZES, INDEX_TOKENS
 
 router = APIRouter()
 
@@ -22,13 +23,6 @@ UNDERLYING_MAP = {
     "NIFTY": "NIFTY",
     "BANKNIFTY": "BANKNIFTY",
     "FINNIFTY": "FINNIFTY",
-}
-
-# Index tokens for spot prices
-INDEX_TOKENS = {
-    "NIFTY": 256265,
-    "BANKNIFTY": 260105,
-    "FINNIFTY": 257801,
 }
 
 
@@ -282,11 +276,7 @@ async def get_lot_sizes(user: User = Depends(get_current_user)):
     Returns:
         Dictionary of underlying to lot size
     """
-    return {
-        "NIFTY": 75,
-        "BANKNIFTY": 15,
-        "FINNIFTY": 25
-    }
+    return LOT_SIZES
 
 
 @router.get("/index-tokens")

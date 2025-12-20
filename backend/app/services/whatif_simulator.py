@@ -626,10 +626,5 @@ class WhatIfSimulator:
 
     def _get_lot_size(self, underlying: str) -> int:
         """Get lot size for underlying."""
-        lot_sizes = {
-            "NIFTY": 25,
-            "BANKNIFTY": 15,
-            "FINNIFTY": 25,
-            "SENSEX": 10,
-        }
-        return lot_sizes.get(underlying.upper(), 25)
+        from app.constants import get_lot_size
+        return get_lot_size(underlying)

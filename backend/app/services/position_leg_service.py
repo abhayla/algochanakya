@@ -21,20 +21,13 @@ from app.models.autopilot import (
 )
 from app.services.greeks_calculator import GreeksCalculatorService
 from app.services.market_data import MarketDataService
+from app.constants import get_lot_size
 
 logger = logging.getLogger(__name__)
 
 
 class PositionLegService:
     """Service for managing position legs."""
-
-    # Lot sizes for underlyings
-    LOT_SIZES = {
-        "NIFTY": 25,
-        "BANKNIFTY": 15,
-        "FINNIFTY": 25,
-        "SENSEX": 10,
-    }
 
     def __init__(self, kite: KiteConnect, db: AsyncSession):
         self.kite = kite
@@ -471,7 +464,7 @@ class PositionLegService:
 
         # Get underlying for lot size
         strategy = await self.db.get(AutoPilotStrategy, leg.strategy_id)
-        lot_size = self.LOT_SIZES.get(strategy.underlying, 1)
+        lot_size = get_lot_size(strategy.underlying)
         quantity = leg.lots * lot_size
 
         # Calculate P&L based on action
@@ -495,7 +488,7 @@ class PositionLegService:
 
         # Get underlying for lot size
         strategy = await self.db.get(AutoPilotStrategy, leg.strategy_id)
-        lot_size = self.LOT_SIZES.get(strategy.underlying, 1)
+        lot_size = get_lot_size(strategy.underlying)
         quantity = leg.lots * lot_size
 
         # Calculate P&L based on action

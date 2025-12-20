@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import api from '../services/api'
 import { fetchLegLTP as fetchLegLTPFromAPI } from '@/composables/usePriceFallback'
+import { getLotSize, getIndexToken, getIndexSymbol } from '@/constants/trading'
 
 export const useStrategyStore = defineStore('strategy', () => {
   // State
@@ -25,27 +26,6 @@ export const useStrategyStore = defineStore('strategy', () => {
   // Live prices
   const livePrices = ref({}) // token -> { ltp, change, change_percent }
 
-  // Lot sizes
-  const lotSizes = {
-    'NIFTY': 75,
-    'BANKNIFTY': 15,
-    'FINNIFTY': 25
-  }
-
-  // Index tokens for spot price lookup
-  const INDEX_TOKENS = {
-    'NIFTY': 256265,
-    'BANKNIFTY': 260105,
-    'FINNIFTY': 257801
-  }
-
-  // Index symbols for LTP API
-  const INDEX_SYMBOLS = {
-    'NIFTY': 'NSE:NIFTY 50',
-    'BANKNIFTY': 'NSE:NIFTY BANK',
-    'FINNIFTY': 'NSE:NIFTY FIN SERVICE'
-  }
-
   // Strategy types
   const strategyTypes = [
     'Naked Put',
@@ -68,7 +48,7 @@ export const useStrategyStore = defineStore('strategy', () => {
   const selectedLegIndices = ref([])
 
   // Getters
-  const lotSize = computed(() => lotSizes[underlying.value] || 75)
+  const lotSize = computed(() => getLotSize(underlying.value))
 
   const totalQty = computed(() => {
     return legs.value.reduce((sum, leg) => {
@@ -145,7 +125,7 @@ export const useStrategyStore = defineStore('strategy', () => {
   // Fetch spot price for the current underlying
   async function fetchSpotPrice() {
     try {
-      const symbol = INDEX_SYMBOLS[underlying.value]
+      const symbol = getIndexSymbol(underlying.value)
       if (!symbol) return { success: false }
 
       const response = await api.get('/api/orders/ltp', {

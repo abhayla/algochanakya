@@ -5,6 +5,7 @@
  */
 import { defineStore } from 'pinia'
 import api from '@/services/api'
+import { getLotSize } from '@/constants/trading'
 import { fetchLegLTP as fetchLegLTPFromAPI } from '@/composables/usePriceFallback'
 
 export const useAutopilotStore = defineStore('autopilot', {
@@ -54,13 +55,7 @@ export const useAutopilotStore = defineStore('autopilot', {
     strikes: {},  // { expiry_date: [strike1, strike2, ...] }
     livePrices: {},  // { instrument_token: { ltp, change, change_percent } }
 
-    // Lot sizes per underlying
-    lotSizes: {
-      'NIFTY': 75,
-      'BANKNIFTY': 15,
-      'FINNIFTY': 25,
-      'SENSEX': 10
-    },
+    // Lot sizes per underlying - removed, now using centralized getLotSize()
 
     // Leg selection for bulk actions
     selectedLegIndices: [],
@@ -132,11 +127,11 @@ export const useAutopilotStore = defineStore('autopilot', {
     },
 
     // Leg configuration getters
-    lotSize: (state) => state.lotSizes[state.builder.strategy.underlying] || 75,
+    lotSize: (state) => getLotSize(state.builder.strategy.underlying),
 
     totalQty: (state) => {
       const legs = state.builder.strategy.legs_config
-      const lotSize = state.lotSizes[state.builder.strategy.underlying] || 75
+      const lotSize = getLotSize(state.builder.strategy.underlying)
       return legs.reduce((sum, leg) => sum + ((leg.lots || 1) * lotSize), 0)
     }
   },

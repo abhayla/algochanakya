@@ -1,13 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import api from '../services/api'
-
-// Index tokens for spot price updates
-const INDEX_TOKENS = {
-  'NIFTY': 256265,
-  'BANKNIFTY': 260105,
-  'FINNIFTY': 257801
-}
+import { getLotSize, getIndexToken as getIndexTokenFromConstants } from '@/constants/trading'
 
 export const useOptionChainStore = defineStore('optionchain', () => {
   // State
@@ -54,12 +48,7 @@ export const useOptionChainStore = defineStore('optionchain', () => {
   })
 
   // Lot sizes
-  const lotSizes = {
-    'NIFTY': 25,
-    'BANKNIFTY': 15,
-    'FINNIFTY': 25,
-    'SENSEX': 10
-  }
+  // Lot sizes now from centralized constants
 
   // Getters
   const filteredChain = computed(() => {
@@ -110,7 +99,7 @@ export const useOptionChainStore = defineStore('optionchain', () => {
 
   // Get current index token for underlying
   function getIndexToken() {
-    return INDEX_TOKENS[underlying.value] || INDEX_TOKENS['NIFTY']
+    return getIndexTokenFromConstants(underlying.value) || getIndexTokenFromConstants('NIFTY')
   }
 
   // Get all option tokens from the chain for WebSocket subscription
@@ -126,7 +115,7 @@ export const useOptionChainStore = defineStore('optionchain', () => {
   // Actions
   async function setUnderlying(ul) {
     underlying.value = ul.toUpperCase()
-    lotSize.value = lotSizes[underlying.value] || 75
+    lotSize.value = getLotSize(underlying.value)
     expiry.value = '' // Reset expiry when underlying changes
     chain.value = []
     summary.value = {
@@ -400,7 +389,7 @@ export const useOptionChainStore = defineStore('optionchain', () => {
     showVolume,
     strikesRange,
     selectedStrikes,
-    lotSizes,
+    getLotSize,
     livePrices,
     isLiveUpdatesEnabled,
     strikeFinder,

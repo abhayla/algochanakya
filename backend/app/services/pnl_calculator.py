@@ -9,6 +9,8 @@ from typing import List, Dict, Optional, Tuple
 from datetime import date
 from decimal import Decimal
 
+from app.constants import get_lot_size
+
 # Try to import scipy, fallback to pure Python implementation if not available
 try:
     from scipy.stats import norm
@@ -54,14 +56,6 @@ class PnLCalculator:
     - 'current': Black-Scholes theoretical value before expiry
     """
 
-    # Lot sizes for different underlyings
-    LOT_SIZES = {
-        'NIFTY': 25,
-        'BANKNIFTY': 15,
-        'FINNIFTY': 25,
-        'SENSEX': 10,
-    }
-
     def __init__(self, risk_free_rate: float = 0.07):
         """
         Initialize P/L calculator.
@@ -71,10 +65,10 @@ class PnLCalculator:
         """
         self.risk_free_rate = risk_free_rate
 
-    @classmethod
-    def get_lot_size(cls, underlying: str) -> int:
+    @staticmethod
+    def get_lot_size(underlying: str) -> int:
         """Get lot size for underlying."""
-        return cls.LOT_SIZES.get(underlying.upper(), 75)
+        return get_lot_size(underlying)
 
     def calculate_pnl_grid(
         self,

@@ -32,14 +32,8 @@ from app.schemas.autopilot import (
 
 logger = logging.getLogger(__name__)
 
-# Lot sizes for different underlyings
-LOT_SIZES = {
-    'NIFTY': 25,
-    'BANKNIFTY': 15,
-    'FINNIFTY': 25,
-    'SENSEX': 10,
-    'MIDCPNIFTY': 75,
-}
+# Import centralized constants
+from app.constants import LOT_SIZES, get_lot_size
 
 # Default lot size for unknown underlyings
 DEFAULT_LOT_SIZE = 25

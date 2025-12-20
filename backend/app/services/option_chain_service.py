@@ -47,14 +47,6 @@ class OptionChainEntry:
 class OptionChainService:
     """Service for fetching and caching option chain data."""
 
-    # Lot sizes for underlyings
-    LOT_SIZES = {
-        "NIFTY": 25,
-        "BANKNIFTY": 15,
-        "FINNIFTY": 25,
-        "SENSEX": 10,
-    }
-
     # Risk-free rate for Greeks calculation
     RISK_FREE_RATE = 0.07  # 7% for India
 

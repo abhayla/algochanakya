@@ -20,26 +20,12 @@ from app.schemas.autopilot import (
     StrikeFindByPremiumRequest,
     StrikeFindResponse
 )
+from app.constants import LOT_SIZES, INDEX_TOKENS, INDEX_SYMBOLS
 
 router = APIRouter()
 
 # Constants
-LOT_SIZES = {"NIFTY": 25, "BANKNIFTY": 15, "FINNIFTY": 25, "SENSEX": 10}
 RISK_FREE_RATE = 0.07  # 7% for India
-
-# Index tokens for spot prices
-INDEX_TOKENS = {
-    "NIFTY": 256265,
-    "BANKNIFTY": 260105,
-    "FINNIFTY": 257801,
-}
-
-# Index symbols for quotes
-INDEX_SYMBOLS = {
-    "NIFTY": "NSE:NIFTY 50",
-    "BANKNIFTY": "NSE:NIFTY BANK",
-    "FINNIFTY": "NSE:NIFTY FIN SERVICE",
-}
 
 
 def calculate_iv(option_price: float, spot: float, strike: float,

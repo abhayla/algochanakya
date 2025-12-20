@@ -67,9 +67,9 @@ class LegActionsService:
                 raise ValueError(f"Leg {leg_id} is not open (status: {leg.status})")
 
             # Get strategy for lot size calculation
+            from app.constants import get_lot_size
             strategy = await self.db.get(AutoPilotStrategy, strategy_id)
-            lot_sizes = {"NIFTY": 25, "BANKNIFTY": 15, "FINNIFTY": 25, "SENSEX": 10}
-            lot_size = lot_sizes.get(strategy.underlying, 1)
+            lot_size = get_lot_size(strategy.underlying)
             quantity = leg.lots * lot_size
 
             # Determine order type and price
@@ -455,5 +455,5 @@ class LegActionsService:
 
     def _get_lot_size(self, underlying: str) -> int:
         """Get lot size for underlying."""
-        lot_sizes = {"NIFTY": 25, "BANKNIFTY": 15, "FINNIFTY": 25, "SENSEX": 10}
-        return lot_sizes.get(underlying, 1)
+        from app.constants import get_lot_size
+        return get_lot_size(underlying)

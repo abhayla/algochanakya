@@ -14,6 +14,7 @@ import logging
 from kiteconnect import KiteConnect
 
 from app.config import settings
+from app.constants import INDEX_TOKENS, INDEX_EXCHANGES, get_index_symbol
 
 logger = logging.getLogger(__name__)
 
@@ -45,24 +46,6 @@ class SpotData:
 
 class MarketDataService:
     """Service for fetching market data from Kite Connect."""
-
-    # Instrument tokens for indices
-    INDEX_TOKENS = {
-        "NIFTY": 256265,      # NIFTY 50
-        "BANKNIFTY": 260105,  # BANK NIFTY
-        "FINNIFTY": 257801,   # FIN NIFTY
-        "SENSEX": 265,        # SENSEX (BSE)
-        "INDIAVIX": 264969,   # INDIA VIX
-    }
-
-    # Index exchange mappings
-    INDEX_EXCHANGES = {
-        "NIFTY": "NSE",
-        "BANKNIFTY": "NSE",
-        "FINNIFTY": "NSE",
-        "SENSEX": "BSE",
-        "INDIAVIX": "NSE",
-    }
 
     def __init__(self, kite: KiteConnect):
         self.kite = kite
@@ -148,7 +131,7 @@ class MarketDataService:
             SpotData with current price and change
         """
         underlying_upper = underlying.upper()
-        token = self.INDEX_TOKENS.get(underlying_upper)
+        token = INDEX_TOKENS.get(underlying_upper)
         if not token:
             raise ValueError(f"Unknown underlying: {underlying}")
 
@@ -158,18 +141,10 @@ class MarketDataService:
             return self._cache[cache_key]
 
         try:
-            exchange = self.INDEX_EXCHANGES.get(underlying_upper, "NSE")
-
-            # Special handling for NIFTY indices
-            if underlying_upper == "NIFTY":
-                instrument = "NSE:NIFTY 50"
-            elif underlying_upper == "BANKNIFTY":
-                instrument = "NSE:NIFTY BANK"
-            elif underlying_upper == "FINNIFTY":
-                instrument = "NSE:NIFTY FIN SERVICE"
-            elif underlying_upper == "SENSEX":
-                instrument = "BSE:SENSEX"
-            else:
+            # Get trading symbol from centralized constants
+            instrument = get_index_symbol(underlying_upper)
+            if not instrument:
+                exchange = INDEX_EXCHANGES.get(underlying_upper, "NSE")
                 instrument = f"{exchange}:{underlying_upper}"
 
             loop = asyncio.get_event_loop()

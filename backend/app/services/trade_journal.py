@@ -122,8 +122,8 @@ class TradeJournalService:
             total_quantity += order.quantity
 
         # Get lot size
-        lot_sizes = {"NIFTY": 25, "BANKNIFTY": 15, "FINNIFTY": 25, "SENSEX": 10}
-        lot_size = lot_sizes.get(strategy.underlying, 25)
+        from app.constants import get_lot_size
+        lot_size = get_lot_size(strategy.underlying)
         lots = total_quantity // lot_size if lot_size else strategy.lots
 
         trade = AutoPilotTradeJournal(

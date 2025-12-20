@@ -20,100 +20,31 @@ from sqlalchemy.sql import func
 import enum
 
 from app.database import Base
-
-
-# Enums
-class StrategyStatus(str, enum.Enum):
-    DRAFT = "draft"
-    WAITING = "waiting"
-    WAITING_STAGED_ENTRY = "waiting_staged_entry"  # Phase 5I: Partial entry completed, waiting for stage 2+
-    ACTIVE = "active"
-    PENDING = "pending"
-    PAUSED = "paused"
-    REENTRY_WAITING = "reentry_waiting"  # Phase 3: Exited, waiting for re-entry conditions
-    COMPLETED = "completed"
-    ERROR = "error"
-    EXPIRED = "expired"
-    CANCELLED = "cancelled"  # Phase 5I: Strategy cancelled during staged entry
-
-
-class Underlying(str, enum.Enum):
-    NIFTY = "NIFTY"
-    BANKNIFTY = "BANKNIFTY"
-    FINNIFTY = "FINNIFTY"
-    SENSEX = "SENSEX"
-
-
-class PositionType(str, enum.Enum):
-    INTRADAY = "intraday"
-    POSITIONAL = "positional"
-
-
-class OrderStatus(str, enum.Enum):
-    PENDING = "pending"
-    PLACED = "placed"
-    OPEN = "open"
-    COMPLETE = "complete"
-    CANCELLED = "cancelled"
-    REJECTED = "rejected"
-    ERROR = "error"
-
-
-class OrderPurpose(str, enum.Enum):
-    ENTRY = "entry"
-    ADJUSTMENT = "adjustment"
-    HEDGE = "hedge"
-    EXIT = "exit"
-    ROLL_CLOSE = "roll_close"
-    ROLL_OPEN = "roll_open"
-    KILL_SWITCH = "kill_switch"
-
-
-class LogSeverity(str, enum.Enum):
-    DEBUG = "debug"
-    INFO = "info"
-    WARNING = "warning"
-    ERROR = "error"
-    CRITICAL = "critical"
-
-
-# Phase 3 Enums
-class ExecutionMode(str, enum.Enum):
-    AUTO = "auto"
-    SEMI_AUTO = "semi_auto"
-    MANUAL = "manual"
-
-
-class AdjustmentTriggerType(str, enum.Enum):
-    PNL_BASED = "pnl_based"
-    DELTA_BASED = "delta_based"
-    TIME_BASED = "time_based"
-    PREMIUM_BASED = "premium_based"
-    VIX_BASED = "vix_based"
-    SPOT_BASED = "spot_based"
-
-
-class AdjustmentActionType(str, enum.Enum):
-    ADD_HEDGE = "add_hedge"
-    CLOSE_LEG = "close_leg"
-    ROLL_STRIKE = "roll_strike"
-    ROLL_EXPIRY = "roll_expiry"
-    EXIT_ALL = "exit_all"
-    SCALE_DOWN = "scale_down"
-    SCALE_UP = "scale_up"
-
-
-class ConfirmationStatus(str, enum.Enum):
-    PENDING = "pending"
-    CONFIRMED = "confirmed"
-    REJECTED = "rejected"
-    EXPIRED = "expired"
-    CANCELLED = "cancelled"
-
-
-class TradingMode(str, enum.Enum):
-    LIVE = "live"
-    PAPER = "paper"
+from app.constants import (
+    StrategyStatus,
+    Underlying,
+    PositionType,
+    OrderStatus,
+    OrderPurpose,
+    LogSeverity,
+    ExecutionMode,
+    AdjustmentTriggerType,
+    AdjustmentActionType,
+    ConfirmationStatus,
+    TradingMode,
+    ExitReason,
+    TemplateCategory,
+    ReportType,
+    ReportFormat,
+    BacktestStatus,
+    ShareMode,
+    PositionLegStatus,
+    SuggestionType,
+    SuggestionUrgency,
+    SuggestionStatus,
+    MarketOutlook,
+    IVEnvironment,
+)
 
 
 # Models
@@ -760,54 +691,7 @@ class AutoPilotPendingConfirmation(Base):
 # Phase 4 Enums
 # =============================================================================
 
-class ExitReason(str, enum.Enum):
-    TARGET_HIT = "target_hit"
-    STOP_LOSS = "stop_loss"
-    TRAILING_STOP = "trailing_stop"
-    TIME_EXIT = "time_exit"
-    MANUAL_EXIT = "manual_exit"
-    ADJUSTMENT_EXIT = "adjustment_exit"
-    KILL_SWITCH = "kill_switch"
-    AUTO_EXIT = "auto_exit"
-    ERROR = "error"
-
-
-class TemplateCategory(str, enum.Enum):
-    INCOME = "income"
-    DIRECTIONAL = "directional"
-    VOLATILITY = "volatility"
-    HEDGING = "hedging"
-    ADVANCED = "advanced"
-    CUSTOM = "custom"
-
-
-class ReportType(str, enum.Enum):
-    DAILY = "daily"
-    WEEKLY = "weekly"
-    MONTHLY = "monthly"
-    CUSTOM = "custom"
-    STRATEGY = "strategy"
-    TAX = "tax"
-
-
-class ReportFormat(str, enum.Enum):
-    PDF = "pdf"
-    EXCEL = "excel"
-    CSV = "csv"
-
-
-class BacktestStatus(str, enum.Enum):
-    PENDING = "pending"
-    RUNNING = "running"
-    COMPLETED = "completed"
-    FAILED = "failed"
-    CANCELLED = "cancelled"
-
-
-class ShareMode(str, enum.Enum):
-    PRIVATE = "private"
-    LINK = "link"
-    PUBLIC = "public"
+# Enums now imported from app.constants (see imports at top)
 
 
 # =============================================================================
@@ -1082,39 +966,7 @@ class AutoPilotTemplateRating(Base):
 # PHASE 5 MODELS: Advanced Adjustments & Option Chain Integration
 # =============================================================================
 
-
-class PositionLegStatus(str, enum.Enum):
-    """Status of an individual position leg"""
-    PENDING = "pending"
-    OPEN = "open"
-    CLOSED = "closed"
-    ROLLED = "rolled"
-
-
-class SuggestionType(str, enum.Enum):
-    """Type of adjustment suggestion"""
-    SHIFT = "shift"
-    BREAK = "break"
-    ROLL = "roll"
-    EXIT = "exit"
-    ADD_HEDGE = "add_hedge"
-    NO_ACTION = "no_action"
-
-
-class SuggestionUrgency(str, enum.Enum):
-    """Urgency level of suggestion"""
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"
-    CRITICAL = "critical"
-
-
-class SuggestionStatus(str, enum.Enum):
-    """Status of suggestion"""
-    ACTIVE = "active"
-    DISMISSED = "dismissed"
-    EXECUTED = "executed"
-    EXPIRED = "expired"
+# Phase 5 enums now imported from app.constants (see imports at top)
 
 
 class AutoPilotPositionLeg(Base):

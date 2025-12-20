@@ -13,6 +13,14 @@ from app.constants.strategy_types import (
     get_strategies_by_category,
     get_strategy_by_name
 )
+from app.constants.trading import (
+    UNDERLYINGS,
+    LOT_SIZES,
+    STRIKE_STEPS,
+    INDEX_TOKENS,
+    INDEX_EXCHANGES,
+    INDEX_SYMBOLS,
+)
 
 router = APIRouter()
 
@@ -92,4 +100,31 @@ async def get_category_strategies(category_name: str):
     return {
         "category": CATEGORIES[category_name],
         "strategies": get_strategies_by_category(category_name)
+    }
+
+
+@router.get("/trading")
+async def get_trading_constants():
+    """
+    Get all trading constants for frontend consumption.
+
+    This endpoint serves as the single source of truth for trading-related
+    constants, ensuring frontend and backend always use identical values.
+
+    Returns:
+        dict: All trading-related constants including:
+            - underlyings: List of supported underlying instruments
+            - lot_sizes: Lot size per underlying
+            - strike_steps: Strike price intervals per underlying
+            - index_tokens: NSE instrument tokens for WebSocket subscriptions
+            - index_exchanges: Exchange mappings for indices
+            - index_symbols: Kite Connect trading symbols for LTP API
+    """
+    return {
+        "underlyings": UNDERLYINGS,
+        "lot_sizes": LOT_SIZES,
+        "strike_steps": STRIKE_STEPS,
+        "index_tokens": INDEX_TOKENS,
+        "index_exchanges": INDEX_EXCHANGES,
+        "index_symbols": INDEX_SYMBOLS,
     }

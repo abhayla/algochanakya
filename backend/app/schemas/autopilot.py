@@ -11,139 +11,18 @@ from uuid import UUID
 from pydantic import BaseModel, Field, field_validator
 from enum import Enum
 
-
-# Enums
-class StrategyStatus(str, Enum):
-    draft = "draft"
-    waiting = "waiting"
-    waiting_staged_entry = "waiting_staged_entry"  # Phase 5I: Partial entry completed, waiting for stage 2+
-    active = "active"
-    pending = "pending"
-    paused = "paused"
-    completed = "completed"
-    error = "error"
-    expired = "expired"
-    cancelled = "cancelled"  # Phase 5I: Strategy cancelled during staged entry
+# Import centralized enums
+from app.constants import (
+    StrategyStatus, Underlying, PositionType, ContractType, TransactionType,
+    OrderType, ExpiryType, ExecutionStyle, ConditionOperator, ConditionLogic,
+    ExecutionMode, AdjustmentTriggerType, AdjustmentActionType, ConfirmationStatus,
+    TrailType, ExitReason, TemplateCategory, ReportType, ReportFormat,
+    BacktestStatus, ShareMode, MarketOutlook, IVEnvironment, AdjustmentCategory,
+    GreekConditionVariable, StagedEntryMode, StrikeMode
+)
 
 
-class Underlying(str, Enum):
-    NIFTY = "NIFTY"
-    BANKNIFTY = "BANKNIFTY"
-    FINNIFTY = "FINNIFTY"
-    SENSEX = "SENSEX"
-
-
-class PositionType(str, Enum):
-    intraday = "intraday"
-    positional = "positional"
-
-
-class ContractType(str, Enum):
-    CE = "CE"
-    PE = "PE"
-    FUT = "FUT"
-
-
-class TransactionType(str, Enum):
-    BUY = "BUY"
-    SELL = "SELL"
-
-
-class OrderType(str, Enum):
-    MARKET = "MARKET"
-    LIMIT = "LIMIT"
-    SL = "SL"
-    SL_M = "SL-M"
-
-
-class ExpiryType(str, Enum):
-    current_week = "current_week"
-    next_week = "next_week"
-    monthly = "monthly"
-    custom = "custom"
-
-
-class ExecutionStyle(str, Enum):
-    simultaneous = "simultaneous"
-    sequential = "sequential"
-    with_delay = "with_delay"
-
-
-class ConditionOperator(str, Enum):
-    equals = "equals"
-    not_equals = "not_equals"
-    greater_than = "greater_than"
-    less_than = "less_than"
-    between = "between"
-    crosses_above = "crosses_above"
-    crosses_below = "crosses_below"
-
-
-class ConditionLogic(str, Enum):
-    AND = "AND"
-    OR = "OR"
-
-
-# Phase 3 Enums
-class ExecutionMode(str, Enum):
-    auto = "auto"
-    semi_auto = "semi_auto"
-    manual = "manual"
-
-
-class AdjustmentTriggerType(str, Enum):
-    pnl_based = "pnl_based"
-    delta_based = "delta_based"
-    time_based = "time_based"
-    premium_based = "premium_based"
-    vix_based = "vix_based"
-    spot_based = "spot_based"
-    # Phase 5D: Exit Rules
-    profit_pct_based = "profit_pct_based"
-    premium_captured_pct = "premium_captured_pct"
-    return_on_margin = "return_on_margin"
-    capital_recycling = "capital_recycling"
-    dte_based = "dte_based"
-    days_in_trade = "days_in_trade"
-    theta_curve_based = "theta_curve_based"
-    # Phase 5E: Risk-Based Exits
-    gamma_based = "gamma_based"
-    atr_based = "atr_based"
-    delta_doubles = "delta_doubles"
-    delta_change = "delta_change"
-    # Phase 5G: Greek-Based Triggers
-    theta_based = "theta_based"
-    vega_based = "vega_based"
-
-
-class AdjustmentActionType(str, Enum):
-    add_hedge = "add_hedge"
-    close_leg = "close_leg"
-    roll_strike = "roll_strike"
-    roll_expiry = "roll_expiry"
-    exit_all = "exit_all"
-    scale_down = "scale_down"
-    scale_up = "scale_up"
-    # Phase 5F/5G additions
-    add_to_opposite_side = "add_to_opposite_side"
-    widen_spread = "widen_spread"
-    shift_leg = "shift_leg"
-    delta_neutral_rebalance = "delta_neutral_rebalance"
-
-
-class ConfirmationStatus(str, Enum):
-    pending = "pending"
-    confirmed = "confirmed"
-    rejected = "rejected"
-    expired = "expired"
-    cancelled = "cancelled"
-
-
-class TrailType(str, Enum):
-    fixed = "fixed"
-    percentage = "percentage"
-    atr_based = "atr_based"
-
+# Enums now imported from app.constants (see imports above)
 
 # Nested Models
 class StrikeSelection(BaseModel):
@@ -733,72 +612,7 @@ class AdjustmentMessage(BaseModel):
 
 
 # =============================================================================
-# Phase 4 Enums
-# =============================================================================
-
-class ExitReason(str, Enum):
-    target_hit = "target_hit"
-    stop_loss = "stop_loss"
-    trailing_stop = "trailing_stop"
-    time_exit = "time_exit"
-    manual_exit = "manual_exit"
-    adjustment_exit = "adjustment_exit"
-    kill_switch = "kill_switch"
-    auto_exit = "auto_exit"
-    error = "error"
-
-
-class TemplateCategory(str, Enum):
-    income = "income"
-    directional = "directional"
-    volatility = "volatility"
-    hedging = "hedging"
-    advanced = "advanced"
-    custom = "custom"
-
-
-class ReportType(str, Enum):
-    daily = "daily"
-    weekly = "weekly"
-    monthly = "monthly"
-    custom = "custom"
-    strategy = "strategy"
-    tax = "tax"
-
-
-class ReportFormat(str, Enum):
-    pdf = "pdf"
-    excel = "excel"
-    csv = "csv"
-
-
-class BacktestStatus(str, Enum):
-    pending = "pending"
-    running = "running"
-    completed = "completed"
-    failed = "failed"
-    cancelled = "cancelled"
-
-
-class ShareMode(str, Enum):
-    private = "private"
-    link = "link"
-    public = "public"
-
-
-class MarketOutlook(str, Enum):
-    bullish = "bullish"
-    bearish = "bearish"
-    neutral = "neutral"
-    volatile = "volatile"
-
-
-class IVEnvironment(str, Enum):
-    high = "high"
-    low = "low"
-    normal = "normal"
-
-
+# Phase 4 Enums - Now imported from app.constants (see imports at top)
 # =============================================================================
 # Phase 4 Schemas - Strategy Templates
 # =============================================================================
@@ -1584,18 +1398,7 @@ class PayoffChartResponse(BaseModel):
 
 # ========== PHASE 5G: ANALYTICS & INTELLIGENCE ==========
 
-class AdjustmentCategory(str, Enum):
-    """
-    Categorization of adjustment actions by risk impact (Phase 5G #45)
-
-    OFFENSIVE: Increase risk to collect more premium
-    DEFENSIVE: Reduce risk to protect capital
-    NEUTRAL: Rebalance position without major risk change
-    """
-    offensive = "offensive"
-    defensive = "defensive"
-    neutral = "neutral"
-
+# AdjustmentCategory enum now imported from app.constants (see imports at top)
 
 class AdjustmentCostItem(BaseModel):
     """Single adjustment cost entry"""
@@ -1634,28 +1437,11 @@ class AdjustmentCostThresholdCheck(BaseModel):
     recommendation: str
 
 
-class GreekConditionVariable(str, Enum):
-    """Greek variables for entry/exit conditions (Phase 5G)"""
-    STRATEGY_DELTA = "STRATEGY.DELTA"
-    STRATEGY_GAMMA = "STRATEGY.GAMMA"
-    STRATEGY_THETA = "STRATEGY.THETA"
-    STRATEGY_VEGA = "STRATEGY.VEGA"
-
+# GreekConditionVariable and StagedEntryMode enums now imported from app.constants (see imports at top)
 
 # =============================================================================
 # Phase 5I Schemas - Staged Entry (Half-Size & Staggered Entry)
 # =============================================================================
-
-class StagedEntryMode(str, Enum):
-    """
-    Entry mode for staged strategies (Phase 5I #12, #13)
-
-    half_size: Start with 50% position, add remaining when conditions met
-    staggered: Enter legs at different times based on independent conditions
-    """
-    half_size = "half_size"
-    staggered = "staggered"
-
 
 class HalfSizeStageConfig(BaseModel):
     """Configuration for half-size entry stage"""
@@ -1764,14 +1550,7 @@ class StagedEntryCreateRequest(BaseModel):
 # STRIKE PREVIEW SCHEMAS (Phase 1 - Redesign)
 # ============================================================================
 
-class StrikeMode(str, Enum):
-    """Strike selection modes"""
-    fixed = "fixed"
-    atm_offset = "atm_offset"
-    delta_based = "delta_based"
-    premium_based = "premium_based"
-    sd_based = "sd_based"
-
+# StrikeMode enum now imported from app.constants (see imports at top)
 
 class StrikePreviewRequest(BaseModel):
     """Request for strike preview"""

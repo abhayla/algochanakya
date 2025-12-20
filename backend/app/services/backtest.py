@@ -122,8 +122,8 @@ class BacktestService:
         risk_settings = strategy_config.get("risk_settings", {})
 
         # Lot sizes
-        lot_sizes = {"NIFTY": 25, "BANKNIFTY": 15, "FINNIFTY": 25, "SENSEX": 10}
-        lot_size = lot_sizes.get(underlying, 25)
+        from app.constants import get_lot_size
+        lot_size = get_lot_size(underlying)
 
         # Simulate trades (simplified - in production would use historical data)
         # This is a placeholder simulation
