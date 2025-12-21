@@ -164,6 +164,7 @@ test.describe('AutoPilot Dashboard - Phase 2 Enhancements', () => {
 
   // Capital Used Enhancements Tests
   test('displays capital usage progress bar', async () => {
+    await dashboardPage.waitForDashboardLoad();
     await expect(dashboardPage.capitalProgressBar).toBeVisible();
   });
 

@@ -154,3 +154,5 @@ tests/e2e/specs/get-token.spec.js
 # Test output files
 test-output.txt
 *-output.txt
+autopilot-test-results.txt
+paper-trading-test-summary.md

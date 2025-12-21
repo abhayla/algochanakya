@@ -578,7 +578,7 @@ const getStatusBadgeClass = (status) => {
             <span class="summary-text"> Max</span>
           </p>
           <p v-if="store.dashboardSummary.waiting_strategies > 0" class="summary-subtitle">
-            {{ store.dashboardSummary.waiting_strategies }} waiting
+            <span data-testid="autopilot-waiting-count">{{ store.dashboardSummary.waiting_strategies }}</span> waiting
           </p>
         </div>
 

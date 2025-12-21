@@ -59,8 +59,8 @@ test.describe('AutoPilot - Adjustment Rule Builder (Happy Path)', () => {
     const modal = authenticatedPage.getByTestId('autopilot-rule-modal')
     await expect(modal).toBeVisible()
 
-    // Check modal title
-    await expect(modal.getByText('Add Rule')).toBeVisible()
+    // Check modal title (use role to avoid strict mode violation - "Add Rule" also exists as button text)
+    await expect(modal.getByRole('heading', { name: 'Add Rule' })).toBeVisible()
 
     // Check form fields are visible
     await expect(authenticatedPage.getByTestId('autopilot-rule-name')).toBeVisible()

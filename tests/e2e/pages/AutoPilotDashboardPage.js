@@ -243,11 +243,14 @@ export class AutoPilotDashboardPage extends BasePage {
     return this.getByTestId('risk-unrealized-pnl');
   }
 
-  get activeStrategiesCount() {
+  // Note: activeStrategiesCount and waitingStrategiesCount getters are already defined above (lines 28-34)
+  // Removed duplicate definitions here
+
+  get riskActiveStrategiesCount() {
     return this.getByTestId('risk-active-strategies');
   }
 
-  get waitingStrategiesCount() {
+  get riskWaitingStrategiesCount() {
     return this.getByTestId('risk-waiting-strategies');
   }
 
@@ -491,6 +494,9 @@ export class AutoPilotDashboardPage extends BasePage {
   }
 
   async getWaitingCount() {
+    // Element only exists when waiting_strategies > 0 (v-if condition)
+    const isVisible = await this.waitingStrategiesCount.isVisible().catch(() => false);
+    if (!isVisible) return 0;
     const text = await this.waitingStrategiesCount.textContent();
     return parseInt(text, 10);
   }
@@ -743,7 +749,16 @@ export class AutoPilotStrategyBuilderPage extends BasePage {
   }
 
   getLegStrike(index) {
-    return this.getByTestId(`autopilot-leg-strike-${index}`);
+    return this.getByTestId(`autopilot-leg-strike-selector-${index}`);
+  }
+
+  // StrikeSelector helper methods
+  getLegStrikeModeDropdown(index) {
+    return this.getLegStrike(index).locator('[data-testid="strike-selector-mode-dropdown"]');
+  }
+
+  getLegStrikeFixedInput(index) {
+    return this.getLegStrike(index).locator('[data-testid="strike-selector-fixed-input"]');
   }
 
   getLegType(index) {
@@ -779,7 +794,7 @@ export class AutoPilotStrategyBuilderPage extends BasePage {
   }
 
   get addConditionButton() {
-    return this.getByTestId('autopilot-builder-add-condition');
+    return this.getByTestId('autopilot-add-condition-button');
   }
 
   get conditionLogicToggle() {
@@ -1178,7 +1193,12 @@ export class AutoPilotStrategyBuilderPage extends BasePage {
       await this.getLegExpiry(lastLegIndex).selectOption(expiry);
     }
     if (strike) {
-      await this.getLegStrike(lastLegIndex).selectOption(strike.toString());
+      // StrikeSelector uses mode dropdown + input (not simple select)
+      // Wait for mode dropdown to be visible (ensures component is ready)
+      await this.getLegStrikeModeDropdown(lastLegIndex).waitFor({ state: 'visible', timeout: 3000 });
+      await this.getLegStrikeModeDropdown(lastLegIndex).selectOption('fixed');
+      await this.page.waitForTimeout(200); // Wait for mode change to render input
+      await this.getLegStrikeFixedInput(lastLegIndex).fill(strike.toString());
     }
     if (type) {
       await this.getLegType(lastLegIndex).selectOption(type);

@@ -458,7 +458,7 @@ test.describe('AutoPilot Strategy Lifecycle API', () => {
     }
 
     // Activate
-    await authenticatedPage.request.post(
+    const activateResponse = await authenticatedPage.request.post(
       `${API_BASE}/api/v1/autopilot/strategies/${strategyId}/activate`,
       {
         headers: {
@@ -468,9 +468,12 @@ test.describe('AutoPilot Strategy Lifecycle API', () => {
         data: { confirm: true, paper_trading: true }
       }
     );
+    expect(activateResponse.ok()).toBe(true);
+    const activatedData = await activateResponse.json();
+    expect(['waiting', 'active']).toContain(activatedData.data.status);
 
     // Pause
-    await authenticatedPage.request.post(
+    const pauseResponse = await authenticatedPage.request.post(
       `${API_BASE}/api/v1/autopilot/strategies/${strategyId}/pause`,
       {
         headers: {
@@ -478,6 +481,9 @@ test.describe('AutoPilot Strategy Lifecycle API', () => {
         }
       }
     );
+    expect(pauseResponse.ok()).toBe(true);
+    const pausedData = await pauseResponse.json();
+    expect(pausedData.data.status).toBe('paused');
 
     // Resume
     const response = await authenticatedPage.request.post(
