@@ -1,5 +1,5 @@
 <template>
-  <td :class="['px-2 py-2 text-right text-xs font-medium transition-all', cellClass, isSpotColumn ? 'ring-2 ring-yellow-400 ring-inset' : '']">
+  <td :class="['px-2 py-2 text-right text-xs font-medium transition-all', cellClass]">
     {{ formatValue(value) }}
   </td>
 </template>

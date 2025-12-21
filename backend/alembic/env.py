@@ -14,6 +14,7 @@ from app.config import settings
 from app.database import Base
 from app.models import (
     User, BrokerConnection, Watchlist, Instrument, Strategy, StrategyLeg, StrategyTemplate,
+    UserPreferences,
     AutoPilotUserSettings, AutoPilotStrategy, AutoPilotOrder, AutoPilotLog,
     AutoPilotTemplate, AutoPilotConditionEval, AutoPilotDailySummary
 )  # Import all models

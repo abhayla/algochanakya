@@ -346,7 +346,7 @@ def generate_spot_range(
     strikes: List[float],
     current_spot: float,
     interval: int = 100,
-    padding: int = 700,
+    padding: int = 200,
     breakevens: Optional[List[float]] = None,
     include_strikes: bool = True
 ) -> List[float]:
@@ -356,8 +356,8 @@ def generate_spot_range(
     Args:
         strikes: List of strike prices in the strategy
         current_spot: Current spot price
-        interval: Price interval between columns
-        padding: Padding beyond min/max strikes
+        interval: Price interval between columns (50 or 100)
+        padding: Padding beyond min/max strikes (default 200)
         breakevens: List of breakeven points to include
         include_strikes: Whether to include all strike prices in the range
 
@@ -374,20 +374,26 @@ def generate_spot_range(
     min_strike = min(strikes)
     max_strike = max(strikes)
 
-    # Calculate range with padding
-    start = ((min_strike - padding) // interval) * interval
-    end = ((max_strike + padding) // interval) * interval + interval
+    # Calculate base range with padding
+    min_spot = min_strike - padding
+    max_spot = max_strike + padding
+
+    # Extend range to always include currentSpot ± 200
+    min_spot = min(min_spot, current_spot - 200)
+    max_spot = max(max_spot, current_spot + 200)
+
+    # Generate spots at interval steps
+    start = (min_spot // interval) * interval
+    # Use ceiling division to ensure we include spots beyond max_spot
+    # range() excludes endpoint, so we add one more interval
+    end = math.ceil(max_spot / interval) * interval + interval
 
     spots = list(range(int(start), int(end), interval))
 
-    # Ensure current spot is included (ATM)
-    current_rounded = round(current_spot / interval) * interval
-    if current_rounded not in spots:
-        spots.append(int(current_rounded))
-
-    # Add exact current spot if different from rounded
-    if int(current_spot) not in spots:
-        spots.append(int(current_spot))
+    # Add current spot rounded to nearest integer (not to interval)
+    current_spot_rounded = round(current_spot)
+    if current_spot_rounded not in spots:
+        spots.append(int(current_spot_rounded))
 
     # Include all strike prices
     if include_strikes:

@@ -110,6 +110,13 @@
             <span class="user-broker">Zerodha</span>
           </div>
           <div class="dropdown-divider"></div>
+          <button class="dropdown-item" @click="router.push('/settings'); showUserDropdown = false" data-testid="kite-header-settings-button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M12 1v6m0 6v6M5.64 5.64l4.24 4.24m4.24 4.24l4.24 4.24M1 12h6m6 0h6M5.64 18.36l4.24-4.24m4.24-4.24l4.24-4.24"/>
+            </svg>
+            Settings
+          </button>
           <button class="dropdown-item" @click="logout" data-testid="kite-header-logout-button">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>

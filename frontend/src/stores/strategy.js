@@ -808,7 +808,6 @@ export const useStrategyStore = defineStore('strategy', () => {
     spotPrices,
     currentSpot,
     livePrices,
-    lotSizes,
     strategyTypes,
     isLoading,
     error,

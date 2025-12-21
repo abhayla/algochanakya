@@ -13,7 +13,7 @@ from uuid import UUID
 from datetime import date
 
 from app.database import get_db
-from app.models import User, Strategy, StrategyLeg
+from app.models import User, Strategy, StrategyLeg, UserPreferences
 from app.schemas.strategies import (
     StrategyCreate,
     StrategyUpdate,
@@ -552,7 +552,8 @@ async def delete_leg(
 @router.post("/calculate", response_model=PnLCalculateResponse)
 async def calculate_pnl(
     request: PnLCalculateRequest,
-    user: User = Depends(get_current_user)
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
 ):
     """
     Calculate P/L grid for strategy legs.
@@ -573,6 +574,13 @@ async def calculate_pnl(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="At least one leg is required"
             )
+
+        # Get user's P/L grid interval preference
+        result = await db.execute(
+            select(UserPreferences).where(UserPreferences.user_id == user.id)
+        )
+        preferences = result.scalar_one_or_none()
+        interval = preferences.pnl_grid_interval if preferences else 100
 
         # Convert legs to dict format for calculator
         legs = []
@@ -596,7 +604,7 @@ async def calculate_pnl(
         # PASS 1: Calculate on base spot range to get breakeven points
         # IMPORTANT: Include strikes so P/L is linear between consecutive spots
         # This ensures breakeven interpolation is accurate
-        base_spot_prices = generate_spot_range(strikes, current_spot, include_strikes=True)
+        base_spot_prices = generate_spot_range(strikes, current_spot, interval=interval, include_strikes=True)
         target_date = request.target_date or date.today()
 
         first_pass = pnl_calculator.calculate_pnl_grid(
@@ -612,6 +620,7 @@ async def calculate_pnl(
         final_spot_prices = generate_spot_range(
             strikes,
             current_spot,
+            interval=interval,
             breakevens=breakevens,
             include_strikes=True
         )

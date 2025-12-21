@@ -16,6 +16,9 @@ class User(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     last_login = Column(DateTime(timezone=True), nullable=True)
 
+    # User preferences
+    user_preferences = relationship("UserPreferences", back_populates="user", uselist=False)
+
     # AutoPilot relationships
     autopilot_settings = relationship("AutoPilotUserSettings", back_populates="user", uselist=False)
     autopilot_strategies = relationship("AutoPilotStrategy", back_populates="user")
