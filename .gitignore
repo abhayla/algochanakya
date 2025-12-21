@@ -33,8 +33,9 @@ logs/
 # Process files
 *.pid
 
-# Claude Code
-.claude/
+# Claude Code (allow .claude/skills/ to be committed for team sharing)
+.claude/*
+!.claude/skills/
 
 # Database
 *.db
