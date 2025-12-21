@@ -73,7 +73,7 @@ class SlippageProtection(BaseModel):
 
 class OrderSettings(BaseModel):
     order_type: OrderType = OrderType.MARKET
-    execution_style: ExecutionStyle = ExecutionStyle.sequential
+    execution_style: ExecutionStyle = ExecutionStyle.SEQUENTIAL
     leg_sequence: List[str] = []
     delay_between_legs: int = 2
     slippage_protection: SlippageProtection = SlippageProtection()
@@ -123,10 +123,10 @@ class StrategyCreateRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     description: Optional[str] = Field(None, max_length=500)
     underlying: Underlying
-    expiry_type: ExpiryType = ExpiryType.current_week
+    expiry_type: ExpiryType = ExpiryType.CURRENT_WEEK
     expiry_date: Optional[date] = None
     lots: int = Field(1, ge=1, le=50)
-    position_type: PositionType = PositionType.intraday
+    position_type: PositionType = PositionType.INTRADAY
     legs_config: List[LegConfig] = Field(..., min_length=1, max_length=20)
     entry_conditions: EntryConditions
     adjustment_rules: List[Dict[str, Any]] = []
@@ -243,7 +243,7 @@ class UserSettingsResponse(BaseModel):
     # Phase 3 fields
     kill_switch_enabled: bool = False
     kill_switch_triggered_at: Optional[datetime] = None
-    default_execution_mode: ExecutionMode = ExecutionMode.auto
+    default_execution_mode: ExecutionMode = ExecutionMode.AUTO
     confirmation_timeout_seconds: int = 30
     auto_exit_time: Optional[str] = "15:15"
     account_capital: Optional[Decimal] = None
@@ -378,7 +378,7 @@ class AdjustmentRule(BaseModel):
     name: str
     trigger: AdjustmentTrigger
     action: AdjustmentAction
-    execution_mode: ExecutionMode = ExecutionMode.auto
+    execution_mode: ExecutionMode = ExecutionMode.AUTO
     max_executions: Optional[int] = None
     cooldown_seconds: int = 0
 
@@ -455,7 +455,7 @@ class TrailingStopConfig(BaseModel):
     enabled: bool = False
     activation_profit: Optional[Decimal] = None
     trail_distance: Optional[Decimal] = None
-    trail_type: TrailType = TrailType.fixed
+    trail_type: TrailType = TrailType.FIXED
     min_profit_lock: Optional[Decimal] = None
 
 
@@ -849,7 +849,7 @@ class TradeJournalExportRequest(BaseModel):
     end_date: Optional[date] = None
     underlying: Optional[str] = None
     exit_reason: Optional[str] = None
-    format: ReportFormat = ReportFormat.csv
+    format: ReportFormat = ReportFormat.CSV
 
 
 # =============================================================================
@@ -994,7 +994,7 @@ class ReportGenerateRequest(BaseModel):
     start_date: date
     end_date: date
     strategy_id: Optional[int] = None
-    format: ReportFormat = ReportFormat.pdf
+    format: ReportFormat = ReportFormat.PDF
 
 
 class TaxSummary(BaseModel):
@@ -1091,7 +1091,7 @@ class BacktestCreateRequest(BaseModel):
 
 class StrategyShareRequest(BaseModel):
     """Request to share a strategy"""
-    share_mode: ShareMode = ShareMode.link
+    share_mode: ShareMode = ShareMode.LINK
 
 
 class StrategyShareResponse(BaseModel):
@@ -1461,7 +1461,7 @@ class HalfSizeEntryConfig(BaseModel):
 
     Example: Start with 50% position on CE side, add remaining when spot rallies 1%
     """
-    mode: StagedEntryMode = StagedEntryMode.half_size
+    mode: StagedEntryMode = StagedEntryMode.HALF_SIZE
     initial_stage: HalfSizeStageConfig = Field(..., description="Initial entry configuration")
     add_stage: HalfSizeAddCondition = Field(..., description="Add condition configuration")
 
@@ -1479,7 +1479,7 @@ class StaggeredEntryConfig(BaseModel):
 
     Example: Enter PE side at 9:20 AM, enter CE side when VIX < 15
     """
-    mode: StagedEntryMode = StagedEntryMode.staggered
+    mode: StagedEntryMode = StagedEntryMode.STAGGERED
     leg_entries: List[StaggeredLegEntry] = Field(..., min_length=1, description="Leg entry configurations")
 
 
@@ -1527,10 +1527,10 @@ class StagedEntryCreateRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     description: Optional[str] = Field(None, max_length=500)
     underlying: Underlying
-    expiry_type: ExpiryType = ExpiryType.current_week
+    expiry_type: ExpiryType = ExpiryType.CURRENT_WEEK
     expiry_date: Optional[date] = None
     lots: int = Field(1, ge=1, le=50)
-    position_type: PositionType = PositionType.intraday
+    position_type: PositionType = PositionType.INTRADAY
     legs_config: List[LegConfig] = Field(..., min_length=1, max_length=20)
     entry_conditions: EntryConditions
     adjustment_rules: List[Dict[str, Any]] = []
