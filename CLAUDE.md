@@ -10,7 +10,7 @@ AlgoChanakya is an options trading platform (similar to Sensibull) built with Fa
 - Backend: FastAPI + SQLAlchemy (async) + PostgreSQL + Redis
 - Frontend: Vue.js 3 + Vite + Pinia + Vue Router + Tailwind CSS
 - Broker Integration: Zerodha Kite Connect API
-- Testing: Playwright (E2E ~1400 tests in 102 files) + pytest (backend)
+- Testing: Playwright (E2E ~1400 tests in 102 files) + Vitest (frontend unit) + pytest (backend)
 
 **Detailed Documentation:** See [docs/](docs/README.md) for comprehensive documentation including:
 - [Architecture](docs/architecture/) - System design, auth, WebSocket, database
@@ -39,8 +39,11 @@ alembic upgrade head
 ### Frontend (from `frontend/` directory)
 
 ```bash
-npm run dev      # Start development server
-npm run build    # Build for production
+npm run dev            # Start development server
+npm run build          # Build for production
+npm run test           # Run unit tests with Vitest
+npm run test:run       # Run unit tests once (no watch)
+npm run test:coverage  # Run tests with coverage report
 ```
 
 ### Testing (from project root)
@@ -322,13 +325,21 @@ Automated strategy execution with conditional entry, adjustments, and risk manag
    - `builder/` - Condition builder, leg configurator, schedule picker
    - `common/` - Shared widgets, confirmation dialogs
 
-7. **Documentation:** See [docs/autopilot/README.md](docs/autopilot/README.md) for complete specs
+7. **Live/Paper Trading Mode:** AutoPilot supports both live and paper trading modes with order tracking
+   - Live mode places real orders via Kite Connect
+   - Paper mode simulates orders for testing strategies without risk
+   - Mode selection available during strategy creation
+
+8. **Documentation:** See [docs/autopilot/README.md](docs/autopilot/README.md) for complete specs
 
 ### Key Backend Files
 
 - `app/main.py` - FastAPI app initialization, CORS, lifespan events
 - `app/config.py` - Pydantic Settings for environment variables
 - `app/database.py` - SQLAlchemy async engine, session factory, Redis pool
+- `app/constants/trading.py` - **SINGLE SOURCE OF TRUTH** for lot sizes, strike steps, index tokens
+- `app/constants/strategy_types.py` - Strategy type enums and constants
+- `app/constants/websocket.py` - WebSocket message types and constants
 - `app/services/kite_ticker.py` - Singleton WebSocket service for live price streaming
 - `app/services/pnl_calculator.py` - Black-Scholes P/L calculations
 - `app/services/market_data.py` - Market data service (LTP, spot, VIX) for AutoPilot
@@ -343,6 +354,9 @@ Automated strategy execution with conditional entry, adjustments, and risk manag
 - `src/router/index.js` - Vue Router with authentication guards
 - `src/services/api.js` - Axios instance with auth header interceptor
 - `src/stores/` - Pinia stores (auth, watchlist, strategy, optionchain, positions)
+- `src/constants/trading.js` - Trading constants loaded from backend API (lot sizes, strike steps, tokens)
+- `src/constants/strategyTypes.js` - Strategy type constants synchronized with backend
+- `src/constants/websocket.js` - WebSocket message types
 - `src/composables/autopilot/useWebSocket.js` - AutoPilot WebSocket composable for real-time updates
 
 ### Database Connection
@@ -354,6 +368,28 @@ Automated strategy execution with conditional entry, adjustments, and risk manag
 - Production uses remote PostgreSQL (103.118.16.189:5432) and Redis (103.118.16.189:6379)
 
 ## Important Patterns
+
+### Trading Constants (CRITICAL)
+
+**NEVER hardcode lot sizes, strike steps, or index tokens.** Always import from centralized constants:
+
+**Backend:**
+```python
+from app.constants.trading import get_lot_size, get_strike_step, get_index_token
+
+lot_size = get_lot_size("NIFTY")  # 25
+strike_step = get_strike_step("BANKNIFTY")  # 100
+```
+
+**Frontend:**
+```javascript
+import { getLotSize, getStrikeStep } from '@/constants/trading'
+
+const lotSize = getLotSize('NIFTY')  // 25
+const strikeStep = getStrikeStep('BANKNIFTY')  // 100
+```
+
+Constants are loaded from backend API on app initialization via `GET /api/constants/trading`.
 
 ### Adding New Models
 
@@ -427,6 +463,28 @@ pytest tests/ -v                    # Run all backend tests
 pytest tests/ -v --cov=app          # Run with coverage
 ```
 
+### Frontend Unit Tests (Vitest)
+
+```bash
+cd frontend
+npm run test           # Run tests in watch mode
+npm run test:run       # Run tests once
+npm run test:coverage  # Run with coverage report
+```
+
+### Playwright Configuration
+
+**Key Configuration:** `playwright.config.js` in project root
+
+- **Global Setup:** `tests/e2e/global-setup.js` - Handles login once with TOTP, saves auth state
+- **Auth State:** Saved to `tests/config/.auth-state.json`, reused by all tests
+- **Workers:** 4 parallel workers for fast execution
+- **Timeout:** 15 seconds (fast fail for broken tests)
+- **Projects:**
+  - `setup` - Runs first, performs login
+  - `chromium` - Main tests using saved auth state
+  - `isolated` - Tests requiring fresh browser context (no auth state)
+
 ### E2E Test Rules
 
 **See [docs/testing/e2e-test-rules.md](docs/testing/e2e-test-rules.md) for complete rules.**
@@ -435,5 +493,6 @@ pytest tests/ -v --cov=app          # Run with coverage
 - Import from `auth.fixture.js` (NOT `@playwright/test`)
 - Use `authenticatedPage` fixture for all authenticated tests
 - Extend `BasePage.js` for Page Objects, set `this.url` property
+- Isolated tests (*.isolated.spec.js) run in fresh context without auth state
 
 **data-testid Convention:** `[screen]-[component]-[element]` (e.g., `positions-exit-modal`, `strategy-add-row-button`)

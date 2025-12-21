@@ -622,6 +622,7 @@ class StrikeFinderService:
         expiry: date,
         option_type: str,
         standard_deviations: float = 1.0,
+        outside_sd: bool = False,
         prefer_round_strike: bool = True
     ) -> Optional[Dict[str, Any]]:
         """
@@ -635,6 +636,7 @@ class StrikeFinderService:
             expiry: Expiry date
             option_type: CE or PE
             standard_deviations: 1.0, 1.5, 2.0 (how many SDs from ATM)
+            outside_sd: Select outside SD range (not currently used, for compatibility)
             prefer_round_strike: Prefer strikes divisible by 100
 
         Returns:

@@ -14,11 +14,10 @@ test.describe('AutoPilot Strike Preview - All Modes', () => {
     builderPage = new AutoPilotStrategyBuilderPage(authenticatedPage);
     await builderPage.goto('/autopilot/strategies/new');
 
-    // Fill basic info and navigate to legs step
-    await builderPage.page.fill('input[data-testid="autopilot-builder-name-input"]', 'Strike Preview Test');
-    await builderPage.page.click('button[data-testid="autopilot-builder-next-btn"]');
+    // Fill basic info
+    await builderPage.page.fill('input[data-testid="autopilot-builder-name"]', 'Strike Preview Test');
 
-    // Wait for legs table
+    // Wait for legs table (already visible on Step 1)
     await builderPage.page.waitForSelector('[data-testid="autopilot-legs-table"]', { timeout: 10000 });
 
     // Add a leg
@@ -136,8 +135,8 @@ test.describe('AutoPilot Strike Preview - All Modes', () => {
     // Wait for mode change and presets to appear
     await builderPage.page.waitForTimeout(1000);
 
-    // Click 0.30 preset
-    const preset030 = strikeCell.locator('button.preset-chip').filter({ hasText: '0.3' });
+    // Click 0.30 preset (use exact match to avoid matching 0.35)
+    const preset030 = strikeCell.locator('button.preset-chip').filter({ hasText: /^0\.3$/ });
     await preset030.click();
 
     // Wait for preview to load
@@ -321,7 +320,11 @@ test.describe('AutoPilot Strike Preview - All Modes', () => {
 
     // Switch back to ATM Offset
     await modeDropdown.selectOption('atm_offset');
-    await builderPage.page.waitForTimeout(2000);
+
+    // Wait for preview to load (with longer timeout for mode switching)
+    await builderPage.page.waitForTimeout(3000);
+
+    // Preview should be visible without errors
     await expect(errorText).not.toBeVisible();
     await expect(preview).toBeVisible();
   });

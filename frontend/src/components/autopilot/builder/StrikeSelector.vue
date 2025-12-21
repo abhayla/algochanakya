@@ -245,6 +245,10 @@ export default {
   },
   methods: {
     onModeChange() {
+      // Clear any previous error state immediately when mode changes
+      this.previewError = null
+      this.preview = null
+
       // Reset mode-specific values when mode changes
       if (this.localValue.mode === 'fixed' && !this.localValue.fixed_strike) {
         this.localValue.fixed_strike = null

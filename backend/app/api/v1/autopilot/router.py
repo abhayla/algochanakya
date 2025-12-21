@@ -427,65 +427,61 @@ async def preview_strike(
             )
 
         elif mode == "atm_offset":
-            # Get spot price from option chain
-            chain_data = await strike_finder.option_chain_service.get_option_chain(
-                underlying=underlying.upper(),
-                expiry=expiry,
-                use_cache=True
-            )
+            # OPTIMIZED: Get spot price directly (fast) instead of fetching entire option chain
+            from app.services.market_data import MarketDataService
 
-            spot_price = chain_data.get('spot_price')
-            if not spot_price:
-                raise HTTPException(status_code=400, detail="Could not get spot price")
+            market_data = MarketDataService(kite)
+            spot_data = await market_data.get_spot_price(underlying.upper())
+            spot_price = float(spot_data.ltp)
 
-            # Calculate ATM strike using centralized strike step
+            # Calculate ATM strike using centralized strike step (instant)
             strike_step = get_strike_step(underlying)
-            atm_strike = round(float(spot_price) / strike_step) * strike_step
+            atm_strike = round(spot_price / strike_step) * strike_step
 
-            # Apply offset (offset is already in points, not strike count)
+            # Apply offset (offset is in strike count, so multiply by strike_step)
+            # Example: offset=2 for NIFTY (step=50) means ATM + 100 points
             offset_value = offset if offset is not None else 0
-            resolved_strike = int(atm_strike + offset_value)
+            resolved_strike = int(atm_strike + (offset_value * strike_step))
 
-            # Get option data at resolved strike
-            options = chain_data.get('options', [])
-            if not options and 'strikes' in chain_data:
-                # Convert nested strikes format to flat options format
-                options = []
-                for strike_data in chain_data['strikes']:
-                    strike = strike_data['strike']
-                    if 'pe' in strike_data and option_type.upper() == 'PE':
-                        options.append({
-                            'strike': strike,
-                            'option_type': 'PE',
-                            **strike_data['pe']
-                        })
-                    if 'ce' in strike_data and option_type.upper() == 'CE':
-                        options.append({
-                            'strike': strike,
-                            'option_type': 'CE',
-                            **strike_data['ce']
-                        })
+            # Query database for ONLY this specific strike (fast, targeted query)
+            from sqlalchemy import select
+            from app.models.instruments import Instrument
 
-            # Find matching option (cast both to int for type-safe comparison)
-            matching_option = next(
-                (opt for opt in options if opt['option_type'] == option_type.upper() and int(opt['strike']) == resolved_strike),
-                None
+            stmt = select(Instrument).where(
+                Instrument.name == underlying.upper(),
+                Instrument.exchange == 'NFO',
+                Instrument.expiry == expiry,
+                Instrument.strike == resolved_strike,
+                Instrument.instrument_type == option_type.upper()
             )
 
-            # Create result dict - return calculated strike even if not found in chain
-            if matching_option:
+            instrument_result = await db.execute(stmt)
+            instrument = instrument_result.scalar_one_or_none()
+
+            if instrument:
+                # Get live LTP for this specific instrument (fast)
+                try:
+                    ltp_data = kite.ltp([f"NFO:{instrument.tradingsymbol}"])
+                    ltp = ltp_data.get(f"NFO:{instrument.tradingsymbol}", {}).get('last_price', 0)
+                except:
+                    ltp = 0
+
                 result = {
                     'strike': resolved_strike,
-                    'ltp': matching_option.get('ltp'),
-                    'delta': matching_option.get('delta'),
-                    'gamma': matching_option.get('gamma'),
-                    'theta': matching_option.get('theta'),
-                    'vega': matching_option.get('vega'),
-                    'iv': matching_option.get('iv'),
+                    'ltp': ltp,
+                    'instrument_token': instrument.instrument_token,
+                    'tradingsymbol': instrument.tradingsymbol,
+                    # Greeks not calculated for ATM Offset (would require option chain)
+                    # This is acceptable - user just needs to see the strike and LTP
+                    'delta': None,
+                    'gamma': None,
+                    'theta': None,
+                    'vega': None,
+                    'iv': None,
                 }
             else:
-                # Strike not found in option chain, but calculation is still valid
-                # Return strike without Greeks/LTP (graceful fallback)
+                # Strike not found in database (might be outside available strikes)
+                # Return calculated strike without market data (graceful fallback)
                 result = {
                     'strike': resolved_strike,
                     'ltp': None,
