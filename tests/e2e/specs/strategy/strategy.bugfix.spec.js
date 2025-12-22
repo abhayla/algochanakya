@@ -11,7 +11,7 @@ test.describe('Strategy Builder - Bug Fixes @bugfix', () => {
   test.beforeEach(async ({ authenticatedPage }) => {
     strategyPage = new StrategyBuilderPage(authenticatedPage);
     await strategyPage.navigate();
-    await strategyPage.page.waitForTimeout(2000); // Extra wait for market data
+    await strategyPage.page.waitForTimeout(1000); // Extra wait for market data
   });
 
   test('BUG FIX: should recalculate P/L after bulk delete using removeSelectedLegs()', async () => {
@@ -19,7 +19,7 @@ test.describe('Strategy Builder - Bug Fixes @bugfix', () => {
 
     // Add 2 legs
     await strategyPage.addRow();
-    await strategyPage.page.waitForTimeout(3000); // Wait for leg to fully load
+    await strategyPage.page.waitForTimeout(2000); // Wait for leg to fully load
 
     const legCount1 = await strategyPage.getLegCount();
     if (legCount1 === 0) {
@@ -28,13 +28,13 @@ test.describe('Strategy Builder - Bug Fixes @bugfix', () => {
     }
 
     await strategyPage.addRow();
-    await strategyPage.page.waitForTimeout(3000); // Wait for second leg
+    await strategyPage.page.waitForTimeout(2000); // Wait for second leg
 
     const legCount2 = await strategyPage.getLegCount();
     expect(legCount2).toBe(2);
 
     // Wait for initial P/L calculation
-    await strategyPage.page.waitForTimeout(2000);
+    await strategyPage.page.waitForTimeout(1000);
 
     // Verify P/L summary exists before deletion
     const hasSummaryBefore = await strategyPage.hasSummaryCards();
@@ -88,11 +88,11 @@ test.describe('Strategy Builder - Bug Fixes @bugfix', () => {
     const legRow = await strategyPage.getLegRow(0);
     const checkbox = legRow.locator('input[type="checkbox"]');
     await checkbox.check();
-    await strategyPage.page.waitForTimeout(500);
+    await strategyPage.page.waitForTimeout(300);
 
     // Delete the leg
     await strategyPage.deleteSelectedLegs();
-    await strategyPage.page.waitForTimeout(2000);
+    await strategyPage.page.waitForTimeout(1000);
 
     // Verify no legs remain
     const finalLegCount = await strategyPage.getLegCount();

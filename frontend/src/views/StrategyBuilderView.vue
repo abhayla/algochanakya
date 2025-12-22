@@ -1037,6 +1037,7 @@ async function applyStrategyTypeLegs(strategyTypeKey) {
   }
 
   // Add new legs from template with calculated strikes
+  const addedLegIndices = []
   for (const leg of templateLegs) {
     // Calculate strike based on ATM + offset
     let calculatedStrike = null
@@ -1055,9 +1056,47 @@ async function applyStrategyTypeLegs(strategyTypeKey) {
       lots: 1,
       entry_price: null
     })
+
+    // Track the index of this newly added leg
+    addedLegIndices.push(strategyStore.legs.length - 1)
   }
 
-  // Final P/L calculation after all legs are added
+  // Fetch instrument tokens for all legs in parallel
+  if (expiry && addedLegIndices.length > 0) {
+    const tokenFetchPromises = addedLegIndices.map(async (legIndex) => {
+      const leg = strategyStore.legs[legIndex]
+      if (leg.strike_price && leg.contract_type) {
+        try {
+          const data = await strategyStore.fetchInstrumentToken(
+            leg.expiry_date,
+            leg.strike_price,
+            leg.contract_type
+          )
+          if (data) {
+            // Update the leg with instrument token and tradingsymbol
+            strategyStore.legs[legIndex].instrument_token = data.instrument_token
+            strategyStore.legs[legIndex].tradingsymbol = data.tradingsymbol
+          }
+          return { legIndex, success: true, data }
+        } catch (err) {
+          console.warn(`Failed to fetch instrument token for leg ${legIndex}:`, err)
+          return { legIndex, success: false, error: err }
+        }
+      }
+      return { legIndex, success: false, error: 'Missing strike or contract type' }
+    })
+
+    // Wait for all token fetches to complete (parallel execution)
+    const results = await Promise.allSettled(tokenFetchPromises)
+
+    // Log any failures for debugging
+    const failures = results.filter(r => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value?.success))
+    if (failures.length > 0) {
+      console.warn(`${failures.length} of ${addedLegIndices.length} legs failed to fetch instrument token`)
+    }
+  }
+
+  // Final P/L calculation after all legs have their tokens
   await strategyStore.calculatePnL()
 
   previousStrategyType.value = strategyTypeKey

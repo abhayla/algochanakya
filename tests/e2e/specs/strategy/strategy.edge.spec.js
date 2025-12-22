@@ -81,9 +81,19 @@ test.describe('Strategy Builder - Edge Cases @edge', () => {
     const initialCount = await strategyPage.getLegCount();
     expect(initialCount).toBeGreaterThanOrEqual(2);
 
-    // Note: Deleting requires selecting legs first
-    // This tests the button visibility
-    await expect(strategyPage.deleteLegsButton).toBeVisible();
+    // Select first leg using checkbox (checkbox has no testid, use input[type="checkbox"] selector)
+    const row0 = await strategyPage.getLegRow(0);
+    const checkbox = row0.locator('input[type="checkbox"]');
+    await checkbox.check();
+    await strategyPage.page.waitForTimeout(300);
+
+    // Delete selected leg
+    await strategyPage.deleteSelectedLegs();
+    await strategyPage.page.waitForTimeout(500);
+
+    // Verify one leg was deleted
+    const finalCount = await strategyPage.getLegCount();
+    expect(finalCount).toBe(1);
   });
 
   test('should handle very long strategy name', async () => {
@@ -98,7 +108,7 @@ test.describe('Strategy Builder - Edge Cases @edge', () => {
     await strategyPage.assertPageVisible();
   });
 
-  test('should maintain state after page refresh', async ({ authenticatedPage }) => {
+  test('should reload page without errors after adding legs', async ({ authenticatedPage }) => {
     await strategyPage.addRow();
     await strategyPage.waitForLegCount(1);
     await strategyPage.enterStrategyName('Test Strategy');
@@ -106,7 +116,7 @@ test.describe('Strategy Builder - Edge Cases @edge', () => {
     // Refresh page
     await authenticatedPage.reload();
 
-    // Page should load (state may or may not persist)
+    // Page should reload without errors (note: unsaved state is not persisted)
     await strategyPage.assertPageVisible();
   });
 
@@ -119,9 +129,24 @@ test.describe('Strategy Builder - Edge Cases @edge', () => {
     await strategyPage.save();
     await strategyPage.page.waitForTimeout(1000); // Wait for save to complete
 
+    // Close the success modal from first save
+    const modalVisibleAfterSave = await strategyPage.isValidationModalVisible();
+    if (modalVisibleAfterSave) {
+      await strategyPage.closeValidationModal();
+      await strategyPage.page.waitForTimeout(500);
+    }
+
+    // Reset to "New Strategy" mode
+    await strategyPage.selectStrategy(''); // Select "New Strategy" option
+    await strategyPage.addRow();
+    await strategyPage.waitForLegCount(1);
+
     // Try to save another strategy with same name
     await strategyPage.enterStrategyName('Test Strategy');
     await strategyPage.save();
+
+    // Wait for validation modal to appear
+    await strategyPage.validationModal.waitFor({ state: 'visible', timeout: 5000 });
 
     // Verify validation modal appears with duplicate error
     const modalVisible = await strategyPage.isValidationModalVisible();
@@ -141,9 +166,24 @@ test.describe('Strategy Builder - Edge Cases @edge', () => {
     await strategyPage.save();
     await strategyPage.page.waitForTimeout(1000);
 
+    // Close the success modal from first save
+    const modalVisibleAfterSave = await strategyPage.isValidationModalVisible();
+    if (modalVisibleAfterSave) {
+      await strategyPage.closeValidationModal();
+      await strategyPage.page.waitForTimeout(500);
+    }
+
+    // Reset to "New Strategy" mode
+    await strategyPage.selectStrategy(''); // Select "New Strategy" option
+    await strategyPage.addRow();
+    await strategyPage.waitForLegCount(1);
+
     // Try saving "MY STRATEGY" (uppercase)
     await strategyPage.enterStrategyName('MY STRATEGY');
     await strategyPage.save();
+
+    // Wait for validation modal to appear
+    await strategyPage.validationModal.waitFor({ state: 'visible', timeout: 5000 });
 
     // Verify validation modal
     const modalVisible = await strategyPage.isValidationModalVisible();
