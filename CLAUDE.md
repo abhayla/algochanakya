@@ -2,6 +2,32 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## CRITICAL: Auto-Verification After Code Changes
+
+**MANDATORY:** After making ANY code change (bug fix, feature implementation, refactoring), you MUST immediately and automatically invoke the `auto-verify` skill to verify the changes work correctly. This is NOT optional.
+
+**When to Auto-Verify:**
+- ✅ After fixing bugs
+- ✅ After implementing new features
+- ✅ After refactoring code
+- ✅ After modifying Vue components
+- ✅ After changing API routes
+- ✅ After updating database models
+- ✅ After modifying test files
+
+**Skip Auto-Verify ONLY for:**
+- ❌ Documentation-only changes (*.md files)
+- ❌ Comment-only changes
+- ❌ Changes explicitly marked by user as "skip verification"
+
+**How to Invoke:**
+Use the Skill tool immediately after completing code changes:
+```
+Skill(skill="auto-verify")
+```
+
+Do NOT wait for user to ask. Do NOT just mention it. INVOKE IT AUTOMATICALLY.
+
 ## Project Overview
 
 AlgoChanakya is an options trading platform (similar to Sensibull) built with FastAPI backend and Vue.js 3 frontend. The platform integrates with broker APIs (starting with Zerodha Kite Connect) for authentication and trading operations.
