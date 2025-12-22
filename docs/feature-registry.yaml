@@ -1,0 +1,424 @@
+# AlgoChanakya Feature Registry
+#
+# This file maps code files to features for automatic documentation maintenance.
+# The docs-maintainer skill uses this registry to determine which documentation
+# to update when code changes.
+
+# ============================================================================
+# AUTO-DETECTION PATTERNS
+# ============================================================================
+# Used to automatically assign new files to features based on path patterns
+
+auto_detect_patterns:
+  # Authentication
+  - pattern: "backend/app/api/routes/auth.py"
+    feature: authentication
+  - pattern: "backend/app/models/users.py"
+    feature: authentication
+  - pattern: "backend/app/models/broker_connections.py"
+    feature: authentication
+  - pattern: "frontend/src/views/LoginView.vue"
+    feature: authentication
+  - pattern: "frontend/src/views/AuthCallbackView.vue"
+    feature: authentication
+  - pattern: "frontend/src/stores/auth.js"
+    feature: authentication
+
+  # Watchlist
+  - pattern: "backend/app/api/routes/watchlist*.py"
+    feature: watchlist
+  - pattern: "backend/app/api/routes/instruments.py"
+    feature: watchlist
+  - pattern: "backend/app/models/watchlists.py"
+    feature: watchlist
+  - pattern: "backend/app/models/instruments.py"
+    feature: watchlist
+  - pattern: "frontend/src/views/WatchlistView.vue"
+    feature: watchlist
+  - pattern: "frontend/src/stores/watchlist.js"
+    feature: watchlist
+  - pattern: "frontend/src/components/watchlist/**"
+    feature: watchlist
+
+  # Positions
+  - pattern: "backend/app/api/routes/positions*.py"
+    feature: positions
+  - pattern: "frontend/src/views/PositionsView.vue"
+    feature: positions
+  - pattern: "frontend/src/stores/positions.js"
+    feature: positions
+  - pattern: "frontend/src/components/positions/**"
+    feature: positions
+
+  # Option Chain
+  - pattern: "backend/app/api/routes/optionchain*.py"
+    feature: option-chain
+  - pattern: "backend/app/api/routes/options.py"
+    feature: option-chain
+  - pattern: "frontend/src/views/OptionChainView.vue"
+    feature: option-chain
+  - pattern: "frontend/src/stores/optionchain.js"
+    feature: option-chain
+  - pattern: "frontend/src/components/optionchain/**"
+    feature: option-chain
+
+  # Strategy Builder
+  - pattern: "backend/app/api/routes/strategy.py"
+    feature: strategy-builder
+  - pattern: "backend/app/models/strategies.py"
+    feature: strategy-builder
+  - pattern: "backend/app/services/pnl_calculator.py"
+    feature: strategy-builder
+  - pattern: "frontend/src/views/StrategyBuilderView.vue"
+    feature: strategy-builder
+  - pattern: "frontend/src/stores/strategy.js"
+    feature: strategy-builder
+  - pattern: "frontend/src/components/strategy/**"
+    feature: strategy-builder
+
+  # Strategy Library
+  - pattern: "backend/app/api/routes/strategy_wizard.py"
+    feature: strategy-library
+  - pattern: "backend/app/models/strategy_templates.py"
+    feature: strategy-library
+  - pattern: "frontend/src/views/StrategyLibraryView.vue"
+    feature: strategy-library
+  - pattern: "frontend/src/stores/strategyLibrary.js"
+    feature: strategy-library
+  - pattern: "frontend/src/components/strategyLibrary/**"
+    feature: strategy-library
+
+  # AutoPilot
+  - pattern: "backend/app/api/v1/autopilot/**"
+    feature: autopilot
+  - pattern: "backend/app/models/autopilot.py"
+    feature: autopilot
+  - pattern: "backend/app/services/market_data.py"
+    feature: autopilot
+  - pattern: "backend/app/services/condition_engine.py"
+    feature: autopilot
+  - pattern: "backend/app/services/strategy_monitor.py"
+    feature: autopilot
+  - pattern: "backend/app/services/order_executor.py"
+    feature: autopilot
+  - pattern: "backend/app/services/adjustment_engine.py"
+    feature: autopilot
+  - pattern: "backend/app/services/suggestion_engine.py"
+    feature: autopilot
+  - pattern: "backend/app/services/greeks_calculator.py"
+    feature: autopilot
+  - pattern: "backend/app/websocket/manager.py"
+    feature: autopilot
+  - pattern: "frontend/src/views/autopilot/**"
+    feature: autopilot
+  - pattern: "frontend/src/stores/autopilot.js"
+    feature: autopilot
+  - pattern: "frontend/src/components/autopilot/**"
+    feature: autopilot
+  - pattern: "frontend/src/composables/autopilot/**"
+    feature: autopilot
+
+  # WebSocket (shared service)
+  - pattern: "backend/app/api/routes/websocket.py"
+    feature: websocket
+  - pattern: "backend/app/services/kite_ticker.py"
+    feature: websocket
+
+  # Orders
+  - pattern: "backend/app/api/routes/orders.py"
+    feature: orders
+
+  # User Preferences
+  - pattern: "backend/app/api/routes/user_preferences.py"
+    feature: user-preferences
+  - pattern: "backend/app/models/user_preferences.py"
+    feature: user-preferences
+  - pattern: "frontend/src/stores/userPreferences.js"
+    feature: user-preferences
+
+  # Dashboard
+  - pattern: "frontend/src/views/DashboardView.vue"
+    feature: dashboard
+
+  # Settings
+  - pattern: "frontend/src/views/SettingsView.vue"
+    feature: settings
+
+
+# ============================================================================
+# FEATURE MAPPINGS
+# ============================================================================
+# Explicit mapping of features to their files and documentation
+
+features:
+  # --------------------------------------------------------------------------
+  # AUTHENTICATION
+  # --------------------------------------------------------------------------
+  authentication:
+    name: "Authentication & Authorization"
+    docs_folder: "docs/features/authentication/"
+    description: "Zerodha OAuth integration, JWT sessions, user management"
+    backend_files:
+      - "backend/app/api/routes/auth.py"
+      - "backend/app/models/users.py"
+      - "backend/app/models/broker_connections.py"
+      - "backend/app/utils/dependencies.py"
+    frontend_files:
+      - "frontend/src/views/LoginView.vue"
+      - "frontend/src/views/AuthCallbackView.vue"
+      - "frontend/src/stores/auth.js"
+      - "frontend/src/services/api.js"
+    tests:
+      - "tests/e2e/specs/login/**"
+      - "backend/tests/test_auth.py"
+
+  # --------------------------------------------------------------------------
+  # WATCHLIST
+  # --------------------------------------------------------------------------
+  watchlist:
+    name: "Watchlist with Live Prices"
+    docs_folder: "docs/features/watchlist/"
+    description: "Real-time instrument watchlist with WebSocket price streaming"
+    backend_files:
+      - "backend/app/api/routes/watchlist.py"
+      - "backend/app/api/routes/instruments.py"
+      - "backend/app/api/routes/websocket.py"
+      - "backend/app/models/watchlists.py"
+      - "backend/app/models/instruments.py"
+      - "backend/app/services/kite_ticker.py"
+      - "backend/app/services/instruments.py"
+    frontend_files:
+      - "frontend/src/views/WatchlistView.vue"
+      - "frontend/src/stores/watchlist.js"
+      - "frontend/src/components/watchlist/IndexHeader.vue"
+      - "frontend/src/components/watchlist/InstrumentRow.vue"
+      - "frontend/src/components/watchlist/InstrumentSearch.vue"
+    tests:
+      - "tests/e2e/specs/watchlist/**"
+
+  # --------------------------------------------------------------------------
+  # POSITIONS
+  # --------------------------------------------------------------------------
+  positions:
+    name: "F&O Positions Management"
+    docs_folder: "docs/features/positions/"
+    description: "Live F&O positions view with real-time P&L tracking"
+    backend_files:
+      - "backend/app/api/routes/positions.py"
+      - "backend/app/services/kite_ticker.py"
+    frontend_files:
+      - "frontend/src/views/PositionsView.vue"
+      - "frontend/src/stores/positions.js"
+      - "frontend/src/components/positions/ExitModal.vue"
+      - "frontend/src/components/positions/AddModal.vue"
+    tests:
+      - "tests/e2e/specs/positions/**"
+
+  # --------------------------------------------------------------------------
+  # OPTION CHAIN
+  # --------------------------------------------------------------------------
+  option-chain:
+    name: "Option Chain"
+    docs_folder: "docs/features/option-chain/"
+    description: "Full option chain with OI, IV, Greeks, and strike finder"
+    backend_files:
+      - "backend/app/api/routes/optionchain.py"
+      - "backend/app/api/routes/options.py"
+      - "backend/app/services/kite_ticker.py"
+    frontend_files:
+      - "frontend/src/views/OptionChainView.vue"
+      - "frontend/src/stores/optionchain.js"
+      - "frontend/src/components/optionchain/OptionChainTable.vue"
+      - "frontend/src/components/optionchain/StrikeFinder.vue"
+    tests:
+      - "tests/e2e/specs/optionchain/**"
+
+  # --------------------------------------------------------------------------
+  # STRATEGY BUILDER
+  # --------------------------------------------------------------------------
+  strategy-builder:
+    name: "Strategy Builder"
+    docs_folder: "docs/features/strategy-builder/"
+    description: "Options strategy builder with P&L calculator and payoff charts"
+    backend_files:
+      - "backend/app/api/routes/strategy.py"
+      - "backend/app/api/routes/orders.py"
+      - "backend/app/models/strategies.py"
+      - "backend/app/services/pnl_calculator.py"
+      - "backend/app/services/kite_ticker.py"
+    frontend_files:
+      - "frontend/src/views/StrategyBuilderView.vue"
+      - "frontend/src/stores/strategy.js"
+      - "frontend/src/components/strategy/StrategyHeader.vue"
+      - "frontend/src/components/strategy/StrategyLegRow.vue"
+      - "frontend/src/components/strategy/StrategyActions.vue"
+      - "frontend/src/components/strategy/PnLGrid.vue"
+      - "frontend/src/components/strategy/PayoffChart.vue"
+    tests:
+      - "tests/e2e/specs/strategy/**"
+
+  # --------------------------------------------------------------------------
+  # STRATEGY LIBRARY
+  # --------------------------------------------------------------------------
+  strategy-library:
+    name: "Strategy Library & Wizard"
+    docs_folder: "docs/features/strategy-library/"
+    description: "Pre-built strategy templates with AI-powered recommendations"
+    backend_files:
+      - "backend/app/api/routes/strategy_wizard.py"
+      - "backend/app/models/strategy_templates.py"
+      - "backend/scripts/seed_strategies.py"
+    frontend_files:
+      - "frontend/src/views/StrategyLibraryView.vue"
+      - "frontend/src/stores/strategyLibrary.js"
+      - "frontend/src/components/strategyLibrary/TemplateCard.vue"
+      - "frontend/src/components/strategyLibrary/WizardModal.vue"
+    tests:
+      - "tests/e2e/specs/strategylibrary/**"
+
+  # --------------------------------------------------------------------------
+  # AUTOPILOT
+  # --------------------------------------------------------------------------
+  autopilot:
+    name: "AutoPilot (Auto-Execution System)"
+    docs_folder: "docs/features/autopilot/"
+    description: "Automated strategy execution with conditional entry, adjustments, and risk management"
+    backend_files:
+      - "backend/app/api/v1/autopilot/router.py"
+      - "backend/app/api/v1/autopilot/legs.py"
+      - "backend/app/api/v1/autopilot/analytics.py"
+      - "backend/app/api/v1/autopilot/suggestions.py"
+      - "backend/app/api/v1/autopilot/simulation.py"
+      - "backend/app/api/v1/autopilot/option_chain.py"
+      - "backend/app/models/autopilot.py"
+      - "backend/app/services/market_data.py"
+      - "backend/app/services/condition_engine.py"
+      - "backend/app/services/strategy_monitor.py"
+      - "backend/app/services/order_executor.py"
+      - "backend/app/services/adjustment_engine.py"
+      - "backend/app/services/suggestion_engine.py"
+      - "backend/app/services/greeks_calculator.py"
+      - "backend/app/websocket/manager.py"
+    frontend_files:
+      - "frontend/src/views/autopilot/DashboardView.vue"
+      - "frontend/src/views/autopilot/StrategyBuilderView.vue"
+      - "frontend/src/views/autopilot/StrategyDetailView.vue"
+      - "frontend/src/views/autopilot/SettingsView.vue"
+      - "frontend/src/views/autopilot/AnalyticsView.vue"
+      - "frontend/src/views/autopilot/ReportsView.vue"
+      - "frontend/src/views/autopilot/TradeJournalView.vue"
+      - "frontend/src/views/autopilot/BacktestsView.vue"
+      - "frontend/src/views/autopilot/OrderHistoryView.vue"
+      - "frontend/src/views/autopilot/TemplateLibraryView.vue"
+      - "frontend/src/views/autopilot/SharedStrategiesView.vue"
+      - "frontend/src/views/autopilot/SharedStrategyView.vue"
+      - "frontend/src/stores/autopilot.js"
+      - "frontend/src/components/autopilot/**/*.vue"
+      - "frontend/src/composables/autopilot/useWebSocket.js"
+    tests:
+      - "tests/e2e/specs/autopilot/**"
+    additional_docs:
+      - "docs/autopilot/**"
+
+  # --------------------------------------------------------------------------
+  # SHARED SERVICES
+  # --------------------------------------------------------------------------
+  websocket:
+    name: "WebSocket Live Data Streaming"
+    docs_folder: "docs/features/websocket/"
+    description: "Shared WebSocket service for live price streaming (used by multiple features)"
+    backend_files:
+      - "backend/app/api/routes/websocket.py"
+      - "backend/app/services/kite_ticker.py"
+    frontend_files:
+      - "frontend/src/stores/watchlist.js"
+      - "frontend/src/stores/positions.js"
+      - "frontend/src/stores/optionchain.js"
+      - "frontend/src/stores/strategy.js"
+    used_by_features:
+      - watchlist
+      - positions
+      - option-chain
+      - strategy-builder
+      - autopilot
+
+  orders:
+    name: "Order Management"
+    docs_folder: "docs/features/orders/"
+    description: "Order placement and management (basket orders, positions import)"
+    backend_files:
+      - "backend/app/api/routes/orders.py"
+    used_by_features:
+      - strategy-builder
+      - positions
+      - autopilot
+
+  user-preferences:
+    name: "User Preferences"
+    docs_folder: "docs/features/user-preferences/"
+    description: "User settings and preferences (P&L grid config, notifications, etc.)"
+    backend_files:
+      - "backend/app/api/routes/user_preferences.py"
+      - "backend/app/models/user_preferences.py"
+    frontend_files:
+      - "frontend/src/stores/userPreferences.js"
+      - "frontend/src/views/SettingsView.vue"
+    used_by_features:
+      - strategy-builder
+
+  dashboard:
+    name: "Dashboard"
+    docs_folder: "docs/features/dashboard/"
+    description: "Main dashboard with navigation cards"
+    frontend_files:
+      - "frontend/src/views/DashboardView.vue"
+    tests:
+      - "tests/e2e/specs/dashboard/**"
+
+
+# ============================================================================
+# SHARED / CROSS-CUTTING FILES
+# ============================================================================
+# Files that belong to multiple features or are infrastructure-level
+
+shared_files:
+  constants:
+    - "backend/app/constants/trading.py"
+    - "backend/app/constants/strategy_types.py"
+    - "backend/app/constants/websocket.py"
+    - "frontend/src/constants/trading.js"
+    - "frontend/src/constants/strategyTypes.js"
+    - "frontend/src/constants/websocket.js"
+    docs: "docs/architecture/constants.md"
+
+  database:
+    - "backend/app/database.py"
+    - "backend/alembic/**"
+    docs: "docs/architecture/database.md"
+
+  config:
+    - "backend/app/config.py"
+    - "backend/.env.example"
+    - "frontend/.env.example"
+    docs: "docs/guides/development.md"
+
+  utils:
+    - "backend/app/utils/**"
+    - "frontend/src/utils/**"
+
+
+# ============================================================================
+# UNASSIGNED FILES
+# ============================================================================
+# New files that haven't been categorized yet (will be auto-assigned)
+
+unassigned: []
+
+
+# ============================================================================
+# METADATA
+# ============================================================================
+
+version: "1.0.0"
+last_updated: "2025-12-22"
+maintained_by: "docs-maintainer skill"

@@ -119,10 +119,16 @@ test.describe('Strategy Builder - Happy Path @happy', () => {
     await strategyPage.waitForLegCount(2);
     await strategyPage.waitForPnLUpdate();
 
-    // Get initial max profit
-    const initialMaxProfit = await strategyPage.getMaxProfit();
+    // Verify P/L summary exists with 2 legs
+    const hasSummaryBefore = await strategyPage.hasSummaryCards();
+    expect(hasSummaryBefore).toBe(true);
 
-    // Remove 1 row (delete the first row)
+    const initialMaxProfit = await strategyPage.getMaxProfit();
+    const initialMaxLoss = await strategyPage.getMaxLoss();
+    expect(typeof initialMaxProfit).toBe('number');
+    expect(typeof initialMaxLoss).toBe('number');
+
+    // Remove 1 row (delete the first row via checkbox selection)
     const legRow = await strategyPage.getLegRow(0);
     const checkbox = legRow.locator('input[type="checkbox"]');
     await checkbox.check();
@@ -132,10 +138,15 @@ test.describe('Strategy Builder - Happy Path @happy', () => {
     // Wait for recalculation
     await strategyPage.waitForPnLUpdate();
 
-    // Verify calculation updated (max profit may have changed)
+    // Verify P/L summary still exists (recalculation happened)
+    const hasSummaryAfter = await strategyPage.hasSummaryCards();
+    expect(hasSummaryAfter).toBe(true);
+
+    // Verify new values exist (calculation completed successfully)
     const finalMaxProfit = await strategyPage.getMaxProfit();
-    // Just verify we got a value (calculation happened)
+    const finalMaxLoss = await strategyPage.getMaxLoss();
     expect(typeof finalMaxProfit).toBe('number');
+    expect(typeof finalMaxLoss).toBe('number');
   });
 
   test('should auto-recalculate P/L when changing leg field', async () => {

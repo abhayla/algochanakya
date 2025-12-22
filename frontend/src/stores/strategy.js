@@ -279,6 +279,9 @@ export const useStrategyStore = defineStore('strategy', () => {
       legs.value.splice(index, 1)
     })
     selectedLegIndices.value = []
+
+    // Auto-calculate P/L after removing selected legs
+    calculatePnL()
   }
 
   function toggleLegSelection(index) {
@@ -313,9 +316,16 @@ export const useStrategyStore = defineStore('strategy', () => {
       return { success: false, error: 'Legs must have strike price and instrument token' }
     }
 
-    // Build legs with CMP fallback for missing entry prices
+    // Fetch LTP from API for legs without WebSocket CMP (as fallback)
+    for (const leg of validLegs) {
+      if (!getLegCMP(leg) && leg.tradingsymbol) {
+        await fetchLegLTP(leg)  // Updates livePrices with LTP from API
+      }
+    }
+
+    // Build legs with CMP/LTP fallback for missing entry prices
     const legsWithEntry = validLegs.map(leg => {
-      const cmp = getLegCMP(leg)
+      const cmp = getLegCMP(leg)  // Now includes API-fetched LTP
       const effectiveEntry = leg.entry_price || cmp
       return {
         ...leg,
@@ -713,6 +723,9 @@ export const useStrategyStore = defineStore('strategy', () => {
     if (leg.expiry_date && !strikes.value[leg.expiry_date]) {
       fetchStrikes(leg.expiry_date)
     }
+
+    // Auto-calculate P/L after adding leg from Option Chain
+    calculatePnL()
   }
 
   // Clear / Reset

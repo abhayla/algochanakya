@@ -233,4 +233,72 @@ test.describe('Strategy Builder - Edge Cases @edge', () => {
     const bankniftyActive = await strategyPage.isUnderlyingActive('banknifty');
     expect(bankniftyActive).toBe(true);
   });
+
+  // P/L Recalculation Regression Tests
+  test('should recalculate P/L when bulk deleting legs', async () => {
+    // Add 3 legs
+    await strategyPage.addRow();
+    await strategyPage.waitForLegCount(1);
+    await strategyPage.addRow();
+    await strategyPage.waitForLegCount(2);
+    await strategyPage.addRow();
+    await strategyPage.waitForLegCount(3);
+    await strategyPage.waitForPnLUpdate();
+
+    // Verify P/L summary exists with 3 legs
+    const hasSummaryBefore = await strategyPage.hasSummaryCards();
+    expect(hasSummaryBefore).toBe(true);
+
+    // Select first 2 legs
+    const row0 = await strategyPage.getLegRow(0);
+    const row1 = await strategyPage.getLegRow(1);
+    await row0.locator('input[type="checkbox"]').check();
+    await row1.locator('input[type="checkbox"]').check();
+
+    // Delete selected legs
+    await strategyPage.deleteSelectedLegs();
+    await strategyPage.waitForLegCount(1);
+
+    // Wait for recalculation
+    await strategyPage.waitForPnLUpdate();
+
+    // Verify P/L summary still exists after deletion (recalculation happened)
+    const hasSummaryAfter = await strategyPage.hasSummaryCards();
+    expect(hasSummaryAfter).toBe(true);
+
+    // Verify we have valid P/L values
+    const finalMaxProfit = await strategyPage.getMaxProfit();
+    expect(typeof finalMaxProfit).toBe('number');
+  });
+
+  test('should clear P/L grid when all legs deleted', async () => {
+    // Add 2 legs
+    await strategyPage.addRow();
+    await strategyPage.waitForLegCount(1);
+    await strategyPage.addRow();
+    await strategyPage.waitForLegCount(2);
+    await strategyPage.waitForPnLUpdate();
+
+    // Verify P/L grid exists
+    const hasSummary = await strategyPage.hasSummaryCards();
+    expect(hasSummary).toBe(true);
+
+    // Select all legs
+    const row0 = await strategyPage.getLegRow(0);
+    const row1 = await strategyPage.getLegRow(1);
+    await row0.locator('input[type="checkbox"]').check();
+    await row1.locator('input[type="checkbox"]').check();
+
+    // Delete all legs
+    await strategyPage.deleteSelectedLegs();
+    await strategyPage.page.waitForTimeout(1000);
+
+    // Verify legs are gone
+    const legCount = await strategyPage.getLegCount();
+    expect(legCount).toBe(0);
+
+    // Verify empty state is shown
+    const isEmpty = await strategyPage.isEmptyState();
+    expect(isEmpty).toBe(true);
+  });
 });

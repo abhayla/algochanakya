@@ -128,6 +128,9 @@ TEMPLATE_WORKFLOW_VERIFICATION.md
 
 # Temporary screenshots/error images (root level)
 error-screenshot.png
+dashboard-screenshot.png
+strategy-screenshot.png
+*.png
 
 # Temporary implementation documentation (root level - docs/ versions are tracked)
 /IMPLEMENTATION_SUMMARY.md
@@ -157,3 +160,6 @@ test-output.txt
 *-output.txt
 autopilot-test-results.txt
 paper-trading-test-summary.md
+
+# Temporary notes
+notes

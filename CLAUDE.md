@@ -28,12 +28,16 @@ AlgoChanakya is an options trading platform (similar to Sensibull) built with Fa
 venv\Scripts\activate    # Windows
 source venv/bin/activate # Linux/Mac
 
-# Start development server
+# Start development server (auto-downloads instruments on first run if DB empty)
 python run.py
 
 # Database migrations (Alembic)
-alembic revision --autogenerate -m "description"
-alembic upgrade head
+alembic revision --autogenerate -m "description"  # Generate migration
+alembic upgrade head                               # Apply migration
+alembic downgrade -1                               # Rollback one migration
+
+# Note: Backend connects to remote PostgreSQL/Redis by default (103.118.16.189)
+# Configure .env file to use local databases if needed
 ```
 
 ### Frontend (from `frontend/` directory)
@@ -158,14 +162,20 @@ Full option chain with OI, IV, Greeks, and live prices:
    - Calculates Greeks (Delta, Gamma, Theta, Vega) using Black-Scholes
    - Calculates Max Pain and PCR (Put-Call Ratio)
 
-2. **Frontend (`src/views/OptionChainView.vue`):**
+2. **Strike Finder:** Intelligent strike selection tool
+   - ATM-based selection (select strikes around current spot price)
+   - Delta-based selection (find strikes matching target delta value)
+   - Integration with Strategy Builder for quick leg addition
+
+3. **Frontend (`src/views/OptionChainView.vue`):**
    - Displays CE/PE data mirrored around ATM strike
    - OI bars visualization with color coding
    - ITM highlighting (green for CE, red for PE)
    - Greeks toggle for detailed view
    - Auto-refresh with live data via store
+   - Strike Finder modal for advanced strike selection
 
-3. **Store (`src/stores/optionchain.js`):**
+4. **Store (`src/stores/optionchain.js`):**
    - Manages underlying, expiry, chain data
    - Fetches expiries and option chain from API
    - Integrates with Strategy Builder for adding legs
@@ -281,37 +291,57 @@ Pre-built strategy templates with AI-powered recommendations:
 
 ### AutoPilot (Auto-Execution System)
 
-Automated strategy execution with conditional entry, adjustments, and risk management:
+Automated strategy execution with conditional entry, adjustments, and risk management across 5 development phases:
 
-1. **Database Tables (`backend/alembic/versions/001_autopilot_initial.py`):**
+**Phase 1-2 (Core Foundation):** Strategy creation, entry conditions, order execution, background monitoring, WebSocket updates
+**Phase 3 (Advanced Risk):** Kill switch, semi-auto mode, adjustment engine, trailing stops, auto-exit, re-entry, Greeks tracking
+**Phase 4 (Analytics):** Trade journal, analytics dashboard, reports (PDF/Excel/CSV), backtesting, template sharing
+**Phase 5 (Advanced Adjustments):** Position leg tracking, delta monitoring with alerts, AI adjustment suggestions, strike finder, staged entry, gamma risk, IV skew analysis
+
+1. **Database Tables (16 tables across multiple migrations):**
    - `autopilot_strategies` - Strategy configurations with entry conditions, adjustment rules
    - `autopilot_orders` - Order history with slippage tracking
-   - `autopilot_logs` - Activity logs with event types and severity
-   - `autopilot_templates` - Pre-built strategy templates
+   - `autopilot_logs` - Activity logs with 42+ event types and severity levels
+   - `autopilot_templates` - Pre-built strategy templates with ratings
    - `autopilot_user_settings` - User risk limits and preferences
    - `autopilot_daily_summary` - Daily P&L and execution stats
    - `autopilot_condition_eval` - Condition evaluation snapshots
+   - `autopilot_adjustment_logs` - Adjustment execution history
+   - `autopilot_pending_confirmations` - Semi-auto mode confirmations
+   - `autopilot_position_legs` - Individual leg tracking with Greeks
+   - `autopilot_adjustment_suggestions` - AI-powered suggestions
+   - `autopilot_trade_journal` - Automatic trade logging
+   - `autopilot_backtests` - Historical strategy testing results
+   - Additional tables for analytics, reports, and template sharing
 
 2. **AutoPilot API (`backend/app/api/v1/autopilot/`):**
-   - `GET/POST /api/v1/autopilot/strategies` - Strategy CRUD
-   - `POST /api/v1/autopilot/strategies/{id}/activate` - Start monitoring
-   - `POST /api/v1/autopilot/strategies/{id}/pause` - Pause strategy
-   - `POST /api/v1/autopilot/strategies/{id}/exit` - Force exit all positions
-   - `GET /api/v1/autopilot/dashboard/summary` - Dashboard overview
-   - `GET /api/v1/autopilot/orders` - Order history
-   - `GET /api/v1/autopilot/logs` - Activity logs
-   - `POST /api/v1/autopilot/kill-switch` - Emergency stop all
+   - Strategy Management: `GET/POST/PUT/DELETE /strategies`
+   - Actions: `POST /strategies/{id}/activate|pause|exit`
+   - Dashboard: `GET /dashboard/summary`
+   - Orders: `GET /orders`
+   - Logs: `GET /logs`
+   - Kill Switch: `POST /kill-switch` - Emergency stop all strategies
+   - Confirmations: `POST /confirmations/{id}/respond` - Semi-auto mode responses
+   - Templates: `GET/POST /templates` - Pre-built AutoPilot templates
+   - Analytics: `GET /analytics/...` - Performance metrics and insights
+   - Reports: `GET/POST /reports` - Daily/Weekly/Monthly/Custom/Tax reports
+   - Backtests: `GET/POST /backtests` - Historical strategy testing
+   - Suggestions: `GET/POST /suggestions` - AI adjustment recommendations
 
 3. **AutoPilot Services (`backend/app/services/`):**
    - `market_data.py` - Market data fetching (LTP, spot prices, VIX) with caching
-   - `condition_engine.py` - Entry condition evaluation (TIME, SPOT, VIX, PREMIUM variables)
-   - `order_executor.py` - Order placement via Kite with sequential/simultaneous execution
-   - `strategy_monitor.py` - Background service polling strategies, executing entries/exits
+   - `condition_engine.py` - Entry/adjustment condition evaluation (TIME, SPOT, VIX, PREMIUM, DELTA variables)
+   - `order_executor.py` - Order placement via Kite with sequential/simultaneous execution, retry logic
+   - `strategy_monitor.py` - Background service polling strategies (5s interval), executing entries/exits/adjustments
+   - `adjustment_engine.py` - Rule-based adjustments (7 trigger types, 7 action types)
+   - `suggestion_engine.py` - AI-powered adjustment recommendations with confidence scoring
+   - `greeks_calculator.py` - Black-Scholes Greeks calculation for position tracking
 
 4. **AutoPilot WebSocket (`backend/app/websocket/`):**
    - `manager.py` - ConnectionManager for real-time updates to frontend
-   - Message types: STRATEGY_UPDATE, PNL_UPDATE, CONDITION_EVALUATED, ORDER_PLACED, RISK_ALERT
+   - 30+ message types including: STRATEGY_UPDATE, PNL_UPDATE, CONDITION_EVALUATED, ORDER_PLACED, ORDER_FILLED, RISK_ALERT, CONFIRMATION_REQUEST, ADJUSTMENT_EXECUTED, GREEKS_UPDATE
    - Per-user connection tracking and strategy subscriptions
+   - Real-time broadcasting of condition evaluation progress, order status, and risk alerts
 
 5. **Frontend (`frontend/src/views/autopilot/`):**
    - `DashboardView.vue` - Active strategies, P&L summary, activity feed
@@ -439,6 +469,47 @@ Frontend requires `.env` file:
 - `VITE_API_BASE_URL` - Backend API URL (defaults to http://localhost:8000)
 - `VITE_WS_URL` - WebSocket URL (defaults to localhost:8000)
 
+
+## Documentation & Feature Registry
+
+**Feature Registry:** `docs/feature-registry.yaml` maps code files to features for automatic documentation maintenance.
+
+**Feature Documentation Structure:**
+```
+docs/features/
+├── watchlist/
+│   ├── README.md          # Feature overview
+│   ├── REQUIREMENTS.md    # Checklist-style requirements
+│   └── CHANGELOG.md       # Feature-specific changelog
+├── positions/
+├── option-chain/
+├── strategy-builder/
+├── strategy-library/
+├── autopilot/
+└── ... (11 features total)
+```
+
+Each feature has:
+- **README.md** - Feature overview, architecture, usage
+- **REQUIREMENTS.md** - Checklist of implemented/planned features
+- **CHANGELOG.md** - Version history following Keep a Changelog format
+
+**IMPORTANT:** After making code changes, Claude should proactively use the `docs-maintainer` skill to update all related documentation automatically.
+
+## Claude Code Skills
+
+This project includes specialized Claude Code skills for common development tasks:
+
+- **docs-maintainer** - **USE PROACTIVELY** after any code change to auto-update feature docs, CHANGELOG, REQUIREMENTS, and keep feature-registry.yaml in sync
+- **autopilot-assistant** - AutoPilot strategy configuration guidance (conditions, adjustments, risk management)
+- **e2e-test-generator** - Generate Playwright E2E tests using Page Object Model for new features
+- **test-fixer** - Diagnose and fix failing E2E and unit tests
+- **trading-constants-manager** - Enforce centralized trading constants usage (lot sizes, strike steps, etc.)
+- **vitest-generator** - Generate Vitest unit tests for Vue components, Pinia stores, and composables
+- **vue-component-generator** - Generate Vue 3 components and Pinia stores following project conventions
+- **update-ip** - Update AlgoChanakya Remote Access IP configuration
+
+Use skills when relevant to your task for faster, more consistent results.
 
 ## Testing
 

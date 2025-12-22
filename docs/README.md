@@ -11,10 +11,15 @@ Welcome to the AlgoChanakya documentation. This index provides quick access to a
 | [API Reference](api/README.md) | API endpoints and usage |
 | [Testing Guide](testing/README.md) | E2E testing with Playwright |
 
+## Feature Registry
+
+**`feature-registry.yaml`** - Central registry mapping code files to features for automatic documentation maintenance. Used by the `docs-maintainer` Claude Code skill to keep docs in sync with code changes.
+
 ## Documentation Structure
 
 ```
 docs/
+├── feature-registry.yaml  # Maps code files to features
 ├── architecture/       # System design and technical architecture
 │   ├── overview.md     # Tech stack, project structure
 │   ├── authentication.md  # OAuth flow, session management
@@ -27,11 +32,20 @@ docs/
 │   └── troubleshooting.md  # Common issues and fixes
 │
 ├── features/           # Feature-specific documentation
-│   ├── watchlist.md    # Watchlist implementation
-│   ├── option-chain.md # Option chain with OI, IV, Greeks
-│   ├── strategy-builder.md  # Options strategy builder
-│   ├── strategy-library.md  # Pre-built strategies with AI wizard
-│   └── positions.md    # F&O positions management
+│   ├── watchlist/      # Watchlist with real-time prices
+│   │   ├── README.md   # Feature overview
+│   │   ├── REQUIREMENTS.md  # Requirements checklist
+│   │   └── CHANGELOG.md     # Feature changelog
+│   ├── positions/      # F&O positions management
+│   ├── option-chain/   # Option chain with OI, IV, Greeks
+│   ├── strategy-builder/  # Options strategy builder
+│   ├── strategy-library/  # Pre-built strategies with AI wizard
+│   ├── autopilot/      # AutoPilot auto-execution
+│   ├── authentication/ # Zerodha OAuth integration
+│   ├── websocket/      # Live data streaming service
+│   ├── orders/         # Order management
+│   ├── user-preferences/  # User settings
+│   └── dashboard/      # Main dashboard
 │
 ├── autopilot/          # AutoPilot auto-execution system
 │   ├── README.md       # Overview and architecture
@@ -79,12 +93,22 @@ docs/
 
 ## Features
 
-- **[Watchlist](features/watchlist.md)** - Real-time watchlist with live prices
-- **[Option Chain](features/option-chain.md)** - Full option chain with OI, IV, Greeks
-- **[Strategy Builder](features/strategy-builder.md)** - P/L calculator, payoff charts
-- **[Strategy Library](features/strategy-library.md)** - Pre-built strategies with AI wizard
-- **[Positions](features/positions.md)** - F&O positions with live P&L
-- **[AutoPilot](autopilot/README.md)** - Auto-execution with conditional entry, adjustments, risk management
+Each feature has its own folder with README.md, REQUIREMENTS.md, and CHANGELOG.md.
+
+### Core Trading Features
+- **[Watchlist](features/watchlist/)** - Real-time watchlist with live prices
+- **[Option Chain](features/option-chain/)** - Full option chain with OI, IV, Greeks, strike finder
+- **[Strategy Builder](features/strategy-builder/)** - Multi-leg strategy builder with P/L calculator, payoff charts
+- **[Strategy Library](features/strategy-library/)** - 20+ pre-built templates with AI wizard
+- **[Positions](features/positions/)** - F&O positions with live P&L tracking
+- **[AutoPilot](features/autopilot/)** - Automated execution with conditional entry, adjustments, risk management (5 phases)
+
+### Supporting Features
+- **[Authentication](features/authentication/)** - Zerodha OAuth integration, JWT sessions
+- **[WebSocket](features/websocket/)** - Live market data streaming service
+- **[Orders](features/orders/)** - Order placement and basket execution
+- **[User Preferences](features/user-preferences/)** - User settings and configuration
+- **[Dashboard](features/dashboard/)** - Main navigation dashboard
 
 ## API
 
