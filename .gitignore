@@ -164,3 +164,8 @@ paper-trading-test-summary.md
 
 # Temporary notes
 notes
+
+# Test/debug connection scripts
+backend/test_db_connection.py
+backend/test_*.py
+**/test_connection*.py

@@ -707,7 +707,14 @@ const displayedSpotPrices = computed(() => {
 
   const spots = strategyStore.pnlGrid.spot_prices
   const breakevens = strategyStore.pnlGrid.breakeven || []
-  const currentSpot = strategyStore.pnlGrid.current_spot
+
+  // Get live spot from watchlistStore based on underlying
+  const liveSpot = strategyStore.underlying === 'NIFTY'
+    ? watchlistStore.indexTicks.nifty50.ltp
+    : strategyStore.underlying === 'BANKNIFTY'
+    ? watchlistStore.indexTicks.niftyBank.ltp
+    : null
+  const currentSpot = liveSpot  // Use live market data, not backend grid value
 
   // Get strike prices from legs
   const strikes = strategyStore.legs
@@ -751,6 +758,18 @@ const displayedSpotPrices = computed(() => {
 
   // Return unique sorted spots
   return [...new Set(result)].sort((a, b) => a - b)
+})
+
+// Rounded spot price for exact column matching
+const roundedSpotPrice = computed(() => {
+  // Get live spot from watchlistStore based on underlying
+  const liveSpot = strategyStore.underlying === 'NIFTY'
+    ? watchlistStore.indexTicks.nifty50.ltp
+    : strategyStore.underlying === 'BANKNIFTY'
+    ? watchlistStore.indexTicks.niftyBank.ltp
+    : null
+  if (!liveSpot) return null
+  return Math.round(liveSpot)
 })
 
 // Chart data computed properties
@@ -910,8 +929,9 @@ function getTotalPnLAtSpot(spotIndex) {
 }
 
 function isCurrentSpot(spot) {
-  if (!strategyStore.currentSpot) return false
-  return Math.abs(spot - strategyStore.currentSpot) < 50
+  if (!roundedSpotPrice.value) return false
+  // Exact match with the rounded spot value - only one column gets SPOT label
+  return spot === roundedSpotPrice.value
 }
 
 // Format spot value for column header display
