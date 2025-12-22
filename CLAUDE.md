@@ -500,6 +500,7 @@ Each feature has:
 
 This project includes specialized Claude Code skills for common development tasks:
 
+- **auto-verify** - **USE PROACTIVELY** after code changes to automatically run tests, capture screenshots, analyze results, and iterate until fix is verified working (max 5 attempts)
 - **docs-maintainer** - **USE PROACTIVELY** after any code change to auto-update feature docs, CHANGELOG, REQUIREMENTS, and keep feature-registry.yaml in sync
 - **autopilot-assistant** - AutoPilot strategy configuration guidance (conditions, adjustments, risk management)
 - **e2e-test-generator** - Generate Playwright E2E tests using Page Object Model for new features
