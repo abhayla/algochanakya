@@ -211,6 +211,7 @@ export default {
       })
     }
   },
+  emits: ['update:modelValue', 'preview-loaded'],
   data() {
     return {
       localValue: { ...this.modelValue },
@@ -328,6 +329,15 @@ export default {
 
         const response = await api.get('/api/v1/autopilot/strikes/preview', { params })
         this.preview = response.data.data
+        // Emit instrument data for parent to update leg
+        if (this.preview) {
+          this.$emit('preview-loaded', {
+            strike: this.preview.strike,
+            instrument_token: this.preview.instrument_token,
+            tradingsymbol: this.preview.tradingsymbol,
+            ltp: this.preview.ltp
+          })
+        }
       } catch (error) {
         console.error('Error fetching strike preview:', error)
         this.previewError = 'Preview unavailable'

@@ -1,6 +1,15 @@
-run the app on port 5173 and open dashboard screen. Use existing token if exists else use saved login credential to login and ask for TOTP
+run the app on port 5173 and use Playwright to open the dashboard screen in the browser and keep it open for me to use. Use existing token if exists else use saved login credential to login and ask for TOTP. use Playwright to verify and confirm when dashboard screen is open in the browser.
 
 update .gitignore, commit and sync
 
 
-Do not proceed until you have 100% confidence of what I want. Ask me questions until you reach that confidence. Ask one question at a time. Tell me the number of questions you are going to ask. After each response and before asking next question, check the related codebase and docs. For each question, always give your recommendation. Your recommendation should be based on best practices and standards. 
+Do not proceed until you have 100% confidence of what I want. Ask me questions until you reach that confidence. Ask one question at a time. Tell me the number of questions you are going to ask. After each response and before asking next question, check the related codebase and docs. For each question, always give your recommendation. Your recommendation should be based on best practices and standards.
+
+Navigate to /autopilot/strategies/new
+Fill basic info (name, underlying=NIFTY)
+Select expiry type = "Next Week"
+Select position type = "Intraday"
+Select strategy type = "Iron Condor"
+Confirm replace legs modal
+Assert: All 4 legs have non-null, non-empty strike prices
+In each iteration, Use the same strategy for testing

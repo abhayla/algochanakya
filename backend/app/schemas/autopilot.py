@@ -1579,6 +1579,8 @@ class StrikePreviewResponse(BaseModel):
     """Response for strike preview"""
     strike: int
     ltp: Decimal
+    instrument_token: Optional[int] = None
+    tradingsymbol: Optional[str] = None
     delta: Optional[Decimal] = None
     gamma: Optional[Decimal] = None
     theta: Optional[Decimal] = None

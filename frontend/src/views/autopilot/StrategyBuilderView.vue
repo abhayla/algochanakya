@@ -8,6 +8,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAutopilotStore } from '@/stores/autopilot'
 import { useStrategyTypes } from '@/constants/strategyTypes'
+import { getStrikeStep } from '@/constants/trading'
 import AutoPilotLegsTable from '@/components/autopilot/builder/AutoPilotLegsTable.vue'
 import ProfitTargetConfig from '@/components/autopilot/builder/ProfitTargetConfig.vue'
 import DTEExitConfig from '@/components/autopilot/builder/DTEExitConfig.vue'
@@ -206,31 +207,77 @@ const onStrategyTypeChange = async () => {
   }
 
   // No existing legs - auto-populate directly
-  applyStrategyTypeLegs(newType)
+  await applyStrategyTypeLegs(newType)
 }
 
 // Apply legs from strategy type
-const applyStrategyTypeLegs = (strategyTypeKey) => {
+const applyStrategyTypeLegs = async (strategyTypeKey) => {
   const legs = getStrategyLegs(strategyTypeKey)
   if (!legs || legs.length === 0) return
 
-  // Clear existing legs and add new ones from template
-  store.builder.strategy.legs_config = legs.map((leg, index) => ({
-    id: `leg_${Date.now()}_${index}`,
-    transaction_type: leg.action, // BUY or SELL
-    contract_type: leg.type, // CE or PE
-    strike_selection: {
+  // CRITICAL FIX: Ensure expiries are loaded before getting expiry from type
+  if (!store.expiries || store.expiries.length === 0) {
+    await store.fetchExpiries()
+  }
+
+  // Get expiry from type (now guaranteed to have expiries loaded)
+  const expiry = store.getExpiryFromType(store.builder.strategy.expiry_type)
+
+  // If still no expiry available after loading, use first expiry as fallback
+  const finalExpiry = expiry || (store.expiries.length > 0 ? store.expiries[0] : null)
+
+  // Early return if no expiry available
+  if (!finalExpiry) {
+    console.warn('No expiries available for strategy legs')
+    return
+  }
+
+  // Fetch spot price if not available
+  if (!store.currentSpot) {
+    await store.fetchSpotPrice()
+  }
+
+  // Ensure strikes are loaded
+  if (finalExpiry && (!store.strikes[finalExpiry] || store.strikes[finalExpiry].length === 0)) {
+    await store.fetchStrikes(finalExpiry)
+  }
+
+  // Get ATM strike
+  const strikesArray = finalExpiry ? store.strikes[finalExpiry] : []
+  const atmStrike = store.findNearestStrike(store.currentSpot, strikesArray)
+
+  // Create legs with calculated strikes
+  store.builder.strategy.legs_config = legs.map((leg, index) => {
+    // CRITICAL FIX: Keep legs in atm_offset mode instead of converting to fixed mode
+    // The backend's atm_offset mode is more reliable and doesn't require full option chain
+    // Convert strike_offset (points) to strike count for backend API
+    const strikeStep = getStrikeStep(store.builder.strategy.underlying) || 100
+    let strikeSelection = {
       mode: 'atm_offset',
-      offset: leg.strike_offset || 0
-    },
-    strike_price: null, // Will be calculated based on spot
-    expiry_date: store.getExpiryFromType(store.builder.strategy.expiry_type),
-    lots: store.builder.strategy.lots || 1,
-    entry_price: null,
-    target_price: null,
-    stop_loss_price: null,
-    trailing_stop: false
-  }))
+      offset: Math.round((leg.strike_offset || 0) / strikeStep)
+    }
+
+    // Calculate strike preview for display (optional, for UI only)
+    let calculatedStrike = null
+    if (atmStrike && leg.strike_offset !== undefined) {
+      const targetStrike = atmStrike + leg.strike_offset
+      calculatedStrike = store.findNearestStrike(targetStrike, strikesArray)
+    }
+
+    return {
+      id: `leg_${Date.now()}_${index}`,
+      transaction_type: leg.action, // BUY or SELL
+      contract_type: leg.type, // CE or PE
+      strike_selection: strikeSelection,
+      strike_price: calculatedStrike, // Preview only, actual strike determined by backend via atm_offset
+      expiry_date: finalExpiry,
+      lots: store.builder.strategy.lots || 1,
+      entry_price: null,
+      target_price: null,
+      stop_loss_price: null,
+      trailing_stop: false
+    }
+  })
 
   store.builder.strategy.strategy_type = strategyTypeKey
   previousStrategyType.value = strategyTypeKey
@@ -238,8 +285,8 @@ const applyStrategyTypeLegs = (strategyTypeKey) => {
 }
 
 // Confirm replace legs
-const confirmReplaceLegs = () => {
-  applyStrategyTypeLegs(selectedStrategyType.value)
+const confirmReplaceLegs = async () => {
+  await applyStrategyTypeLegs(selectedStrategyType.value)
 }
 
 // Cancel replace legs - revert selection

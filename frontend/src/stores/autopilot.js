@@ -54,6 +54,7 @@ export const useAutopilotStore = defineStore('autopilot', {
     expiries: [],
     strikes: {},  // { expiry_date: [strike1, strike2, ...] }
     livePrices: {},  // { instrument_token: { ltp, change, change_percent } }
+    currentSpot: null,  // Current spot price for ATM calculation
 
     // Lot sizes per underlying - removed, now using centralized getLotSize()
 
@@ -809,6 +810,42 @@ export const useAutopilotStore = defineStore('autopilot', {
         console.error('Failed to fetch strikes:', error)
         this.strikes[expiry] = []
       }
+    },
+
+    /**
+     * Fetch current spot price for the underlying
+     * Used for ATM strike calculation when auto-populating strategy legs
+     * @returns {Promise<number|null>} Current spot price or null
+     */
+    async fetchSpotPrice() {
+      const underlying = this.builder.strategy.underlying
+      if (!underlying) return null
+
+      try {
+        const response = await api.get(`/api/orders/ltp`, {
+          params: { instruments: `NSE:${underlying}` }
+        })
+        this.currentSpot = response.data[`NSE:${underlying}`]?.last_price || null
+        return this.currentSpot
+      } catch (error) {
+        console.error('Failed to fetch spot price:', error)
+        this.currentSpot = null
+        return null
+      }
+    },
+
+    /**
+     * Find nearest strike to a target value from available strikes
+     * Used for calculating actual strikes from ATM + offset
+     * @param {number} target - Target price (e.g., ATM + offset)
+     * @param {number[]} strikesArray - Array of available strikes
+     * @returns {number|null} Nearest strike or null
+     */
+    findNearestStrike(target, strikesArray) {
+      if (!target || !strikesArray?.length) return null
+      return strikesArray.reduce((prev, curr) =>
+        Math.abs(curr - target) < Math.abs(prev - target) ? curr : prev
+      )
     },
 
     /**

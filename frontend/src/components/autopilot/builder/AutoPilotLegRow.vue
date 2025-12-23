@@ -92,6 +92,23 @@ const handleStrikeSelectorChange = (strikeConfig) => {
   })
 }
 
+// Handle preview loaded from StrikeSelector - update leg with instrument data
+const handlePreviewLoaded = (data) => {
+  if (data.instrument_token && data.tradingsymbol) {
+    emit('update', props.index, {
+      instrument_token: data.instrument_token,
+      tradingsymbol: data.tradingsymbol,
+      strike_price: data.strike
+    })
+    // Trigger CMP fetch with the new instrument data
+    store.fetchLegLTP({
+      ...props.leg,
+      instrument_token: data.instrument_token,
+      tradingsymbol: data.tradingsymbol
+    })
+  }
+}
+
 // Handle field updates
 const handleUpdate = (field, value) => {
   emit('update', props.index, { [field]: value })
@@ -470,6 +487,7 @@ const getPnLClass = (value) => {
           :expiry="leg.expiry_date || store.expiries[0] || ''"
           :option-type="leg.contract_type"
           :data-testid="`autopilot-leg-strike-selector-${index}`"
+          @preview-loaded="handlePreviewLoaded"
         >
           <!-- Strike Ladder Icon -->
           <template #ladder-icon>

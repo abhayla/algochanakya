@@ -592,3 +592,477 @@ test.describe.skip('AutoPilot Leg Builder - Edge Cases', () => {
     expect(legCount).toBe(2);
   });
 });
+
+
+// =============================================================================
+// IRON CONDOR STRIKE AUTO-POPULATION BUG FIX VERIFICATION
+// =============================================================================
+
+test.describe('AutoPilot Strategy Types - Strike Auto-Population', () => {
+  test('Iron Condor strategy auto-populates strikes correctly for next week intraday', async ({ authenticatedPage }) => {
+    const page = authenticatedPage
+
+    // Capture console errors and network failures to debug API failures
+    const consoleErrors = []
+    const apiErrors = []
+
+    page.on('console', msg => {
+      if (msg.type() === 'error') {
+        consoleErrors.push(msg.text())
+      }
+    })
+
+    page.on('response', async response => {
+      if (response.url().includes('/strikes/preview') && response.status() >= 400) {
+        try {
+          const responseBody = await response.json()
+          apiErrors.push(`${response.status()}: ${JSON.stringify(responseBody)}`)
+        } catch (e) {
+          apiErrors.push(`${response.status()}: Unable to parse response`)
+        }
+      }
+    })
+
+    // Navigate to AutoPilot Strategy Builder
+    await page.goto('/autopilot/strategies/new')
+    await expect(page.getByTestId('autopilot-strategy-builder')).toBeVisible()
+
+    // Fill basic info
+    await page.getByTestId('autopilot-builder-name').fill('Test Iron Condor Next Week')
+    await page.getByTestId('autopilot-builder-underlying').selectOption('NIFTY')
+
+    // Select Next Week expiry
+    await page.getByTestId('autopilot-builder-expiry-type').selectOption('next_week')
+
+    // Select Intraday position type
+    await page.getByTestId('autopilot-builder-position-type').selectOption('intraday')
+
+    // Select Iron Condor strategy type
+    await page.getByTestId('autopilot-builder-strategy-type').selectOption('iron_condor')
+
+    // Handle replace legs modal if it appears
+    const replaceModal = page.getByTestId('autopilot-replace-legs-modal')
+    if (await replaceModal.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await page.getByTestId('autopilot-replace-legs-confirm').click()
+    }
+
+    // Wait for legs to be populated and strike preview API calls to complete
+    await page.waitForTimeout(4000)
+
+    // Verify leg count is exactly 4 (Iron Condor legs)
+    const legRows = page.locator('[data-testid^="autopilot-leg-row-"]')
+    await expect(legRows).toHaveCount(4)
+
+    // Assert: All 4 legs should have valid strike previews (not "Preview unavailable")
+    for (let i = 0; i < 4; i++) {
+      const legRow = page.getByTestId(`autopilot-leg-row-${i}`)
+      await expect(legRow).toBeVisible()
+
+      const strikeSelector = page.getByTestId(`autopilot-leg-strike-selector-${i}`)
+
+      // Check for either valid preview OR error message
+      const preview = strikeSelector.locator('.preview-inline')
+      const previewError = strikeSelector.locator('.preview-error-inline')
+
+      // Wait for either preview or error to appear (with longer timeout)
+      await page.waitForTimeout(1000)
+
+      const hasPreview = await preview.isVisible().catch(() => false)
+      const hasError = await previewError.isVisible().catch(() => false)
+
+      // At least one should be visible (either preview or error)
+      expect(hasPreview || hasError).toBeTruthy()
+
+      if (hasPreview) {
+        // If preview is visible, verify it has valid strike data
+        const strikeValue = preview.locator('.strike-value')
+        await expect(strikeValue).toBeVisible()
+
+        const strikeText = await strikeValue.textContent()
+        expect(strikeText).toBeTruthy()
+        expect(strikeText.trim()).not.toBe('')
+
+        // Verify strike text contains a number and CE/PE
+        expect(strikeText).toMatch(/\d+\s+(CE|PE)/)
+      } else {
+        // If error is shown, fail the test with detailed message
+        const errorText = await previewError.textContent()
+        console.log('Console errors captured:', consoleErrors)
+        console.log('API errors captured:', apiErrors)
+        throw new Error(`Leg ${i}: Strike preview failed with error: "${errorText}". API errors: ${apiErrors.join('; ')}. Console errors: ${consoleErrors.slice(0, 2).join('; ')}`)
+      }
+    }
+  })
+
+  test('Bull Call Spread strategy auto-populates strikes correctly for next week intraday', async ({ authenticatedPage }) => {
+    const page = authenticatedPage
+
+    // Capture console errors and network failures
+    const consoleErrors = []
+    const apiErrors = []
+
+    page.on('console', msg => {
+      if (msg.type() === 'error') {
+        consoleErrors.push(msg.text())
+      }
+    })
+
+    page.on('response', async response => {
+      if (response.url().includes('/strikes/preview') && response.status() >= 400) {
+        try {
+          const responseBody = await response.json()
+          apiErrors.push(`${response.status()}: ${JSON.stringify(responseBody)}`)
+        } catch (e) {
+          apiErrors.push(`${response.status()}: Unable to parse response`)
+        }
+      }
+    })
+
+    // Navigate to AutoPilot Strategy Builder
+    await page.goto('/autopilot/strategies/new')
+    await expect(page.getByTestId('autopilot-strategy-builder')).toBeVisible()
+
+    // Fill basic info
+    await page.getByTestId('autopilot-builder-name').fill('Test Bull Call Spread')
+    await page.getByTestId('autopilot-builder-underlying').selectOption('NIFTY')
+    await page.getByTestId('autopilot-builder-expiry-type').selectOption('next_week')
+    await page.getByTestId('autopilot-builder-position-type').selectOption('intraday')
+    await page.getByTestId('autopilot-builder-strategy-type').selectOption('bull_call_spread')
+
+    // Handle replace legs modal if it appears
+    const replaceModal = page.getByTestId('autopilot-replace-legs-modal')
+    if (await replaceModal.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await page.getByTestId('autopilot-replace-legs-confirm').click()
+    }
+
+    // Wait for legs to be populated
+    await page.waitForTimeout(4000)
+
+    // Verify leg count is exactly 2 (Bull Call Spread legs)
+    const legRows = page.locator('[data-testid^="autopilot-leg-row-"]')
+    await expect(legRows).toHaveCount(2)
+
+    // Assert: All 2 legs should have valid strike previews
+    for (let i = 0; i < 2; i++) {
+      const legRow = page.getByTestId(`autopilot-leg-row-${i}`)
+      await expect(legRow).toBeVisible()
+
+      const strikeSelector = page.getByTestId(`autopilot-leg-strike-selector-${i}`)
+      const preview = strikeSelector.locator('.preview-inline')
+      const previewError = strikeSelector.locator('.preview-error-inline')
+
+      await page.waitForTimeout(1000)
+
+      const hasPreview = await preview.isVisible().catch(() => false)
+      const hasError = await previewError.isVisible().catch(() => false)
+
+      expect(hasPreview || hasError).toBeTruthy()
+
+      if (hasPreview) {
+        const strikeValue = preview.locator('.strike-value')
+        await expect(strikeValue).toBeVisible()
+        const strikeText = await strikeValue.textContent()
+        expect(strikeText).toBeTruthy()
+        expect(strikeText.trim()).not.toBe('')
+        expect(strikeText).toMatch(/\d+\s+(CE|PE)/)
+      } else {
+        const errorText = await previewError.textContent()
+        console.log('Console errors captured:', consoleErrors)
+        console.log('API errors captured:', apiErrors)
+        throw new Error(`Leg ${i}: Strike preview failed with error: "${errorText}". API errors: ${apiErrors.join('; ')}. Console errors: ${consoleErrors.slice(0, 2).join('; ')}`)
+      }
+    }
+  })
+
+  test('Short Straddle strategy auto-populates strikes correctly for next week intraday', async ({ authenticatedPage }) => {
+    const page = authenticatedPage
+
+    const consoleErrors = []
+    const apiErrors = []
+
+    page.on('console', msg => {
+      if (msg.type() === 'error') {
+        consoleErrors.push(msg.text())
+      }
+    })
+
+    page.on('response', async response => {
+      if (response.url().includes('/strikes/preview') && response.status() >= 400) {
+        try {
+          const responseBody = await response.json()
+          apiErrors.push(`${response.status()}: ${JSON.stringify(responseBody)}`)
+        } catch (e) {
+          apiErrors.push(`${response.status()}: Unable to parse response`)
+        }
+      }
+    })
+
+    await page.goto('/autopilot/strategies/new')
+    await expect(page.getByTestId('autopilot-strategy-builder')).toBeVisible()
+
+    await page.getByTestId('autopilot-builder-name').fill('Test Short Straddle')
+    await page.getByTestId('autopilot-builder-underlying').selectOption('NIFTY')
+    await page.getByTestId('autopilot-builder-expiry-type').selectOption('next_week')
+    await page.getByTestId('autopilot-builder-position-type').selectOption('intraday')
+    await page.getByTestId('autopilot-builder-strategy-type').selectOption('short_straddle')
+
+    const replaceModal = page.getByTestId('autopilot-replace-legs-modal')
+    if (await replaceModal.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await page.getByTestId('autopilot-replace-legs-confirm').click()
+    }
+
+    await page.waitForTimeout(4000)
+
+    const legRows = page.locator('[data-testid^="autopilot-leg-row-"]')
+    await expect(legRows).toHaveCount(2)
+
+    for (let i = 0; i < 2; i++) {
+      const legRow = page.getByTestId(`autopilot-leg-row-${i}`)
+      await expect(legRow).toBeVisible()
+
+      const strikeSelector = page.getByTestId(`autopilot-leg-strike-selector-${i}`)
+      const preview = strikeSelector.locator('.preview-inline')
+      const previewError = strikeSelector.locator('.preview-error-inline')
+
+      await page.waitForTimeout(1000)
+
+      const hasPreview = await preview.isVisible().catch(() => false)
+      const hasError = await previewError.isVisible().catch(() => false)
+
+      expect(hasPreview || hasError).toBeTruthy()
+
+      if (hasPreview) {
+        const strikeValue = preview.locator('.strike-value')
+        await expect(strikeValue).toBeVisible()
+        const strikeText = await strikeValue.textContent()
+        expect(strikeText).toBeTruthy()
+        expect(strikeText.trim()).not.toBe('')
+        expect(strikeText).toMatch(/\d+\s+(CE|PE)/)
+      } else {
+        const errorText = await previewError.textContent()
+        console.log('Console errors captured:', consoleErrors)
+        console.log('API errors captured:', apiErrors)
+        throw new Error(`Leg ${i}: Strike preview failed with error: "${errorText}". API errors: ${apiErrors.join('; ')}. Console errors: ${consoleErrors.slice(0, 2).join('; ')}`)
+      }
+    }
+  })
+
+  test('Long Strangle strategy auto-populates strikes correctly for next week intraday', async ({ authenticatedPage }) => {
+    const page = authenticatedPage
+
+    const consoleErrors = []
+    const apiErrors = []
+
+    page.on('console', msg => {
+      if (msg.type() === 'error') {
+        consoleErrors.push(msg.text())
+      }
+    })
+
+    page.on('response', async response => {
+      if (response.url().includes('/strikes/preview') && response.status() >= 400) {
+        try {
+          const responseBody = await response.json()
+          apiErrors.push(`${response.status()}: ${JSON.stringify(responseBody)}`)
+        } catch (e) {
+          apiErrors.push(`${response.status()}: Unable to parse response`)
+        }
+      }
+    })
+
+    await page.goto('/autopilot/strategies/new')
+    await expect(page.getByTestId('autopilot-strategy-builder')).toBeVisible()
+
+    await page.getByTestId('autopilot-builder-name').fill('Test Long Strangle')
+    await page.getByTestId('autopilot-builder-underlying').selectOption('NIFTY')
+    await page.getByTestId('autopilot-builder-expiry-type').selectOption('next_week')
+    await page.getByTestId('autopilot-builder-position-type').selectOption('intraday')
+    await page.getByTestId('autopilot-builder-strategy-type').selectOption('long_strangle')
+
+    const replaceModal = page.getByTestId('autopilot-replace-legs-modal')
+    if (await replaceModal.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await page.getByTestId('autopilot-replace-legs-confirm').click()
+    }
+
+    await page.waitForTimeout(4000)
+
+    const legRows = page.locator('[data-testid^="autopilot-leg-row-"]')
+    await expect(legRows).toHaveCount(2)
+
+    for (let i = 0; i < 2; i++) {
+      const legRow = page.getByTestId(`autopilot-leg-row-${i}`)
+      await expect(legRow).toBeVisible()
+
+      const strikeSelector = page.getByTestId(`autopilot-leg-strike-selector-${i}`)
+      const preview = strikeSelector.locator('.preview-inline')
+      const previewError = strikeSelector.locator('.preview-error-inline')
+
+      await page.waitForTimeout(1000)
+
+      const hasPreview = await preview.isVisible().catch(() => false)
+      const hasError = await previewError.isVisible().catch(() => false)
+
+      expect(hasPreview || hasError).toBeTruthy()
+
+      if (hasPreview) {
+        const strikeValue = preview.locator('.strike-value')
+        await expect(strikeValue).toBeVisible()
+        const strikeText = await strikeValue.textContent()
+        expect(strikeText).toBeTruthy()
+        expect(strikeText.trim()).not.toBe('')
+        expect(strikeText).toMatch(/\d+\s+(CE|PE)/)
+      } else {
+        const errorText = await previewError.textContent()
+        console.log('Console errors captured:', consoleErrors)
+        console.log('API errors captured:', apiErrors)
+        throw new Error(`Leg ${i}: Strike preview failed with error: "${errorText}". API errors: ${apiErrors.join('; ')}. Console errors: ${consoleErrors.slice(0, 2).join('; ')}`)
+      }
+    }
+  })
+
+  test('Jade Lizard strategy auto-populates strikes correctly for next week intraday', async ({ authenticatedPage }) => {
+    const page = authenticatedPage
+
+    const consoleErrors = []
+    const apiErrors = []
+
+    page.on('console', msg => {
+      if (msg.type() === 'error') {
+        consoleErrors.push(msg.text())
+      }
+    })
+
+    page.on('response', async response => {
+      if (response.url().includes('/strikes/preview') && response.status() >= 400) {
+        try {
+          const responseBody = await response.json()
+          apiErrors.push(`${response.status()}: ${JSON.stringify(responseBody)}`)
+        } catch (e) {
+          apiErrors.push(`${response.status()}: Unable to parse response`)
+        }
+      }
+    })
+
+    await page.goto('/autopilot/strategies/new')
+    await expect(page.getByTestId('autopilot-strategy-builder')).toBeVisible()
+
+    await page.getByTestId('autopilot-builder-name').fill('Test Jade Lizard')
+    await page.getByTestId('autopilot-builder-underlying').selectOption('NIFTY')
+    await page.getByTestId('autopilot-builder-expiry-type').selectOption('next_week')
+    await page.getByTestId('autopilot-builder-position-type').selectOption('intraday')
+    await page.getByTestId('autopilot-builder-strategy-type').selectOption('jade_lizard')
+
+    const replaceModal = page.getByTestId('autopilot-replace-legs-modal')
+    if (await replaceModal.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await page.getByTestId('autopilot-replace-legs-confirm').click()
+    }
+
+    await page.waitForTimeout(4000)
+
+    const legRows = page.locator('[data-testid^="autopilot-leg-row-"]')
+    await expect(legRows).toHaveCount(3)
+
+    for (let i = 0; i < 3; i++) {
+      const legRow = page.getByTestId(`autopilot-leg-row-${i}`)
+      await expect(legRow).toBeVisible()
+
+      const strikeSelector = page.getByTestId(`autopilot-leg-strike-selector-${i}`)
+      const preview = strikeSelector.locator('.preview-inline')
+      const previewError = strikeSelector.locator('.preview-error-inline')
+
+      await page.waitForTimeout(1000)
+
+      const hasPreview = await preview.isVisible().catch(() => false)
+      const hasError = await previewError.isVisible().catch(() => false)
+
+      expect(hasPreview || hasError).toBeTruthy()
+
+      if (hasPreview) {
+        const strikeValue = preview.locator('.strike-value')
+        await expect(strikeValue).toBeVisible()
+        const strikeText = await strikeValue.textContent()
+        expect(strikeText).toBeTruthy()
+        expect(strikeText.trim()).not.toBe('')
+        expect(strikeText).toMatch(/\d+\s+(CE|PE)/)
+      } else {
+        const errorText = await previewError.textContent()
+        console.log('Console errors captured:', consoleErrors)
+        console.log('API errors captured:', apiErrors)
+        throw new Error(`Leg ${i}: Strike preview failed with error: "${errorText}". API errors: ${apiErrors.join('; ')}. Console errors: ${consoleErrors.slice(0, 2).join('; ')}`)
+      }
+    }
+  })
+
+  test('Iron Butterfly strategy auto-populates strikes correctly for next week intraday', async ({ authenticatedPage }) => {
+    const page = authenticatedPage
+
+    const consoleErrors = []
+    const apiErrors = []
+
+    page.on('console', msg => {
+      if (msg.type() === 'error') {
+        consoleErrors.push(msg.text())
+      }
+    })
+
+    page.on('response', async response => {
+      if (response.url().includes('/strikes/preview') && response.status() >= 400) {
+        try {
+          const responseBody = await response.json()
+          apiErrors.push(`${response.status()}: ${JSON.stringify(responseBody)}`)
+        } catch (e) {
+          apiErrors.push(`${response.status()}: Unable to parse response`)
+        }
+      }
+    })
+
+    await page.goto('/autopilot/strategies/new')
+    await expect(page.getByTestId('autopilot-strategy-builder')).toBeVisible()
+
+    await page.getByTestId('autopilot-builder-name').fill('Test Iron Butterfly')
+    await page.getByTestId('autopilot-builder-underlying').selectOption('NIFTY')
+    await page.getByTestId('autopilot-builder-expiry-type').selectOption('next_week')
+    await page.getByTestId('autopilot-builder-position-type').selectOption('intraday')
+    await page.getByTestId('autopilot-builder-strategy-type').selectOption('iron_butterfly')
+
+    const replaceModal = page.getByTestId('autopilot-replace-legs-modal')
+    if (await replaceModal.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await page.getByTestId('autopilot-replace-legs-confirm').click()
+    }
+
+    await page.waitForTimeout(4000)
+
+    const legRows = page.locator('[data-testid^="autopilot-leg-row-"]')
+    await expect(legRows).toHaveCount(4)
+
+    for (let i = 0; i < 4; i++) {
+      const legRow = page.getByTestId(`autopilot-leg-row-${i}`)
+      await expect(legRow).toBeVisible()
+
+      const strikeSelector = page.getByTestId(`autopilot-leg-strike-selector-${i}`)
+      const preview = strikeSelector.locator('.preview-inline')
+      const previewError = strikeSelector.locator('.preview-error-inline')
+
+      await page.waitForTimeout(1000)
+
+      const hasPreview = await preview.isVisible().catch(() => false)
+      const hasError = await previewError.isVisible().catch(() => false)
+
+      expect(hasPreview || hasError).toBeTruthy()
+
+      if (hasPreview) {
+        const strikeValue = preview.locator('.strike-value')
+        await expect(strikeValue).toBeVisible()
+        const strikeText = await strikeValue.textContent()
+        expect(strikeText).toBeTruthy()
+        expect(strikeText.trim()).not.toBe('')
+        expect(strikeText).toMatch(/\d+\s+(CE|PE)/)
+      } else {
+        const errorText = await previewError.textContent()
+        console.log('Console errors captured:', consoleErrors)
+        console.log('API errors captured:', apiErrors)
+        throw new Error(`Leg ${i}: Strike preview failed with error: "${errorText}". API errors: ${apiErrors.join('; ')}. Console errors: ${consoleErrors.slice(0, 2).join('; ')}`)
+      }
+    }
+  })
+});

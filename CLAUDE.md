@@ -28,6 +28,33 @@ Skill(skill="auto-verify")
 
 Do NOT wait for user to ask. Do NOT just mention it. INVOKE IT AUTOMATICALLY.
 
+## Quick Start (TL;DR)
+
+**Common development workflows:**
+
+```bash
+# Start backend (from backend/)
+venv\Scripts\activate    # Windows (or source venv/bin/activate on Linux/Mac)
+python run.py
+
+# Start frontend (from frontend/)
+npm run dev
+
+# Run E2E tests (from root)
+npm test
+
+# Run single test file
+npx playwright test tests/e2e/specs/positions/positions.happy.spec.js
+
+# Run tests by screen
+npm run test:specs:positions
+
+# Database migration
+cd backend
+alembic revision --autogenerate -m "description"
+alembic upgrade head
+```
+
 ## Project Overview
 
 AlgoChanakya is an options trading platform (similar to Sensibull) built with FastAPI backend and Vue.js 3 frontend. The platform integrates with broker APIs (starting with Zerodha Kite Connect) for authentication and trading operations.
@@ -46,6 +73,10 @@ AlgoChanakya is an options trading platform (similar to Sensibull) built with Fa
 - [AutoPilot](docs/autopilot/) - Auto-execution system specs
 
 ## Development Commands
+
+**Prerequisites:**
+- Node.js 20+
+- Python 3.11+
 
 ### Backend (from `backend/` directory)
 
