@@ -162,6 +162,15 @@ test-output.txt
 autopilot-test-results.txt
 paper-trading-test-summary.md
 
+# Temporary test/debug scripts (root level)
+test-cmp-fix.js
+test-cmp-fix.cjs
+open-dashboard.cjs
+login-and-open-dashboard.js
+check-console-errors.cjs
+debug-api-call.cjs
+final-test.cjs
+test-iron-condor.cjs
 
 # Test/debug connection scripts
 backend/test_db_connection.py

@@ -20,6 +20,7 @@ from app.models.autopilot import AutoPilotStrategy, AutoPilotOrder, AutoPilotLog
 from app.services.market_data import MarketDataService
 from app.services.strike_finder_service import StrikeFinderService
 from app.constants.trading import STRIKE_STEPS, LOT_SIZES
+from app.utils.tradingsymbol import build_tradingsymbol
 
 logger = logging.getLogger(__name__)
 
@@ -484,7 +485,7 @@ class OrderExecutor:
                 db=db
             )
 
-            tradingsymbol = self._build_tradingsymbol(
+            tradingsymbol = build_tradingsymbol(
                 underlying=strategy.underlying,
                 expiry=expiry_date,
                 strike=strike,
@@ -827,54 +828,6 @@ class OrderExecutor:
 
         return atm_strike
 
-    def _build_tradingsymbol(
-        self,
-        underlying: str,
-        expiry: date,
-        strike: float,
-        contract_type: str
-    ) -> str:
-        """Build Kite tradingsymbol."""
-        # Format: NIFTY24D2624500CE (weekly) or NIFTY24DEC24500CE (monthly)
-        # Weekly uses format: NIFTY{YY}{M}{DD}{STRIKE}{TYPE}
-        # Monthly uses format: NIFTY{YY}{MMM}{STRIKE}{TYPE}
-
-        year = expiry.strftime("%y")  # e.g., "24"
-        day = expiry.day
-
-        # Determine if weekly or monthly expiry
-        # Weekly expiries are typically Thursdays that aren't the last Thursday
-        is_monthly = self._is_monthly_expiry(expiry)
-
-        if is_monthly:
-            month_str = expiry.strftime("%b").upper()  # e.g., "DEC"
-            expiry_str = f"{year}{month_str}"
-        else:
-            # Weekly format: YY + single char month + DD
-            month_char = "O" if expiry.month == 10 else (
-                "N" if expiry.month == 11 else (
-                    "D" if expiry.month == 12 else expiry.strftime("%b")[0]
-                )
-            )
-            expiry_str = f"{year}{month_char}{day:02d}"
-
-        return f"{underlying}{expiry_str}{int(strike)}{contract_type}"
-
-    def _is_monthly_expiry(self, expiry: date) -> bool:
-        """Check if expiry is a monthly expiry (last Thursday of month)."""
-        # Get last day of month
-        if expiry.month == 12:
-            next_month = date(expiry.year + 1, 1, 1)
-        else:
-            next_month = date(expiry.year, expiry.month + 1, 1)
-
-        last_day = next_month - __import__('datetime').timedelta(days=1)
-
-        # Find last Thursday
-        days_since_thursday = (last_day.weekday() - 3) % 7
-        last_thursday = last_day - __import__('datetime').timedelta(days=days_since_thursday)
-
-        return expiry == last_thursday
 
     def _calculate_expiry(self, expiry_type: str, underlying: str) -> date:
         """Calculate expiry date based on expiry type."""

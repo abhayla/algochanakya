@@ -429,6 +429,7 @@ async def preview_strike(
         elif mode == "atm_offset":
             # OPTIMIZED: Get spot price directly (fast) instead of fetching entire option chain
             from app.services.market_data import MarketDataService
+            from app.utils.tradingsymbol import build_tradingsymbol
 
             market_data = MarketDataService(kite)
             spot_data = await market_data.get_spot_price(underlying.upper())
@@ -443,54 +444,45 @@ async def preview_strike(
             offset_value = offset if offset is not None else 0
             resolved_strike = int(atm_strike + (offset_value * strike_step))
 
-            # Query database for ONLY this specific strike (fast, targeted query)
-            from sqlalchemy import select
-            from app.models.instruments import Instrument
+            # Convert expiry to date object if it's a string
+            expiry_date = expiry if isinstance(expiry, date) else datetime.strptime(expiry, '%Y-%m-%d').date()
 
-            stmt = select(Instrument).where(
-                Instrument.name == underlying.upper(),
-                Instrument.exchange == 'NFO',
-                Instrument.expiry == expiry,
-                Instrument.strike == resolved_strike,
-                Instrument.instrument_type == option_type.upper()
+            # Construct tradingsymbol using shared utility
+            tradingsymbol = build_tradingsymbol(
+                underlying=underlying.upper(),
+                expiry=expiry_date,
+                strike=float(resolved_strike),
+                contract_type=option_type.upper()
             )
 
-            instrument_result = await db.execute(stmt)
-            instrument = instrument_result.scalar_one_or_none()
+            # Call LTP API - response includes instrument_token
+            try:
+                ltp_data = kite.ltp([f"NFO:{tradingsymbol}"])
+                instrument_key = f"NFO:{tradingsymbol}"
 
-            if instrument:
-                # Get live LTP for this specific instrument (fast)
-                try:
-                    ltp_data = kite.ltp([f"NFO:{instrument.tradingsymbol}"])
-                    ltp = ltp_data.get(f"NFO:{instrument.tradingsymbol}", {}).get('last_price', 0)
-                except:
+                if instrument_key in ltp_data:
+                    ltp = ltp_data[instrument_key].get('last_price', 0)
+                    instrument_token = ltp_data[instrument_key].get('instrument_token')
+                else:
                     ltp = 0
+                    instrument_token = None
+            except Exception as e:
+                ltp = 0
+                instrument_token = None
 
-                result = {
-                    'strike': resolved_strike,
-                    'ltp': ltp,
-                    'instrument_token': instrument.instrument_token,
-                    'tradingsymbol': instrument.tradingsymbol,
-                    # Greeks not calculated for ATM Offset (would require option chain)
-                    # This is acceptable - user just needs to see the strike and LTP
-                    'delta': None,
-                    'gamma': None,
-                    'theta': None,
-                    'vega': None,
-                    'iv': None,
-                }
-            else:
-                # Strike not found in database (might be outside available strikes)
-                # Return calculated strike without market data (graceful fallback)
-                result = {
-                    'strike': resolved_strike,
-                    'ltp': None,
-                    'delta': None,
-                    'gamma': None,
-                    'theta': None,
-                    'vega': None,
-                    'iv': None,
-                }
+            result = {
+                'strike': resolved_strike,
+                'ltp': ltp,
+                'instrument_token': instrument_token,
+                'tradingsymbol': tradingsymbol,
+                # Greeks not calculated for ATM Offset (would require option chain)
+                # This is acceptable - user just needs to see the strike and LTP
+                'delta': None,
+                'gamma': None,
+                'theta': None,
+                'vega': None,
+                'iv': None,
+            }
 
         elif mode == "fixed":
             if fixed_strike is None:
@@ -557,9 +549,17 @@ async def preview_strike(
             )
 
         # Build response
+        # CRITICAL FIX: Safely convert to Decimal, handling None values
+        ltp_value = result.get('ltp')
+
+        # DEBUG: Log result dict to see what we have
+        print(f"DEBUG result dict: strike={result.get('strike')}, instrument_token={result.get('instrument_token')}, tradingsymbol={result.get('tradingsymbol')}, ltp={ltp_value}")
+
         response_data = StrikePreviewResponse(
             strike=result['strike'],
-            ltp=Decimal(str(result.get('ltp', 0))),
+            ltp=Decimal(str(ltp_value)) if ltp_value is not None else Decimal('0'),
+            instrument_token=result.get('instrument_token'),
+            tradingsymbol=result.get('tradingsymbol'),
             delta=Decimal(str(result['delta'])) if result.get('delta') is not None else None,
             gamma=Decimal(str(result['gamma'])) if result.get('gamma') is not None else None,
             theta=Decimal(str(result['theta'])) if result.get('theta') is not None else None,
@@ -587,9 +587,11 @@ async def preview_strike(
     except HTTPException:
         raise
     except Exception as e:
+        import traceback
+        error_details = f"{type(e).__name__}: {str(e)}\n{traceback.format_exc()}"
         raise HTTPException(
             status_code=500,
-            detail=f"Error fetching strike preview: {str(e)}"
+            detail=f"Error fetching strike preview: {error_details}"
         )
 
 
@@ -3332,3 +3334,4 @@ async def get_strategy_orders(
         },
         timestamp=datetime.now(timezone.utc)
     )
+ 
