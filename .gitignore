@@ -166,11 +166,14 @@ paper-trading-test-summary.md
 test-cmp-fix.js
 test-cmp-fix.cjs
 open-dashboard.cjs
+open-dashboard-live.cjs
+open-dashboard-with-auth-state.cjs
 login-and-open-dashboard.js
 check-console-errors.cjs
 debug-api-call.cjs
 final-test.cjs
 test-iron-condor.cjs
+test-autopilot-*.cjs
 
 # Test/debug connection scripts
 backend/test_db_connection.py
