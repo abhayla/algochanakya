@@ -212,6 +212,21 @@ features:
 7. **Update CLAUDE.md (for architecture changes):**
    Only if the change affects patterns or important architecture.
 
+8. **Check for Orphaned Files (Proactive Detection):**
+   After completing documentation updates, scan for misplaced files and suggest cleanup:
+
+   ```
+   Quick scan for orphaned files:
+   - Root *.md files (except allowed list)
+   - Root test_*.py or test-*.js
+   - docs/features/*.md (not in subfolders)
+
+   If orphans found:
+   → Alert user: "Found X orphaned files that should be reorganized"
+   → Suggest: "Run /docs-maintainer cleanup to organize them"
+   → DO NOT move files automatically
+   ```
+
 ## Examples
 
 ### Example 1: Adding New API Endpoint
@@ -356,6 +371,204 @@ Update schema documentation.
 - Feature X with implementation in multiple files (files: a.py, b.vue)
 ```
 
+---
+
+## Cleanup Workflow
+
+**Trigger:** When user explicitly requests "clean up docs", "organize files", or "/docs-maintainer cleanup"
+
+This workflow handles file reorganization and detection of misplaced documentation/script files that should be moved to their proper locations.
+
+### 1. Scan for Orphaned Files
+
+Check for files that don't belong in their current location:
+
+```bash
+# Documentation files in root (except allowed files)
+Allowed in root: README.md, CLAUDE.md, CHANGELOG.md, package.json, playwright.config.js, .gitignore
+
+# Check for orphaned docs
+Root directory:
+- *.md files (except allowed) → Should be in docs/
+- test_*.py → Should be in scripts/debug/ or backend/tests/
+- test-*.js → Should be in scripts/testing/ or tests/e2e/
+- *.log, *.txt (logs) → Should be in .gitignore or deleted
+- *.png, *.jpg (screenshots) → Should be in docs/assets/screenshots/
+
+docs/features/ directory:
+- *.md files NOT in subfolders → Should be in docs/features/{feature}/README.md
+```
+
+### 2. Match Orphaned Files to Features
+
+Use feature-registry.yaml to determine proper location:
+
+```
+Example orphan: watchlist.md in docs/features/
+
+1. Check registry for "watchlist" feature:
+   features:
+     watchlist:
+       docs_folder: docs/features/watchlist/
+
+2. Target file: docs/features/watchlist/README.md
+
+3. Action: Merge content or rename to .bak
+```
+
+### 3. Reorganize Files
+
+**For root-level orphaned files:**
+```
+1. Create target directory if missing
+2. Move file to proper location
+3. Update any references in codebase (imports, documentation links)
+4. Update .gitignore patterns if needed
+```
+
+**For docs/features/ orphaned standalone files:**
+```
+1. Check if folder-based docs exist (e.g., docs/features/watchlist/README.md)
+2. If exists: Rename orphan to .bak (keep as backup)
+3. If missing: Create folder structure and move/rename file
+4. Update cross-references in other docs
+```
+
+### 4. Update References
+
+After moving files, search for and update references:
+
+```bash
+# Search for hardcoded paths
+grep -r "path/to/old/location" .
+
+# Common patterns to check:
+- Import statements (Python)
+- Image src paths (Vue/React)
+- Documentation links (Markdown)
+- Script references in package.json
+- Path references in README files
+```
+
+### 5. Verification
+
+**Build check:**
+```bash
+# Frontend build
+cd frontend && npm run build
+
+# Backend syntax
+cd backend && python -m py_compile run.py
+
+# Test suite (if applicable)
+npm test
+```
+
+### Cleanup Triggers
+
+In addition to after-code-change triggers, also run when:
+- User explicitly requests "clean up docs" or "organize files"
+- User runs "/docs-maintainer cleanup" command
+- A new feature folder is created (check for orphaned docs)
+- Pull request is being prepared (suggest cleanup if orphans detected)
+
+---
+
+## Proactive Orphan Detection
+
+**Purpose:** Alert users about misplaced files without disrupting their workflow.
+
+**When:** Run automatically AFTER completing normal documentation updates (Step 8 in workflow).
+
+### Detection Logic
+
+```python
+def detect_orphans():
+    orphans = []
+
+    # 1. Check root directory for non-allowed .md files
+    allowed_root_files = [
+        'README.md', 'CLAUDE.md', 'CHANGELOG.md',
+        'package.json', 'package-lock.json', 'playwright.config.js',
+        '.gitignore', '.eslintrc*', '.prettierrc*',
+        'tsconfig.json', 'jsconfig.json', 'vite.config.js'
+    ]
+
+    root_md_files = glob('*.md')
+    for file in root_md_files:
+        if file not in allowed_root_files:
+            orphans.append(('root_doc', file, 'docs/'))
+
+    # 2. Check root for test/debug scripts
+    root_test_py = glob('test_*.py')
+    root_test_js = glob('test-*.js') + glob('test*.js')
+
+    orphans.extend([('script', f, 'scripts/debug/') for f in root_test_py])
+    orphans.extend([('script', f, 'scripts/testing/') for f in root_test_js])
+
+    # 3. Check docs/features/ for standalone .md files
+    features_orphans = glob('docs/features/*.md')
+    for file in features_orphans:
+        # Extract feature name from filename (e.g., watchlist.md -> watchlist)
+        feature_name = file.stem
+        expected_location = f'docs/features/{feature_name}/README.md'
+        orphans.append(('feature_doc', file, expected_location))
+
+    # 4. Check for temp/log files
+    temp_files = glob('*.log') + glob('*-output.txt') + glob('*.pid')
+    orphans.extend([('temp', f, '.gitignore') for f in temp_files])
+
+    return orphans
+```
+
+### Alert Format
+
+**If orphans found:**
+```
+⚠️  Orphan Files Detected
+
+Found 8 files that should be reorganized:
+
+Root Documentation (3):
+  • AUTOPILOT_PHASE_3.md → docs/autopilot/
+  • DATABASE_SETUP.md → docs/guides/
+  • TEST_SUMMARY.md → docs/testing/
+
+Root Scripts (2):
+  • test_connections.py → scripts/debug/
+  • test-strike.js → scripts/testing/
+
+Legacy Feature Docs (2):
+  • docs/features/watchlist.md → docs/features/watchlist/README.md
+  • docs/features/positions.md → docs/features/positions/README.md
+
+Temporary Files (1):
+  • test-output.log → Add to .gitignore
+
+💡 Run `/docs-maintainer cleanup` to organize these files automatically.
+```
+
+**If no orphans:**
+```
+✅ No orphaned files detected. Project structure looks clean!
+```
+
+### Important Rules
+
+1. **Never move files automatically** - Always wait for user permission
+2. **Run after doc updates** - Don't interrupt the main workflow
+3. **Be concise** - Don't overwhelm user with too much detail
+4. **Categorize clearly** - Group by file type for easy understanding
+5. **Suggest action** - Tell user how to fix (run cleanup command)
+
+### Frequency
+
+- **Every time:** After completing documentation updates
+- **Exception:** Skip if user just ran cleanup (avoid redundant alerts)
+- **Throttle:** If same orphans detected multiple times in short period, mention once per session
+
+---
+
 ## References
 
 - [Feature Registry Schema](./references/feature-registry-schema.md) - Registry file format and patterns
@@ -363,6 +576,7 @@ Update schema documentation.
 - [Changelog Template](./references/changelog-template.md) - CHANGELOG.md format and examples
 - [Doc Update Rules](./references/doc-update-rules.md) - Comprehensive update rules by file type
 - [Path Validation](./references/path-validation.md) - **CRITICAL** - Exact path templates and validation rules
+- [Cleanup Rules](./references/cleanup-rules.md) - File organization and orphan detection rules
 
 ## Mandatory Validation Steps
 
@@ -466,3 +680,10 @@ Before finishing doc updates:
 - [ ] Updated "Last updated" timestamp in REQUIREMENTS.md
 - [ ] Updated feature-registry.yaml if new files created
 - [ ] All doc files are valid Markdown
+
+**Proactive Detection:**
+- [ ] Scanned for orphaned files in root directory
+- [ ] Scanned for orphaned files in docs/features/
+- [ ] If orphans found: Alerted user with categorized list
+- [ ] If orphans found: Suggested `/docs-maintainer cleanup` command
+- [ ] If no orphans: Confirmed project structure is clean
