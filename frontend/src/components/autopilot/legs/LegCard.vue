@@ -24,7 +24,7 @@
       </div>
       <div class="metric-item">
         <span class="metric-label">CMP</span>
-        <span class="metric-value">₹{{ leg.current_price?.toFixed(2) || '-' }}</span>
+        <span class="metric-value">₹{{ currentPrice?.toFixed(2) || '-' }}</span>
       </div>
       <div
         class="metric-item pnl-item"
@@ -32,7 +32,7 @@
       >
         <span class="metric-label">P&L</span>
         <span class="metric-value" :class="pnlClass">
-          {{ formatPnL(leg.unrealized_pnl) }}
+          {{ formatPnL(unrealizedPnL) }}
         </span>
       </div>
     </div>
@@ -103,10 +103,32 @@ const props = defineProps({
     type: Object,
     required: true
   },
+  livePrices: {
+    type: Object,
+    default: () => ({})
+  },
   showGreeks: {
     type: Boolean,
     default: false
   }
+})
+
+// Get live CMP from WebSocket or fall back to leg's current_price
+const currentPrice = computed(() => {
+  if (props.leg.instrument_token && props.livePrices[props.leg.instrument_token]?.ltp) {
+    return props.livePrices[props.leg.instrument_token].ltp
+  }
+  return props.leg.current_price
+})
+
+// Calculate live unrealized P/L based on current price
+const unrealizedPnL = computed(() => {
+  const cmp = currentPrice.value
+  if (!cmp || !props.leg.entry_price) return props.leg.unrealized_pnl || 0
+
+  const qty = props.leg.quantity || (props.leg.lots * 50) // lot size fallback
+  const multiplier = props.leg.action === 'BUY' ? 1 : -1
+  return (cmp - props.leg.entry_price) * Math.abs(qty) * multiplier
 })
 
 const emit = defineEmits(['exit', 'shift', 'roll', 'break'])
@@ -116,7 +138,7 @@ const legStatusClass = computed(() => {
 })
 
 const pnlClass = computed(() => {
-  const pnl = props.leg.unrealized_pnl || 0
+  const pnl = unrealizedPnL.value || 0
   if (pnl > 0) return 'profit positive green'
   if (pnl < 0) return 'loss negative red'
   return ''

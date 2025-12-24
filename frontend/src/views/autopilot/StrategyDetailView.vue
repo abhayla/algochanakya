@@ -4,9 +4,10 @@
  *
  * Reference: docs/autopilot/ui-ux-design.md - Screen 3
  */
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAutopilotStore } from '@/stores/autopilot'
+import { useWatchlistStore } from '@/stores/watchlist'
 import KiteLayout from '@/components/layout/KiteLayout.vue'
 import ShareModal from '@/components/autopilot/common/ShareModal.vue'
 import ActivateModal from '@/components/autopilot/common/ActivateModal.vue'
@@ -28,6 +29,10 @@ import '@/assets/css/strategy-table.css'
 const router = useRouter()
 const route = useRoute()
 const store = useAutopilotStore()
+const watchlistStore = useWatchlistStore()
+
+// Live prices for CMP display
+const livePrices = ref({})
 
 const strategyId = computed(() => parseInt(route.params.id))
 const refreshInterval = ref(null)
@@ -44,8 +49,28 @@ const showShiftLegModal = ref(false)
 const selectedLegForAdjustment = ref(null)
 const strategyLegs = ref([])
 
+// Get all instrument tokens from strategy legs for WebSocket subscription
+const legTokens = computed(() => {
+  if (!store.currentStrategy?.legs_config) return []
+  return store.currentStrategy.legs_config
+    .filter(leg => leg.instrument_token)
+    .map(leg => leg.instrument_token)
+})
+
 onMounted(async () => {
   await store.fetchStrategy(strategyId.value)
+
+  // Ensure WebSocket is connected for live CMP prices
+  if (!watchlistStore.isConnected) {
+    watchlistStore.connectWebSocket()
+  }
+
+  // Subscribe to leg tokens for live prices after strategy is loaded
+  nextTick(() => {
+    if (watchlistStore.isConnected && legTokens.value.length > 0) {
+      watchlistStore.subscribeToTokens(legTokens.value, 'quote')
+    }
+  })
 
   // Refresh every 5 seconds for active strategies
   refreshInterval.value = setInterval(async () => {
@@ -60,6 +85,30 @@ onUnmounted(() => {
     clearInterval(refreshInterval.value)
   }
 })
+
+// Watch for tick updates and update live prices
+watch(
+  () => watchlistStore.ticks,
+  (newTicks) => {
+    legTokens.value.forEach(token => {
+      if (newTicks[token]) {
+        livePrices.value[token] = newTicks[token]
+      }
+    })
+  },
+  { deep: true }
+)
+
+// Watch for leg token changes to subscribe
+watch(
+  legTokens,
+  (tokens) => {
+    if (tokens.length > 0 && watchlistStore.isConnected) {
+      watchlistStore.subscribeToTokens(tokens, 'quote')
+    }
+  },
+  { deep: true }
+)
 
 const handlePause = async () => {
   await store.pauseStrategy(strategyId.value)
@@ -757,7 +806,7 @@ const strategyActivities = computed(() => {
 
           <!-- Position Legs Tab -->
           <div v-if="activeTab === 'legs'">
-            <LegsPanel :strategy-id="strategyId" />
+            <LegsPanel :strategy-id="strategyId" :live-prices="livePrices" />
           </div>
 
           <!-- Orders Tab -->

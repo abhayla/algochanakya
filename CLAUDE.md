@@ -28,6 +28,67 @@ Skill(skill="auto-verify")
 
 Do NOT wait for user to ask. Do NOT just mention it. INVOKE IT AUTOMATICALLY.
 
+## CRITICAL: Clarify Before Implementing
+
+**MANDATORY:** Before implementing any feature, refactor, or architectural change, you MUST first clarify requirements and research the codebase. Do NOT start coding until you have high confidence in the approach.
+
+**When to Clarify:**
+- ✅ New feature implementations
+- ✅ Refactoring existing code
+- ✅ Architectural or design changes
+- ✅ Changes touching multiple files or modules
+- ✅ Adding new API endpoints, database models, or components
+- ✅ AutoPilot strategy or condition modifications
+
+**Skip Clarification for:**
+- ❌ Documentation-only changes
+- ❌ Single-line bug fixes with obvious solutions
+- ❌ Answering questions about the codebase
+- ❌ Adding comments or type annotations
+- ❌ Changes where the user provided explicit, detailed instructions
+
+### Clarification Workflow
+
+**Step 1: State Your Understanding**
+Summarize what you understand from the request in 2-3 sentences. This catches misinterpretations early.
+
+**Step 2: Research the Codebase**
+Before asking questions, explore:
+- Existing patterns for similar features
+- Related components, services, or utilities
+- Test patterns that should be followed
+- Constants or configurations that apply
+
+**Step 3: Identify Gaps & Decisions**
+List what's unclear or needs user input. Group by theme:
+- **Scope**: What's included/excluded?
+- **Design**: Which approach among alternatives?
+- **Integration**: How should it connect to existing code?
+
+**Step 4: Ask Questions (Adaptive)**
+- **Simple tasks (1-2 gaps)**: Ask inline, proceed after answer
+- **Complex tasks (3+ gaps)**: Present numbered questions grouped by theme, wait for answers before proceeding
+
+### Example
+
+**User Request:** "Add a kill switch to the Strategy Builder"
+
+**Good Response:**
+> I understand you want to add an emergency stop mechanism to the Strategy Builder, similar to the existing AutoPilot kill switch.
+>
+> Before implementing, I researched the codebase:
+> - AutoPilot has a kill switch at `backend/app/api/v1/autopilot/kill_switch.py`
+> - Strategy Builder currently has no emergency controls
+> - WebSocket manager handles real-time updates
+>
+> I need clarity on:
+> 1. **Scope**: Should this exit all open positions, or just cancel pending orders?
+> 2. **UI**: Add to the existing StrategyActions component, or a new floating button?
+> 3. **Confirmation**: Require confirmation dialog, or instant action?
+
+**Bad Response:**
+> I'll add a kill switch to the Strategy Builder. Let me start by creating a new component...
+
 ## Quick Start (TL;DR)
 
 **Common development workflows:**

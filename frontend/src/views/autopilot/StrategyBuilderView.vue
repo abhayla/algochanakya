@@ -7,6 +7,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAutopilotStore } from '@/stores/autopilot'
+import { useWatchlistStore } from '@/stores/watchlist'
 import { useStrategyTypes } from '@/constants/strategyTypes'
 import { getStrikeStep } from '@/constants/trading'
 import AutoPilotLegsTable from '@/components/autopilot/builder/AutoPilotLegsTable.vue'
@@ -23,6 +24,7 @@ import '@/assets/css/strategy-table.css'
 const router = useRouter()
 const route = useRoute()
 const store = useAutopilotStore()
+const watchlistStore = useWatchlistStore()
 
 // Strategy Types from centralized constants
 const {
@@ -164,6 +166,25 @@ onMounted(async () => {
   } else {
     store.initBuilder()
   }
+
+  // Ensure WebSocket is connected for live CMP prices
+  if (!watchlistStore.isConnected) {
+    watchlistStore.connectWebSocket()
+  }
+
+  // Subscribe to underlying index token for spot price
+  if (watchlistStore.isConnected) {
+    const indexTokens = {
+      'NIFTY': 256265,
+      'BANKNIFTY': 260105,
+      'FINNIFTY': 257801,
+      'SENSEX': 265
+    }
+    const token = indexTokens[store.builder.strategy.underlying]
+    if (token) {
+      watchlistStore.subscribeToTokens([token], 'quote')
+    }
+  }
 })
 
 // Watch for expiry_type changes and update all legs
@@ -179,6 +200,25 @@ watch(
       store.builder.strategy.legs_config.forEach(leg => {
         leg.expiry_date = calculatedExpiry
       })
+    }
+  }
+)
+
+// Watch for underlying changes to update index subscriptions for live CMP
+watch(
+  () => store.builder.strategy.underlying,
+  (newUnderlying) => {
+    if (watchlistStore.isConnected) {
+      const indexTokens = {
+        'NIFTY': 256265,
+        'BANKNIFTY': 260105,
+        'FINNIFTY': 257801,
+        'SENSEX': 265
+      }
+      const token = indexTokens[newUnderlying]
+      if (token) {
+        watchlistStore.subscribeToTokens([token], 'quote')
+      }
     }
   }
 )

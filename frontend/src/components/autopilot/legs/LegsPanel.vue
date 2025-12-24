@@ -59,6 +59,7 @@
         v-for="leg in displayLegs"
         :key="leg.leg_id"
         :leg="leg"
+        :livePrices="props.livePrices"
         :showGreeks="showGreeks"
         @exit="openExitModal(leg.leg_id)"
         @shift="openShiftModal(leg.leg_id)"
@@ -110,6 +111,10 @@ const props = defineProps({
   strategyId: {
     type: Number,
     required: true
+  },
+  livePrices: {
+    type: Object,
+    default: () => ({})
   }
 })
 
