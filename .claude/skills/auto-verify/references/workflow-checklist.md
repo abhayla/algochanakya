@@ -8,7 +8,8 @@
 ## Per Attempt
 - [ ] Identify changed files
 - [ ] Map to feature using feature-registry.yaml
-- [ ] Run appropriate tests
+- [ ] **Map to SPECIFIC test file(s)** (not whole feature)
+- [ ] Run targeted tests using priority order
 - [ ] Capture screenshots
 - [ ] Analyze test output
 - [ ] Analyze screenshots visually
