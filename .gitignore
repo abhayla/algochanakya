@@ -180,7 +180,6 @@ backend/test_db_connection.py
 backend/test_*.py
 **/test_connection*.py
 
-# Personal notes
-# notes - Now tracked in git for team collaboration
-notes.md
-TODO.md
+# Personal notes - Now tracked in git for team collaboration
+# notes.md - TRACKED for AI automation planning
+# TODO.md - TRACKED for task management
