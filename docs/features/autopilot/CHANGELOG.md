@@ -4,6 +4,9 @@ All notable changes to the AutoPilot feature will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+- CMP (Current Market Price) not displaying for strategy legs created from templates - added instrument token fetching after leg creation (file: frontend/src/views/autopilot/StrategyBuilderView.vue)
+
 ## [Phase 5] - 2024-12-20
 
 ### Added

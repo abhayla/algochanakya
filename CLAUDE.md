@@ -618,17 +618,100 @@ Each feature has:
 
 This project includes specialized Claude Code skills for common development tasks:
 
-- **auto-verify** - **USE PROACTIVELY** after code changes to automatically run tests, capture screenshots, analyze results, and iterate until fix is verified working (max 5 attempts)
+- **auto-verify** - **USE PROACTIVELY** after code changes to automatically run tests, capture screenshots, analyze results, and iterate until fix is verified working (max 5 attempts). Uses Claude Chrome as primary debugger.
+- **claude-chrome-testing** (`/chrome-test`) - Browser-based testing, debugging, and visual verification using Claude Chrome extension
 - **docs-maintainer** - **USE PROACTIVELY** after any code change to auto-update feature docs, CHANGELOG, REQUIREMENTS, and keep feature-registry.yaml in sync
 - **autopilot-assistant** - AutoPilot strategy configuration guidance (conditions, adjustments, risk management)
 - **e2e-test-generator** - Generate Playwright E2E tests using Page Object Model for new features
-- **test-fixer** - Diagnose and fix failing E2E and unit tests
+- **test-fixer** - Diagnose and fix failing E2E and unit tests. Uses Claude Chrome for debugging.
 - **trading-constants-manager** - Enforce centralized trading constants usage (lot sizes, strike steps, etc.)
 - **vitest-generator** - Generate Vitest unit tests for Vue components, Pinia stores, and composables
 - **vue-component-generator** - Generate Vue 3 components and Pinia stores following project conventions
 - **update-ip** - Update AlgoChanakya Remote Access IP configuration
 
 Use skills when relevant to your task for faster, more consistent results.
+
+## Claude Chrome Integration
+
+### Setup
+
+1. **Install Claude Chrome extension** (v1.0.36+) from Chrome Web Store
+2. **Update Claude Code:** `claude update` (requires v2.0.73+)
+3. **Start with Chrome enabled:** `claude --chrome`
+4. **Verify connection:** `/chrome`
+
+### When to Use
+
+| Task | Tool |
+|------|------|
+| Run all E2E tests | `npm test` (Playwright) |
+| Debug single failing test | **Claude Chrome** |
+| Test WebSocket real-time | **Claude Chrome** |
+| Visual verification | **Claude Chrome** |
+| Record demo GIF | **Claude Chrome** |
+| CI/CD testing | Playwright |
+| Live debugging of UI issues | **Claude Chrome** |
+
+**Primary Debugging Tool:** Use Claude Chrome as the PRIMARY tool for visual verification and debugging. Playwright is for automated regression testing.
+
+### Key Commands
+
+```bash
+# Start session with Chrome
+claude --chrome
+
+# Check connection status
+/chrome
+
+# Test specific screen
+"Go to localhost:5173/strategy and verify the page loads"
+
+# Debug console errors
+"Check console for errors on the positions page"
+
+# Test WebSocket
+"Monitor WebSocket messages on /autopilot for 10 seconds"
+
+# Capture GIF
+"Record a GIF of creating a strategy and save to docs/assets/"
+
+# Open with authentication
+/open-in-chrome /positions
+```
+
+### Screen URLs
+
+| Screen | URL | Key Test Areas |
+|--------|-----|----------------|
+| Dashboard | localhost:5173/dashboard | Navigation cards, layout |
+| Watchlist | localhost:5173/watchlist | Live price updates, WebSocket |
+| Positions | localhost:5173/positions | Exit/Add modals, P&L updates |
+| Option Chain | localhost:5173/optionchain | Greeks, OI bars, strike finder |
+| Strategy Builder | localhost:5173/strategy | P/L grid, live CMP, breakevens |
+| Strategy Library | localhost:5173/strategies | Templates, wizard, deploy |
+| AutoPilot Dashboard | localhost:5173/autopilot | WebSocket status, strategy list |
+| AutoPilot Builder | localhost:5173/autopilot/strategies/new | 5-step wizard validation |
+
+### Skills with Chrome Integration
+
+- **`/chrome-test`** - Invoke Chrome testing workflows (slash command)
+- **`/open-in-chrome`** - Open app with auth token injection for manual testing
+- **auto-verify** - Uses Chrome as primary debugger for visual verification
+- **test-fixer** - Uses Chrome to debug failing Playwright tests
+
+### Console Log Prefixes
+
+Filter console logs by these prefixes:
+- `[AutoPilot WS]` - WebSocket connection, messages, errors
+- `[OptionChain]` - Option chain subscriptions
+- `[Strategy]` - P/L calculation errors
+
+### Limitations
+
+- ✅ **Google Chrome** - Fully supported
+- ❌ **Brave, Arc, other Chromium browsers** - Not supported
+- ❌ **WSL (Windows Subsystem for Linux)** - Not supported
+- **Visible browser required** - No headless mode
 
 ## Testing
 

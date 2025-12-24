@@ -369,6 +369,129 @@ grep -r "waitingCount" tests/e2e/pages/
 
 ---
 
+## Chrome-Assisted Debugging
+
+For complex test failures, use **Claude Chrome** to debug interactively:
+
+### When to Use Chrome
+
+Use Claude Chrome debugging when:
+- Error message is unclear
+- Need to check console errors
+- Need to verify element exists in DOM
+- Need to test WebSocket connection
+- Need to reproduce failure manually
+- Need visual confirmation
+
+### Chrome Debugging Workflow
+
+**Step 1: Get Test URL**
+```
+From test file, identify the URL being tested:
+- positions.happy.spec.js → localhost:5173/positions
+- autopilot.phases123.spec.js → localhost:5173/autopilot
+```
+
+**Step 2: Open in Chrome**
+```
+/open-in-chrome /positions
+```
+
+**Step 3: Check Console**
+```
+"Go to localhost:5173/positions and open the console.
+Check for errors, especially:
+- WebSocket connection errors ([AutoPilot WS] prefix)
+- API request failures
+- React/Vue warnings
+- data-testid element not found
+Report all findings."
+```
+
+**Step 4: Verify Elements**
+```
+"Check if the element with data-testid='positions-table' exists in the DOM.
+Use document.querySelector('[data-testid=\"positions-table\"]') and report."
+```
+
+**Step 5: Reproduce Manually**
+```
+"Try clicking the exit button on the first position and tell me:
+1. Does the modal appear?
+2. Are there any console errors?
+3. Is the data-testid correct?
+4. What happens?"
+```
+
+**Step 6: Check WebSocket**
+```
+"Open Network tab -> WS tab and check if WebSocket is connected.
+Report the connection status and any error messages."
+```
+
+**Step 7: Capture Evidence**
+```
+"Take a screenshot of the current state showing the error."
+```
+
+### Example Debug Flow
+
+**Scenario:** Test at `positions.happy.spec.js:45` is failing
+
+```
+Test Error:
+  Error: locator.click: Target closed
+  selector: [data-testid="positions-exit-modal"]
+```
+
+**Chrome Debug Steps:**
+
+1. **Open in Chrome:**
+   ```
+   /open-in-chrome /positions
+   ```
+
+2. **Check console:**
+   ```
+   "Check console for errors"
+   ```
+   Result: `TypeError: Cannot read property 'symbol' of undefined`
+
+3. **Verify element:**
+   ```
+   "Check if positions-exit-modal exists"
+   ```
+   Result: Element doesn't exist in DOM
+
+4. **Test interaction:**
+   ```
+   "Click the first exit button and see what happens"
+   ```
+   Result: Console error occurs, modal doesn't open
+
+5. **Identify root cause:**
+   - Modal component not rendering due to data undefined error
+   - Need to check positions store for data loading issue
+
+6. **Fix and verify:**
+   - Fix the data loading bug
+   - Re-run Playwright test
+   - Use Chrome to visually confirm fix
+
+### Chrome vs Playwright
+
+| Use Case | Tool |
+|----------|------|
+| Running automated regression tests | Playwright |
+| Debugging test failures | **Claude Chrome** |
+| Checking console errors | **Claude Chrome** |
+| Verifying element exists | **Claude Chrome** |
+| Testing WebSocket | **Claude Chrome** |
+| Manual reproduction | **Claude Chrome** |
+| Visual confirmation | **Claude Chrome** |
+
+---
+
 ## References
 
 - [Common Failure Patterns](./references/common-failure-patterns.md) - Detailed failure patterns and fixes

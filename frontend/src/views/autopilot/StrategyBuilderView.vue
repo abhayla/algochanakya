@@ -319,6 +319,27 @@ const applyStrategyTypeLegs = async (strategyTypeKey) => {
     }
   })
 
+  // Fetch instrument tokens for CMP display
+  const legsConfig = store.builder.strategy.legs_config
+  const tokenFetchPromises = legsConfig.map(async (leg, index) => {
+    if (leg.strike_price && leg.expiry_date && leg.contract_type) {
+      try {
+        const data = await store.fetchInstrumentToken(
+          leg.expiry_date,
+          leg.strike_price,
+          leg.contract_type
+        )
+        if (data.instrument_token) {
+          store.builder.strategy.legs_config[index].instrument_token = data.instrument_token
+          store.builder.strategy.legs_config[index].tradingsymbol = data.tradingsymbol
+        }
+      } catch (err) {
+        console.warn(`Failed to fetch instrument token for leg ${index}:`, err)
+      }
+    }
+  })
+  await Promise.allSettled(tokenFetchPromises)
+
   store.builder.strategy.strategy_type = strategyTypeKey
   previousStrategyType.value = strategyTypeKey
   showReplaceConfirm.value = false

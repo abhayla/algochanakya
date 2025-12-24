@@ -200,10 +200,72 @@ Based on analysis:
 | Tests pass but screenshots show issues | Fix code, go to Step 3 |
 | Reached 5 attempts | **STOP** - Ask user for guidance |
 
+### Step 6b: Visual Debugging with Claude Chrome (PRIMARY METHOD)
+
+**IMPORTANT:** Use Claude Chrome as the PRIMARY tool for visual verification and debugging.
+
+After Playwright tests complete (pass or fail), use Claude Chrome for live debugging:
+
+1. **Start Chrome session** (if not already started):
+   ```bash
+   claude --chrome
+   ```
+
+2. **Open the failing screen** using `/open-in-chrome`:
+   ```
+   /open-in-chrome /positions   # Or whichever screen was tested
+   ```
+
+3. **Visual verification workflow**:
+   ```
+   1. Navigate to the screen that was tested
+   2. Open DevTools console
+   3. Check for errors (especially WebSocket, API, React errors)
+   4. Verify data-testid elements exist
+   5. Test the user flow manually
+   6. Capture screenshot or GIF of the issue
+   7. Report findings
+   ```
+
+4. **Common debugging commands**:
+   ```
+   "Go to localhost:5173/positions and check console for errors"
+   "Verify that positions-exit-modal element exists"
+   "Click the exit button and see if the modal appears"
+   "Monitor WebSocket messages for 10 seconds"
+   "Take a screenshot of the current state"
+   ```
+
+5. **When to use Chrome vs Playwright**:
+
+   | Scenario | Tool |
+   |----------|------|
+   | Running automated tests | Playwright |
+   | Visual verification of test results | **Claude Chrome** |
+   | Debugging failing tests | **Claude Chrome** |
+   | Checking console errors | **Claude Chrome** |
+   | Verifying data-testid elements | **Claude Chrome** |
+   | Testing WebSocket real-time | **Claude Chrome** |
+   | Recording demo GIFs | **Claude Chrome** |
+
+6. **Integration with Playwright results**:
+   ```
+   Example workflow:
+   1. Run Playwright test → Test fails at line 45
+   2. Use Chrome to navigate to the tested URL
+   3. Reproduce the failure manually
+   4. Check console for errors
+   5. Inspect DOM state
+   6. Identify root cause
+   7. Fix the code
+   8. Re-run Playwright test to verify
+   9. Use Chrome again to visually confirm
+   ```
+
 ### Step 7: Fix and Iterate
 
 If issues found:
-1. Identify the root cause
+1. Identify the root cause (using Chrome debugging if needed)
 2. **Check approval requirements** (see below)
 3. Make the fix
 4. Increment attempt counter

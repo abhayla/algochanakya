@@ -375,6 +375,15 @@ features:
     tests:
       - "tests/e2e/specs/dashboard/**"
 
+  claude-chrome:
+    name: "Claude Chrome Integration"
+    description: "Browser automation and debugging via Claude Chrome extension"
+    docs: "docs/testing/README.md#claude-chrome-integration"
+    files:
+      - ".claude/skills/claude-chrome-testing/**"
+      - ".claude/commands/open-in-chrome.md"
+      - "tests/e2e/helpers/chrome.helper.js"
+
 
 # ============================================================================
 # SHARED / CROSS-CUTTING FILES

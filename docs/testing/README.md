@@ -651,3 +651,228 @@ pytest tests/test_strategy*.py -v --html=reports/strategy-tests.html
 # Run specific test by name
 pytest tests/test_strategy_wizard_api.py::TestWizard::test_wizard_returns_top_5 -v
 ```
+
+---
+
+## Claude Chrome Integration
+
+### Overview
+
+Claude Chrome provides live browser debugging capabilities that **complement** Playwright E2E tests. Use Claude Chrome as the **PRIMARY tool** for visual verification and debugging, while Playwright handles automated regression testing.
+
+### Setup
+
+1. **Install Claude Chrome extension** (v1.0.36+)
+   - Visit Chrome Web Store
+   - Search for "Claude"
+   - Install the extension
+
+2. **Update Claude Code** (v2.0.73+ required)
+   ```bash
+   claude update
+   ```
+
+3. **Start with Chrome enabled**
+   ```bash
+   claude --chrome
+   ```
+
+4. **Verify connection**
+   ```bash
+   /chrome
+   ```
+
+### When to Use Each Tool
+
+| Playwright E2E Tests | Claude Chrome |
+|---------------------|---------------|
+| Automated regression testing | **Live debugging** |
+| CI/CD pipelines | **Visual verification** |
+| Headless execution | **Console error checking** |
+| Fast parallel execution | **WebSocket testing** |
+| Test assertions | **Manual reproduction** |
+| Coverage tracking | **GIF documentation** |
+
+**Golden Rule:** Playwright for automation, Chrome for verification and debugging.
+
+### Quick Start
+
+#### Open App for Manual Testing
+
+```bash
+# Use /open-in-chrome command
+/open-in-chrome /positions
+
+# This will:
+# 1. Read auth token from tests/config/.auth-token
+# 2. Navigate to localhost:5173/positions
+# 3. Inject token into localStorage
+# 4. Refresh page with authentication
+```
+
+#### Test a Specific Screen
+
+```
+Go to localhost:5173/strategy and verify the page loads correctly.
+Check console for errors.
+```
+
+#### Debug Failing Test
+
+```
+The test at positions.happy.spec.js:45 is failing.
+Go to localhost:5173/positions and:
+1. Click the exit button on the first position
+2. Check if the exit modal appears
+3. Look for console errors
+4. Report what you find
+```
+
+#### Monitor WebSocket
+
+```
+Go to localhost:5173/autopilot and monitor the console for
+WebSocket connection messages with prefix [AutoPilot WS].
+Tell me if the connection succeeds.
+```
+
+### Screen URLs
+
+| Screen | URL | Key Test Areas |
+|--------|-----|----------------|
+| Dashboard | `localhost:5173/dashboard` | Navigation cards, layout |
+| Watchlist | `localhost:5173/watchlist` | Live prices, WebSocket |
+| Positions | `localhost:5173/positions` | Exit/Add modals, P&L |
+| Option Chain | `localhost:5173/optionchain` | Greeks, OI, strike finder |
+| Strategy Builder | `localhost:5173/strategy` | P/L grid, CMP, breakevens |
+| Strategy Library | `localhost:5173/strategies` | Templates, wizard |
+| AutoPilot Dashboard | `localhost:5173/autopilot` | WebSocket, strategies |
+| AutoPilot Builder | `localhost:5173/autopilot/strategies/new` | 5-step wizard |
+
+### Console Log Prefixes
+
+Filter console logs by these prefixes to find specific issues:
+
+| Prefix | Source | Purpose |
+|--------|--------|---------|
+| `[AutoPilot WS]` | `frontend/src/composables/autopilot/useWebSocket.js` | WebSocket connection, messages, errors |
+| `[OptionChain]` | `frontend/src/stores/optionchain.js` | Option chain subscriptions |
+| `[Strategy]` | `frontend/src/stores/strategy.js` | P/L calculation errors |
+
+### Common Debugging Workflows
+
+#### Workflow 1: Debug Playwright Test Failure
+
+```
+1. Playwright test fails → Note the test file and line number
+2. Identify the URL being tested (e.g., /positions)
+3. Use /open-in-chrome to open that screen
+4. Open DevTools console
+5. Reproduce the failed interaction manually
+6. Check for console errors
+7. Verify data-testid elements exist
+8. Report findings
+9. Fix the code
+10. Re-run Playwright test
+11. Use Chrome to visually confirm the fix
+```
+
+#### Workflow 2: Test WebSocket Real-Time Updates
+
+```
+1. Navigate to the screen with WebSocket (e.g., /autopilot)
+2. Open DevTools console
+3. Look for [AutoPilot WS] connection message
+4. Open Network tab → WS tab
+5. Monitor WebSocket frames
+6. Verify messages are being received
+7. Check if UI updates in real-time
+8. Report any issues
+```
+
+#### Workflow 3: Verify Visual Changes
+
+```
+1. Make code changes to a Vue component
+2. Use Chrome to navigate to that screen
+3. Visually inspect the changes
+4. Check for console errors
+5. Test all interactive elements
+6. Capture screenshot or GIF if needed
+7. Run Playwright tests to ensure no regressions
+```
+
+#### Workflow 4: Capture Demo GIF
+
+```
+1. Navigate to the screen
+2. Record a GIF of the workflow:
+   "Record a GIF showing how to create an iron condor:
+    1. Navigate to /strategy
+    2. Add 4 legs
+    3. Click recalculate
+    4. Show the payoff chart
+    Save as docs/assets/screenshots/iron-condor-demo.gif"
+```
+
+### Chrome Helper Utilities
+
+Location: `tests/e2e/helpers/chrome.helper.js`
+
+Available functions:
+- `getAuthToken()` - Get JWT token from file
+- `isTokenExpired(token)` - Check if token is valid
+- `getUrl(path)` - Generate full URL for Chrome
+- `getAuthInjectionScript(token)` - Get localStorage script
+- `getTokenExpiry(token)` - Get human-readable expiry time
+- `saveAuthToken(token)` - Save new token
+- `clearAuthToken()` - Remove stored token
+- `getScreenUrls()` - Get all screen URLs
+
+### Skills with Chrome Integration
+
+- **`/chrome-test`** - Invoke Chrome testing workflows
+- **`/open-in-chrome [path]`** - Open app with auth for manual testing
+- **auto-verify** - Uses Chrome as primary debugger
+- **test-fixer** - Uses Chrome to debug failing tests
+
+### Limitations
+
+- ✅ **Google Chrome** - Fully supported
+- ❌ **Brave, Arc, other Chromium browsers** - Not supported
+- ❌ **Firefox, Safari, Edge** - Not supported
+- ❌ **WSL (Windows Subsystem for Linux)** - Not supported
+- **Visible browser required** - No headless mode available
+
+### Best Practices
+
+1. **Use Playwright for automation** - Don't replace automated tests with manual Chrome testing
+2. **Use Chrome for verification** - After tests complete, use Chrome to visually verify
+3. **Debug with Chrome** - When tests fail, use Chrome to identify root cause
+4. **Document with GIFs** - Use Chrome to record workflows for documentation
+5. **Monitor WebSocket** - Use Chrome for real-time data testing
+6. **Check console first** - Always open console when debugging
+
+### Example Commands
+
+```bash
+# Test specific user flow
+"Go to /strategy, add a 2-leg strategy, and verify the P/L grid updates"
+
+# Debug console errors
+"Check console on /positions for any errors or warnings"
+
+# Verify element exists
+"Check if positions-exit-modal element exists in the DOM"
+
+# Test WebSocket
+"Monitor WebSocket on /autopilot for 15 seconds and report messages"
+
+# Capture evidence
+"Take a screenshot of the current positions page showing the error"
+
+# Test mobile responsiveness
+"Resize window to 768px width and check if layout is responsive"
+```
+
+---

@@ -178,6 +178,6 @@ backend/test_*.py
 **/test_connection*.py
 
 # Personal notes
-notes
+# notes - Now tracked in git for team collaboration
 notes.md
 TODO.md
