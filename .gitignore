@@ -176,6 +176,3 @@ test-iron-condor.cjs
 backend/test_db_connection.py
 backend/test_*.py
 **/test_connection*.py
-
-# Personal notes
-notes

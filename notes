@@ -1,4 +1,4 @@
-run the app on port 5173 and use Playwright to open the dashboard screen in the browser and keep it open for me to use. Use existing token if exists else use saved login credential to login and ask for TOTP. use Playwright to verify and confirm when dashboard screen is open in the browser.
+Start both frontend (port 5173) and backend (port 8000), then open the dashboard in Playwright browser. Inject the auth token from tests/config/.auth-state.json into localStorage. Keep the browser open for manual testing. If auth token is expired or missing, ask me for TOTP to perform fresh login.
 
 update .gitignore, commit and sync
 
@@ -13,3 +13,15 @@ Select strategy type = "Iron Condor"
 Confirm replace legs modal
 Assert: All 4 legs have non-null, non-empty strike prices
 In each iteration, Use the same strategy for testing
+
+
+Errors/Issues: 
+While creating a new AutoPilot strategy for Iron condor (check for other types also), CMP is not showing for the legs 
+Remove Option Chain button from the AutoPilot screen
+There is "Network Error" message on the Order screen of AutoPilot
+On AutoPilot Dashboard screen, These values are BLANK - NIFTY, BANKNIFTY, VIX
+Find a better way to show "Strategies" on the AutoPilot Dashboard screen, as new button etc. 
+Find a better way to show "Recent Activity" on the AutoPilot Dashboard screen, as new button etc. 
+Underlying - NIFTY, BANKNIFTY, FINNIFTY, SENSEX - All these should be present across the App. Strategy screen does not have all 4 Underlying
+Clicked "Resume Strategy" button on the Strategies cards to which resumed the strategy. But when I click on the Exit Strategy button on the same strategy then the "Exit Strategy" confirmation window opens but "Exit Strategy" button does not works.
+Add Pause, Clone, What-If links on Strategy Cards like "View Details", "Resume Strategy" and "Exit Strategy" button exists
