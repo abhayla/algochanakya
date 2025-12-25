@@ -16,6 +16,12 @@ Phase 5 Integrations:
 - Delta Tracking: Monitor net delta per leg and strategy
 - Delta Alerts: Send alerts when delta thresholds crossed
 - Position Legs: Update Greeks for individual position legs
+
+AI Week 3 Integrations:
+- AI Config Limits: Check VIX, daily lots, max strategies per day
+- Confidence Threshold: Enforce minimum confidence to trade
+- Paper/Live Mode: Enforce mode and check graduation status
+- Position Sizing: Integrated via OrderExecutor (uses AI config tiers)
 """
 import asyncio
 from datetime import datetime, time, date, timezone
@@ -44,6 +50,7 @@ from app.services.greeks_calculator import GreeksCalculatorService
 from app.services.position_leg_service import PositionLegService
 from app.services.iv_metrics_service import get_iv_metrics_service
 from app.services.delta_band_service import get_delta_band_service
+from app.services.ai.config_service import AIConfigService
 from app.websocket.manager import get_ws_manager
 
 logger = logging.getLogger(__name__)
@@ -211,6 +218,18 @@ class StrategyMonitor:
                 alert_type="risk_limit",
                 message=risk_message,
                 data={"strategy_id": strategy.id}
+            )
+            return
+
+        # AI Week 3: Check AI config limits for AI-deployed strategies
+        ai_limits_ok, ai_limit_message = await self._check_ai_limits(db, strategy)
+        if not ai_limits_ok:
+            logger.warning(f"AI limits exceeded for strategy {strategy.id}: {ai_limit_message}")
+            await self.ws_manager.send_risk_alert(
+                user_id=str(strategy.user_id),
+                alert_type="ai_limit",
+                message=f"AI Limit: {ai_limit_message}",
+                data={"strategy_id": strategy.id, "ai_deployed": True}
             )
             return
 
@@ -744,6 +763,109 @@ class StrategyMonitor:
 
         # TODO: Check daily loss limit
         # TODO: Check cooldown after loss
+
+        return True, ""
+
+    async def _check_ai_limits(self, db: AsyncSession, strategy: AutoPilotStrategy) -> tuple[bool, str]:
+        """
+        AI Week 3: Check if AI config limits allow execution.
+
+        Checks:
+        - AI enabled
+        - VIX limit
+        - Daily lots limit
+        - Max strategies per day
+        - Min confidence threshold
+        - Paper/Live mode and graduation status
+        """
+        # Only check AI limits for AI-deployed strategies
+        if not strategy.ai_deployed:
+            return True, ""
+
+        # Get AI config
+        ai_config = await AIConfigService.get_or_create_config(db, strategy.user_id)
+
+        if not ai_config:
+            return True, ""  # No AI config set
+
+        # Check if AI is enabled
+        if not ai_config.ai_enabled:
+            return False, "AI trading is disabled in AI Settings"
+
+        # Check VIX limit
+        if ai_config.max_vix_to_trade:
+            try:
+                vix_data = await self.market_data.get_vix()
+                current_vix = float(vix_data.ltp)
+
+                if current_vix > float(ai_config.max_vix_to_trade):
+                    return False, f"VIX {current_vix:.2f} exceeds max limit {ai_config.max_vix_to_trade}"
+            except Exception as e:
+                logger.warning(f"Failed to check VIX limit: {e}")
+
+        # Check confidence threshold
+        if ai_config.min_confidence_to_trade and strategy.ai_confidence_score:
+            if float(strategy.ai_confidence_score) < float(ai_config.min_confidence_to_trade):
+                return False, f"Confidence {strategy.ai_confidence_score}% below minimum {ai_config.min_confidence_to_trade}%"
+
+        # Check max strategies per day limit
+        if ai_config.max_strategies_per_day:
+            from sqlalchemy import func, and_
+
+            today = date.today()
+            deployed_today = await db.execute(
+                select(func.count(AutoPilotStrategy.id)).where(
+                    and_(
+                        AutoPilotStrategy.user_id == strategy.user_id,
+                        AutoPilotStrategy.ai_deployed == True,
+                        func.date(AutoPilotStrategy.activated_at) == today,
+                        AutoPilotStrategy.id != strategy.id  # Exclude current strategy
+                    )
+                )
+            )
+            count_today = deployed_today.scalar() or 0
+
+            if count_today >= ai_config.max_strategies_per_day:
+                return False, f"Max AI strategies per day ({ai_config.max_strategies_per_day}) limit reached"
+
+        # Check max lots per day limit
+        if ai_config.max_lots_per_day:
+            from sqlalchemy import func, and_
+
+            today = date.today()
+            lots_used_today = await db.execute(
+                select(func.sum(AutoPilotStrategy.lots)).where(
+                    and_(
+                        AutoPilotStrategy.user_id == strategy.user_id,
+                        AutoPilotStrategy.ai_deployed == True,
+                        AutoPilotStrategy.status.in_(["waiting", "active"]),
+                        func.date(AutoPilotStrategy.activated_at) == today,
+                        AutoPilotStrategy.id != strategy.id  # Exclude current strategy
+                    )
+                )
+            )
+            total_lots_today = lots_used_today.scalar() or 0
+
+            if total_lots_today + strategy.lots > ai_config.max_lots_per_day:
+                return False, f"Daily lots limit exceeded: {total_lots_today + strategy.lots}/{ai_config.max_lots_per_day}"
+
+        # Check paper/live mode and graduation status
+        if ai_config.autonomy_mode == "live":
+            # Verify strategy is also in live mode
+            if strategy.trading_mode != "live":
+                return False, "Strategy must be in live mode when AI is configured for live trading"
+
+            # Check graduation status
+            can_graduate = await AIConfigService.can_graduate_to_live(db, strategy.user_id)
+            if not can_graduate:
+                return False, "User has not graduated from paper trading yet"
+
+        elif ai_config.autonomy_mode == "paper":
+            # Force paper mode for safety
+            if strategy.trading_mode != "paper":
+                logger.warning(f"Strategy {strategy.id} trading_mode changed to paper (AI config requires paper mode)")
+                strategy.trading_mode = "paper"
+                await db.commit()
 
         return True, ""
 

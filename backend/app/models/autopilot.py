@@ -200,6 +200,13 @@ class AutoPilotStrategy(Base):
         nullable=True
     )
 
+    # AI Week 3: AI Deployment Metadata
+    ai_deployed = Column(Boolean, nullable=True, default=False, comment="Whether this strategy was deployed by AI")
+    ai_confidence_score = Column(Numeric(5, 2), nullable=True, comment="AI confidence score (0-100) for this strategy")
+    ai_regime_type = Column(String(30), nullable=True, comment="Market regime at deployment (TRENDING_BULLISH, RANGEBOUND, etc.)")
+    ai_lots_tier = Column(String(20), nullable=True, comment="Position sizing tier used (SKIP, LOW, MEDIUM, HIGH)")
+    ai_explanation = Column(Text, nullable=True, comment="AI-generated explanation for strategy selection")
+
     # References
     source_template_id = Column(BigInteger, ForeignKey("autopilot_templates.id", ondelete="SET NULL"), nullable=True)
     cloned_from_id = Column(BigInteger, ForeignKey("autopilot_strategies.id", ondelete="SET NULL"), nullable=True)
@@ -318,6 +325,10 @@ class AutoPilotOrder(Base):
         nullable=True,
         server_default="paper"
     )
+
+    # AI Week 3: AI Position Sizing Metadata
+    ai_sizing_mode = Column(String(20), nullable=True, comment="Position sizing mode used (fixed, tiered, kelly)")
+    ai_tier_multiplier = Column(Numeric(5, 2), nullable=True, comment="Tier multiplier applied to base lots")
 
     # Batch Reference
     batch_id = Column(UUID(as_uuid=True), ForeignKey("autopilot_order_batches.id", ondelete="SET NULL"), nullable=True)

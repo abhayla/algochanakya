@@ -15,6 +15,7 @@ import Sparkline from '@/components/autopilot/common/Sparkline.vue'
 import EnhancedStrategyCard from '@/components/autopilot/dashboard/EnhancedStrategyCard.vue'
 import RiskOverviewPanel from '@/components/autopilot/dashboard/RiskOverviewPanel.vue'
 import ActivityTimeline from '@/components/autopilot/dashboard/ActivityTimeline.vue'
+import AIStatusCard from '@/components/autopilot/dashboard/AIStatusCard.vue'
 import '@/assets/css/strategy-table.css'
 
 const router = useRouter()
@@ -664,6 +665,9 @@ const getStatusBadgeClass = (status) => {
             >⚠️</span>
           </div>
         </div>
+
+        <!-- AI Week 3: AI Status Card -->
+        <AIStatusCard />
       </div>
 
       <!-- Risk Overview Panel -->

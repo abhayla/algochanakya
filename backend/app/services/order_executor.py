@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.autopilot import AutoPilotStrategy, AutoPilotOrder, AutoPilotLog, AutoPilotOrderBatch
 from app.services.market_data import MarketDataService
 from app.services.strike_finder_service import StrikeFinderService
+from app.services.ai.config_service import AIConfigService
 from app.constants.trading import STRIKE_STEPS, LOT_SIZES
 from app.utils.tradingsymbol import build_tradingsymbol
 
@@ -49,6 +50,9 @@ class OrderRequest:
     batch_id: Optional[UUID] = None
     batch_sequence: Optional[int] = None
     triggered_condition: Optional[Dict[str, Any]] = None
+    # AI Week 3: Position sizing metadata
+    ai_sizing_mode: Optional[str] = None
+    ai_tier_multiplier: Optional[Decimal] = None
 
 
 @dataclass
@@ -309,6 +313,7 @@ class OrderExecutor:
 
         # Build order requests
         order_requests = await self._build_order_requests(
+            db=db,
             strategy=strategy,
             legs=sorted_legs,
             purpose="entry"
@@ -457,11 +462,19 @@ class OrderExecutor:
 
     async def _build_order_requests(
         self,
+        db: AsyncSession,
         strategy: AutoPilotStrategy,
         legs: List[Dict[str, Any]],
         purpose: str
     ) -> List[OrderRequest]:
-        """Build order requests from leg configurations."""
+        """
+        Build order requests from leg configurations.
+
+        AI Week 3 Integration:
+        - Uses AI config for position sizing if strategy is AI-deployed
+        - Calculates lots based on confidence tiers
+        - Stores AI metadata in orders
+        """
         requests = []
 
         # Get spot price for strike selection
@@ -475,6 +488,40 @@ class OrderExecutor:
             expiry_date = self._calculate_expiry(strategy.expiry_type, strategy.underlying)
 
         lot_size = LOT_SIZES.get(strategy.underlying.upper(), 25)
+
+        # AI Week 3: Calculate lots using AI config if AI-deployed
+        lots_to_use = strategy.lots  # Default to strategy.lots
+        ai_sizing_mode = None
+        ai_tier_multiplier = None
+
+        if strategy.ai_deployed and strategy.ai_confidence_score:
+            # Get AI config for user
+            ai_config = await AIConfigService.get_or_create_config(db, strategy.user_id)
+
+            if ai_config and ai_config.ai_enabled:
+                # Calculate lots based on confidence tier
+                lots_to_use = AIConfigService.calculate_lots_for_confidence(
+                    ai_config=ai_config,
+                    confidence_score=float(strategy.ai_confidence_score)
+                )
+
+                # Get tier info for metadata
+                tier = AIConfigService.get_confidence_tier(
+                    ai_config=ai_config,
+                    confidence_score=float(strategy.ai_confidence_score)
+                )
+
+                if tier:
+                    ai_sizing_mode = ai_config.sizing_mode
+                    ai_tier_multiplier = tier.get('multiplier', 1.0)
+
+                logger.info(
+                    f"AI Position Sizing: Strategy {strategy.id}, "
+                    f"Confidence={strategy.ai_confidence_score}, "
+                    f"Tier={strategy.ai_lots_tier}, "
+                    f"Multiplier={ai_tier_multiplier}x, "
+                    f"Lots={lots_to_use}"
+                )
 
         for i, leg in enumerate(legs):
             strike = await self._calculate_strike(
@@ -492,7 +539,7 @@ class OrderExecutor:
                 contract_type=leg['contract_type']
             )
 
-            quantity = strategy.lots * lot_size * leg.get('quantity_multiplier', 1)
+            quantity = lots_to_use * lot_size * leg.get('quantity_multiplier', 1)
 
             order_type = (strategy.order_settings or {}).get('order_type', 'MARKET')
             product = "NRML" if strategy.position_type == "positional" else "MIS"
@@ -511,7 +558,10 @@ class OrderExecutor:
                 underlying=strategy.underlying,
                 contract_type=leg['contract_type'],
                 strike=Decimal(str(strike)),
-                expiry=expiry_date
+                expiry=expiry_date,
+                # AI Week 3: Position sizing metadata
+                ai_sizing_mode=ai_sizing_mode,
+                ai_tier_multiplier=Decimal(str(ai_tier_multiplier)) if ai_tier_multiplier else None
             )
             requests.append(req)
 
@@ -572,6 +622,9 @@ class OrderExecutor:
                 batch_id=request.batch_id,
                 batch_sequence=request.batch_sequence,
                 triggered_condition=request.triggered_condition,
+                # AI Week 3: Position sizing metadata
+                ai_sizing_mode=request.ai_sizing_mode,
+                ai_tier_multiplier=request.ai_tier_multiplier,
                 # Market snapshot
                 spot_at_order=Decimal(str(snapshot['spot_price'])) if snapshot.get('spot_price') else None,
                 vix_at_order=Decimal(str(snapshot['vix'])) if snapshot.get('vix') else None,
@@ -644,6 +697,9 @@ class OrderExecutor:
                 batch_id=request.batch_id,
                 batch_sequence=request.batch_sequence,
                 triggered_condition=request.triggered_condition,
+                # AI Week 3: Position sizing metadata
+                ai_sizing_mode=request.ai_sizing_mode,
+                ai_tier_multiplier=request.ai_tier_multiplier,
                 # Market snapshot
                 spot_at_order=Decimal(str(snapshot['spot_price'])) if snapshot.get('spot_price') else None,
                 vix_at_order=Decimal(str(snapshot['vix'])) if snapshot.get('vix') else None,

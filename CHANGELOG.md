@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **AI + AutoPilot Integration** (Week 3 - AutoPilot AI)
+  - AI Config integration with AutoPilot StrategyMonitor and OrderExecutor
+  - Confidence-based position sizing in order execution (tiered multipliers: SKIP 0x, LOW 1.0x, MEDIUM 1.5x, HIGH 2.0x)
+  - AI limits enforcement: VIX limit, daily lots limit, max strategies per day, minimum confidence threshold
+  - Paper/Live mode validation with graduation status checking
+  - AI metadata tracking in strategies and orders (confidence score, regime type, sizing tier, tier multiplier)
+  - Database migration 011: Added 5 AI fields to autopilot_strategies, 2 fields to autopilot_orders
+  - Automatic trading mode enforcement (forces paper mode when AI configured for paper trading)
+  - Real-time AI limit alerts via WebSocket (ai_limit alert type)
+  - Comprehensive logging for AI position sizing decisions
+
 - **AI Configuration & Settings** feature (Week 2 - AutoPilot AI)
   - Autonomous AI trading configuration with position sizing, deployment scheduling, and risk limits
   - Paper trading graduation system (25 trades, 55% win rate, 15 days)
@@ -24,6 +35,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Troubleshooting guide
 
 ### Changed
+- **AutoPilot StrategyMonitor** - Added AI config limits checking before strategy execution (file: backend/app/services/strategy_monitor.py)
+- **AutoPilot OrderExecutor** - Integrated AI position sizing with confidence-based lot calculation (file: backend/app/services/order_executor.py)
+- **AutoPilot Models** - Added AI metadata fields to AutoPilotStrategy and AutoPilotOrder models (file: backend/app/models/autopilot.py)
+- **OrderRequest dataclass** - Added ai_sizing_mode and ai_tier_multiplier fields for tracking (file: backend/app/services/order_executor.py)
 - Moved documentation to `docs/` folder
 - Flattened screenshot directory structure
 - Extended AI router with configuration endpoints (file: backend/app/api/v1/ai/router.py)
