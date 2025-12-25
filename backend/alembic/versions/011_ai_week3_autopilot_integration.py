@@ -1,7 +1,7 @@
 """AI Week 3: AutoPilot Integration - Add AI metadata fields
 
-Revision ID: 011_ai_week3_autopilot_integration
-Revises: 010_ai_week2_user_config
+Revision ID: 011_ai_week3
+Revises: 010_ai_week2
 Create Date: 2025-12-25 10:10:00.000000
 
 """
@@ -10,8 +10,8 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision = '011_ai_week3_autopilot_integration'
-down_revision = '010_ai_week2_user_config'
+revision = '011_ai_week3'
+down_revision = '010_ai_week2'
 branch_labels = None
 depends_on = None
 
