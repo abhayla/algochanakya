@@ -113,6 +113,10 @@ backend/fix_tests.py
 backend/phase5_test_results.txt
 backend/fix_test_mocks.py
 
+# Temporary test/session reports (root level)
+TESTING-QUICK-START.md
+WEEK3-*.md
+
 # Temporary analysis scripts
 analyze-failures.cjs
 

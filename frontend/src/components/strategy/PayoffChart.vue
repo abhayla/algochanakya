@@ -30,28 +30,45 @@ const props = defineProps({
 const chartCanvas = ref(null);
 let chartInstance = null;
 
+const splitPnlData = (pnlArray) => {
+  const profitData = pnlArray.map(val => val >= 0 ? val : 0);
+  const lossData = pnlArray.map(val => val <= 0 ? val : 0);
+  return { profitData, lossData };
+};
+
 const createChart = () => {
   if (!chartCanvas.value || !props.spotPrices.length) return;
   if (chartInstance) chartInstance.destroy();
 
   const ctx = chartCanvas.value.getContext('2d');
+  const { profitData, lossData } = splitPnlData(props.totalPnl);
 
   chartInstance = new Chart(ctx, {
     type: 'line',
     data: {
       labels: props.spotPrices,
-      datasets: [{
-        label: 'P/L',
-        data: props.totalPnl,
-        borderWidth: 2,
-        pointRadius: 0,
-        tension: 0.1,
-        fill: true,
-        segment: {
-          borderColor: ctx => ctx.p1.parsed.y >= 0 ? '#22c55e' : '#ef4444',
-          backgroundColor: ctx => ctx.p1.parsed.y >= 0 ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)'
+      datasets: [
+        {
+          label: 'Profit',
+          data: profitData,
+          borderColor: '#22c55e',
+          backgroundColor: 'rgba(34,197,94,0.1)',
+          borderWidth: 2,
+          pointRadius: 0,
+          tension: 0.1,
+          fill: true
+        },
+        {
+          label: 'Loss',
+          data: lossData,
+          borderColor: '#ef4444',
+          backgroundColor: 'rgba(239,68,68,0.1)',
+          borderWidth: 2,
+          pointRadius: 0,
+          tension: 0.1,
+          fill: true
         }
-      }]
+      ]
     },
     options: {
       responsive: true,
