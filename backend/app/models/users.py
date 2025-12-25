@@ -23,5 +23,8 @@ class User(Base):
     autopilot_settings = relationship("AutoPilotUserSettings", back_populates="user", uselist=False)
     autopilot_strategies = relationship("AutoPilotStrategy", back_populates="user")
 
+    # AI relationships
+    ai_config = relationship("AIUserConfig", back_populates="user", uselist=False)
+
     def __repr__(self):
         return f"<User {self.id} email={self.email}>"

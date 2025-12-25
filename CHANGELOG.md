@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **AI Configuration & Settings** feature (Week 2 - AutoPilot AI)
+  - Autonomous AI trading configuration with position sizing, deployment scheduling, and risk limits
+  - Paper trading graduation system (25 trades, 55% win rate, 15 days)
+  - Confidence-based position sizing with tiered multipliers
+  - Deployment schedule with event day and weekly expiry skipping
+  - 9 REST API endpoints for configuration management
+  - AIConfigService with lot calculation and limit enforcement
+  - AI Settings view with 5 configuration panels and auto-save
+  - Navigation link with brain icon in KiteHeader
+  - Complete documentation in docs/features/ai/
 - Documentation reorganization with industry-standard structure
 - CHANGELOG.md for version history
 - Architecture Decision Records (ADRs)
@@ -16,9 +26,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Moved documentation to `docs/` folder
 - Flattened screenshot directory structure
+- Extended AI router with configuration endpoints (file: backend/app/api/v1/ai/router.py)
+- Updated User model with ai_config relationship (file: backend/app/models/users.py)
+- Updated feature registry with AI configuration patterns (file: docs/feature-registry.yaml)
 
 ### Fixed
 - AutoPilot: CMP not displaying for strategy legs created from templates
+- AI Configuration: Confidence tier boundary validation gaps (59→60, 74→75, 84→85) (file: backend/app/models/ai.py)
 
 ## [0.5.0] - 2024-12-07
 

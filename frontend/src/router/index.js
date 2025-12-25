@@ -110,6 +110,12 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/ai/settings',
+      name: 'AISettings',
+      component: () => import('../views/ai/AISettingsView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/autopilot/orders',
       name: 'AutoPilotOrders',
       component: () => import('../views/autopilot/OrderHistoryView.vue'),

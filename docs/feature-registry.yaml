@@ -136,6 +136,20 @@ auto_detect_patterns:
   - pattern: "frontend/src/stores/userPreferences.js"
     feature: user-preferences
 
+  # AI Configuration
+  - pattern: "backend/app/api/v1/ai/config.py"
+    feature: ai-configuration
+  - pattern: "backend/app/models/ai.py"
+    feature: ai-configuration
+  - pattern: "backend/app/schemas/ai.py"
+    feature: ai-configuration
+  - pattern: "backend/app/services/ai/config_service.py"
+    feature: ai-configuration
+  - pattern: "frontend/src/views/ai/**"
+    feature: ai-configuration
+  - pattern: "frontend/src/stores/aiConfig.js"
+    feature: ai-configuration
+
   # Dashboard
   - pattern: "frontend/src/views/DashboardView.vue"
     feature: dashboard
@@ -375,6 +389,29 @@ features:
     tests:
       - "tests/e2e/specs/dashboard/**"
 
+  # --------------------------------------------------------------------------
+  # AI CONFIGURATION
+  # --------------------------------------------------------------------------
+  ai-configuration:
+    name: "AI Configuration & Settings"
+    docs_folder: "docs/features/ai/"
+    description: "Autonomous AI trading configuration with position sizing, deployment scheduling, and paper trading graduation"
+    backend_files:
+      - "backend/alembic/versions/010_ai_week2_user_config.py"
+      - "backend/app/models/ai.py"
+      - "backend/app/schemas/ai.py"
+      - "backend/app/services/ai/config_service.py"
+      - "backend/app/api/v1/ai/config.py"
+      - "backend/app/api/v1/ai/router.py"
+    frontend_files:
+      - "frontend/src/views/ai/AISettingsView.vue"
+      - "frontend/src/stores/aiConfig.js"
+    tests:
+      - "tests/e2e/specs/ai/**"
+    related_features:
+      - autopilot
+      - strategy-builder
+
   claude-chrome:
     name: "Claude Chrome Integration"
     description: "Browser automation and debugging via Claude Chrome extension"
@@ -428,6 +465,6 @@ unassigned: []
 # METADATA
 # ============================================================================
 
-version: "1.0.0"
-last_updated: "2025-12-22"
+version: "1.1.0"
+last_updated: "2025-12-24"
 maintained_by: "docs-maintainer skill"
