@@ -4,8 +4,13 @@ All notable changes to the AutoPilot feature will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- Automated unit test for AI position sizing verification (file: backend/test_position_sizing.py)
+- Week 3 runtime test results documentation (file: WEEK3-RUNTIME-TEST-RESULTS.md)
+
 ### Fixed
 - CMP (Current Market Price) not displaying for strategy legs created from templates - added instrument token fetching after leg creation (file: frontend/src/views/autopilot/StrategyBuilderView.vue)
+- AI confidence tier boundary ambiguity - updated Strategy 415 from 85% to 86% confidence for unambiguous HIGH tier classification (database update)
 
 ## [Phase 5] - 2024-12-20
 

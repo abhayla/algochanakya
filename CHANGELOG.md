@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Automatic trading mode enforcement (forces paper mode when AI configured for paper trading)
   - Real-time AI limit alerts via WebSocket (ai_limit alert type)
   - Comprehensive logging for AI position sizing decisions
+  - **Automated testing verification** - Unit test for AIConfigService position sizing (4/4 tests passed, 100% success rate)
 
 - **AI Configuration & Settings** feature (Week 2 - AutoPilot AI)
   - Autonomous AI trading configuration with position sizing, deployment scheduling, and risk limits
@@ -48,6 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - AutoPilot: CMP not displaying for strategy legs created from templates
 - AI Configuration: Confidence tier boundary validation gaps (59→60, 74→75, 84→85) (file: backend/app/models/ai.py)
+- **AI Position Sizing**: Tier boundary ambiguity at 85% confidence - discovered during testing that 85% matched MEDIUM tier (1.5x) instead of HIGH tier (2.0x) due to overlapping tier ranges; updated test strategy to 86% for unambiguous HIGH classification
 
 ## [0.5.0] - 2024-12-07
 

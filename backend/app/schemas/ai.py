@@ -300,3 +300,69 @@ class ClaudeKeyValidationResponse(BaseModel):
     """Response for Claude API key validation."""
     valid: bool = Field(..., description="Whether the key is valid")
     message: str = Field(..., description="Validation result message")
+
+
+# ============================================================================
+# ML Model Registry Schemas
+# ============================================================================
+
+class ModelRegistryCreate(BaseModel):
+    """Request schema for registering a new ML model."""
+    version: str = Field(..., min_length=1, max_length=50, description="Model version (e.g., v1, v2)")
+    model_type: str = Field(..., description="Model type (xgboost, lightgbm)")
+    file_path: str = Field(..., description="Path to saved model file")
+    description: Optional[str] = Field(None, description="Model description")
+
+    # Evaluation metrics
+    accuracy: Optional[float] = Field(None, ge=0, le=1, description="Accuracy score (0-1)")
+    precision: Optional[float] = Field(None, ge=0, le=1, description="Precision score (0-1)")
+    recall: Optional[float] = Field(None, ge=0, le=1, description="Recall score (0-1)")
+    f1_score: Optional[float] = Field(None, ge=0, le=1, description="F1 score (0-1)")
+    roc_auc: Optional[float] = Field(None, ge=0, le=1, description="ROC AUC score (0-1)")
+
+    @field_validator('model_type')
+    @classmethod
+    def validate_model_type(cls, v):
+        valid_types = {"xgboost", "lightgbm"}
+        if v.lower() not in valid_types:
+            raise ValueError(f"Invalid model type: {v}. Must be one of {valid_types}")
+        return v.lower()
+
+
+class ModelRegistryResponse(BaseModel):
+    """Response schema for ML model registry entry."""
+    id: int
+    version: str
+    model_type: str
+    file_path: str
+    description: Optional[str]
+
+    # Metrics
+    accuracy: Optional[Decimal]
+    precision: Optional[Decimal]
+    recall: Optional[Decimal]
+    f1_score: Optional[Decimal]
+    roc_auc: Optional[Decimal]
+
+    # Deployment status
+    is_active: bool
+    activated_at: Optional[datetime]
+
+    # Timestamps
+    trained_at: datetime
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class ModelActivateRequest(BaseModel):
+    """Request schema for activating a model version."""
+    version: str = Field(..., description="Model version to activate")
+
+
+class ModelCompareResponse(BaseModel):
+    """Response schema for comparing two models."""
+    version1: str
+    version2: str
+    metrics: dict = Field(..., description="Comparison of metrics between versions")

@@ -51,19 +51,28 @@ async def get_current_regime(
     """
     try:
         # Validate underlying
-        if underlying not in [u.value for u in UNDERLYINGS]:
+        if underlying not in UNDERLYINGS:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid underlying: {underlying}. Must be one of {[u.value for u in UNDERLYINGS]}"
+                detail=f"Invalid underlying: {underlying}. Must be one of {UNDERLYINGS}"
             )
 
         # Initialize services
+        logger.info(f"DEBUG 1: Initializing services for {underlying}")
         redis_client = await get_redis()
+        logger.info(f"DEBUG 2: Got redis client")
         market_data = MarketDataService(kite)
+        logger.info(f"DEBUG 3: Created market data service")
         classifier = MarketRegimeClassifier(kite, market_data, redis_client)
+        logger.info(f"DEBUG 4: Created classifier")
 
         # Classify regime
+        logger.info(f"DEBUG 5: About to call classify()")
         result = await classifier.classify(underlying)
+        logger.info(f"DEBUG 6: Classify returned successfully")
+
+        # DEBUG: Log type and value of result.regime_type
+        logger.info(f"DEBUG regime_type: type={type(result.regime_type)}, value={result.regime_type}, hasattr value={hasattr(result.regime_type, 'value')}")
 
         # Convert to response model
         indicators_response = IndicatorsSnapshotResponse(
@@ -122,10 +131,10 @@ async def get_indicators(
     """
     try:
         # Validate underlying
-        if underlying not in [u.value for u in UNDERLYINGS]:
+        if underlying not in UNDERLYINGS:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid underlying: {underlying}. Must be one of {[u.value for u in UNDERLYINGS]}"
+                detail=f"Invalid underlying: {underlying}. Must be one of {UNDERLYINGS}"
             )
 
         # Initialize services

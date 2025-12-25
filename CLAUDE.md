@@ -114,6 +114,9 @@ npm run test:specs:positions
 cd backend
 alembic revision --autogenerate -m "description"
 alembic upgrade head
+
+# Backend tests (from backend/)
+pytest tests/ -v
 ```
 
 ## Project Overview
@@ -345,7 +348,7 @@ The platform includes a comprehensive options Strategy Builder:
    - Uses scipy for accurate Black-Scholes pricing (with pure Python fallback)
    - Calculates P/L grid across multiple spot prices
    - Returns max profit, max loss, and breakeven points
-   - Lot sizes: NIFTY=25, BANKNIFTY=15, FINNIFTY=25, SENSEX=10
+   - Lot sizes: See Trading Constants section
 
 2. **P/L Grid Display (`src/views/StrategyBuilderView.vue`):**
    - Dynamic columns showing P/L at different spot prices
@@ -479,6 +482,25 @@ Automated strategy execution with conditional entry, adjustments, and risk manag
    - Mode selection available during strategy creation
 
 8. **Documentation:** See [docs/autopilot/README.md](docs/autopilot/README.md) for complete specs
+
+### AI Module (AutoPilot AI)
+
+Market intelligence and autonomous trading with ML-powered decisions:
+
+1. **Services (`backend/app/services/ai/`):**
+   - `market_regime.py` - 6-regime market classification (TRENDING_BULLISH, TRENDING_BEARISH, RANGEBOUND, VOLATILE, PRE_EVENT, EVENT_DAY)
+   - `strategy_recommender.py` - Regime-strategy scoring matrix
+   - `ml/` - XGBoost/LightGBM strategy scoring models
+
+2. **API (`backend/app/api/v1/ai/`):**
+   - `GET /api/v1/ai/regime/current` - Current market regime with confidence
+   - `GET /api/v1/ai/regime/indicators` - Technical indicators snapshot
+   - `GET /api/v1/ai/recommendations/` - Strategy recommendations for current regime
+   - `GET /api/v1/ai/analytics/performance` - Performance metrics
+   - `GET /api/v1/ai/analytics/portfolio` - Multi-strategy portfolio overview
+   - `POST /api/v1/ai/backtest/run` - Historical backtesting
+
+3. **Documentation:** See [docs/ai/README.md](docs/ai/README.md) for complete specs
 
 ### Key Backend Files
 
@@ -691,6 +713,8 @@ claude --chrome
 | Strategy Library | localhost:5173/strategies | Templates, wizard, deploy |
 | AutoPilot Dashboard | localhost:5173/autopilot | WebSocket status, strategy list |
 | AutoPilot Builder | localhost:5173/autopilot/strategies/new | 5-step wizard validation |
+| AI Settings | localhost:5173/ai/settings | Configuration, paper trading status |
+| AI Analytics | localhost:5173/ai/analytics | Performance metrics, regime breakdown |
 
 ### Skills with Chrome Integration
 
@@ -705,6 +729,9 @@ Filter console logs by these prefixes:
 - `[AutoPilot WS]` - WebSocket connection, messages, errors
 - `[OptionChain]` - Option chain subscriptions
 - `[Strategy]` - P/L calculation errors
+- `[AI Regime]` - Market regime classification
+- `[AI Deploy]` - Strategy deployment
+- `[AI Monitor]` - AI decision monitoring
 
 ### Limitations
 

@@ -1,77 +1,76 @@
 <template>
-  <div class="ai-settings-view p-6" data-testid="ai-settings-view">
+  <KiteLayout>
+    <AISubNav />
+    <div class="ai-settings-view" data-testid="ai-settings-view">
     <!-- Header -->
-    <div class="mb-6">
-      <h1 class="text-2xl font-bold text-gray-900">AI Trading Configuration</h1>
-      <p class="text-gray-600 mt-1">
+    <div class="page-header">
+      <h1 class="page-title">AI Trading Configuration</h1>
+      <p class="page-subtitle">
         Configure autonomous AI trading settings, deployment schedule, and position sizing
       </p>
     </div>
 
     <!-- Loading State -->
-    <div v-if="loading" class="flex items-center justify-center py-12">
-      <div class="text-gray-600">Loading configuration...</div>
+    <div v-if="loading" class="loading-state">
+      <div>Loading configuration...</div>
     </div>
 
     <!-- Error State -->
-    <div v-if="error" class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-      <p class="text-red-800">{{ error }}</p>
+    <div v-if="error" class="error-banner">
+      <p>{{ error }}</p>
     </div>
 
     <!-- Configuration Form -->
-    <div v-if="!loading && config" class="space-y-6">
+    <div v-if="!loading && config" class="settings-content">
       <!-- Autonomy Settings Panel -->
-      <div class="bg-white rounded-lg shadow p-6" data-testid="ai-autonomy-panel">
-        <h2 class="text-lg font-semibold mb-4">Autonomy Settings</h2>
+      <div class="settings-card" data-testid="ai-autonomy-panel">
+        <h2 class="section-title">Autonomy Settings</h2>
 
-        <div class="space-y-4">
+        <div class="field-group">
           <!-- AI Enabled Toggle -->
-          <div class="flex items-center justify-between">
+          <div class="field-row">
             <div>
-              <label class="font-medium text-gray-900">Enable AI Trading</label>
-              <p class="text-sm text-gray-600">Activate autonomous trading</p>
+              <label class="field-label">Enable AI Trading</label>
+              <p class="field-hint">Activate autonomous trading</p>
             </div>
-            <label class="relative inline-flex items-center cursor-pointer">
+            <label class="toggle-switch">
               <input
                 v-model="config.ai_enabled"
                 type="checkbox"
-                class="sr-only peer"
                 data-testid="ai-enabled-toggle"
                 @change="handleConfigUpdate"
               />
-              <div
-                class="w-11 h-6 bg-gray-200 peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"
-              ></div>
+              <span class="toggle-slider"></span>
             </label>
           </div>
+        </div>
 
+        <div class="field-group">
           <!-- Autonomy Mode -->
           <div>
-            <label class="block font-medium text-gray-900 mb-2">Trading Mode</label>
-            <div class="flex gap-4">
-              <label class="flex items-center">
+            <label class="field-label">Trading Mode</label>
+            <div class="radio-group">
+              <label class="radio-label">
                 <input
                   v-model="config.autonomy_mode"
                   type="radio"
                   value="paper"
-                  class="mr-2"
                   data-testid="mode-paper"
                   @change="handleConfigUpdate"
                 />
                 Paper Trading
               </label>
-              <label class="flex items-center">
+              <label class="radio-label" :class="{ disabled: !canGraduateToLive }">
                 <input
                   v-model="config.autonomy_mode"
                   type="radio"
                   value="live"
-                  class="mr-2"
                   data-testid="mode-live"
                   :disabled="!canGraduateToLive"
                   @change="handleConfigUpdate"
                 />
                 Live Trading
-                <span v-if="!canGraduateToLive" class="ml-2 text-xs text-red-600">
+                <span v-if="!canGraduateToLive" class="graduation-warning">
                   (Requires graduation)
                 </span>
               </label>
@@ -81,47 +80,49 @@
       </div>
 
       <!-- Deployment Schedule Panel -->
-      <div class="bg-white rounded-lg shadow p-6" data-testid="ai-deployment-panel">
-        <h2 class="text-lg font-semibold mb-4">Deployment Schedule</h2>
+      <div class="settings-card" data-testid="ai-deployment-panel">
+        <h2 class="section-title">Deployment Schedule</h2>
 
-        <div class="space-y-4">
+        <div class="field-group">
           <!-- Auto-Deploy Toggle -->
-          <div class="flex items-center justify-between">
-            <label class="font-medium text-gray-900">Auto-Deploy Strategies</label>
+          <div class="field-row">
+            <label class="field-label">Auto-Deploy Strategies</label>
             <input
               v-model="config.auto_deploy_enabled"
               type="checkbox"
-              class="h-4 w-4"
               data-testid="auto-deploy-toggle"
               @change="handleConfigUpdate"
             />
           </div>
+        </div>
 
+        <div class="field-group">
           <!-- Deploy Time -->
           <div>
-            <label class="block font-medium text-gray-900 mb-2">Deploy Time</label>
+            <label class="field-label">Deploy Time</label>
             <input
               v-model="config.deploy_time"
               type="time"
-              class="border rounded px-3 py-2"
+              class="settings-input"
               data-testid="deploy-time-input"
               @change="handleConfigUpdate"
             />
           </div>
+        </div>
 
+        <div class="field-group">
           <!-- Deploy Days -->
           <div>
-            <label class="block font-medium text-gray-900 mb-2">Deploy Days</label>
-            <div class="flex gap-2">
+            <label class="field-label">Deploy Days</label>
+            <div class="day-selector">
               <label
                 v-for="day in ['MON', 'TUE', 'WED', 'THU', 'FRI']"
                 :key="day"
-                class="flex items-center"
+                class="day-label"
               >
                 <input
                   :checked="config.deploy_days?.includes(day)"
                   type="checkbox"
-                  class="mr-1"
                   :data-testid="`deploy-day-${day.toLowerCase()}`"
                   @change="toggleDeployDay(day)"
                 />
@@ -129,24 +130,26 @@
               </label>
             </div>
           </div>
+        </div>
 
+        <div class="field-group">
           <!-- Skip Options -->
-          <div class="space-y-2">
-            <label class="flex items-center">
+          <div>
+            <label class="checkbox-label">
               <input
                 v-model="config.skip_event_days"
                 type="checkbox"
-                class="mr-2"
                 data-testid="skip-event-days"
                 @change="handleConfigUpdate"
               />
               Skip event days (Budget, RBI, etc.)
             </label>
-            <label class="flex items-center">
+          </div>
+          <div>
+            <label class="checkbox-label">
               <input
                 v-model="config.skip_weekly_expiry"
                 type="checkbox"
-                class="mr-2"
                 data-testid="skip-weekly-expiry"
                 @change="handleConfigUpdate"
               />
@@ -157,16 +160,16 @@
       </div>
 
       <!-- Position Sizing Panel -->
-      <div class="bg-white rounded-lg shadow p-6" data-testid="ai-sizing-panel">
-        <h2 class="text-lg font-semibold mb-4">Position Sizing</h2>
+      <div class="settings-card" data-testid="ai-sizing-panel">
+        <h2 class="section-title">Position Sizing</h2>
 
-        <div class="space-y-4">
+        <div class="field-group">
           <!-- Sizing Mode -->
           <div>
-            <label class="block font-medium text-gray-900 mb-2">Sizing Mode</label>
+            <label class="field-label">Sizing Mode</label>
             <select
               v-model="config.sizing_mode"
-              class="border rounded px-3 py-2 w-full"
+              class="settings-select"
               data-testid="sizing-mode-select"
               @change="handleConfigUpdate"
             >
@@ -175,29 +178,33 @@
               <option value="kelly">Kelly Criterion (Week 9)</option>
             </select>
           </div>
+        </div>
 
+        <div class="field-group">
           <!-- Base Lots -->
           <div>
-            <label class="block font-medium text-gray-900 mb-2">Base Lots</label>
+            <label class="field-label">Base Lots</label>
             <input
               v-model.number="config.base_lots"
               type="number"
               min="1"
-              class="border rounded px-3 py-2 w-full"
+              class="settings-input"
               data-testid="base-lots-input"
               @change="handleConfigUpdate"
             />
           </div>
+        </div>
 
+        <div class="field-group" v-if="config.sizing_mode === 'tiered'">
           <!-- Confidence Tiers (simplified display) -->
-          <div v-if="config.sizing_mode === 'tiered'">
-            <label class="block font-medium text-gray-900 mb-2">Confidence Tiers</label>
-            <div class="text-sm text-gray-600 space-y-1">
-              <div v-for="(tier, index) in config.confidence_tiers" :key="index">
+          <div>
+            <label class="field-label">Confidence Tiers</label>
+            <div class="tiers-display">
+              <div class="tier-row" v-for="(tier, index) in config.confidence_tiers" :key="index">
                 {{ tier.name }}: {{ tier.min }}-{{ tier.max }}% = {{ tier.multiplier }}x lots
               </div>
             </div>
-            <p class="text-xs text-gray-500 mt-2">
+            <p class="tier-hint">
               (Advanced tier editing in Phase 3)
             </p>
           </div>
@@ -205,80 +212,80 @@
       </div>
 
       <!-- Limits Panel -->
-      <div class="bg-white rounded-lg shadow p-6" data-testid="ai-limits-panel">
-        <h2 class="text-lg font-semibold mb-4">Trading Limits</h2>
+      <div class="settings-card" data-testid="ai-limits-panel">
+        <h2 class="section-title">Trading Limits</h2>
 
-        <div class="grid grid-cols-2 gap-4">
+        <div class="limits-grid">
           <div>
-            <label class="block font-medium text-gray-900 mb-2">Max Lots/Strategy</label>
+            <label class="field-label">Max Lots/Strategy</label>
             <input
               v-model.number="config.max_lots_per_strategy"
               type="number"
               min="1"
-              class="border rounded px-3 py-2 w-full"
+              class="settings-input"
               data-testid="max-lots-strategy-input"
               @change="handleConfigUpdate"
             />
           </div>
 
           <div>
-            <label class="block font-medium text-gray-900 mb-2">Max Lots/Day</label>
+            <label class="field-label">Max Lots/Day</label>
             <input
               v-model.number="config.max_lots_per_day"
               type="number"
               min="1"
-              class="border rounded px-3 py-2 w-full"
+              class="settings-input"
               data-testid="max-lots-day-input"
               @change="handleConfigUpdate"
             />
           </div>
 
           <div>
-            <label class="block font-medium text-gray-900 mb-2">Max Strategies/Day</label>
+            <label class="field-label">Max Strategies/Day</label>
             <input
               v-model.number="config.max_strategies_per_day"
               type="number"
               min="1"
-              class="border rounded px-3 py-2 w-full"
+              class="settings-input"
               data-testid="max-strategies-day-input"
               @change="handleConfigUpdate"
             />
           </div>
 
           <div>
-            <label class="block font-medium text-gray-900 mb-2">Min Confidence (%)</label>
+            <label class="field-label">Min Confidence (%)</label>
             <input
               v-model.number="config.min_confidence_to_trade"
               type="number"
               min="0"
               max="100"
-              class="border rounded px-3 py-2 w-full"
+              class="settings-input"
               data-testid="min-confidence-input"
               @change="handleConfigUpdate"
             />
           </div>
 
           <div>
-            <label class="block font-medium text-gray-900 mb-2">Max VIX</label>
+            <label class="field-label">Max VIX</label>
             <input
               v-model.number="config.max_vix_to_trade"
               type="number"
               min="0"
               step="0.1"
-              class="border rounded px-3 py-2 w-full"
+              class="settings-input"
               data-testid="max-vix-input"
               @change="handleConfigUpdate"
             />
           </div>
 
           <div>
-            <label class="block font-medium text-gray-900 mb-2">Weekly Loss Limit (₹)</label>
+            <label class="field-label">Weekly Loss Limit (₹)</label>
             <input
               v-model.number="config.weekly_loss_limit"
               type="number"
               min="0"
               step="1000"
-              class="border rounded px-3 py-2 w-full"
+              class="settings-input"
               data-testid="weekly-loss-limit-input"
               @change="handleConfigUpdate"
             />
@@ -286,10 +293,10 @@
         </div>
       </div>
 
-      <!-- Save Button -->
-      <div class="flex justify-end gap-4">
+      <!-- Action Buttons -->
+      <div class="action-buttons">
         <button
-          class="px-6 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+          class="btn-secondary"
           data-testid="reset-button"
           @click="resetToDefaults"
         >
@@ -297,7 +304,7 @@
         </button>
         <button
           :disabled="saving"
-          class="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+          class="btn-primary"
           data-testid="save-button"
           @click="saveConfiguration"
         >
@@ -305,10 +312,14 @@
         </button>
       </div>
     </div>
-  </div>
+    </div>
+  </KiteLayout>
 </template>
 
 <script setup>
+import KiteLayout from '@/components/layout/KiteLayout.vue'
+import AISubNav from '@/components/ai/AISubNav.vue'
+
 import { ref, computed, onMounted } from 'vue'
 import { useAIConfigStore } from '@/stores/aiConfig'
 import { storeToRefs } from 'pinia'
@@ -383,5 +394,309 @@ async function resetToDefaults() {
 </script>
 
 <style scoped>
-/* Toggle switch styling handled by Tailwind classes */
+.ai-settings-view {
+  padding: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.page-header {
+  margin-bottom: 24px;
+}
+
+.page-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--kite-text-primary, #394046);
+  margin: 0;
+}
+
+.page-subtitle {
+  font-size: 14px;
+  color: var(--kite-text-secondary, #6c757d);
+  margin-top: 4px;
+}
+
+.settings-content {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.settings-card {
+  background: white;
+  border: 1px solid var(--kite-border, #e8e8e8);
+  border-radius: 8px;
+  padding: 24px;
+}
+
+.section-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--kite-text-primary, #394046);
+  margin: 0 0 20px 0;
+}
+
+.field-group {
+  margin-bottom: 20px;
+}
+
+.field-group:last-child {
+  margin-bottom: 0;
+}
+
+.field-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.field-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--kite-text-primary, #394046);
+  margin-bottom: 8px;
+}
+
+.field-hint {
+  font-size: 13px;
+  color: var(--kite-text-secondary, #6c757d);
+  margin-top: 2px;
+}
+
+.settings-input {
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 14px;
+  border: 1px solid var(--kite-border, #e8e8e8);
+  border-radius: 4px;
+  background: white;
+  color: var(--kite-text-primary, #394046);
+  transition: border-color 0.2s ease;
+}
+
+.settings-input:focus {
+  outline: none;
+  border-color: var(--kite-primary, #387ed1);
+}
+
+.settings-select {
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 14px;
+  border: 1px solid var(--kite-border, #e8e8e8);
+  border-radius: 4px;
+  background: white;
+  color: var(--kite-text-primary, #394046);
+  cursor: pointer;
+}
+
+.settings-select:focus {
+  outline: none;
+  border-color: var(--kite-primary, #387ed1);
+}
+
+/* Toggle Switch */
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  transition: 0.3s;
+  border-radius: 24px;
+}
+
+.toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: 0.3s;
+  border-radius: 50%;
+}
+
+.toggle-switch input:checked + .toggle-slider {
+  background-color: var(--kite-primary, #387ed1);
+}
+
+.toggle-switch input:checked + .toggle-slider:before {
+  transform: translateX(20px);
+}
+
+/* Buttons */
+.btn-primary {
+  padding: 10px 20px;
+  background: var(--kite-primary, #387ed1);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.btn-primary:hover {
+  background: var(--kite-primary-dark, #2c6cb8);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  padding: 10px 20px;
+  background: white;
+  color: var(--kite-text-primary, #394046);
+  border: 1px solid var(--kite-border, #e8e8e8);
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background: var(--kite-bg-light, #f8f9fa);
+  border-color: #d0d0d0;
+}
+
+/* Grid layouts */
+.limits-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+}
+
+@media (max-width: 768px) {
+  .limits-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Radio buttons */
+.radio-group {
+  display: flex;
+  gap: 20px;
+  margin-top: 8px;
+}
+
+.radio-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--kite-text-primary, #394046);
+  cursor: pointer;
+}
+
+.radio-label input[type="radio"] {
+  accent-color: var(--kite-primary, #387ed1);
+}
+
+.radio-label.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Checkbox */
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--kite-text-primary, #394046);
+  cursor: pointer;
+  margin-bottom: 8px;
+}
+
+.checkbox-label input[type="checkbox"] {
+  accent-color: var(--kite-primary, #387ed1);
+}
+
+/* Day selector */
+.day-selector {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.day-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--kite-text-primary, #394046);
+}
+
+/* Confidence tiers */
+.tiers-display {
+  font-size: 13px;
+  color: var(--kite-text-secondary, #6c757d);
+}
+
+.tier-row {
+  padding: 4px 0;
+}
+
+.tier-hint {
+  font-size: 12px;
+  color: var(--kite-text-muted, #9aa3ad);
+  margin-top: 8px;
+}
+
+/* Action buttons row */
+.action-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+/* Error state */
+.error-banner {
+  background: var(--kite-red-light, #ffebee);
+  border: 1px solid var(--kite-red, #e53935);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 24px;
+  color: var(--kite-red, #e53935);
+}
+
+/* Loading state */
+.loading-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  color: var(--kite-text-secondary, #6c757d);
+}
+
+/* Graduation warning */
+.graduation-warning {
+  font-size: 12px;
+  color: var(--kite-red, #e53935);
+  margin-left: 8px;
+}
 </style>

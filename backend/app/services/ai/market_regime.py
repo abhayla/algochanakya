@@ -384,3 +384,92 @@ class MarketRegimeClassifier:
                 return (True, days_ahead, event_name)
 
         return (False, 0, "")
+
+    async def classify_historical(
+        self,
+        underlying: str,
+        historical_date: datetime,
+        ohlc_data: List[OHLC]
+    ) -> RegimeResult:
+        """
+        Classify market regime for historical date using historical OHLC data.
+
+        Args:
+            underlying: Index symbol
+            historical_date: Date to classify
+            ohlc_data: Historical OHLC data (should include enough history for indicators)
+
+        Returns:
+            RegimeResult for the historical date
+        """
+        try:
+            # Calculate indicators from historical OHLC data
+            indicators_service = TechnicalIndicators()
+
+            # Extract close prices for indicator calculation
+            close_prices = [float(ohlc.close) for ohlc in ohlc_data]
+            high_prices = [float(ohlc.high) for ohlc in ohlc_data]
+            low_prices = [float(ohlc.low) for ohlc in ohlc_data]
+
+            # Calculate indicators
+            rsi = indicators_service.calculate_rsi(close_prices, period=14)
+            adx = indicators_service.calculate_adx(high_prices, low_prices, close_prices, period=14)
+            ema_50 = indicators_service.calculate_ema(close_prices, period=50)
+            atr = indicators_service.calculate_atr(high_prices, low_prices, close_prices, period=14)
+            bb_bands = indicators_service.calculate_bollinger_bands(close_prices, period=20, std_dev=2)
+
+            # Get spot price from last OHLC
+            spot_price = float(ohlc_data[-1].close)
+
+            # Create indicators snapshot
+            indicators = IndicatorsSnapshot(
+                underlying=underlying,
+                timestamp=historical_date,
+                spot_price=spot_price,
+                vix=None,  # VIX not available for historical backtest
+                rsi_14=rsi[-1] if rsi else None,
+                adx_14=adx[-1] if adx else None,
+                ema_9=None,
+                ema_21=None,
+                ema_50=ema_50[-1] if ema_50 else None,
+                atr_14=atr[-1] if atr else None,
+                bb_upper=bb_bands['upper'][-1] if bb_bands and bb_bands['upper'] else None,
+                bb_middle=bb_bands['middle'][-1] if bb_bands and bb_bands['middle'] else None,
+                bb_lower=bb_bands['lower'][-1] if bb_bands and bb_bands['lower'] else None,
+                bb_width_pct=bb_bands['width_pct'][-1] if bb_bands and bb_bands['width_pct'] else None
+            )
+
+            # Use same classification logic as live classify
+            regime_type, confidence, reasoning = self._classify_regime(indicators)
+
+            return RegimeResult(
+                regime_type=regime_type,
+                confidence=confidence,
+                indicators=indicators,
+                reasoning=reasoning
+            )
+
+        except Exception as e:
+            logger.error(f"Error classifying historical regime for {underlying} on {historical_date}: {e}")
+            # Return UNKNOWN regime on error
+            return RegimeResult(
+                regime_type=RegimeType.UNKNOWN,
+                confidence=0.0,
+                indicators=IndicatorsSnapshot(
+                    underlying=underlying,
+                    timestamp=historical_date,
+                    spot_price=0.0,
+                    vix=None,
+                    rsi_14=None,
+                    adx_14=None,
+                    ema_9=None,
+                    ema_21=None,
+                    ema_50=None,
+                    atr_14=None,
+                    bb_upper=None,
+                    bb_middle=None,
+                    bb_lower=None,
+                    bb_width_pct=None
+                ),
+                reasoning=f"Error: {str(e)}"
+            )

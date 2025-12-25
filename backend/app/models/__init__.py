@@ -12,14 +12,15 @@ from app.models.autopilot import (
     AutoPilotLog,
     AutoPilotTemplate,
     AutoPilotConditionEval,
-    AutoPilotDailySummary
+    AutoPilotDailySummary,
+    AutoPilotTradeJournal
 )
-from app.models.ai import AIUserConfig
+from app.models.ai import AIUserConfig, AIModelRegistry, AILearningReport
 
 __all__ = [
     "User", "BrokerConnection", "Watchlist", "Instrument", "Strategy", "StrategyLeg", "StrategyTemplate",
     "UserPreferences",
     "AutoPilotUserSettings", "AutoPilotStrategy", "AutoPilotOrder", "AutoPilotLog",
-    "AutoPilotTemplate", "AutoPilotConditionEval", "AutoPilotDailySummary",
-    "AIUserConfig"
+    "AutoPilotTemplate", "AutoPilotConditionEval", "AutoPilotDailySummary", "AutoPilotTradeJournal",
+    "AIUserConfig", "AIModelRegistry", "AILearningReport"
 ]

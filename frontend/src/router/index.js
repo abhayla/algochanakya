@@ -116,6 +116,18 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/ai/paper-trading',
+      name: 'AIPaperTrading',
+      component: () => import('../views/ai/PaperTradingView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/ai/analytics',
+      name: 'AIAnalytics',
+      component: () => import('../views/ai/AnalyticsView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/autopilot/orders',
       name: 'AutoPilotOrders',
       component: () => import('../views/autopilot/OrderHistoryView.vue'),

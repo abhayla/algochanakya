@@ -388,3 +388,83 @@ async def get_paper_trading_status(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get paper trading status: {str(e)}"
         )
+
+
+@router.get("/kelly-recommendation", summary="Get Kelly Position Sizing Recommendation")
+async def get_kelly_recommendation(
+    capital: float,
+    max_loss_per_lot: float,
+    underlying: str = "NIFTY",
+    strategy_name: str = None,
+    lookback_days: int = 90,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get Kelly Criterion position sizing recommendation.
+
+    Calculates optimal position size based on historical trading performance
+    using the Kelly Criterion formula. Requires at least 100 trades for reliability.
+
+    Uses half-Kelly (0.5x) for safety to reduce variance.
+
+    Args:
+        capital: Total available capital for trading
+        max_loss_per_lot: Maximum expected loss per lot (for risk calculation)
+        underlying: NIFTY, BANKNIFTY, or FINNIFTY (default: NIFTY)
+        strategy_name: Optional strategy name to filter historical trades
+        lookback_days: Days to look back for historical performance (default: 90)
+
+    Returns:
+        {
+            "enabled": bool,
+            "kelly_fraction": float,
+            "optimal_lots": int,
+            "historical_performance": {
+                "total_trades": int,
+                "win_rate": float,
+                "avg_win": float,
+                "avg_loss": float
+            },
+            "recommendation": str,
+            "warnings": List[str]
+        }
+
+    Recommendation values:
+        - NOT_ENOUGH_DATA: Less than 100 trades
+        - NEGATIVE_EDGE: Win rate below 50% or negative Kelly fraction
+        - VERY_CONSERVATIVE: Kelly < 5%
+        - CONSERVATIVE: Kelly 5-10%
+        - MODERATE: Kelly 10-15%
+        - AGGRESSIVE: Kelly 15-20%
+        - VERY_AGGRESSIVE: Kelly > 20%
+    """
+    try:
+        from app.services.ai.kelly_calculator import KellyCalculator
+
+        kelly_calc = KellyCalculator(db)
+
+        recommendation = await kelly_calc.get_kelly_recommendation(
+            user_id=user.id,
+            capital=capital,
+            max_loss_per_lot=max_loss_per_lot,
+            underlying=underlying,
+            strategy_name=strategy_name,
+            lookback_days=lookback_days
+        )
+
+        logger.info(
+            f"Kelly recommendation for user {user.id}: "
+            f"enabled={recommendation['enabled']}, "
+            f"kelly_fraction={recommendation['kelly_fraction']:.4f}, "
+            f"optimal_lots={recommendation['optimal_lots']}"
+        )
+
+        return recommendation
+
+    except Exception as e:
+        logger.error(f"Error getting Kelly recommendation for user {user.id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get Kelly recommendation: {str(e)}"
+        )

@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     # Frontend
     FRONTEND_URL: str
 
+    # Anthropic Claude API (for AI features)
+    ANTHROPIC_API_KEY: str
+
     # CORS
     CORS_ORIGINS: list[str] = ["http://localhost:5173", "http://localhost:5174", "http://localhost:5175", "http://localhost:5176", "http://localhost:5177", "http://localhost:5178", "http://127.0.0.1:5173"]
 

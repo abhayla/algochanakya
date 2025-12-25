@@ -5,6 +5,8 @@ update .gitignore, commit and sync. sync notes file also into git
 
 Do not proceed until you have 100% confidence of what I want. Ask me questions until you reach that confidence. Ask one question at a time. Tell me the number of questions you are going to ask. After each response and before asking next question, check the related codebase and docs. For each question, always give your recommendation. Your recommendation should be based on best practices and standards.
 
+test all 8 implementation phases completed (using playwright and Claude Chrome) and fix any issues found then retest. Do this in loop until all issues are fixed and all test pass 
+
 Navigate to /autopilot/strategies/new
 Fill basic info (name, underlying=NIFTY)
 Select expiry type = "Next Week"
@@ -59,3 +61,62 @@ Add Pause, Clone, What-If links on Strategy Cards like "View Details", "Resume S
 AutoPilot Automation Plan:
 File Name: serialized-discovering-shannon.md
 Location: C:\Users\Administrator\.claude\plans\serialized-discovering-shannon.md
+
+
+  🚀 Implementation Prompt for AutoPilot AI Autonomous Trading System
+
+  Implement the AutoPilot AI Autonomous Trading System as specified in:
+  d:\Abhay\VibeCoding\algochanakya\docs\plans\autopilot-ai-autonomous-implementation-plan.md
+
+  ## Goal
+  Build a 100% autonomous AI trading system for Indian options that:
+  - Classifies market regime (Trending/Rangebound/Volatile/Pre-Event)
+  - Auto-deploys strategies at 9:20 AM based on regime + confidence
+  - Syncs positions with broker in real-time via WebSocket + 60s polling
+  - Uses Claude API for pre/post-market analysis and explanations
+  - Self-learns from trade outcomes with multi-factor scoring
+  - Graduates from paper to live after validation (15 days, 25 trades, 55% win rate)
+
+  ## Implementation Order (Start with Week 1)
+
+  ### Week 1: Market Intelligence Engine
+  Create these files:
+  1. `backend/app/services/ai/__init__.py`
+  2. `backend/app/services/ai/historical_data.py` - Kite Historical API wrapper with Redis caching
+  3. `backend/app/services/ai/indicators.py` - RSI, ADX, EMA, ATR, Bollinger Bands
+  4. `backend/app/services/ai/market_regime.py` - Rule-based regime classifier
+
+  Database migration for `ai_market_snapshots` table.
+
+  API endpoints:
+  - `GET /api/v1/ai/regime/current` - Current market regime
+  - `GET /api/v1/ai/regime/indicators` - All calculated indicators
+
+  ### Key Architectural Decisions
+  - **Regime Rules**: ADX>25 = trending, ADX<20 = rangebound, VIX>20 = volatile
+  - **Position Sync**: WebSocket order updates (real-time) + 60-sec reconciliation backup
+  - **Position Sizing**: Tiered by confidence (60-74: 1x, 75-84: 1.5x, 85-100: 2x)
+  - **Data Source**: Kite Historical API primary, NSE Bhavcopy backup
+  - **Learning Score**: P&L (40%) + Risk (25%) + Entry (15%) + Adjustment (15%) + Exit (5%)
+
+  ### Existing Files to Integrate With
+  - `backend/app/services/market_data.py` - Add historical OHLC fetching
+  - `backend/app/services/strategy_monitor.py` - Add AI hooks
+  - `backend/app/services/kite_ticker.py` - Add order update handler
+  - `backend/app/websocket/manager.py` - Add POSITION_SYNC_ALERT, EXTERNAL_ORDER_DETECTED
+  - `backend/app/main.py` - Register AI router
+
+  ### Project Conventions
+  - Use trading constants from `app/constants/trading.py` (never hardcode lot sizes)
+  - Follow existing API patterns in `backend/app/api/v1/autopilot/`
+  - Use Pinia stores pattern from `frontend/src/stores/`
+  - All Vue components need `data-testid` attributes
+  - After code changes, invoke `auto-verify` skill
+
+  ### Dependencies to Add
+  - `anthropic` - Claude API client
+  - `scikit-learn` - ML utilities
+  - `xgboost` or `lightgbm` - Strategy scorer (Week 5+)
+  - `apscheduler` - Daily job scheduling
+
+  Start with Week 1 deliverables. After completing Week 1, proceed to Week 2.

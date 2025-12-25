@@ -138,3 +138,137 @@ class AIUserConfig(Base):
             f"<AIUserConfig(id={self.id}, user_id={self.user_id}, "
             f"ai_enabled={self.ai_enabled}, autonomy_mode={self.autonomy_mode})>"
         )
+
+
+class AIModelRegistry(Base):
+    """
+    ML Model Registry for tracking model versions, metrics, and deployment status.
+
+    Stores metadata for trained ML models used in strategy scoring.
+    """
+    __tablename__ = "ai_model_registry"
+
+    # Primary Key
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+
+    # Model Identification
+    version = Column(String(50), nullable=False, unique=True)
+    model_type = Column(String(20), nullable=False)  # xgboost, lightgbm
+    file_path = Column(Text, nullable=False)
+    description = Column(Text, nullable=True)
+
+    # Evaluation Metrics
+    accuracy = Column(Numeric(5, 4), nullable=True)  # 0.0000 to 1.0000
+    precision = Column(Numeric(5, 4), nullable=True)
+    recall = Column(Numeric(5, 4), nullable=True)
+    f1_score = Column(Numeric(5, 4), nullable=True)
+    roc_auc = Column(Numeric(5, 4), nullable=True)
+
+    # Deployment Status
+    is_active = Column(Boolean, nullable=False, default=False)
+    activated_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Timestamps
+    trained_at = Column(DateTime(timezone=True), nullable=False)
+    created_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False
+    )
+
+    # Table constraints
+    __table_args__ = (
+        UniqueConstraint('version', name='uq_ai_model_registry_version'),
+        CheckConstraint('accuracy >= 0 AND accuracy <= 1', name='chk_accuracy_range'),
+        CheckConstraint('precision >= 0 AND precision <= 1', name='chk_precision_range'),
+        CheckConstraint('recall >= 0 AND recall <= 1', name='chk_recall_range'),
+        CheckConstraint('f1_score >= 0 AND f1_score <= 1', name='chk_f1_score_range'),
+        CheckConstraint('roc_auc >= 0 AND roc_auc <= 1', name='chk_roc_auc_range'),
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f"<AIModelRegistry(id={self.id}, version={self.version}, "
+            f"model_type={self.model_type}, is_active={self.is_active})>"
+        )
+
+
+class AILearningReport(Base):
+    """
+    Daily self-learning pipeline results and model training reports.
+
+    Tracks decision quality, model performance, and insights from autonomous trading.
+    """
+    __tablename__ = "ai_learning_reports"
+
+    # Primary Key
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+
+    # Foreign Key to users
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False
+    )
+
+    report_date = Column(Date, nullable=False)
+
+    # Trade Statistics
+    total_trades = Column(Integer, nullable=False, default=0)
+    winning_trades = Column(Integer, nullable=False, default=0)
+    losing_trades = Column(Integer, nullable=False, default=0)
+    win_rate = Column(Numeric(5, 2), nullable=False, default=Decimal('0'))
+
+    # P&L Statistics
+    total_pnl = Column(Numeric(14, 2), nullable=False, default=Decimal('0'))
+    avg_pnl_per_trade = Column(Numeric(14, 2), nullable=False, default=Decimal('0'))
+    max_win = Column(Numeric(14, 2), nullable=True)
+    max_loss = Column(Numeric(14, 2), nullable=True)
+
+    # Decision Quality Scores (0-100)
+    avg_overall_score = Column(Numeric(5, 2), nullable=False, default=Decimal('0'))
+    avg_pnl_score = Column(Numeric(5, 2), nullable=False, default=Decimal('0'))
+    avg_risk_score = Column(Numeric(5, 2), nullable=False, default=Decimal('0'))
+    avg_entry_score = Column(Numeric(5, 2), nullable=False, default=Decimal('0'))
+    avg_adjustment_score = Column(Numeric(5, 2), nullable=False, default=Decimal('0'))
+    avg_exit_score = Column(Numeric(5, 2), nullable=False, default=Decimal('0'))
+
+    # Model Training
+    model_retrained = Column(Boolean, nullable=False, default=False)
+    new_model_version = Column(String(50), nullable=True)
+    model_accuracy = Column(Numeric(5, 4), nullable=True)
+
+    # Insights (JSONB array of strings)
+    insights = Column(JSONB, nullable=False, default=list)
+
+    # Metadata
+    created_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False
+    )
+
+    # Relationships
+    user = relationship("User")
+
+    # Table constraints
+    __table_args__ = (
+        UniqueConstraint('user_id', 'report_date', name='uq_ai_learning_reports_user_date'),
+        CheckConstraint('total_trades >= 0', name='chk_total_trades_non_negative'),
+        CheckConstraint('winning_trades >= 0', name='chk_winning_trades_non_negative'),
+        CheckConstraint('losing_trades >= 0', name='chk_losing_trades_non_negative'),
+        CheckConstraint('win_rate >= 0 AND win_rate <= 100', name='chk_win_rate_range'),
+        CheckConstraint('avg_overall_score >= 0 AND avg_overall_score <= 100', name='chk_avg_overall_score_range'),
+        CheckConstraint('avg_pnl_score >= 0 AND avg_pnl_score <= 100', name='chk_avg_pnl_score_range'),
+        CheckConstraint('avg_risk_score >= 0 AND avg_risk_score <= 100', name='chk_avg_risk_score_range'),
+        CheckConstraint('avg_entry_score >= 0 AND avg_entry_score <= 100', name='chk_avg_entry_score_range'),
+        CheckConstraint('avg_adjustment_score >= 0 AND avg_adjustment_score <= 100', name='chk_avg_adjustment_score_range'),
+        CheckConstraint('avg_exit_score >= 0 AND avg_exit_score <= 100', name='chk_avg_exit_score_range'),
+        CheckConstraint('model_accuracy >= 0 AND model_accuracy <= 1', name='chk_model_accuracy_range'),
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f"<AILearningReport(id={self.id}, user_id={self.user_id}, "
+            f"report_date={self.report_date}, total_trades={self.total_trades})>"
+        )

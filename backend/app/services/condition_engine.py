@@ -977,6 +977,99 @@ class ConditionEngine:
             return int(parts[0]) * 60 + int(parts[1])
         return 0
 
+    async def evaluate_condition_historical(
+        self,
+        condition: Dict,
+        historical_spot: float,
+        historical_vix: Optional[float] = None,
+        historical_timestamp: Optional[datetime] = None
+    ) -> bool:
+        """
+        Evaluate condition using historical market data.
+
+        Args:
+            condition: Condition dictionary with variable, operator, value
+            historical_spot: Historical spot price
+            historical_vix: Historical VIX value (optional)
+            historical_timestamp: Historical timestamp (optional)
+
+        Returns:
+            True if condition met, False otherwise
+        """
+        try:
+            var_type = condition.get("variable")
+            operator = condition.get("operator")
+            threshold = condition.get("value")
+
+            if not all([var_type, operator, threshold is not None]):
+                logger.warning(f"Invalid condition format: {condition}")
+                return False
+
+            # Get actual value for the variable using historical data
+            if var_type == "SPOT":
+                actual_value = historical_spot
+            elif var_type == "VIX":
+                if historical_vix is None:
+                    logger.warning("VIX condition but no historical VIX provided")
+                    return False
+                actual_value = historical_vix
+            elif var_type == "TIME":
+                if historical_timestamp is None:
+                    logger.warning("TIME condition but no historical timestamp provided")
+                    return False
+                # TIME format: "HH:MM"
+                current_time = historical_timestamp.time()
+                threshold_time = datetime.strptime(threshold, "%H:%M").time()
+
+                if operator == "AFTER":
+                    return current_time >= threshold_time
+                elif operator == "BEFORE":
+                    return current_time <= threshold_time
+                else:
+                    logger.warning(f"Invalid TIME operator: {operator}")
+                    return False
+            elif var_type == "PREMIUM":
+                # For historical backtesting, premium conditions are difficult to evaluate
+                # without full option chain historical data. Return True for now.
+                logger.debug(f"PREMIUM condition in backtest - defaulting to True")
+                return True
+            elif var_type == "DELTA":
+                # For historical backtesting, delta conditions are difficult to evaluate
+                # without Greeks calculation. Return True for now.
+                logger.debug(f"DELTA condition in backtest - defaulting to True")
+                return True
+            else:
+                logger.warning(f"Unknown variable type: {var_type}")
+                return False
+
+            # For SPOT and VIX, evaluate using standard operators
+            if var_type in ["SPOT", "VIX"]:
+                threshold_value = float(threshold)
+
+                if operator == "GREATER_THAN":
+                    return actual_value > threshold_value
+                elif operator == "LESS_THAN":
+                    return actual_value < threshold_value
+                elif operator == "EQUALS":
+                    return abs(actual_value - threshold_value) < 0.01
+                elif operator == "GREATER_THAN_OR_EQUAL":
+                    return actual_value >= threshold_value
+                elif operator == "LESS_THAN_OR_EQUAL":
+                    return actual_value <= threshold_value
+                elif operator in ["CROSSES_ABOVE", "CROSSES_BELOW"]:
+                    # Crosses not supported in historical backtest without previous state
+                    logger.debug(f"{operator} not supported in backtest - defaulting to standard comparison")
+                    return actual_value > threshold_value if operator == "CROSSES_ABOVE" else actual_value < threshold_value
+                else:
+                    logger.warning(f"Unknown operator: {operator}")
+                    return False
+
+            return False
+
+        except Exception as e:
+            logger.error(f"Error evaluating historical condition: {e}")
+            return False
+
     def clear_previous_values(self):
         """Clear cached previous values (used for crosses_above/below)."""
         self._previous_values.clear()
