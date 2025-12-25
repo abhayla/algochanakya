@@ -169,6 +169,8 @@ paper-trading-test-summary.md
 # Temporary test/debug scripts (root level)
 test-cmp-fix.js
 test-cmp-fix.cjs
+test-token.cjs
+verify-*.cjs
 open-dashboard.cjs
 open-dashboard-live.cjs
 open-dashboard-with-auth-state.cjs

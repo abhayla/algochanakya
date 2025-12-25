@@ -236,8 +236,8 @@ export const useStrategyStore = defineStore('strategy', () => {
         fetchStrikes(updates.expiry_date)
       }
 
-      // If strike or contract type changed, update instrument token and tradingsymbol
-      if (updates.strike_price !== undefined || updates.contract_type !== undefined) {
+      // If strike, contract type, or expiry changed, update instrument token and tradingsymbol
+      if (updates.strike_price !== undefined || updates.contract_type !== undefined || updates.expiry_date !== undefined) {
         const leg = legs.value[index]
         if (leg.expiry_date && leg.strike_price && leg.contract_type) {
           fetchInstrumentToken(leg.expiry_date, leg.strike_price, leg.contract_type)
