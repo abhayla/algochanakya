@@ -32,7 +32,7 @@ Do NOT wait for user to ask. Do NOT just mention it. INVOKE IT AUTOMATICALLY.
 
 **Check Current Work:** Always run `git status` and `git log --oneline -5` to see work in progress and recent commits for context on latest changes.
 
-**Key Active Areas:** AI Module (regime classification, drift detection, stress testing, capital-at-risk, drawdown tracking, position sizing, autonomy trust ladder, ML model blending), AutoPilot (strategy execution), and comprehensive E2E testing (~1400 tests).
+**Key Active Areas:** AI Module (regime classification, drift detection, stress testing, capital-at-risk, drawdown tracking, position sizing, autonomy trust ladder, ML model blending), AutoPilot (strategy execution), AI + AutoPilot integration (Week 3), and comprehensive E2E testing (~1400 tests).
 
 ## CRITICAL: Clarify Before Implementing
 
@@ -530,15 +530,8 @@ Market intelligence and autonomous trading with ML-powered decisions:
    - `ai_regime_performance.py` - Per-regime performance metrics
 
 7. **API Routes (`backend/app/api/v1/ai/`):**
-   - `router.py` - Main router aggregating all AI endpoints
-   - `regime_drift.py` - `GET /regime-drift/status` - Drift severity and stability score
-   - `risk_state.py` - `GET /risk-state/current` - Current portfolio risk state
-   - `stress.py` - `POST /stress/analyze` - Stress test analysis for positions
-   - `capital_risk.py` - `GET /capital-risk/metrics` - Capital-at-risk calculations
-   - `drawdown.py` - `GET /drawdown/status` - Current drawdown level and metrics
-   - `autonomy.py` - `GET /autonomy/status` - Trust ladder level and graduation progress
-   - `regime_quality.py` - `GET /regime-quality/scores` - Regime-conditioned quality metrics
-   - `ml.py` - `GET /ml/models` - ML model status and predictions
+   - `router.py` - Main router aggregating all AI endpoints under `/api/v1/ai/`
+   - Key endpoints: `/regime-drift/status`, `/risk-state/current`, `/stress/analyze`, `/capital-risk/metrics`, `/drawdown/status`, `/autonomy/status`, `/regime-quality/scores`, `/ml/models`
 
 8. **Frontend Components (`frontend/src/components/ai/`):**
    - `RiskStateIndicator.vue` - Visual risk status display with color-coded states (GREEN/YELLOW/RED)
@@ -590,15 +583,6 @@ Market intelligence and autonomous trading with ML-powered decisions:
 **Migration Status:**
 - Always run `alembic upgrade head` after pulling to ensure database is current
 - Check `backend/alembic/versions/` for newest migration files
-- Recent AI module migrations:
-  - `07f81b1ad229_add_ai_risk_state_table_for_autonomous_.py` - AI risk state tracking
-  - `854fcf898768_add_ai_strategy_cooldown_table_for_.py` - Strategy cooldown mechanism
-  - `3e53c2250f8a_add_regime_conditioned_decision_quality_.py` - Regime quality scoring
-  - `4fdaa5624e7d_add_retraining_frequency_optimization_.py` - ML retraining scheduling
-  - `665b6deade94_add_stress_greeks_limits_to_ai_user_.py` - Stress Greeks limits
-  - `9ed66e62a8fe_add_global_personalized_ml_blending_.py` - Global/personalized model blending
-  - `e07c3e092d27_add_drawdown_aware_position_sizing_to_.py` - Drawdown-aware position sizing
-  - `eba6d4e94406_add_regime_drift_detection_to_ai_module.py` - Regime drift detection
 
 ## Important Patterns
 
@@ -658,6 +642,9 @@ Constants are loaded from backend API on app initialization via `GET /api/consta
 - `/autopilot/strategies/:id` - Strategy detail with real-time monitoring
 - `/autopilot/settings` - User settings and risk limits
 - `/autopilot/templates` - Pre-built AutoPilot templates
+- `/ai` - AI Dashboard with risk state, capital-at-risk, trust ladder
+- `/ai/settings` - AI configuration, paper trading mode, autonomy level
+- `/ai/analytics` - Performance metrics, regime breakdown, attribution charts
 
 ### Environment Variables
 
