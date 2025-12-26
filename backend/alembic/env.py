@@ -16,7 +16,12 @@ from app.models import (
     User, BrokerConnection, Watchlist, Instrument, Strategy, StrategyLeg, StrategyTemplate,
     UserPreferences,
     AutoPilotUserSettings, AutoPilotStrategy, AutoPilotOrder, AutoPilotLog,
-    AutoPilotTemplate, AutoPilotConditionEval, AutoPilotDailySummary
+    AutoPilotTemplate, AutoPilotConditionEval, AutoPilotDailySummary,
+    AIUserConfig, AIModelRegistry, AILearningReport,
+    AIRiskState, RiskState,
+    AIStrategyCooldown,
+    AIRegimeHistory,
+    AIRegimePerformance
 )  # Import all models
 
 # this is the Alembic Config object, which provides

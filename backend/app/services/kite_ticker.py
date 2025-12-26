@@ -2,9 +2,11 @@
 Kite Ticker WebSocket Service
 
 Manages WebSocket connection to Kite Connect for live market data.
+Integrates with WebSocket Health Monitor for circuit breaker protection.
 """
 import asyncio
 import logging
+import time
 from typing import Set, Dict, Optional
 from fastapi import WebSocket
 from kiteconnect import KiteTicker, KiteConnect
@@ -12,6 +14,21 @@ from kiteconnect import KiteTicker, KiteConnect
 from app.config import settings
 
 logger = logging.getLogger(__name__)
+
+# Health monitor integration (lazy import to avoid circular imports)
+_health_monitor = None
+
+
+def _get_health_monitor():
+    """Get health monitor instance (lazy initialization)."""
+    global _health_monitor
+    if _health_monitor is None:
+        try:
+            from app.services.ai.websocket_health_monitor import get_health_monitor
+            _health_monitor = get_health_monitor()
+        except ImportError:
+            logger.warning("WebSocket health monitor not available")
+    return _health_monitor
 
 
 class KiteTickerService:
@@ -85,6 +102,11 @@ class KiteTickerService:
         logger.info(f"Kite WebSocket connected: {response}")
         self.is_connected = True
 
+        # Record connection status in health monitor
+        monitor = _get_health_monitor()
+        if monitor:
+            monitor.record_connection_status(True)
+
         # Re-subscribe to existing tokens if any
         if self._subscribed_tokens:
             logger.info(f"Resubscribing to {len(self._subscribed_tokens)} tokens")
@@ -96,6 +118,12 @@ class KiteTickerService:
         logger.warning(f"Kite WebSocket closed: {code} - {reason}")
         self.is_connected = False
 
+        # Record connection status in health monitor
+        monitor = _get_health_monitor()
+        if monitor:
+            monitor.record_connection_status(False)
+            monitor.record_error("connection_closed", f"Code: {code}, Reason: {reason}")
+
         # Schedule reconnection using thread-safe method
         if self._main_loop and self.access_token:
             asyncio.run_coroutine_threadsafe(
@@ -106,6 +134,12 @@ class KiteTickerService:
     def _on_error(self, ws, code, reason):
         """Callback on WebSocket error."""
         logger.error(f"Kite WebSocket error: code={code}, reason={reason}")
+
+        # Record error in health monitor
+        monitor = _get_health_monitor()
+        if monitor:
+            monitor.record_error("websocket_error", f"Code: {code}, Reason: {reason}")
+
         # Log additional debug info
         if self.access_token:
             logger.error(f"Access token (last 10 chars): ...{self.access_token[-10:]}")
@@ -122,6 +156,22 @@ class KiteTickerService:
         Runs in Kite's thread - must use thread-safe async execution.
         """
         try:
+            # Record tick in health monitor
+            monitor = _get_health_monitor()
+            if monitor:
+                # Calculate approximate latency based on tick exchange timestamp if available
+                latency_ms = 0
+                for tick in ticks:
+                    if tick.get("exchange_timestamp"):
+                        try:
+                            tick_time = tick["exchange_timestamp"]
+                            if hasattr(tick_time, 'timestamp'):
+                                latency_ms = (time.time() - tick_time.timestamp()) * 1000
+                                break
+                        except Exception:
+                            pass
+                monitor.record_tick_received(latency_ms=latency_ms)
+
             # Store latest ticks in memory
             for tick in ticks:
                 token = tick.get("instrument_token")
@@ -137,6 +187,10 @@ class KiteTickerService:
 
         except Exception as e:
             logger.error(f"Error processing ticks: {e}")
+            # Record error in health monitor
+            monitor = _get_health_monitor()
+            if monitor:
+                monitor.record_error("tick_processing_error", str(e))
 
     async def _broadcast_ticks(self, ticks: list):
         """Broadcast ticks to all connected WebSocket clients."""

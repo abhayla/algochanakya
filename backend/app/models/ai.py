@@ -10,11 +10,11 @@ from typing import Optional, List
 from sqlalchemy import (
     Column, BigInteger, String, Integer, Boolean, Numeric,
     Date, DateTime, ForeignKey, Text, CheckConstraint,
-    UniqueConstraint
+    UniqueConstraint, Index
 )
 from sqlalchemy.dialects.postgresql import JSONB, ARRAY, UUID
 from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
+from sqlalchemy.sql import func, text
 
 from app.database import Base
 
@@ -80,6 +80,64 @@ class AIUserConfig(Base):
     min_dte_to_enter = Column(Integer, nullable=False, default=2)
     weekly_loss_limit = Column(Numeric(12, 2), nullable=False, default=Decimal('50000.00'))
 
+    # Stress Greeks Limits (Priority 1.1)
+    max_stress_risk_score = Column(Numeric(5, 2), nullable=False, default=Decimal('75.00'))  # 0-100
+    max_portfolio_delta = Column(Numeric(6, 3), nullable=False, default=Decimal('1.000'))   # Absolute delta
+    max_portfolio_gamma = Column(Numeric(8, 5), nullable=False, default=Decimal('0.05000'))  # Absolute gamma
+
+    # Drawdown-Aware Position Sizing (Priority 1.2)
+    enable_drawdown_sizing = Column(Boolean, nullable=False, default=False)
+    drawdown_thresholds = Column(
+        JSONB,
+        nullable=False,
+        default=[
+            {"level": "NORMAL", "min_dd": 0.0, "max_dd": 5.0, "multiplier": 1.0},
+            {"level": "CAUTION", "min_dd": 5.0, "max_dd": 10.0, "multiplier": 0.8},
+            {"level": "WARNING", "min_dd": 10.0, "max_dd": 15.0, "multiplier": 0.6},
+            {"level": "CRITICAL", "min_dd": 15.0, "max_dd": 20.0, "multiplier": 0.4},
+            {"level": "SEVERE", "min_dd": 20.0, "max_dd": 100.0, "multiplier": 0.2}
+        ]
+    )
+    enable_volatility_sizing = Column(Boolean, nullable=False, default=False)
+    volatility_lookback_days = Column(Integer, nullable=False, default=30)
+    volatility_thresholds = Column(
+        JSONB,
+        nullable=False,
+        default=[
+            {"level": "LOW", "max_volatility": 5000.0, "multiplier": 1.0},
+            {"level": "MEDIUM", "max_volatility": 10000.0, "multiplier": 0.8},
+            {"level": "HIGH", "max_volatility": 999999.0, "multiplier": 0.6}
+        ]
+    )
+    max_drawdown_to_trade = Column(Numeric(5, 2), nullable=False, default=Decimal('25.00'))  # % - pause above this
+    high_water_mark = Column(Numeric(14, 2), nullable=True)  # Peak portfolio value
+    current_drawdown_pct = Column(Numeric(5, 2), nullable=False, default=Decimal('0.00'))  # Current drawdown %
+
+    # Regime Drift Detection (Priority 1.3)
+    enable_drift_detection = Column(Boolean, nullable=False, default=True)
+    drift_lookback_periods = Column(Integer, nullable=False, default=20)  # Number of periods to analyze
+    drift_threshold = Column(Numeric(5, 2), nullable=False, default=Decimal('30.00'))  # % - drift alert threshold
+    drift_confidence_penalty = Column(Numeric(5, 2), nullable=False, default=Decimal('10.00'))  # % - reduce confidence
+    min_regime_stability_score = Column(Numeric(5, 2), nullable=False, default=Decimal('40.00'))  # 0-100
+    current_regime_stability = Column(Numeric(5, 2), nullable=False, default=Decimal('100.00'))  # 0-100
+    last_drift_check_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Global → Personalized ML Blending (Priority 2.1)
+    enable_ml_blending = Column(Boolean, nullable=False, default=True)
+    blending_alpha_start = Column(Numeric(3, 2), nullable=False, default=Decimal('1.00'))  # Initial global weight (1.0 = 100% global)
+    blending_alpha_min = Column(Numeric(3, 2), nullable=False, default=Decimal('0.20'))  # Minimum global weight (0.2 = 20% global, 80% user)
+    blending_trades_threshold = Column(Integer, nullable=False, default=100)  # Trades needed for full personalization
+    total_trades_completed = Column(Integer, nullable=False, default=0)  # Track user's total completed trades
+
+    # Retraining Frequency Optimization (Priority 2.3)
+    retraining_cadence = Column(String(20), nullable=False, default='weekly')  # daily, weekly, volume_based
+    retraining_volume_threshold = Column(Integer, nullable=False, default=25)  # Trades before retrain (volume_based mode)
+    high_volume_trades_per_week = Column(Integer, nullable=False, default=50)  # Threshold to switch weekly→daily
+    last_user_model_retrain_at = Column(DateTime(timezone=True), nullable=True)  # Last user model retrain timestamp
+    min_model_stability_threshold = Column(Numeric(5, 2), nullable=False, default=Decimal('5.00'))  # Max allowed degradation % (0-100)
+    enable_confidence_weighting = Column(Boolean, nullable=False, default=True)  # Weight training samples by quality scores
+    trades_since_last_retrain = Column(Integer, nullable=False, default=0)  # Counter for volume-based retraining
+
     # Preferred Underlyings
     preferred_underlyings = Column(
         ARRAY(String(20)),
@@ -131,6 +189,55 @@ class AIUserConfig(Base):
             'paper_win_rate >= 0 AND paper_win_rate <= 100',
             name='chk_paper_win_rate_range'
         ),
+        CheckConstraint(
+            'max_stress_risk_score >= 0 AND max_stress_risk_score <= 100',
+            name='chk_max_stress_risk_score_range'
+        ),
+        CheckConstraint('max_portfolio_delta > 0', name='chk_max_portfolio_delta_positive'),
+        CheckConstraint('max_portfolio_gamma > 0', name='chk_max_portfolio_gamma_positive'),
+        CheckConstraint(
+            'max_drawdown_to_trade >= 0 AND max_drawdown_to_trade <= 100',
+            name='chk_max_drawdown_to_trade_range'
+        ),
+        CheckConstraint(
+            'current_drawdown_pct >= 0 AND current_drawdown_pct <= 100',
+            name='chk_current_drawdown_pct_range'
+        ),
+        CheckConstraint('volatility_lookback_days > 0', name='chk_volatility_lookback_days_positive'),
+        CheckConstraint('drift_lookback_periods > 0', name='chk_drift_lookback_periods_positive'),
+        CheckConstraint('retraining_volume_threshold > 0', name='chk_retraining_volume_threshold_positive'),
+        CheckConstraint('high_volume_trades_per_week > 0', name='chk_high_volume_trades_per_week_positive'),
+        CheckConstraint(
+            'min_model_stability_threshold >= 0 AND min_model_stability_threshold <= 100',
+            name='chk_min_model_stability_threshold_range'
+        ),
+        CheckConstraint('trades_since_last_retrain >= 0', name='chk_trades_since_last_retrain_non_negative'),
+        CheckConstraint(
+            'drift_threshold >= 0 AND drift_threshold <= 100',
+            name='chk_drift_threshold_range'
+        ),
+        CheckConstraint(
+            'drift_confidence_penalty >= 0 AND drift_confidence_penalty <= 100',
+            name='chk_drift_confidence_penalty_range'
+        ),
+        CheckConstraint(
+            'min_regime_stability_score >= 0 AND min_regime_stability_score <= 100',
+            name='chk_min_regime_stability_score_range'
+        ),
+        CheckConstraint(
+            'current_regime_stability >= 0 AND current_regime_stability <= 100',
+            name='chk_current_regime_stability_range'
+        ),
+        CheckConstraint(
+            'blending_alpha_start >= 0 AND blending_alpha_start <= 1',
+            name='chk_blending_alpha_start_range'
+        ),
+        CheckConstraint(
+            'blending_alpha_min >= 0 AND blending_alpha_min <= 1',
+            name='chk_blending_alpha_min_range'
+        ),
+        CheckConstraint('blending_trades_threshold > 0', name='chk_blending_trades_threshold_positive'),
+        CheckConstraint('total_trades_completed >= 0', name='chk_total_trades_completed_non_negative'),
     )
 
     def __repr__(self) -> str:
@@ -145,6 +252,7 @@ class AIModelRegistry(Base):
     ML Model Registry for tracking model versions, metrics, and deployment status.
 
     Stores metadata for trained ML models used in strategy scoring.
+    Supports both global (trained on all users) and user-specific models.
     """
     __tablename__ = "ai_model_registry"
 
@@ -152,8 +260,14 @@ class AIModelRegistry(Base):
     id = Column(BigInteger, primary_key=True, autoincrement=True)
 
     # Model Identification
-    version = Column(String(50), nullable=False, unique=True)
+    version = Column(String(50), nullable=False)
     model_type = Column(String(20), nullable=False)  # xgboost, lightgbm
+    scope = Column(String(10), nullable=False, default='user')  # 'global' or 'user'
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=True  # NULL for global models, set for user-specific models
+    )
     file_path = Column(Text, nullable=False)
     description = Column(Text, nullable=True)
 
@@ -176,19 +290,35 @@ class AIModelRegistry(Base):
         nullable=False
     )
 
+    # Relationships
+    user = relationship("User", foreign_keys=[user_id])
+
     # Table constraints
     __table_args__ = (
-        UniqueConstraint('version', name='uq_ai_model_registry_version'),
+        # Partial unique index for global models (version must be unique among global models)
+        Index('idx_ai_model_registry_global_version', 'version',
+              unique=True,
+              postgresql_where=text("scope = 'global'")),
+        # Partial unique index for user models (version must be unique per user)
+        Index('idx_ai_model_registry_user_version', 'version', 'user_id',
+              unique=True,
+              postgresql_where=text("user_id IS NOT NULL")),
         CheckConstraint('accuracy >= 0 AND accuracy <= 1', name='chk_accuracy_range'),
         CheckConstraint('precision >= 0 AND precision <= 1', name='chk_precision_range'),
         CheckConstraint('recall >= 0 AND recall <= 1', name='chk_recall_range'),
         CheckConstraint('f1_score >= 0 AND f1_score <= 1', name='chk_f1_score_range'),
         CheckConstraint('roc_auc >= 0 AND roc_auc <= 1', name='chk_roc_auc_range'),
+        CheckConstraint("scope IN ('global', 'user')", name='chk_scope_valid'),
+        CheckConstraint(
+            "(scope = 'global' AND user_id IS NULL) OR (scope = 'user' AND user_id IS NOT NULL)",
+            name='chk_scope_user_id_consistency'
+        ),
     )
 
     def __repr__(self) -> str:
         return (
             f"<AIModelRegistry(id={self.id}, version={self.version}, "
+            f"scope={self.scope}, user_id={self.user_id}, "
             f"model_type={self.model_type}, is_active={self.is_active})>"
         )
 
@@ -240,6 +370,14 @@ class AILearningReport(Base):
 
     # Insights (JSONB array of strings)
     insights = Column(JSONB, nullable=False, default=list)
+
+    # Regime-Conditioned Metrics (Priority 2.2)
+    # Stores per-regime breakdown: {regime_type: {trades, win_rate, avg_score, ...}}
+    regime_breakdown = Column(JSONB, nullable=False, default=dict)
+
+    # Dominant regime during report period
+    dominant_regime = Column(String(30), nullable=True)
+    dominant_regime_pct = Column(Numeric(5, 2), nullable=True)  # % of trades in dominant regime
 
     # Metadata
     created_at = Column(

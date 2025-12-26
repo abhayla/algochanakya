@@ -67,11 +67,29 @@ async def lifespan(app: FastAPI):
     # monitor = await get_strategy_monitor(kite)
     # await monitor.start()
 
+    # Initialize WebSocket Health Monitor for circuit breaker protection
+    try:
+        from app.services.ai.websocket_health_monitor import initialize_health_monitor
+        health_monitor = await initialize_health_monitor()
+        print("[SUCCESS] WebSocket Health Monitor: Started")
+    except Exception as e:
+        print(f"[WARNING] WebSocket Health Monitor failed to start: {e}")
+
     yield
 
     # Shutdown
     from app.services.strategy_monitor import stop_strategy_monitor
     await stop_strategy_monitor()
+
+    # Stop health monitor
+    try:
+        from app.services.ai.websocket_health_monitor import get_health_monitor
+        health_monitor = get_health_monitor()
+        if health_monitor:
+            await health_monitor.stop()
+    except Exception:
+        pass
+
     await close_db()
     print("[INFO] Shutting down...")
 

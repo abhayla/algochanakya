@@ -19,6 +19,10 @@ from dataclasses import dataclass
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, desc
+from uuid import UUID
+
+from app.services.ai.strategy_cooldown import StrategyCooldownService
+from app.services.ai.market_regime import RegimeType
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +74,7 @@ class FeedbackScorer:
 
     def __init__(self, db: AsyncSession):
         self.db = db
+        self.cooldown_service = StrategyCooldownService(db)
 
         # Scoring weights
         self.weights = {
@@ -118,6 +123,54 @@ class FeedbackScorer:
             "exit_score": round(exit_score, 2),
             "component_weights": self.weights
         }
+
+    async def record_strategy_failure_if_loss(
+        self,
+        user_id: UUID,
+        strategy_name: str,
+        entry_regime_type: RegimeType,
+        realized_pnl: Decimal
+    ) -> None:
+        """
+        Record strategy failure to cooldown registry if trade resulted in loss.
+
+        This should be called AFTER scoring a completed trade.
+
+        Args:
+            user_id: User UUID
+            strategy_name: Strategy name (e.g., "iron_condor")
+            entry_regime_type: Market regime at strategy entry
+            realized_pnl: Final P&L of the trade
+        """
+        # Only record failures for losses
+        if realized_pnl >= 0:
+            logger.debug(
+                f"Trade profitable ({realized_pnl}), not recording failure "
+                f"for {strategy_name} in {entry_regime_type.value}"
+            )
+            return
+
+        # Record failure with loss amount
+        loss_amount = abs(realized_pnl)
+
+        try:
+            cooldown_record = await self.cooldown_service.record_failure(
+                user_id=user_id,
+                strategy_name=strategy_name,
+                regime_type=entry_regime_type,
+                loss_amount=loss_amount
+            )
+
+            logger.warning(
+                f"Recorded strategy failure: user={user_id}, strategy={strategy_name}, "
+                f"regime={entry_regime_type.value}, loss={loss_amount}, "
+                f"failures={cooldown_record.failure_count}, "
+                f"cooldown_until={cooldown_record.cooldown_until}"
+            )
+
+        except Exception as e:
+            logger.error(f"Failed to record strategy failure: {e}")
+            # Don't raise - scoring should continue even if cooldown fails
 
     def _score_pnl_outcome(self, outcome: TradeOutcome) -> float:
         """

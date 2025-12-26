@@ -16,6 +16,11 @@ from kiteconnect import KiteConnect
 from app.config import settings
 from app.constants import INDEX_TOKENS, INDEX_EXCHANGES, get_index_symbol
 
+# Import for extreme event handling
+TYPE_CHECKING = False
+if TYPE_CHECKING:
+    from app.services.ai.extreme_event_handler import ExtremeEventHandler
+
 logger = logging.getLogger(__name__)
 
 
@@ -52,6 +57,11 @@ class MarketDataService:
         self._cache: Dict[str, Any] = {}
         self._cache_expiry: Dict[str, datetime] = {}
         self._cache_ttl = 1  # seconds
+        self._extreme_event_handler: Optional[Any] = None  # ExtremeEventHandler
+
+    def set_extreme_event_handler(self, handler: Any) -> None:
+        """Set extreme event handler for API health tracking."""
+        self._extreme_event_handler = handler
 
     async def get_ltp(self, instruments: List[str]) -> Dict[str, Decimal]:
         """
@@ -76,8 +86,15 @@ class MarketDataService:
             for key, data in ltp_data.items():
                 result[key] = Decimal(str(data['last_price']))
 
+            # Record API success
+            if self._extreme_event_handler:
+                self._extreme_event_handler.record_api_success()
+
             return result
         except Exception as e:
+            # Record API failure
+            if self._extreme_event_handler:
+                self._extreme_event_handler.record_api_failure()
             logger.error(f"Error fetching LTP: {e}")
             raise
 
@@ -115,8 +132,15 @@ class MarketDataService:
                     timestamp=datetime.now()
                 )
 
+            # Record API success
+            if self._extreme_event_handler:
+                self._extreme_event_handler.record_api_success()
+
             return result
         except Exception as e:
+            # Record API failure
+            if self._extreme_event_handler:
+                self._extreme_event_handler.record_api_failure()
             logger.error(f"Error fetching quote: {e}")
             raise
 
@@ -175,8 +199,15 @@ class MarketDataService:
             self._cache[cache_key] = spot
             self._cache_expiry[cache_key] = datetime.now()
 
+            # Record API success
+            if self._extreme_event_handler:
+                self._extreme_event_handler.record_api_success()
+
             return spot
         except Exception as e:
+            # Record API failure
+            if self._extreme_event_handler:
+                self._extreme_event_handler.record_api_failure()
             logger.error(f"Error fetching spot price for {underlying}: {e}")
             raise
 
@@ -205,8 +236,15 @@ class MarketDataService:
             self._cache[cache_key] = vix
             self._cache_expiry[cache_key] = datetime.now()
 
+            # Record API success
+            if self._extreme_event_handler:
+                self._extreme_event_handler.record_api_success()
+
             return vix
         except Exception as e:
+            # Record API failure
+            if self._extreme_event_handler:
+                self._extreme_event_handler.record_api_failure()
             logger.error(f"Error fetching VIX: {e}")
             raise
 

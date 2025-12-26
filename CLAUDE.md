@@ -28,6 +28,12 @@ Skill(skill="auto-verify")
 
 Do NOT wait for user to ask. Do NOT just mention it. INVOKE IT AUTOMATICALLY.
 
+## Current Development Context
+
+**Check Current Work:** Always run `git status` and `git log --oneline -5` to see work in progress and recent commits for context on latest changes.
+
+**Key Active Areas:** AI Module (regime classification, drift detection, stress testing, capital-at-risk, drawdown tracking, position sizing, autonomy trust ladder, ML model blending), AutoPilot (strategy execution), and comprehensive E2E testing (~1400 tests).
+
 ## CRITICAL: Clarify Before Implementing
 
 **MANDATORY:** Before implementing any feature, refactor, or architectural change, you MUST first clarify requirements and research the codebase. Do NOT start coding until you have high confidence in the approach.
@@ -487,20 +493,64 @@ Automated strategy execution with conditional entry, adjustments, and risk manag
 
 Market intelligence and autonomous trading with ML-powered decisions:
 
-1. **Services (`backend/app/services/ai/`):**
+1. **Core Services (`backend/app/services/ai/`):**
    - `market_regime.py` - 6-regime market classification (TRENDING_BULLISH, TRENDING_BEARISH, RANGEBOUND, VOLATILE, PRE_EVENT, EVENT_DAY)
    - `strategy_recommender.py` - Regime-strategy scoring matrix
-   - `ml/` - XGBoost/LightGBM strategy scoring models
+   - `risk_state_engine.py` - Portfolio health monitoring with red/yellow/green states
+   - `strategy_cooldown.py` - Prevents over-trading by enforcing cooldown periods between deployments
+   - `ai_monitor.py` - Autonomous trading monitoring and execution
+   - `feedback_scorer.py` - Trade feedback analysis and scoring
 
-2. **API (`backend/app/api/v1/ai/`):**
-   - `GET /api/v1/ai/regime/current` - Current market regime with confidence
-   - `GET /api/v1/ai/regime/indicators` - Technical indicators snapshot
-   - `GET /api/v1/ai/recommendations/` - Strategy recommendations for current regime
-   - `GET /api/v1/ai/analytics/performance` - Performance metrics
-   - `GET /api/v1/ai/analytics/portfolio` - Multi-strategy portfolio overview
-   - `POST /api/v1/ai/backtest/run` - Historical backtesting
+2. **Risk Management Services:**
+   - `stress_greeks_engine.py` - Multi-scenario stress testing (±1% to ±5% spot moves), deployment gating based on stress risk score (0-100)
+   - `capital_risk_meter.py` - Real-time capital-at-risk metrics, VaR-like analysis, alert thresholds (CRITICAL/HIGH/ELEVATED/NORMAL)
+   - `drawdown_tracker.py` - High-water mark tracking, drawdown severity levels (NORMAL→SEVERE), P&L volatility calculation
+   - `position_sizing_engine.py` - Unified sizing: Fixed/Tiered/Kelly modes with drawdown dampening and volatility scaling
+   - `extreme_event_handler.py` - Extreme market event detection and handling
 
-3. **Documentation:** See [docs/ai/README.md](docs/ai/README.md) for complete specs
+3. **Regime Analytics Services:**
+   - `regime_drift_tracker.py` - Regime stability scoring (0-100), drift detection (STABLE/MINOR/MODERATE/SEVERE), confidence decay
+   - `regime_quality_scorer.py` - Regime-conditioned decision quality, historical performance normalization per regime
+
+4. **Autonomy & Trust Services:**
+   - `autonomy_status.py` - Trust Ladder progression: Level 1 (Sandbox/Paper) → Level 2 (Supervised/Semi-auto) → Level 3 (Autonomous/Full-auto)
+
+5. **ML Services (`backend/app/services/ai/ml/`):**
+   - `strategy_scorer.py` - XGBoost/LightGBM strategy scoring models
+   - `model_blender.py` - Bayesian blending of global and user-specific models (cold-start to personalized transition)
+   - `global_model_trainer.py` - Global model training pipeline
+   - `retraining_scheduler.py` - Automated model retraining scheduling
+   - `model_registry.py` - Model versioning and registry
+
+6. **Database Models (`backend/app/models/`):**
+   - `ai.py` - AI decisions, regime history, deployments, user config
+   - `ai_risk_state.py` - Risk state transitions (GREEN→YELLOW→RED)
+   - `ai_strategy_cooldown.py` - Strategy cooldown state persistence
+   - `ai_regime_history.py` - Regime classification history for drift tracking
+   - `ai_regime_performance.py` - Per-regime performance metrics
+
+7. **API Routes (`backend/app/api/v1/ai/`):**
+   - `router.py` - Main router aggregating all AI endpoints
+   - `regime_drift.py` - `GET /regime-drift/status` - Drift severity and stability score
+   - `risk_state.py` - `GET /risk-state/current` - Current portfolio risk state
+   - `stress.py` - `POST /stress/analyze` - Stress test analysis for positions
+   - `capital_risk.py` - `GET /capital-risk/metrics` - Capital-at-risk calculations
+   - `drawdown.py` - `GET /drawdown/status` - Current drawdown level and metrics
+   - `autonomy.py` - `GET /autonomy/status` - Trust ladder level and graduation progress
+   - `regime_quality.py` - `GET /regime-quality/scores` - Regime-conditioned quality metrics
+   - `ml.py` - `GET /ml/models` - ML model status and predictions
+
+8. **Frontend Components (`frontend/src/components/ai/`):**
+   - `RiskStateIndicator.vue` - Visual risk status display with color-coded states (GREEN/YELLOW/RED)
+   - `CapitalRiskMeter.vue` - Capital-at-risk gauge with alert levels
+   - `AutonomyTrustLadder.vue` - Trust level progression visualization (Sandbox→Supervised→Autonomous)
+   - `RegimeAttributionCharts.vue` - Regime performance attribution and breakdown charts
+
+9. **Frontend Views & Stores:**
+   - `frontend/src/views/ai/` - AI analytics, settings, monitoring views
+   - `frontend/src/stores/aiConfig.js` - AI configuration and deployment state
+
+10. **Documentation:** See [docs/ai/README.md](docs/ai/README.md) for complete specs
 
 ### Key Backend Files
 
@@ -536,6 +586,19 @@ Market intelligence and autonomous trading with ML-powered decisions:
 - Redis is used for session storage and caching
 - Database tables are created via SQLAlchemy metadata (app/database.py)
 - Production uses remote PostgreSQL (103.118.16.189:5432) and Redis (103.118.16.189:6379)
+
+**Migration Status:**
+- Always run `alembic upgrade head` after pulling to ensure database is current
+- Check `backend/alembic/versions/` for newest migration files
+- Recent AI module migrations:
+  - `07f81b1ad229_add_ai_risk_state_table_for_autonomous_.py` - AI risk state tracking
+  - `854fcf898768_add_ai_strategy_cooldown_table_for_.py` - Strategy cooldown mechanism
+  - `3e53c2250f8a_add_regime_conditioned_decision_quality_.py` - Regime quality scoring
+  - `4fdaa5624e7d_add_retraining_frequency_optimization_.py` - ML retraining scheduling
+  - `665b6deade94_add_stress_greeks_limits_to_ai_user_.py` - Stress Greeks limits
+  - `9ed66e62a8fe_add_global_personalized_ml_blending_.py` - Global/personalized model blending
+  - `e07c3e092d27_add_drawdown_aware_position_sizing_to_.py` - Drawdown-aware position sizing
+  - `eba6d4e94406_add_regime_drift_detection_to_ai_module.py` - Regime drift detection
 
 ## Important Patterns
 
@@ -649,7 +712,6 @@ This project includes specialized Claude Code skills for common development task
 - **trading-constants-manager** - Enforce centralized trading constants usage (lot sizes, strike steps, etc.)
 - **vitest-generator** - Generate Vitest unit tests for Vue components, Pinia stores, and composables
 - **vue-component-generator** - Generate Vue 3 components and Pinia stores following project conventions
-- **update-ip** - Update AlgoChanakya Remote Access IP configuration
 
 Use skills when relevant to your task for faster, more consistent results.
 
@@ -713,8 +775,9 @@ claude --chrome
 | Strategy Library | localhost:5173/strategies | Templates, wizard, deploy |
 | AutoPilot Dashboard | localhost:5173/autopilot | WebSocket status, strategy list |
 | AutoPilot Builder | localhost:5173/autopilot/strategies/new | 5-step wizard validation |
-| AI Settings | localhost:5173/ai/settings | Configuration, paper trading status |
-| AI Analytics | localhost:5173/ai/analytics | Performance metrics, regime breakdown |
+| AI Settings | localhost:5173/ai/settings | Configuration, paper trading, autonomy level |
+| AI Analytics | localhost:5173/ai/analytics | Performance metrics, regime breakdown, attribution charts |
+| AI Dashboard | localhost:5173/ai | Risk state, capital-at-risk, trust ladder status |
 
 ### Skills with Chrome Integration
 
@@ -732,6 +795,9 @@ Filter console logs by these prefixes:
 - `[AI Regime]` - Market regime classification
 - `[AI Deploy]` - Strategy deployment
 - `[AI Monitor]` - AI decision monitoring
+- `[AI Risk]` - Risk state transitions
+- `[AI Stress]` - Stress testing analysis
+- `[AI Autonomy]` - Trust ladder progression
 
 ### Limitations
 
@@ -759,8 +825,11 @@ Filter console logs by these prefixes:
 
 ```bash
 cd backend
-pytest tests/ -v                    # Run all backend tests
-pytest tests/ -v --cov=app          # Run with coverage
+pytest tests/ -v                              # Run all backend tests
+pytest tests/ -v --cov=app                    # Run with coverage
+pytest tests/test_auth.py -v                  # Run specific test file
+pytest tests/ -k "test_positions" -v          # Run tests matching pattern
+pytest tests/test_auth.py::test_login -v --pdb  # Debug failing test with pdb
 ```
 
 ### Frontend Unit Tests (Vitest)
@@ -796,3 +865,46 @@ npm run test:coverage  # Run with coverage report
 - Isolated tests (*.isolated.spec.js) run in fresh context without auth state
 
 **data-testid Convention:** `[screen]-[component]-[element]` (e.g., `positions-exit-modal`, `strategy-add-row-button`)
+
+## Common Pitfalls to Avoid
+
+### Backend
+- **Forgetting to import models in `alembic/env.py`** - Autogenerate won't detect new models
+- **Using sync database operations** - All SQLAlchemy operations must use `async/await`
+- **Hardcoding trading constants** - Always use `app.constants.trading` (see Trading Constants section)
+- **Missing Redis session cleanup** - Sessions must be invalidated on logout
+
+### Frontend
+- **Missing `data-testid` attributes** - Required for E2E tests; use convention `[screen]-[component]-[element]`
+- **Not loading trading constants** - Frontend must load from `/api/constants/trading` on init
+- **Direct Kite API calls** - All broker operations go through backend proxy
+- **Forgetting WebSocket cleanup** - Always close subscriptions in `onUnmounted()`
+
+### Testing
+- **Importing from `@playwright/test`** - Always import from `auth.fixture.js` instead
+- **Using CSS/text selectors** - E2E tests must use `data-testid` only
+- **Not using `authenticatedPage` fixture** - Required for all authenticated test scenarios
+
+## Debug Commands
+
+```bash
+# Check backend health (database + Redis connectivity)
+curl http://localhost:8000/api/health
+
+# View SQL queries - set in backend/.env:
+# SQLALCHEMY_ECHO=true
+
+# Test WebSocket connection (browser console)
+const ws = new WebSocket('ws://localhost:8000/ws/ticks?token=YOUR_JWT')
+ws.onmessage = (e) => console.log(JSON.parse(e.data))
+ws.send(JSON.stringify({action: 'subscribe', tokens: [256265], mode: 'quote'}))
+
+# Check Redis sessions
+redis-cli -h 103.118.16.189 KEYS "session:*"
+
+# Debug Playwright test
+npx playwright test tests/e2e/specs/positions/positions.happy.spec.js --debug
+
+# View Playwright trace
+npx playwright show-trace trace.zip
+```

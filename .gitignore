@@ -190,5 +190,9 @@ backend/test_*.py
 **/test_connection*.py
 
 # Personal notes - Now tracked in git for team collaboration
-# notes.md - TRACKED for AI automation planning
+# notes - TRACKED for AI automation planning
 # TODO.md - TRACKED for task management
+
+# Ensure docs folders are NOT ignored (override any pattern matches)
+!docs/external/
+!docs/plans/

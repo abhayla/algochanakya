@@ -31,9 +31,27 @@
     </div>
 
     <div v-else class="analytics-content">
+      <!-- Autonomy Trust Ladder, Capital Risk & Performance Summary -->
+      <div class="top-grid-3col">
+        <!-- Autonomy Trust Ladder -->
+        <section class="section-autonomy">
+          <AutonomyTrustLadder data-testid="autonomy-ladder-section" />
+        </section>
+
+        <!-- Capital-at-Risk Meter -->
+        <section class="section-capital-risk">
+          <CapitalRiskMeter
+            :refresh-interval="30000"
+            data-testid="capital-risk-section"
+            @alert="handleRiskAlert"
+          />
+        </section>
+      </div>
+
       <!-- Performance Summary Section -->
-      <section class="section-summary">
-        <h2 class="section-title">Performance Summary</h2>
+      <div class="performance-section">
+        <section class="section-summary">
+          <h2 class="section-title">Performance Summary</h2>
         <div class="summary-grid">
           <div class="summary-card" data-testid="summary-total-pnl">
             <div class="card-icon profit">
@@ -96,7 +114,8 @@
             </div>
           </div>
         </div>
-      </section>
+        </section>
+      </div>
 
       <!-- Charts Grid -->
       <div class="charts-grid">
@@ -182,6 +201,12 @@
         </div>
       </section>
 
+      <!-- Regime Attribution Charts -->
+      <RegimeAttributionCharts
+        :date-range="dateRange"
+        data-testid="regime-attribution-charts"
+      />
+
       <!-- Strategy Performance Section -->
       <section class="section-table">
         <h2 class="section-title">Performance by Strategy</h2>
@@ -220,6 +245,9 @@
 <script setup>
 import KiteLayout from '@/components/layout/KiteLayout.vue'
 import AISubNav from '@/components/ai/AISubNav.vue'
+import AutonomyTrustLadder from '@/components/ai/AutonomyTrustLadder.vue'
+import RegimeAttributionCharts from '@/components/ai/RegimeAttributionCharts.vue'
+import CapitalRiskMeter from '@/components/ai/CapitalRiskMeter.vue'
 
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import Chart from 'chart.js/auto'
@@ -417,6 +445,14 @@ const updateQualityChart = () => {
   })
 }
 
+// Handle capital risk alerts
+const handleRiskAlert = (alert) => {
+  console.log('[AI Analytics] Risk alert:', alert)
+  if (alert.level === 'CRITICAL') {
+    showToast('Critical Risk Alert: ' + alert.message, 'error')
+  }
+}
+
 // Lifecycle
 onMounted(() => {
   refreshData()
@@ -525,6 +561,43 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 24px;
+}
+
+/* Top Grid - Autonomy Ladder & Capital Risk */
+.top-grid-3col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 1000px) {
+  .top-grid-3col {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Top Grid (legacy - 2 columns) */
+.top-grid {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 24px;
+}
+
+@media (max-width: 1200px) {
+  .top-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.section-autonomy,
+.section-capital-risk {
+  min-width: 0;
+}
+
+/* Performance Section */
+.performance-section {
+  margin-bottom: 24px;
 }
 
 .section-title {

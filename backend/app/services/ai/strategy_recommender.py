@@ -13,6 +13,7 @@ from sqlalchemy import select, and_
 from app.models.strategy_templates import StrategyTemplate
 from app.models.ai import AIUserConfig
 from app.services.ai.market_regime import RegimeType
+from app.services.ai.strategy_cooldown import StrategyCooldownService
 
 if TYPE_CHECKING:
     from app.schemas.ai import RegimeResponse, IndicatorsSnapshotResponse
@@ -102,6 +103,7 @@ class StrategyRecommender:
 
     def __init__(self, session: AsyncSession):
         self.session = session
+        self.cooldown_service = StrategyCooldownService(session)
 
     async def get_recommendations(
         self,
@@ -144,6 +146,25 @@ class StrategyRecommender:
         recommendations: List[StrategyRecommendation] = []
 
         for template in templates:
+            # Check if strategy is on cooldown for current regime
+            is_cooldown = await self.cooldown_service.is_on_cooldown(
+                user_id=user_config.user_id,
+                strategy_name=template.name,
+                regime_type=regime.regime_type
+            )
+
+            if is_cooldown:
+                cooldown_until = await self.cooldown_service.get_cooldown_until(
+                    user_id=user_config.user_id,
+                    strategy_name=template.name,
+                    regime_type=regime.regime_type
+                )
+                logger.info(
+                    f"Skipping {template.name} - on cooldown for {regime.regime_type.value} "
+                    f"regime until {cooldown_until}"
+                )
+                continue  # Skip this strategy
+
             score = await self.score_strategy(template, regime, user_config)
 
             if score >= user_config.min_confidence_to_trade:

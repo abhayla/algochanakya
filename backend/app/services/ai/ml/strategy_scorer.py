@@ -3,6 +3,7 @@ ML Strategy Scorer
 
 Uses trained XGBoost/LightGBM models to predict strategy success probability.
 Integrates with rule-based StrategyRecommender to enhance scoring.
+Supports global→personalized model blending for cold-start handling (Priority 2.1).
 """
 
 import os
@@ -11,14 +12,19 @@ import logging
 from typing import Dict, List, Optional, TYPE_CHECKING
 from datetime import datetime
 from pathlib import Path
+from uuid import UUID
 
 import numpy as np
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services.ai.strategy_recommender import StrategyRecommendation
 from app.services.ai.ml.feature_extractor import FeatureExtractor
+from app.services.ai.ml.model_blender import ModelBlender
+from app.services.ai.ml.model_registry import ModelRegistry
 
 if TYPE_CHECKING:
     from app.schemas.ai import RegimeResponse
+    from app.models.ai import AIUserConfig
 
 logger = logging.getLogger(__name__)
 
@@ -27,17 +33,33 @@ class MLStrategyScorer:
     """
     ML-based strategy scorer using XGBoost/LightGBM models.
 
+    Supports two modes:
+    1. Legacy mode: Single user-specific model (backward compatible)
+    2. Blended mode: Global + User models with Bayesian blending (Priority 2.1)
+
     Predicts strategy success probability based on market conditions.
     """
 
-    def __init__(self, model_dir: Optional[str] = None):
+    def __init__(
+        self,
+        model_dir: Optional[str] = None,
+        user_id: Optional[UUID] = None,
+        user_config: Optional["AIUserConfig"] = None,
+        db: Optional[AsyncSession] = None
+    ):
         """
         Initialize ML scorer.
 
         Args:
             model_dir: Directory containing trained models (defaults to backend/models/)
+            user_id: User ID for loading user-specific models
+            user_config: AIUserConfig instance for blending parameters
+            db: Database session for loading models from registry
         """
         self.feature_extractor = FeatureExtractor()
+        self.user_id = user_id
+        self.user_config = user_config
+        self.db = db
 
         # Default model directory
         if model_dir is None:
@@ -45,10 +67,22 @@ class MLStrategyScorer:
             model_dir = backend_dir / "models" / "ml"
 
         self.model_dir = Path(model_dir)
-        self.model = None
+
+        # Model instances
+        self.global_model = None
+        self.global_metadata = None
+        self.user_model = None
+        self.user_metadata = None
+
+        # Blending
+        self.blender = None
+        self.blending_enabled = False
+
+        # Legacy support (single model)
+        self.model = None  # For backward compatibility
         self.model_metadata = None
 
-        # Try to load latest model
+        # Try to load latest model (legacy mode)
         self._load_latest_model()
 
     def _load_latest_model(self):
@@ -86,7 +120,148 @@ class MLStrategyScorer:
 
     def is_model_loaded(self) -> bool:
         """Check if a trained model is loaded."""
-        return self.model is not None
+        return self.model is not None or self.global_model is not None
+
+    async def enable_blending(self, db: AsyncSession, user_config: "AIUserConfig"):
+        """
+        Enable blended mode with global + user models.
+
+        Args:
+            db: Database session
+            user_config: User configuration with blending parameters
+        """
+        self.db = db
+        self.user_config = user_config
+        self.user_id = user_config.user_id
+
+        # Load global model
+        await self._load_global_model()
+
+        # Load user model (if exists)
+        if self.user_id:
+            await self._load_user_model()
+
+        # Initialize blender
+        if user_config.enable_ml_blending:
+            self.blender = ModelBlender.from_user_config(user_config)
+            self.blending_enabled = True
+            logger.info(f"Blending enabled for user {self.user_id}")
+        else:
+            self.blending_enabled = False
+            logger.info(f"Blending disabled for user {self.user_id}")
+
+    async def _load_global_model(self):
+        """Load global baseline model from registry."""
+        if not self.db:
+            logger.warning("No database session - cannot load global model")
+            return
+
+        try:
+            # Get active global model from registry
+            global_model_entry = await ModelRegistry.get_global_model(
+                self.db, active_only=True
+            )
+
+            if not global_model_entry:
+                logger.warning("No active global model found in registry")
+                return
+
+            # Load model file
+            model_path = Path(global_model_entry.file_path)
+            if not model_path.exists():
+                logger.warning(f"Global model file not found: {model_path}")
+                return
+
+            with open(model_path, "rb") as f:
+                model_data = pickle.load(f)
+
+            self.global_model = model_data["model"]
+            self.global_metadata = model_data["metadata"]
+
+            logger.info(
+                f"Loaded global model {global_model_entry.version} "
+                f"(accuracy={global_model_entry.accuracy})"
+            )
+
+        except Exception as e:
+            logger.error(f"Error loading global model: {e}")
+            self.global_model = None
+
+    async def _load_user_model(self):
+        """Load user-specific model from registry."""
+        if not self.db or not self.user_id:
+            logger.warning("No database session or user_id - cannot load user model")
+            return
+
+        try:
+            # Get active user model from registry
+            user_model_entry = await ModelRegistry.get_user_model(
+                self.db, self.user_id, active_only=True
+            )
+
+            if not user_model_entry:
+                logger.info(f"No user model found for user {self.user_id} - will use global only")
+                return
+
+            # Load model file
+            model_path = Path(user_model_entry.file_path)
+            if not model_path.exists():
+                logger.warning(f"User model file not found: {model_path}")
+                return
+
+            with open(model_path, "rb") as f:
+                model_data = pickle.load(f)
+
+            self.user_model = model_data["model"]
+            self.user_metadata = model_data["metadata"]
+
+            logger.info(
+                f"Loaded user model {user_model_entry.version} for user {self.user_id} "
+                f"(accuracy={user_model_entry.accuracy})"
+            )
+
+        except Exception as e:
+            logger.error(f"Error loading user model: {e}")
+            self.user_model = None
+
+    def _score_with_model(self, model, features: np.ndarray) -> float:
+        """
+        Score features with a single model.
+
+        Args:
+            model: ML model instance
+            features: Feature array (1D or 2D)
+
+        Returns:
+            Score (0-100)
+        """
+        if model is None:
+            return 50.0
+
+        try:
+            # Ensure 2D shape
+            if features.ndim == 1:
+                features = features.reshape(1, -1)
+
+            # Get prediction
+            if hasattr(model, "predict_proba"):
+                # Classification model
+                proba = model.predict_proba(features)[0]
+                if len(proba) >= 2:
+                    success_probability = proba[1]
+                else:
+                    success_probability = proba[0]
+            else:
+                # Regression model
+                prediction = model.predict(features)[0]
+                success_probability = np.clip(prediction, 0.0, 1.0)
+
+            # Convert to 0-100 scale
+            return float(success_probability * 100.0)
+
+        except Exception as e:
+            logger.error(f"Error scoring with model: {e}")
+            return 50.0
 
     async def score_strategy(
         self,
@@ -95,7 +270,7 @@ class MLStrategyScorer:
         current_time: Optional[datetime] = None
     ) -> float:
         """
-        Score a strategy using ML model.
+        Score a strategy using ML model (with blending if enabled).
 
         Args:
             strategy_name: Name of strategy to score
@@ -103,10 +278,10 @@ class MLStrategyScorer:
             current_time: Current timestamp (defaults to now)
 
         Returns:
-            ML confidence score (0-100), or 50.0 if model not available
+            ML confidence score (0-100), or 50.0 if no model available
         """
         if not self.is_model_loaded():
-            logger.warning("ML model not loaded, returning neutral score")
+            logger.warning("No ML model loaded, returning neutral score")
             return 50.0
 
         try:
@@ -117,29 +292,28 @@ class MLStrategyScorer:
                 current_time=current_time
             )
 
-            # Predict probability
-            # XGBoost/LightGBM predict_proba returns [[prob_class_0, prob_class_1]]
-            features_2d = features.reshape(1, -1)
+            # If blending enabled, use blended score
+            if self.blending_enabled and self.blender and self.user_config:
+                global_score = self._score_with_model(self.global_model, features)
+                user_score = self._score_with_model(self.user_model, features) if self.user_model else None
 
-            # Get prediction
-            if hasattr(self.model, "predict_proba"):
-                # Classification model (XGBoost, LightGBM, sklearn)
-                proba = self.model.predict_proba(features_2d)[0]
+                blended_score, metadata = self.blender.blend_scores(
+                    global_score,
+                    user_score,
+                    self.user_config.total_trades_completed
+                )
 
-                # Assume binary classification: class 1 = success
-                if len(proba) >= 2:
-                    success_probability = proba[1]
-                else:
-                    success_probability = proba[0]
-            else:
-                # Regression model (direct score prediction)
-                prediction = self.model.predict(features_2d)[0]
-                success_probability = np.clip(prediction, 0.0, 1.0)
+                logger.debug(
+                    f"Blended score for {strategy_name}: "
+                    f"global={global_score:.2f}, user={user_score}, "
+                    f"blended={blended_score:.2f}"
+                )
 
-            # Convert to 0-100 scale
-            ml_score = success_probability * 100.0
+                return blended_score
 
-            return float(ml_score)
+            # Legacy mode: use single model
+            ml_score = self._score_with_model(self.model, features)
+            return ml_score
 
         except Exception as e:
             logger.error(f"Error scoring strategy with ML model: {e}")
