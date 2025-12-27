@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from typing import Dict, Any, List
 from pydantic import BaseModel
 
-from app.models.user import User
+from app.models import User
 from app.utils.dependencies import get_current_user
 from app.services.ai.websocket_health_monitor import (
     get_health_monitor,

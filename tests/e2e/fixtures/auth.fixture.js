@@ -50,7 +50,7 @@ export const authFixture = {
       localStorage.setItem('token', t);
     }, token);
     await page.reload();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
   },
 
   /**

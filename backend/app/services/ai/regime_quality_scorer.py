@@ -227,6 +227,7 @@ class RegimeQualityScorer:
             return {
                 'strongest_regimes': [],
                 'weakest_regimes': [],
+                'all_regimes': [],
                 'insights': ['Insufficient data for regime analysis']
             }
 
