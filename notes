@@ -1,5 +1,7 @@
 Start both frontend (port 5173) and backend (port 8000), then open the dashboard in Playwright browser. Inject the auth token from tests/config/.auth-state.json into localStorage. Keep the browser open for manual testing. If auth token is expired or missing, ask me for TOTP to perform fresh login.
 
+update .gitignore, commit and sync. sync notes file also into git
+
 Do not proceed until you have 100% confidence of what I want. Ask me questions until you reach that confidence. Ask one question at a time. Tell me the number of questions you are going to ask. After each response and before asking next question, check the related codebase and docs. For each question, always give your recommendation. Your recommendation should be based on best practices and standards.
 
 test all 8 implementation phases completed (using playwright and Claude Chrome) and fix any issues found then retest. Do this in loop until all issues are fixed and all test pass 
