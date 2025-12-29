@@ -86,6 +86,10 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/autopilot/builder',
+      redirect: '/autopilot/strategies/new'
+    },
+    {
       path: '/autopilot/strategies/new',
       name: 'AutoPilotStrategyBuilder',
       component: () => import('../views/autopilot/StrategyBuilderView.vue'),
@@ -108,6 +112,11 @@ const router = createRouter({
       name: 'AutoPilotSettings',
       component: () => import('../views/autopilot/SettingsView.vue'),
       meta: { requiresAuth: true },
+    },
+    // AI routes - redirect /ai to /ai/settings
+    {
+      path: '/ai',
+      redirect: '/ai/settings'
     },
     {
       path: '/ai/settings',
