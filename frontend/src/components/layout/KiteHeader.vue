@@ -166,8 +166,9 @@ const navItems = [
   { path: '/optionchain', label: 'Option Chain' },
   { path: '/strategy', label: 'Strategy' },
   { path: '/positions', label: 'Positions' },
-  { path: '/autopilot', label: 'AutoPilot', icon: 'robot' },
-  { path: '/ai/settings', label: 'AI Settings', icon: 'brain' },
+  // Hidden for initial deployment - not fully tested
+  // { path: '/autopilot', label: 'AutoPilot', icon: 'robot' },
+  // { path: '/ai/settings', label: 'AI Settings', icon: 'brain' },
 ];
 
 const indexTicks = computed(() => watchlistStore.indexTicks);
