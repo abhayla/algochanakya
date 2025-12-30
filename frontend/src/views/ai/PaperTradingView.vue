@@ -5,6 +5,15 @@
     <div class="page-header">
       <h1 class="page-title">Paper Trading Dashboard</h1>
       <div class="header-actions">
+        <button
+          @click="triggerDeploy"
+          :disabled="deploying || !aiEnabled"
+          class="btn-deploy"
+          data-testid="btn-trigger-deploy"
+        >
+          <i class="fas fa-rocket"></i>
+          {{ deploying ? 'Deploying...' : 'Trigger Deploy' }}
+        </button>
         <MarketRegimeIndicator
           v-if="currentRegime"
           :regimeType="currentRegime.regime_type"
@@ -36,6 +45,122 @@
           @graduate="handleGraduation"
           data-testid="graduation-section"
         />
+      </section>
+
+      <!-- Paper Trades Section -->
+      <section class="section-paper-trades" data-testid="paper-trades-section">
+        <div class="section-header">
+          <h2 class="section-title">Paper Trades</h2>
+          <button class="btn-refresh" @click="fetchPaperTrades" :disabled="loadingTrades" data-testid="btn-refresh-trades">
+            <i class="fas fa-sync-alt" :class="{ 'fa-spin': loadingTrades }"></i>
+            Refresh
+          </button>
+        </div>
+
+        <div v-if="paperTrades.active.length === 0 && paperTrades.closed.length === 0" class="empty-message">
+          <i class="fas fa-file-invoice"></i>
+          <p>No paper trades yet. Click "Trigger Deploy" to start.</p>
+        </div>
+
+        <div v-else class="trades-content">
+          <!-- Active Trades -->
+          <div v-if="paperTrades.active.length > 0" class="trades-subsection">
+            <h3 class="subsection-title">Active Trades ({{ paperTrades.active.length }})</h3>
+            <div class="table-wrapper">
+              <table class="paper-trades-table" data-testid="paper-trades-table">
+                <thead>
+                  <tr>
+                    <th>Strategy</th>
+                    <th>Entry Time</th>
+                    <th>Regime</th>
+                    <th>Confidence</th>
+                    <th>Lots</th>
+                    <th>Sizing</th>
+                    <th>Entry Premium</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="trade in paperTrades.active" :key="trade.id" :data-testid="`paper-trade-row-${trade.id}`">
+                    <td class="td-strategy">{{ trade.strategy_name }}</td>
+                    <td>{{ formatDateTime(trade.entry_time) }}</td>
+                    <td><span class="badge-regime">{{ trade.entry_regime }}</span></td>
+                    <td>{{ trade.entry_confidence.toFixed(1) }}%</td>
+                    <td>{{ trade.lots }}</td>
+                    <td><span class="badge-sizing">{{ trade.sizing_mode }}</span></td>
+                    <td class="td-premium">₹{{ trade.entry_total_premium.toFixed(2) }}</td>
+                    <td>
+                      <button
+                        @click="exitTrade(trade.id)"
+                        class="btn-exit"
+                        :data-testid="`btn-exit-trade-${trade.id}`"
+                      >
+                        <i class="fas fa-sign-out-alt"></i> Exit
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Closed Trades -->
+          <div v-if="paperTrades.closed.length > 0" class="trades-subsection">
+            <h3 class="subsection-title">Closed Trades ({{ paperTrades.closed.length }})</h3>
+            <div class="table-wrapper">
+              <table class="paper-trades-table" data-testid="closed-trades-table">
+                <thead>
+                  <tr>
+                    <th>Strategy</th>
+                    <th>Entry Time</th>
+                    <th>Exit Time</th>
+                    <th>Regime</th>
+                    <th>Lots</th>
+                    <th>Entry Premium</th>
+                    <th>Exit Premium</th>
+                    <th>P&L</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="trade in paperTrades.closed" :key="trade.id" :data-testid="`closed-trade-row-${trade.id}`">
+                    <td class="td-strategy">{{ trade.strategy_name }}</td>
+                    <td>{{ formatDateTime(trade.entry_time) }}</td>
+                    <td>{{ formatDateTime(trade.exit_time) }}</td>
+                    <td><span class="badge-regime">{{ trade.entry_regime }}</span></td>
+                    <td>{{ trade.lots }}</td>
+                    <td class="td-premium">₹{{ trade.entry_total_premium.toFixed(2) }}</td>
+                    <td class="td-premium">₹{{ (trade.exit_total_premium || 0).toFixed(2) }}</td>
+                    <td :class="pnlClass(trade.realized_pnl)">{{ formatPnl(trade.realized_pnl) }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Summary Stats -->
+          <div v-if="paperTrades.summary" class="trades-summary" data-testid="trades-summary">
+            <div class="summary-card">
+              <div class="summary-label">Total Trades</div>
+              <div class="summary-value">{{ paperTrades.summary.total_trades }}</div>
+            </div>
+            <div class="summary-card">
+              <div class="summary-label">Win Rate</div>
+              <div class="summary-value">{{ paperTrades.summary.win_rate.toFixed(1) }}%</div>
+            </div>
+            <div class="summary-card">
+              <div class="summary-label">Total P&L</div>
+              <div class="summary-value" :class="pnlClass(paperTrades.summary.total_pnl)">
+                {{ formatPnl(paperTrades.summary.total_pnl) }}
+              </div>
+            </div>
+            <div class="summary-card">
+              <div class="summary-label">Avg P&L/Trade</div>
+              <div class="summary-value" :class="pnlClass(paperTrades.summary.avg_pnl_per_trade)">
+                {{ formatPnl(paperTrades.summary.avg_pnl_per_trade) }}
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
 
       <!-- Main Content Grid -->
@@ -128,9 +253,12 @@ import GraduationProgress from '@/components/ai/GraduationProgress.vue'
 import PositionSyncStatus from '@/components/ai/PositionSyncStatus.vue'
 import AIActivityFeed from '@/components/ai/AIActivityFeed.vue'
 import { useToast } from '@/composables/useToast'
+import { useAIConfigStore } from '@/stores/aiConfig'
+import api from '@/services/api'
 
 const router = useRouter()
 const { showToast } = useToast()
+const aiConfigStore = useAIConfigStore()
 
 // State
 const currentRegime = ref(null)
@@ -139,6 +267,21 @@ const activities = ref([])
 const syncStatus = ref('idle')
 const lastSyncTime = ref(null)
 const positionAnalysis = ref(null)
+const deploying = ref(false)
+const loadingTrades = ref(false)
+
+const paperTrades = ref({
+  active: [],
+  closed: [],
+  summary: {
+    total_trades: 0,
+    active_trades: 0,
+    closed_trades: 0,
+    total_pnl: 0,
+    win_rate: 0,
+    avg_pnl_per_trade: 0
+  }
+})
 
 const graduationData = ref({
   tradesCompleted: 0,
@@ -151,6 +294,8 @@ const graduationData = ref({
 })
 
 // Computed
+const aiEnabled = computed(() => aiConfigStore.isAIEnabled)
+
 const recentDecisions = computed(() => {
   return decisions.value.slice(0, 5)
 })
@@ -170,6 +315,22 @@ const formatPnl = (pnl) => {
   if (!pnl) pnl = 0
   const sign = pnl >= 0 ? '+' : ''
   return `${sign}₹${Math.abs(pnl).toFixed(2)}`
+}
+
+const formatDateTime = (datetime) => {
+  if (!datetime) return '-'
+  const date = new Date(datetime)
+  return date.toLocaleString('en-IN', {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
+const pnlClass = (pnl) => {
+  if (!pnl) return ''
+  return pnl >= 0 ? 'profit' : 'loss'
 }
 
 // Methods
@@ -281,6 +442,98 @@ const viewAllDecisions = () => {
   showToast('Full decisions view coming soon', 'info')
 }
 
+const triggerDeploy = async () => {
+  deploying.value = true
+  try {
+    const response = await api.post('/api/v1/ai/deploy/trigger', {
+      underlying: 'NIFTY',
+      force: true  // Use test mode with mock data
+    })
+
+    if (response.data.success) {
+      showToast(`Deployed ${response.data.strategy_name} with ${response.data.position_size_lots} lots`, 'success')
+
+      addActivity({
+        id: Date.now(),
+        type: 'deployment',
+        message: `AI deployed ${response.data.strategy_name} in ${response.data.regime} regime`,
+        timestamp: new Date().toISOString(),
+        metadata: {
+          strategy: response.data.strategy_name,
+          lots: response.data.position_size_lots,
+          confidence: response.data.confidence
+        }
+      })
+
+      // Refresh paper trades and graduation data
+      await Promise.all([
+        fetchPaperTrades(),
+        fetchGraduationData()
+      ])
+    } else {
+      showToast(response.data.error || 'Deployment failed', 'error')
+    }
+  } catch (error) {
+    console.error('Error triggering deployment:', error)
+    showToast(error.response?.data?.detail || 'Failed to trigger deployment', 'error')
+  } finally {
+    deploying.value = false
+  }
+}
+
+const exitTrade = async (tradeId) => {
+  try {
+    const confirmed = confirm('Are you sure you want to exit this paper trade?')
+    if (!confirmed) return
+
+    const response = await api.post('/api/v1/ai/deploy/paper-trade/exit', {
+      paper_trade_id: tradeId,
+      exit_reason: 'manual'
+    })
+
+    if (response.data.success) {
+      const pnl = response.data.realized_pnl || 0
+      const pnlText = pnl >= 0 ? `profit of ₹${pnl.toFixed(2)}` : `loss of ₹${Math.abs(pnl).toFixed(2)}`
+      showToast(`Trade exited with ${pnlText}`, pnl >= 0 ? 'success' : 'warning')
+
+      addActivity({
+        id: Date.now(),
+        type: 'exit',
+        message: `Paper trade exited: ${pnlText}`,
+        timestamp: new Date().toISOString(),
+        metadata: {
+          pnl: pnl,
+          hold_time: response.data.hold_time_minutes
+        }
+      })
+
+      // Refresh paper trades and graduation data
+      await Promise.all([
+        fetchPaperTrades(),
+        fetchGraduationData()
+      ])
+    } else {
+      showToast(response.data.error || 'Exit failed', 'error')
+    }
+  } catch (error) {
+    console.error('Error exiting trade:', error)
+    showToast(error.response?.data?.detail || 'Failed to exit trade', 'error')
+  }
+}
+
+const fetchPaperTrades = async () => {
+  loadingTrades.value = true
+  try {
+    const response = await api.get('/api/v1/ai/deploy/paper-trade/list')
+    paperTrades.value = response.data
+  } catch (error) {
+    console.error('Error fetching paper trades:', error)
+    showToast('Failed to fetch paper trades', 'error')
+  } finally {
+    loadingTrades.value = false
+  }
+}
+
 const handleGraduation = () => {
   // Show confirmation dialog and graduate to live trading
   if (confirm('Are you sure you want to graduate to live trading? This will enable real order placement.')) {
@@ -311,9 +564,11 @@ const graduatToLiveTrading = async () => {
 // Lifecycle
 onMounted(async () => {
   await Promise.all([
+    aiConfigStore.fetchConfig(),
     fetchRegime(),
     fetchDecisions(),
     fetchGraduationData(),
+    fetchPaperTrades(),
     syncPositions()
   ])
 
@@ -321,6 +576,7 @@ onMounted(async () => {
   const refreshInterval = setInterval(() => {
     fetchRegime()
     fetchDecisions()
+    fetchPaperTrades()
   }, 30000)
 
   onUnmounted(() => {
@@ -490,5 +746,172 @@ onMounted(async () => {
 .stat-label {
   font-size: 13px;
   color: var(--kite-text-secondary, #666);
+}
+
+/* Deploy Button */
+.btn-deploy {
+  padding: 10px 20px;
+  background: var(--kite-primary, #387ed1);
+  border: none;
+  border-radius: 4px;
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-deploy:hover:not(:disabled) {
+  background: #2d6bb3;
+  transform: translateY(-1px);
+}
+
+.btn-deploy:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Paper Trades Section */
+.section-paper-trades {
+  background: white;
+  border: 1px solid var(--kite-border, #e8e8e8);
+  border-radius: 8px;
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.trades-content {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.trades-subsection {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.subsection-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--kite-text-primary, #394046);
+  margin: 0;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+}
+
+.paper-trades-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.paper-trades-table th {
+  background: var(--kite-bg-light, #f8f9fa);
+  padding: 12px 16px;
+  text-align: left;
+  font-weight: 600;
+  color: var(--kite-text-secondary, #666);
+  border-bottom: 2px solid var(--kite-border, #e8e8e8);
+  white-space: nowrap;
+}
+
+.paper-trades-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--kite-border, #e8e8e8);
+  color: var(--kite-text-primary, #394046);
+}
+
+.paper-trades-table tbody tr:hover {
+  background: var(--kite-bg-light, #f8f9fa);
+}
+
+.td-strategy {
+  font-weight: 500;
+}
+
+.td-premium {
+  font-family: 'Courier New', monospace;
+  font-weight: 500;
+}
+
+.badge-regime,
+.badge-sizing {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.badge-regime {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+.badge-sizing {
+  background: #f3e5f5;
+  color: #7b1fa2;
+}
+
+.btn-exit {
+  padding: 6px 12px;
+  background: var(--kite-red, #e53935);
+  border: none;
+  border-radius: 4px;
+  color: white;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-exit:hover {
+  background: #c62828;
+}
+
+/* Trades Summary */
+.trades-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  padding: 20px;
+  background: var(--kite-bg-light, #f8f9fa);
+  border-radius: 6px;
+}
+
+.summary-card {
+  text-align: center;
+}
+
+.summary-label {
+  font-size: 12px;
+  color: var(--kite-text-secondary, #666);
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+.summary-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--kite-text-primary, #394046);
+}
+
+.summary-value.profit {
+  color: var(--kite-green, #00b386);
+}
+
+.summary-value.loss {
+  color: var(--kite-red, #e53935);
 }
 </style>

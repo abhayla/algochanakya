@@ -15,7 +15,7 @@ from app.models.autopilot import (
     AutoPilotDailySummary,
     AutoPilotTradeJournal
 )
-from app.models.ai import AIUserConfig, AIModelRegistry, AILearningReport
+from app.models.ai import AIUserConfig, AIModelRegistry, AILearningReport, AIPaperTrade
 from app.models.ai_risk_state import AIRiskState, RiskState
 from app.models.ai_strategy_cooldown import AIStrategyCooldown
 from app.models.ai_regime_history import AIRegimeHistory
@@ -26,7 +26,7 @@ __all__ = [
     "UserPreferences",
     "AutoPilotUserSettings", "AutoPilotStrategy", "AutoPilotOrder", "AutoPilotLog",
     "AutoPilotTemplate", "AutoPilotConditionEval", "AutoPilotDailySummary", "AutoPilotTradeJournal",
-    "AIUserConfig", "AIModelRegistry", "AILearningReport",
+    "AIUserConfig", "AIModelRegistry", "AILearningReport", "AIPaperTrade",
     "AIRiskState", "RiskState",
     "AIStrategyCooldown",
     "AIRegimeHistory",

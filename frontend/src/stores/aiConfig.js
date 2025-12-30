@@ -166,7 +166,10 @@ export const useAIConfigStore = defineStore('aiConfig', {
       this.validationErrors = {}
 
       try {
-        const response = await api.put('/api/v1/ai/config', updates)
+        // Filter out read-only fields (id, user_id) before sending
+        const { id, user_id, ...updatePayload } = updates
+
+        const response = await api.put('/api/v1/ai/config', updatePayload)
         this.config = response.data
         console.log('[AI Config] Saved configuration:', this.config)
         return true

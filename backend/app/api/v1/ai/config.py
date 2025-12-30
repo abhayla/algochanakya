@@ -34,6 +34,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+@router.get("", response_model=AIUserConfigResponse, summary="Get AI Configuration")
 @router.get("/", response_model=AIUserConfigResponse, summary="Get AI Configuration")
 async def get_ai_config(
     user: User = Depends(get_current_user),
@@ -59,6 +60,7 @@ async def get_ai_config(
         )
 
 
+@router.put("", response_model=AIUserConfigResponse, summary="Update AI Configuration")
 @router.put("/", response_model=AIUserConfigResponse, summary="Update AI Configuration")
 async def update_ai_config(
     updates: AIUserConfigUpdate,

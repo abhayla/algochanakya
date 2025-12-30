@@ -496,7 +496,7 @@ class OrderExecutor:
 
         if strategy.ai_deployed and strategy.ai_confidence_score:
             # Get AI config for user
-            ai_config = await AIConfigService.get_or_create_config(db, strategy.user_id)
+            ai_config = await AIConfigService.get_or_create_config(strategy.user_id, db)
 
             if ai_config and ai_config.ai_enabled:
                 # Calculate lots based on confidence tier

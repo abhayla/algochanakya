@@ -783,7 +783,7 @@ class StrategyMonitor:
             return True, ""
 
         # Get AI config
-        ai_config = await AIConfigService.get_or_create_config(db, strategy.user_id)
+        ai_config = await AIConfigService.get_or_create_config(strategy.user_id, db)
 
         if not ai_config:
             return True, ""  # No AI config set

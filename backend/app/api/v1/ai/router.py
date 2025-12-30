@@ -11,7 +11,7 @@ import logging
 from app.api.v1.ai import (
     regime, config, recommendations, analytics, backtest,
     risk_state, stress, drawdown, regime_drift, ml, regime_quality,
-    autonomy, capital_risk, websocket_health
+    autonomy, capital_risk, websocket_health, deploy
 )
 
 router = APIRouter(tags=["ai"])
@@ -32,3 +32,4 @@ router.include_router(regime_quality.router, prefix="/regime-quality", tags=["ai
 router.include_router(autonomy.router, prefix="/autonomy", tags=["ai-autonomy"])
 router.include_router(capital_risk.router, prefix="/capital-risk", tags=["ai-capital-risk"])
 router.include_router(websocket_health.router, tags=["ai-websocket-health"])
+router.include_router(deploy.router, prefix="/deploy", tags=["ai-deploy"])

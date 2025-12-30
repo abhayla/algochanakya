@@ -4,6 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## CRITICAL: Mandatory Behaviors
 
+### 0. Protected Files - DO NOT MODIFY
+
+The `notes` file in the project root is a personal file. **NEVER read, modify, or commit changes to this file.**
+
 ### 1. Auto-Verification After Code Changes
 
 After making ANY code change (bug fix, feature, refactor), IMMEDIATELY invoke `auto-verify`:
@@ -37,6 +41,8 @@ Before implementing features, refactors, or architectural changes:
 > I'll add a kill switch. Let me create a new component...
 
 ## Quick Start
+
+**Requirements:** Python 3.11+ | Node.js 20+ | PostgreSQL | Redis
 
 ```bash
 # Start backend (from backend/)
@@ -80,6 +86,9 @@ python run.py                  # Start server (auto-downloads instruments if DB 
 alembic upgrade head           # Apply migrations (run after git pull)
 pytest tests/ -v               # Run backend tests
 pytest tests/ -v --cov=app     # With coverage
+pytest tests/ -m unit -v       # Unit tests only
+pytest tests/ -m "not slow" -v # Skip slow tests
+# Markers: @unit, @api, @integration, @slow
 ```
 
 ### Frontend (from `frontend/`)
@@ -151,6 +160,11 @@ import { getLotSize, getStrikeStep } from '@/constants/trading'
 2. Include in `backend/app/main.py`
 3. Use `Depends(get_current_user)` for authentication
 
+### Environment Variables
+
+**Backend (`backend/.env`):** `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET`, `KITE_API_KEY`, `KITE_API_SECRET`, `ANTHROPIC_API_KEY` (for AI)
+
+**Frontend (`frontend/.env`):** `VITE_API_BASE_URL=http://localhost:8000`
 
 ## Documentation
 
@@ -187,6 +201,8 @@ Use these skills for faster, consistent results:
 ## Testing
 
 ~1400 E2E tests across 102 spec files. See [docs/testing/README.md](docs/testing/README.md) for complete documentation.
+
+**Config:** 15s timeout, 4 workers, auth state reused via `.auth-state.json`. Projects: `setup` (login), `chromium` (main), `isolated` (fresh context).
 
 ### E2E Test Rules (CRITICAL)
 

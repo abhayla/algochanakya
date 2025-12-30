@@ -17,7 +17,7 @@ from app.models import (
     UserPreferences,
     AutoPilotUserSettings, AutoPilotStrategy, AutoPilotOrder, AutoPilotLog,
     AutoPilotTemplate, AutoPilotConditionEval, AutoPilotDailySummary,
-    AIUserConfig, AIModelRegistry, AILearningReport,
+    AIUserConfig, AIModelRegistry, AILearningReport, AIPaperTrade,
     AIRiskState, RiskState,
     AIStrategyCooldown,
     AIRegimeHistory,

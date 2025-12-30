@@ -410,3 +410,94 @@ class AILearningReport(Base):
             f"<AILearningReport(id={self.id}, user_id={self.user_id}, "
             f"report_date={self.report_date}, total_trades={self.total_trades})>"
         )
+
+
+class AIPaperTrade(Base):
+    """
+    Paper trading records for AI Autopilot testing and graduation.
+
+    Tracks simulated trades placed by the AI system before graduating to live trading.
+    Stores entry/exit details, strategy configuration, and P&L calculations.
+    """
+    __tablename__ = "ai_paper_trades"
+
+    # Primary Key
+    id = Column(UUID(as_uuid=True), primary_key=True, default=text('gen_random_uuid()'))
+
+    # Foreign Key to users
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False
+    )
+
+    # Strategy Information
+    strategy_name = Column(String(100), nullable=False)
+    underlying = Column(String(20), nullable=False)  # NIFTY, BANKNIFTY, FINNIFTY
+
+    # Entry Details
+    entry_time = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    entry_regime = Column(String(30), nullable=False)  # Market regime at entry
+    entry_confidence = Column(Numeric(5, 2), nullable=False)  # AI confidence score 0-100
+    sizing_mode = Column(String(20), nullable=False)  # fixed, tiered, kelly
+    lots = Column(Integer, nullable=False)
+
+    # Strategy Legs (JSONB array)
+    # Each leg: {strike: int, option_type: 'CE'|'PE', transaction_type: 'BUY'|'SELL',
+    #            entry_premium: float, exit_premium: float|null, qty: int}
+    legs = Column(JSONB, nullable=False)
+
+    # Exit Details
+    exit_time = Column(DateTime(timezone=True), nullable=True)
+    exit_reason = Column(String(50), nullable=True)  # manual, target, stoploss, expiry, ai_decision
+
+    # P&L Tracking
+    entry_total_premium = Column(Numeric(12, 2), nullable=False)  # Total premium received/paid at entry
+    exit_total_premium = Column(Numeric(12, 2), nullable=True)  # Total premium at exit
+    realized_pnl = Column(Numeric(12, 2), nullable=True)  # Final P&L after exit
+
+    # Status
+    status = Column(String(20), nullable=False, default='open')  # open, closed
+
+    # Metadata
+    created_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False
+    )
+    updated_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False
+    )
+
+    # Relationships
+    user = relationship("User")
+
+    # Table constraints
+    __table_args__ = (
+        CheckConstraint('lots > 0', name='chk_ai_paper_trades_lots_positive'),
+        CheckConstraint(
+            'entry_confidence >= 0 AND entry_confidence <= 100',
+            name='chk_ai_paper_trades_confidence_range'
+        ),
+        CheckConstraint(
+            "status IN ('open', 'closed')",
+            name='chk_ai_paper_trades_status_valid'
+        ),
+        CheckConstraint(
+            "sizing_mode IN ('fixed', 'tiered', 'kelly')",
+            name='chk_ai_paper_trades_sizing_mode_valid'
+        ),
+        Index('idx_ai_paper_trades_user_id', 'user_id'),
+        Index('idx_ai_paper_trades_status', 'status'),
+        Index('idx_ai_paper_trades_entry_time', 'entry_time'),
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f"<AIPaperTrade(id={self.id}, user_id={self.user_id}, "
+            f"strategy={self.strategy_name}, status={self.status}, "
+            f"pnl={self.realized_pnl})>"
+        )
