@@ -193,6 +193,11 @@ backend/test_*.py
 # notes - TRACKED for AI automation planning
 # TODO.md - TRACKED for task management
 
+# Temporary manual test scripts
+tests/manual-*.js
+tests/check_*.py
+tests/test-*.js
+
 # Ensure docs folders are NOT ignored (override any pattern matches)
 !docs/external/
 !docs/plans/

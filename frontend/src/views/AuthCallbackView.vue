@@ -13,7 +13,7 @@
           <p class="text-gray-600">{{ errorMessage }}</p>
           <button
             @click="redirectToLogin"
-            class="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
+            class="mt-4 px-4 py-2 bg-[#387ed1] text-white rounded-md hover:bg-[#2c6cb8] transition"
           >
             Back to Login
           </button>

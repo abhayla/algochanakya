@@ -17,7 +17,7 @@
               :class="[
                 'px-4 py-2 text-sm font-medium rounded-lg transition-colors',
                 underlying === u
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-[#387ed1] text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               ]"
               @click="$emit('update:underlying', u)"
@@ -46,7 +46,7 @@
               :class="[
                 'px-3 py-1.5 text-sm font-medium rounded-lg transition-colors',
                 pnlMode === 'current'
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-[#387ed1] text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               ]"
               @click="$emit('toggle-mode')"

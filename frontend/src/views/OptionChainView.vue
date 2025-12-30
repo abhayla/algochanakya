@@ -645,7 +645,7 @@ onUnmounted(() => {
   padding: 6px 16px;
   font-size: 12px;
   font-weight: 500;
-  background: #2196f3;
+  background: #387ed1;
   color: white;
   border: none;
   border-radius: 3px;
@@ -654,7 +654,7 @@ onUnmounted(() => {
 }
 
 .refresh-btn:hover {
-  background: #1976d2;
+  background: #2c6cb8;
 }
 
 .refresh-btn:disabled {
@@ -666,7 +666,7 @@ onUnmounted(() => {
   padding: 6px 16px;
   font-size: 12px;
   font-weight: 500;
-  background: #3b82f6;
+  background: #387ed1;
   color: white;
   border: none;
   border-radius: 3px;
@@ -678,7 +678,7 @@ onUnmounted(() => {
 }
 
 .find-strike-btn:hover {
-  background: #2563eb;
+  background: #2c6cb8;
 }
 
 .find-strike-btn svg {

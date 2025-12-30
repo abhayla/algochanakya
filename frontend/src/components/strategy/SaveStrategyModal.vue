@@ -32,7 +32,7 @@
             :class="[
               'px-4 py-2 text-sm font-medium rounded-lg',
               name.trim()
-                ? 'text-white bg-blue-600 hover:bg-blue-700'
+                ? 'text-white bg-[#387ed1] hover:bg-[#2c6cb8]'
                 : 'text-gray-400 bg-gray-200 cursor-not-allowed'
             ]"
           >

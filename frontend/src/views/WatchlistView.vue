@@ -191,7 +191,7 @@
         />
         <div class="mt-4 flex justify-end space-x-2">
           <button @click="showCreateModal = false" class="px-4 py-2 text-gray-600 hover:text-gray-800" data-testid="watchlist-create-cancel">Cancel</button>
-          <button @click="createWatchlist" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700" data-testid="watchlist-create-submit">Create</button>
+          <button @click="createWatchlist" class="px-4 py-2 text-white rounded" style="background: #387ed1;" onmouseover="this.style.background='#2c6cb8'" onmouseout="this.style.background='#387ed1'" data-testid="watchlist-create-submit">Create</button>
         </div>
       </div>
     </div>
