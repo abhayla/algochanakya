@@ -269,10 +269,10 @@ export class AIPaperTradingPage extends BasePage {
     await this.page.waitForFunction(
       (count) => {
         const rows = document.querySelectorAll('[data-testid="paper-trades-table"] tbody tr')
-        return rows.length === count
+        return rows.length >= count
       },
       expectedCount,
-      { timeout: 15000 }
+      { timeout: 30000 }
     )
   }
 

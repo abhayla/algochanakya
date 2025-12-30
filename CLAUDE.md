@@ -58,7 +58,7 @@ npm test
 # Run single test file
 npx playwright test tests/e2e/specs/positions/positions.happy.spec.js
 
-# Run tests by screen (positions, optionchain, strategy, autopilot, etc.)
+# Run tests by screen (positions, optionchain, strategy, autopilot, ai, etc.)
 npm run test:specs:positions
 
 # Database migration (from backend/)
@@ -104,7 +104,7 @@ npm run test:run      # Unit tests (once)
 
 ```bash
 npm test                           # All tests (login once with TOTP)
-npm run test:specs:{screen}        # By screen: login, dashboard, positions, watchlist, optionchain, strategy, strategylibrary, autopilot
+npm run test:specs:{screen}        # By screen: login, dashboard, positions, watchlist, optionchain, strategy, strategylibrary, autopilot, ai
 npm run test:happy                 # All happy path tests
 npm run test:edge                  # All edge case tests
 npm run test:headed                # With visible browser
@@ -128,7 +128,13 @@ npx playwright test path/to/spec  # Single file
 - `app/services/kite_ticker.py` - Singleton WebSocket for live prices
 - `app/services/pnl_calculator.py` - Black-Scholes P/L calculations
 - `app/services/condition_engine.py` - AutoPilot entry/adjustment evaluation
-- `app/services/ai/` - Market regime, risk management, ML models
+
+**Key AI Services:**
+- `app/services/ai/market_regime.py` - 6 market regime types detection
+- `app/services/ai/risk_state_engine.py` - GREEN/YELLOW/RED risk states
+- `app/services/ai/strategy_recommender.py` - Strategy recommendations
+- `app/services/ai/deployment_executor.py` - AI-driven trade execution
+- `app/services/ai/ml/` - ML models and training pipeline
 
 ## Important Patterns
 
@@ -200,7 +206,7 @@ Use these skills for faster, consistent results:
 
 ## Testing
 
-~1400 E2E tests across 102 spec files. See [docs/testing/README.md](docs/testing/README.md) for complete documentation.
+~1400 E2E tests across 112 spec files. See [docs/testing/README.md](docs/testing/README.md) for complete documentation.
 
 **Config:** 15s timeout, 4 workers, auth state reused via `.auth-state.json`. Projects: `setup` (login), `chromium` (main), `isolated` (fresh context).
 

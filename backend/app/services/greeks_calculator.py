@@ -46,7 +46,17 @@ class GreeksCalculatorService:
     and make informed decisions about hedging and adjustments.
     """
 
-    def __init__(self, db: AsyncSession, user_id: UUID):
+    def __init__(self, db: Optional[AsyncSession] = None, user_id: Optional[UUID] = None):
+        """
+        Initialize Greeks Calculator.
+
+        Args:
+            db: Optional database session (for future use)
+            user_id: Optional user ID (for future use)
+
+        Note: db and user_id are optional for backward compatibility.
+        The core Greeks calculations don't require database access.
+        """
         self.db = db
         self.user_id = user_id
         self.risk_free_rate = RISK_FREE_RATE

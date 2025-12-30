@@ -126,7 +126,7 @@ async def get_capital_risk_current(
     """
     try:
         # Initialize services
-        greeks_calculator = GreeksCalculatorService()
+        greeks_calculator = GreeksCalculatorService(db, user.id)
         stress_engine = StressGreeksEngine(greeks_calculator)
         meter = CapitalRiskMeter(db, stress_engine)
 
@@ -163,7 +163,7 @@ async def get_capital_risk_alerts(
     """
     try:
         # Initialize services
-        greeks_calculator = GreeksCalculatorService()
+        greeks_calculator = GreeksCalculatorService(db, user.id)
         stress_engine = StressGreeksEngine(greeks_calculator)
         meter = CapitalRiskMeter(db, stress_engine)
 
@@ -245,7 +245,7 @@ async def check_deployment_risk(
     """
     try:
         # Initialize services
-        greeks_calculator = GreeksCalculatorService()
+        greeks_calculator = GreeksCalculatorService(db, user.id)
         stress_engine = StressGreeksEngine(greeks_calculator)
         meter = CapitalRiskMeter(db, stress_engine)
 
@@ -288,7 +288,7 @@ async def get_risk_summary(
     """
     try:
         # Initialize services
-        greeks_calculator = GreeksCalculatorService()
+        greeks_calculator = GreeksCalculatorService(db, user.id)
         stress_engine = StressGreeksEngine(greeks_calculator)
         meter = CapitalRiskMeter(db, stress_engine)
 
