@@ -54,12 +54,13 @@
             <div class="selector-left">
               <!-- Strategy Dropdown -->
               <div class="form-group">
-                <label class="form-label">Strategy:</label>
+                <label class="form-label" id="strategy-label">Strategy:</label>
                 <select
                   v-model="selectedStrategyId"
                   @change="handleStrategyChange"
                   class="strategy-select"
                   data-testid="strategy-select"
+                  aria-labelledby="strategy-label"
                 >
                   <option value="">New Strategy</option>
                   <option v-for="s in savedStrategies" :key="s.id" :value="s.id">
@@ -83,12 +84,13 @@
 
               <!-- Strategy Type Dropdown -->
               <div class="form-group">
-                <label class="form-label">Type:</label>
+                <label class="form-label" id="strategy-type-label">Type:</label>
                 <select
                   v-model="selectedStrategyType"
                   @change="onStrategyTypeChange"
                   class="strategy-select"
                   data-testid="strategy-type-select"
+                  aria-labelledby="strategy-type-label"
                 >
                   <option value="">Custom (Manual)</option>
                   <optgroup
@@ -131,8 +133,8 @@
             <!-- Filter Dropdowns -->
             <div class="selector-right">
               <div class="form-group compact">
-                <label class="form-label-sm">Expiry:</label>
-                <select v-model="filters.expiry" class="strategy-select compact">
+                <label class="form-label-sm" id="filter-expiry-label">Expiry:</label>
+                <select v-model="filters.expiry" class="strategy-select compact" aria-labelledby="filter-expiry-label">
                   <option value="">All</option>
                   <option v-for="exp in strategyStore.expiries" :key="exp" :value="exp">
                     {{ formatDate(exp) }}
@@ -140,16 +142,16 @@
                 </select>
               </div>
               <div class="form-group compact">
-                <label class="form-label-sm">Contract:</label>
-                <select v-model="filters.contractType" class="strategy-select compact">
+                <label class="form-label-sm" id="filter-contract-label">Contract:</label>
+                <select v-model="filters.contractType" class="strategy-select compact" aria-labelledby="filter-contract-label">
                   <option value="">All</option>
                   <option value="CE">CE</option>
                   <option value="PE">PE</option>
                 </select>
               </div>
               <div class="form-group compact">
-                <label class="form-label-sm">Status:</label>
-                <select v-model="filters.status" class="strategy-select compact">
+                <label class="form-label-sm" id="filter-status-label">Status:</label>
+                <select v-model="filters.status" class="strategy-select compact" aria-labelledby="filter-status-label">
                   <option value="">All</option>
                   <option value="open">Open</option>
                   <option value="closed">Closed</option>
@@ -178,6 +180,7 @@
                     type="checkbox"
                     :checked="allLegsSelected"
                     @change="toggleSelectAll"
+                    aria-label="Select all legs"
                   />
                 </th>
                 <th>Expiry</th>
@@ -212,6 +215,7 @@
                     type="checkbox"
                     :checked="strategyStore.selectedLegIndices.includes(index)"
                     @change="strategyStore.toggleLegSelection(index)"
+                    :aria-label="`Select leg ${index + 1}`"
                   />
                 </td>
                 <td>
@@ -219,6 +223,7 @@
                     :value="leg.expiry_date"
                     @change="handleLegUpdate(index, 'expiry_date', $event.target.value)"
                     class="strategy-select compact"
+                    :aria-label="`Leg ${index + 1} expiry`"
                   >
                     <option value="">Select</option>
                     <option v-for="exp in strategyStore.expiries" :key="exp" :value="exp">
@@ -231,6 +236,7 @@
                     :value="leg.contract_type"
                     @change="handleLegUpdate(index, 'contract_type', $event.target.value)"
                     :class="['tag-select', leg.contract_type === 'CE' ? 'tag-ce' : 'tag-pe']"
+                    :aria-label="`Leg ${index + 1} contract type`"
                   >
                     <option value="CE">CE</option>
                     <option value="PE">PE</option>
@@ -241,6 +247,7 @@
                     :value="leg.transaction_type"
                     @change="handleLegUpdate(index, 'transaction_type', $event.target.value)"
                     :class="['tag-select', leg.transaction_type === 'BUY' ? 'tag-buy' : 'tag-sell']"
+                    :aria-label="`Leg ${index + 1} transaction type`"
                   >
                     <option value="BUY">BUY</option>
                     <option value="SELL">SELL</option>
@@ -251,6 +258,7 @@
                     :value="leg.strike_price"
                     @change="handleLegUpdate(index, 'strike_price', $event.target.value)"
                     class="strategy-select compact"
+                    :aria-label="`Leg ${index + 1} strike price`"
                   >
                     <option value="">Select</option>
                     <option v-for="s in getStrikesForExpiry(leg.expiry_date)" :key="s" :value="s">
@@ -266,6 +274,7 @@
                     min="1"
                     class="strategy-input compact text-center"
                     style="width: 60px;"
+                    :aria-label="`Leg ${index + 1} lots`"
                   />
                 </td>
                 <td class="relative">
@@ -278,6 +287,7 @@
                     placeholder="Entry"
                     class="strategy-input compact text-right"
                     style="width: 80px;"
+                    :aria-label="`Leg ${index + 1} entry price`"
                   />
                   <!-- CMP indicator - shows when using CMP as entry price for calculation -->
                   <span

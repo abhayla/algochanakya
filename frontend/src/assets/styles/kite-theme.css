@@ -2,8 +2,8 @@
   /* ===== KITE COLOR PALETTE ===== */
 
   /* Primary Colors - Changed to Blue like Kite */
-  --kite-primary: #387ed1;           /* Kite Blue */
-  --kite-primary-dark: #2c6cb8;
+  --kite-primary: #2d68b0;           /* Kite Blue - WCAG AA compliant (5.65:1 contrast) */
+  --kite-primary-dark: #245290;
   --kite-primary-light: #e8f1fb;
 
   /* Background Colors */
@@ -12,18 +12,20 @@
   --kite-body-bg: #ffffff;           /* Pure white background like Kite */
   --kite-card-bg: #ffffff;
 
-  /* Text Colors - Lighter weights */
+  /* Text Colors - WCAG AA compliant */
   --kite-text-primary: #394046;      /* Softer black */
   --kite-text-secondary: #6c757d;
-  --kite-text-muted: #9aa3ad;
+  --kite-text-muted: #727272;        /* WCAG AA compliant (4.81:1 contrast) */
   --kite-text-light: #ffffff;
 
   /* Semantic Colors */
-  --kite-green: #00b386;             /* Profit Green */
+  --kite-green: #00b386;             /* Profit Green - use for backgrounds/large elements */
+  --kite-green-text: #00875a;        /* WCAG AA compliant green for small text (4.55:1 contrast) */
   --kite-green-light: #e6f9f4;
-  --kite-red: #e53935;               /* Loss Red */
+  --kite-red: #e53935;               /* Loss Red - use for backgrounds/large elements */
+  --kite-red-text: #d43f3a;          /* WCAG AA compliant red for small text (4.59:1 contrast) */
   --kite-red-light: #ffebee;
-  --kite-blue: #387ed1;              /* Primary Blue */
+  --kite-blue: #2d68b0;              /* Primary Blue - WCAG AA compliant */
   --kite-blue-light: #e8f1fb;
   --kite-yellow: #f0ad4e;
   --kite-orange: #ff9800;

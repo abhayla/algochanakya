@@ -281,7 +281,7 @@ onUnmounted(() => {
 .logo-icon {
   width: 24px;
   height: 24px;
-  color: #387ed1;
+  color: #2d68b0;
 }
 
 .logo-icon svg {
@@ -326,15 +326,15 @@ onUnmounted(() => {
   font-weight: 600;
 }
 
-.index-price.up { color: #00b386; }
-.index-price.down { color: #e74c3c; }
+.index-price.up { color: #00875a; }
+.index-price.down { color: #d43f3a; }  /* WCAG AA compliant (4.59:1 contrast) */
 
 .index-change {
   font-size: 11px;
 }
 
-.index-change.up { color: #00b386; }
-.index-change.down { color: #e74c3c; }
+.index-change.up { color: #00875a; }
+.index-change.down { color: #d43f3a; }  /* WCAG AA compliant (4.59:1 contrast) */
 
 .header-right {
   display: flex;
@@ -372,7 +372,7 @@ onUnmounted(() => {
 }
 
 .nav-item.active {
-  color: #387ed1;
+  color: #2d68b0;
   background: transparent;
   font-weight: 500;
 }
@@ -449,7 +449,7 @@ onUnmounted(() => {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: #387ed1;
+  background: #2d68b0;
   color: white;
   display: flex;
   align-items: center;

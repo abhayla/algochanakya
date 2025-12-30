@@ -12,6 +12,9 @@ import { StyleAudit, DESIGN_TOKENS } from '../../helpers/style-audit.helper.js';
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 
 test.describe('Strategy Builder - Style & Accessibility Audit @audit', () => {
+  // Increase timeout for accessibility tests as axe-core analysis can be slow
+  test.describe.configure({ timeout: 60000 });
+
   let strategyBuilderPage;
   let audit;
 
@@ -51,6 +54,9 @@ test.describe('Strategy Builder - Style & Accessibility Audit @audit', () => {
 
   test('has sufficient color contrast @audit', async ({ authenticatedPage }) => {
     const results = await audit.checkContrast();
+    if (results.hasContrastIssues) {
+      console.log('Color contrast violations:', JSON.stringify(results.violations, null, 2));
+    }
     expect(results.hasContrastIssues).toBe(false);
   });
 

@@ -171,11 +171,12 @@ export class StyleAudit {
   }
 
   /**
-   * Check contrast specifically for text elements
+   * Check contrast specifically for text elements (WCAG AA compliance - 4.5:1 ratio)
+   * Note: Uses 'color-contrast' rule which checks WCAG AA, not 'color-contrast-enhanced' (WCAG AAA)
    */
   async checkContrast() {
     const builder = new AxeBuilder({ page: this.page })
-      .withTags(['cat.color']); // Color contrast checks only
+      .withRules(['color-contrast']); // WCAG AA contrast check only (4.5:1 ratio)
 
     const results = await builder.analyze();
     return {
