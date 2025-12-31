@@ -72,7 +72,7 @@ cd backend && pytest tests/ -v
 
 AlgoChanakya is an options trading platform (similar to Sensibull) with FastAPI backend and Vue.js 3 frontend, integrating with Zerodha Kite Connect for broker operations.
 
-**Tech Stack:** FastAPI + async SQLAlchemy + PostgreSQL + Redis | Vue 3 + Vite + Pinia + Tailwind CSS | Playwright (~360 E2E tests) + Vitest + pytest
+**Tech Stack:** FastAPI + async SQLAlchemy + PostgreSQL + Redis | Vue 3 + Vite + Pinia + Tailwind CSS | Playwright (113 E2E spec files) + Vitest + pytest
 
 **Documentation:** See [docs/README.md](docs/README.md) for architecture, API reference, and testing guides.
 
@@ -207,7 +207,7 @@ Use these skills for faster, consistent results:
 
 ## Testing
 
-~112 E2E spec files. See [docs/testing/README.md](docs/testing/README.md) for complete documentation.
+113 E2E spec files. See [docs/testing/README.md](docs/testing/README.md) for complete documentation.
 
 **Config:** 30s timeout, 2 workers, auth state reused via `./tests/config/.auth-state.json`. Projects: `setup` (login), `chromium` (main), `isolated` (fresh context).
 

@@ -96,7 +96,35 @@
         </div>
 
         <div class="summary-right">
+          <!-- Grid Interval Toggle - only show for underlyings with 50-point strikes -->
+          <div v-if="store.has50PointStrikes" class="interval-toggle" data-testid="optionchain-interval-toggle">
+            <span class="interval-label">Strike Interval</span>
+            <label class="interval-option">
+              <input
+                type="radio"
+                name="grid-interval"
+                :value="50"
+                :checked="store.effectiveGridInterval === 50"
+                @change="store.setLocalGridInterval(50)"
+                data-testid="optionchain-interval-50"
+              />
+              <span>50</span>
+            </label>
+            <label class="interval-option">
+              <input
+                type="radio"
+                name="grid-interval"
+                :value="100"
+                :checked="store.effectiveGridInterval === 100"
+                @change="store.setLocalGridInterval(100)"
+                data-testid="optionchain-interval-100"
+              />
+              <span>100</span>
+            </label>
+          </div>
+
           <select v-model="store.strikesRange" class="range-select" data-testid="optionchain-strikes-range">
+            <option :value="5">5 Strikes</option>
             <option :value="10">10 Strikes</option>
             <option :value="15">15 Strikes</option>
             <option :value="20">20 Strikes</option>
@@ -721,6 +749,9 @@ onUnmounted(() => {
 
 .summary-right {
   margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .range-select {
@@ -729,6 +760,44 @@ onUnmounted(() => {
   border: 1px solid #e0e0e0;
   border-radius: 3px;
   background: white;
+}
+
+/* Grid Interval Toggle */
+.interval-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 4px 8px;
+  background: #f8f9fa;
+  border-radius: 4px;
+  border: 1px solid #e0e0e0;
+}
+
+.interval-label {
+  font-size: 11px;
+  color: #6c757d;
+  text-transform: uppercase;
+  margin-right: 4px;
+}
+
+.interval-option {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  cursor: pointer;
+  font-size: 11px;
+  color: #495057;
+}
+
+.interval-option input[type="radio"] {
+  cursor: pointer;
+  margin: 0;
+  width: 14px;
+  height: 14px;
+}
+
+.interval-option span {
+  font-weight: 500;
 }
 
 /* Error Alert */

@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import api from '../services/api'
 import { getLotSize, getIndexToken as getIndexTokenFromConstants } from '@/constants/trading'
+import { useUserPreferencesStore } from './userPreferences'
 
 export const useOptionChainStore = defineStore('optionchain', () => {
   // State
@@ -30,7 +31,8 @@ export const useOptionChainStore = defineStore('optionchain', () => {
   // Display settings
   const showGreeks = ref(false)
   const showVolume = ref(true)
-  const strikesRange = ref(20) // Number of strikes above/below ATM
+  const strikesRange = ref(5) // Number of strikes above/below ATM (default 10 total)
+  const localGridInterval = ref(null) // null = use user preference from Settings
 
   // Selected for strategy
   const selectedStrikes = ref([])
@@ -51,20 +53,85 @@ export const useOptionChainStore = defineStore('optionchain', () => {
   // Lot sizes now from centralized constants
 
   // Getters
+
+  // Effective grid interval (local override or user preference)
+  const effectiveGridInterval = computed(() => {
+    if (localGridInterval.value !== null) {
+      return localGridInterval.value
+    }
+    const userPrefsStore = useUserPreferencesStore()
+    return userPrefsStore.pnlGridInterval
+  })
+
+  // Check if underlying has 50-point strikes (to show/hide toggle)
+  const has50PointStrikes = computed(() => {
+    if (chain.value.length < 2) return false
+    const nativeStep = Math.abs(chain.value[1].strike - chain.value[0].strike)
+    return nativeStep <= 50
+  })
+
   const filteredChain = computed(() => {
     if (!chain.value.length) return []
 
     // Find ATM index
-    const atmIndex = chain.value.findIndex(row => row.is_atm)
-    if (atmIndex === -1) return chain.value
+    const atmIdx = chain.value.findIndex(row => row.is_atm)
+    if (atmIdx === -1) return chain.value
 
-    // If range is 50 or more, show all
-    if (strikesRange.value >= 50) return chain.value
+    // Get effective grid interval (local override or user preference)
+    const gridInterval = effectiveGridInterval.value // 50 or 100
 
-    const start = Math.max(0, atmIndex - strikesRange.value)
-    const end = Math.min(chain.value.length, atmIndex + strikesRange.value + 1)
+    // Detect native step from actual data (backend returns all strikes from Zerodha)
+    // NIFTY has 50-point strikes, BANKNIFTY has 100-point strikes in Zerodha's data
+    let nativeStep = 50 // Default fallback
+    if (chain.value.length >= 2) {
+      nativeStep = Math.abs(chain.value[1].strike - chain.value[0].strike)
+    }
 
-    return chain.value.slice(start, end)
+    // Calculate skip factor: if user wants 100 interval but native is 50, skip every other strike
+    const skipFactor = Math.max(1, Math.floor(gridInterval / nativeStep))
+
+    // If range is 50 or more, show all (but still respect interval)
+    if (strikesRange.value >= 50) {
+      if (skipFactor > 1) {
+        // Filter to show strikes at 100-point boundaries (divisible by gridInterval)
+        return chain.value.filter(row => row.strike % gridInterval === 0)
+      }
+      return chain.value
+    }
+
+    // Filter around ATM with interval consideration
+    let strikes = []
+
+    if (skipFactor > 1) {
+      // Filter strikes that are at 100-point boundaries (divisible by gridInterval)
+      const alignedStrikes = chain.value.filter(row => row.strike % gridInterval === 0)
+
+      // Find nearest aligned strike to ATM
+      const atmStrikeValue = chain.value[atmIdx].strike
+      const alignedAtmIdx = alignedStrikes.findIndex(row =>
+        Math.abs(row.strike - atmStrikeValue) <= gridInterval / 2
+      )
+
+      if (alignedAtmIdx === -1) {
+        // Fallback: if no aligned strike found near ATM, use center of aligned strikes
+        const centerIdx = Math.floor(alignedStrikes.length / 2)
+        const start = Math.max(0, centerIdx - strikesRange.value)
+        const end = Math.min(alignedStrikes.length, centerIdx + strikesRange.value + 1)
+        strikes = alignedStrikes.slice(start, end)
+      } else {
+        // Get strikesRange strikes on each side of aligned ATM
+        const start = Math.max(0, alignedAtmIdx - strikesRange.value)
+        const end = Math.min(alignedStrikes.length, alignedAtmIdx + strikesRange.value + 1)
+        strikes = alignedStrikes.slice(start, end)
+      }
+    } else {
+      // Show all strikes within range (no skip needed)
+      const start = Math.max(0, atmIdx - strikesRange.value)
+      const end = Math.min(chain.value.length, atmIdx + strikesRange.value + 1)
+      strikes = chain.value.slice(start, end)
+    }
+
+    return strikes
   })
 
   const atmStrike = computed(() => {
@@ -373,6 +440,11 @@ export const useOptionChainStore = defineStore('optionchain', () => {
     isLiveUpdatesEnabled.value = true
   }
 
+  // Set local grid interval (doesn't affect saved user preferences)
+  function setLocalGridInterval(value) {
+    localGridInterval.value = value
+  }
+
   return {
     // State
     underlying,
@@ -388,6 +460,7 @@ export const useOptionChainStore = defineStore('optionchain', () => {
     showGreeks,
     showVolume,
     strikesRange,
+    localGridInterval,
     selectedStrikes,
     getLotSize,
     livePrices,
@@ -399,6 +472,8 @@ export const useOptionChainStore = defineStore('optionchain', () => {
     atmStrike,
     maxCEOI,
     maxPEOI,
+    effectiveGridInterval,
+    has50PointStrikes,
 
     // Actions
     setUnderlying,
@@ -425,6 +500,9 @@ export const useOptionChainStore = defineStore('optionchain', () => {
     toggleStrikeFinder,
     findStrikeByDelta,
     findStrikeByPremium,
-    clearStrikeFinderResult
+    clearStrikeFinderResult,
+
+    // Grid interval methods
+    setLocalGridInterval
   }
 })

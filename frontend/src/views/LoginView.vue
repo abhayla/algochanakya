@@ -54,7 +54,7 @@ const scrollToLogin = () => {
           <button @click="scrollToLogin" class="nav-item">Dashboard</button>
           <button @click="scrollToLogin" class="nav-item">Option Chain</button>
           <button @click="scrollToLogin" class="nav-item">Strategy</button>
-          <button @click="scrollToLogin" class="nav-item">Watchlist</button>
+          <button @click="scrollToLogin" class="nav-item">Positions</button>
         </nav>
 
         <!-- Login Button -->
@@ -152,7 +152,7 @@ const scrollToLogin = () => {
               data-testid="login-zerodha-button"
             >
               <!-- Kite Logo -->
-              <img src="../assets/logos/kite-logo.png" alt="Kite" style="height: 24px; width: auto;" class="flex-shrink-0" />
+              <img src="../assets/kite-logo.png" alt="Kite" style="height: 24px; width: auto;" class="flex-shrink-0" />
               <span v-if="!authStore.loading">Login with Zerodha</span>
               <span v-else class="flex items-center">
                 <svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-gray-500" width="20" height="20" fill="none" viewBox="0 0 24 24">
@@ -184,7 +184,7 @@ const scrollToLogin = () => {
               data-testid="login-angelone-button"
             >
               <!-- Angel One Logo -->
-              <img src="../assets/logos/angelone-logo.png" alt="Angel One" style="height: 24px; width: auto;" class="flex-shrink-0" />
+              <img src="../assets/angelone-logo.png" alt="Angel One" style="height: 24px; width: auto;" class="flex-shrink-0" />
               <span>Angel One</span>
             </button>
             <p class="text-center text-sm text-gray-500 mb-6">
