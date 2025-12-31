@@ -2,6 +2,26 @@
 
 Welcome to the AlgoChanakya documentation. This index provides quick access to all documentation resources.
 
+## Production Deployment
+
+| Property | Value |
+|----------|-------|
+| **Production URL** | https://algochanakya.com |
+| **Backend** | FastAPI on port 8000 (PM2: `algochanakya-backend`) |
+| **Frontend** | Vue.js on port 3004 (PM2: `algochanakya-frontend`) |
+| **Server** | Windows Server 2022 (544934-ABHAYVPS) |
+| **Reverse Proxy** | Nginx (Cloudflare → Nginx → App) |
+
+### OAuth Configuration
+
+| Setting | Value |
+|---------|-------|
+| **Kite Redirect URL** | `https://algochanakya.com/api/auth/zerodha/callback` |
+| **Frontend URL** | `https://algochanakya.com` |
+| **JWT Expiry** | 24 hours |
+
+See `C:\Apps\shared\docs\ALGOCHANAKYA-SETUP.md` on VPS for full deployment documentation.
+
 ## Quick Links
 
 | Document | Description |
@@ -132,4 +152,4 @@ See the main [README](../README.md) for contribution guidelines.
 
 ---
 
-*Last updated: December 2024*
+*Last updated: December 2025*
