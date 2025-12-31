@@ -197,6 +197,38 @@ Common issues and their solutions when working with AlgoChanakya.
 2. Restart Vite dev server after `.env` changes
 3. For production, check built config
 
+### Production API Calls Going to localhost:8000
+
+**Symptoms:**
+- "Login with Zerodha" button shows "Connecting..." spinner but never redirects
+- Browser DevTools Network tab shows failed requests to `http://localhost:8000/api/*`
+- Console shows `net::ERR_ABORTED` or connection refused errors
+
+**Root Cause:**
+The production frontend was built without `.env.production`, so `VITE_API_BASE_URL` defaults to `http://localhost:8000` (the development fallback in `services/api.js`).
+
+**Solution:**
+```bash
+# On production server (VPS)
+# 1. Create .env.production with correct API URL
+echo "VITE_API_BASE_URL=https://algochanakya.com" > frontend/.env.production
+
+# 2. Rebuild frontend
+cd frontend
+npm run build
+
+# 3. Restart PM2 (if using PM2)
+pm2 restart algochanakya-frontend
+
+# 4. Verify fix - should show algochanakya.com, not localhost
+grep -o "algochanakya.com" frontend/dist/assets/index-*.js | head -1
+```
+
+**Prevention:**
+- Always create `.env.production` before building for production
+- Add to deployment checklist/script
+- The GitHub Actions deploy workflow should include this step
+
 ### Horizontal Overflow
 
 **Symptoms:**

@@ -169,6 +169,44 @@ cd frontend
 npm install package-name
 ```
 
+## Production Build
+
+### Build for Production
+
+The frontend uses Vite's build mode which reads environment variables from `.env.production`:
+
+```bash
+cd frontend
+
+# Create .env.production (REQUIRED for production builds)
+echo "VITE_API_BASE_URL=https://algochanakya.com" > .env.production
+
+# Build
+npm run build
+```
+
+> **CRITICAL**: Without `.env.production`, the build defaults to `http://localhost:8000` and API calls will fail in production!
+
+### Verify Production Build
+
+```bash
+# Check which API URL is baked into the build
+grep -o "algochanakya.com\|localhost:8000" frontend/dist/assets/index-*.js | head -1
+
+# Should output: algochanakya.com (NOT localhost:8000)
+```
+
+### Environment Files
+
+| File | Purpose | Used When |
+|------|---------|-----------|
+| `.env` | Development defaults | `npm run dev` |
+| `.env.local` | Local overrides (gitignored) | `npm run dev` |
+| `.env.production` | Production values | `npm run build` |
+| `.env.production.local` | Local prod overrides (gitignored) | `npm run build` |
+
+Vite loads env files in this order (later files override earlier ones).
+
 ## Troubleshooting
 
 See [Troubleshooting Guide](./troubleshooting.md) for common issues.

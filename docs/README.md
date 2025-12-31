@@ -20,6 +20,18 @@ Welcome to the AlgoChanakya documentation. This index provides quick access to a
 | **Frontend URL** | `https://algochanakya.com` |
 | **JWT Expiry** | 24 hours |
 
+### Frontend Production Build (CRITICAL)
+
+The frontend requires `.env.production` for production builds:
+
+```bash
+# In frontend/ directory
+echo "VITE_API_BASE_URL=https://algochanakya.com" > .env.production
+npm run build
+```
+
+> **Without `.env.production`**, the build defaults to `http://localhost:8000` and all API calls will fail!
+
 See `C:\Apps\shared\docs\ALGOCHANAKYA-SETUP.md` on VPS for full deployment documentation.
 
 ## Quick Links
@@ -152,4 +164,4 @@ See the main [README](../README.md) for contribution guidelines.
 
 ---
 
-*Last updated: December 2025*
+*Last updated: January 2026*

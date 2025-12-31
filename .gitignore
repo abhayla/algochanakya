@@ -71,6 +71,7 @@ NUL
 .env
 .env.*
 !.env.example
+!.env.production
 
 # Redis
 dump.rdb
