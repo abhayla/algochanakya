@@ -164,7 +164,7 @@ const scrollToLogin = () => {
             </button>
             <p class="text-center text-sm text-gray-500 mb-6">
               Don't have a Zerodha account?
-              <a href="https://zerodha.com/open-account" target="_blank" class="text-blue-600 hover:text-blue-700 underline">
+              <a href="https://signup.zerodha.com/?c=ZMPHZC" target="_blank" class="text-blue-600 hover:text-blue-700 underline">
                 Open Now
               </a>
             </p>
@@ -189,7 +189,7 @@ const scrollToLogin = () => {
             </button>
             <p class="text-center text-sm text-gray-500 mb-6">
               Don't have an Angel One account?
-              <a href="https://www.angelone.in/open-demat-account" target="_blank" class="text-blue-600 hover:text-blue-700 underline">
+              <a href="https://tinyurl.com/2d98g2qe" target="_blank" class="text-blue-600 hover:text-blue-700 underline">
                 Open Now
               </a>
             </p>
