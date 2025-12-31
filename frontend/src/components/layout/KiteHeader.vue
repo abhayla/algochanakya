@@ -474,9 +474,9 @@ onUnmounted(() => {
 
 /* User Dropdown */
 .user-dropdown {
-  position: absolute;
-  top: 100%;
-  right: 0;
+  position: fixed;
+  top: 48px;
+  right: 16px;
   margin-top: 8px;
   background: white;
   border-radius: 4px;
