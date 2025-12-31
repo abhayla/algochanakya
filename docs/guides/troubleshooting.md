@@ -229,6 +229,39 @@ grep -o "algochanakya.com" frontend/dist/assets/index-*.js | head -1
 - Add to deployment checklist/script
 - The GitHub Actions deploy workflow should include this step
 
+### Production WebSocket Connecting to localhost:8000
+
+**Symptoms:**
+- Positions page shows "Loading positions..." indefinitely
+- Option Chain prices don't update
+- Browser console shows `WebSocket connection to 'wss://localhost:8000/ws/ticks?token=...' failed`
+- `net::ERR_SSL_PROTOCOL_ERROR` because localhost doesn't have SSL
+
+**Root Cause:**
+The production frontend was built without `VITE_WS_URL` in `.env.production`, so the WebSocket URL defaults to `localhost:8000`.
+
+**Solution:**
+```bash
+# On production server (VPS)
+# 1. Add VITE_WS_URL to .env.production
+cat > frontend/.env.production << EOF
+VITE_API_BASE_URL=https://algochanakya.com
+VITE_WS_URL=algochanakya.com
+EOF
+
+# 2. Rebuild frontend
+cd frontend
+npm run build
+
+# 3. Restart PM2
+pm2 restart algochanakya-frontend
+```
+
+**Verification:**
+- Positions page should load (shows positions or "No Open Positions")
+- Option Chain prices should update live
+- Browser console should show WebSocket connecting to `wss://algochanakya.com/ws/ticks`
+
 ### Horizontal Overflow
 
 **Symptoms:**

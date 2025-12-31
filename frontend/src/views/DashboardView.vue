@@ -71,7 +71,7 @@ const authStore = useAuthStore()
             <p class="card-description">Browse 20+ pre-built strategies like Iron Condor, Straddle, Butterfly with one-click deployment</p>
           </router-link>
 
-          <!-- AutoPilot Card -->
+          <!-- AutoPilot Card - HIDDEN: Feature not ready for production
           <router-link to="/autopilot" class="dashboard-card card-autopilot" data-testid="dashboard-autopilot-card">
             <div class="card-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -85,6 +85,7 @@ const authStore = useAuthStore()
             <h3 class="card-title">AutoPilot</h3>
             <p class="card-description">Automate your trading with condition-based entries, adjustments, and risk management rules</p>
           </router-link>
+          -->
         </div>
       </div>
     </div>
