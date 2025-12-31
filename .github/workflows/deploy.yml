@@ -1,0 +1,113 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    defaults:
+      run:
+        shell: powershell
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy Backend
+        run: |
+          $deployDir = "C:\Apps\algochanakya\current\backend"
+
+          Write-Host "[INFO] Deploying backend files..."
+
+          # Copy backend files (excluding venv and __pycache__)
+          Get-ChildItem -Path "backend" -Exclude 'venv','__pycache__','.env','*.pyc','nul' |
+            Copy-Item -Destination $deployDir -Recurse -Force
+
+          Write-Host "[INFO] Installing Python dependencies..."
+          cd $deployDir
+          & .\venv\Scripts\pip.exe install -r requirements.txt --quiet
+
+          Write-Host "[INFO] Running database migrations..."
+          & .\venv\Scripts\alembic.exe upgrade head
+
+      - name: Deploy Frontend
+        run: |
+          $deployDir = "C:\Apps\algochanakya\current\frontend"
+
+          Write-Host "[INFO] Installing frontend dependencies..."
+          cd frontend
+          npm ci --silent
+
+          Write-Host "[INFO] Building frontend..."
+          npm run build
+
+          Write-Host "[INFO] Deploying frontend build..."
+          # Remove old dist and copy new
+          if (Test-Path "$deployDir\dist") {
+            Remove-Item -Path "$deployDir\dist" -Recurse -Force
+          }
+          Copy-Item -Path "dist" -Destination "$deployDir\dist" -Recurse -Force
+
+      - name: Restart PM2 Apps
+        run: |
+          Write-Host "[INFO] Reloading PM2 applications..."
+
+          # Check if apps exist and reload/start accordingly
+          $backendExists = pm2 list 2>$null | Select-String "algochanakya-backend"
+          $frontendExists = pm2 list 2>$null | Select-String "algochanakya-frontend"
+
+          if ($backendExists) {
+            pm2 reload algochanakya-backend --update-env
+          } else {
+            cd C:\Apps\algochanakya\current
+            pm2 start ecosystem.config.js --only algochanakya-backend
+          }
+
+          if ($frontendExists) {
+            pm2 reload algochanakya-frontend --update-env
+          } else {
+            cd C:\Apps\algochanakya\current
+            pm2 start ecosystem.config.js --only algochanakya-frontend
+          }
+
+          # Save PM2 state for auto-recovery
+          pm2 save
+
+          Write-Host "[INFO] PM2 status:"
+          pm2 list
+
+      - name: Verify Deployment
+        run: |
+          Write-Host "[INFO] Verifying deployment..."
+
+          # Wait for services to start
+          Start-Sleep -Seconds 5
+
+          # Check backend health
+          try {
+            $backendHealth = Invoke-WebRequest -Uri "http://localhost:8000/api/health" -UseBasicParsing -TimeoutSec 10
+            if ($backendHealth.StatusCode -eq 200) {
+              Write-Host "[SUCCESS] Backend is healthy"
+              Write-Host $backendHealth.Content
+            }
+          } catch {
+            Write-Host "[ERROR] Backend health check failed: $_"
+            exit 1
+          }
+
+          # Check frontend
+          try {
+            $frontendCheck = Invoke-WebRequest -Uri "http://localhost:3004" -UseBasicParsing -TimeoutSec 10
+            if ($frontendCheck.StatusCode -eq 200) {
+              Write-Host "[SUCCESS] Frontend is serving content"
+            }
+          } catch {
+            Write-Host "[ERROR] Frontend check failed: $_"
+            exit 1
+          }
+
+          Write-Host "[SUCCESS] Deployment completed successfully!"

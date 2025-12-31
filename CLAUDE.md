@@ -72,7 +72,7 @@ cd backend && pytest tests/ -v
 
 AlgoChanakya is an options trading platform (similar to Sensibull) with FastAPI backend and Vue.js 3 frontend, integrating with Zerodha Kite Connect for broker operations.
 
-**Tech Stack:** FastAPI + async SQLAlchemy + PostgreSQL + Redis | Vue 3 + Vite + Pinia + Tailwind CSS | Playwright (113 E2E spec files) + Vitest + pytest
+**Tech Stack:** FastAPI + async SQLAlchemy + PostgreSQL + Redis | Vue 3 + Vite + Pinia + Tailwind CSS 4 | Playwright (113 E2E spec files) + Vitest + pytest
 
 **Documentation:** See [docs/README.md](docs/README.md) for architecture, API reference, and testing guides.
 
@@ -105,7 +105,7 @@ npm run test:coverage # Unit tests with coverage
 
 ```bash
 npm test                           # All tests (login once with TOTP)
-npm run test:specs:{screen}        # By screen: login, dashboard, positions, watchlist, optionchain, strategy, strategylibrary, autopilot, ai
+npm run test:specs:{screen}        # By screen: login, dashboard, positions, watchlist, optionchain, strategy, strategylibrary, autopilot, navigation, audit
 npm run test:happy                 # All happy path tests
 npm run test:edge                  # All edge case tests
 npm run test:headed                # With visible browser
@@ -121,7 +121,7 @@ npx playwright test path/to/spec  # Single file
 - **Option Chain** - IV via Newton-Raphson, Greeks via Black-Scholes. Max Pain, PCR calculated.
 - **Strategy Builder** - P/L modes: "At Expiry" (intrinsic) and "Current" (Black-Scholes via scipy)
 - **AutoPilot** - Automated execution with conditions, adjustments, kill switch. 16 database tables. See [docs/autopilot/](docs/autopilot/)
-- **AI Module** - Market regime (6 types), risk states (GREEN/YELLOW/RED), trust ladder (Sandbox→Supervised→Autonomous). See [docs/ai/](docs/ai/)
+- **AI Module** - Market regime (6 types), risk states (GREEN/YELLOW/RED), trust ladder (Sandbox→Supervised→Autonomous). Paper trading graduation: 15 days + 25 trades + 55% win rate. See [docs/ai/](docs/ai/)
 
 **Database:** Async PostgreSQL (asyncpg) + Redis for sessions. Run `alembic upgrade head` after git pull.
 
@@ -136,6 +136,13 @@ npx playwright test path/to/spec  # Single file
 - `app/services/ai/strategy_recommender.py` - Strategy recommendations
 - `app/services/ai/deployment_executor.py` - AI-driven trade execution
 - `app/services/ai/ml/` - ML models and training pipeline
+
+**Key AI Endpoints:**
+- `GET /api/v1/ai/regime/current` - Current market regime
+- `GET /api/v1/ai/config/` - AI user configuration
+- `GET /api/v1/ai/recommendations/` - Strategy recommendations
+- `GET /api/v1/ai/risk-state/` - Current risk state (GREEN/YELLOW/RED)
+- `POST /api/v1/ai/deploy/` - Deploy AI-recommended strategy
 
 ## Important Patterns
 
@@ -201,7 +208,7 @@ Use these skills for faster, consistent results:
 **Use Chrome for:** Debug failing tests, WebSocket testing, visual verification, live UI debugging
 **Use Playwright for:** CI/CD, running all E2E tests
 
-**Key URLs:** Dashboard `/dashboard`, Watchlist `/watchlist`, Positions `/positions`, Option Chain `/optionchain`, Strategy `/strategy`, AutoPilot `/autopilot`, AI `/ai`
+**Key URLs:** Dashboard `/dashboard`, Watchlist `/watchlist`, Positions `/positions`, Option Chain `/optionchain`, Strategy `/strategy`, Strategy Library `/strategies`, AutoPilot `/autopilot`, AI `/ai`, Settings `/settings`
 
 **Console Prefixes:** `[AutoPilot WS]`, `[OptionChain]`, `[Strategy]`, `[AI Regime]`, `[AI Risk]`
 
