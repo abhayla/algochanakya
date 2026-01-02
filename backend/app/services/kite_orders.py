@@ -257,6 +257,23 @@ class KiteOrderService:
             logger.error(f"Failed to get quote: {str(e)}")
             raise
 
+    async def get_ohlc(self, instruments: List[str]) -> Dict:
+        """
+        Get OHLC data for instruments. Works even outside market hours.
+
+        Args:
+            instruments: List of instruments in format "EXCHANGE:TRADINGSYMBOL"
+
+        Returns:
+            Dictionary with OHLC data (open, high, low, close, last_price)
+        """
+        try:
+            ohlc = self.kite.ohlc(instruments)
+            return ohlc
+        except Exception as e:
+            logger.error(f"Failed to get OHLC: {str(e)}")
+            raise
+
 
 def parse_positions_to_legs(positions: Dict, underlying: str = None) -> List[dict]:
     """

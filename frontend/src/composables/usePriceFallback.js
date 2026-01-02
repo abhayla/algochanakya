@@ -44,6 +44,28 @@ function toTickFormatFromQuote(data) {
 }
 
 /**
+ * Convert API OHLC response to tick format (uses close price as LTP when market closed)
+ * @param {Object} data - API response with ohlc: { open, high, low, close }, last_price
+ * @returns {Object} Tick format { ltp, change, change_percent }
+ */
+function toTickFormatFromOHLC(data) {
+  // Use last_price if available, otherwise fall back to close price
+  const ltp = data.last_price || data.ohlc?.close || 0
+  const close = data.ohlc?.close || ltp
+  const open = data.ohlc?.open || close
+  // When market is closed, show change from previous close (which is 0)
+  // This displays the closing price with 0 change
+  const change = ltp - close
+  const changePercent = close ? (change / close) * 100 : 0
+
+  return {
+    ltp,
+    change,
+    change_percent: changePercent
+  }
+}
+
+/**
  * Core LTP fetch from API
  * @param {string|string[]} instruments - Instrument string(s) like "NSE:NIFTY 50" or array
  * @returns {Promise<Object>} Map of instrument to price data
@@ -80,13 +102,34 @@ export async function fetchQuote(instruments) {
 }
 
 /**
+ * Core OHLC fetch from API (works even outside market hours)
+ * @param {string|string[]} instruments - Instrument string(s) like "NSE:NIFTY 50" or array
+ * @returns {Promise<Object>} Map of instrument to OHLC data
+ */
+export async function fetchOHLC(instruments) {
+  if (!instruments || instruments.length === 0) return {}
+
+  const instrumentStr = Array.isArray(instruments)
+    ? instruments.join(',')
+    : instruments
+
+  const response = await api.get('/api/orders/ohlc', {
+    params: { instruments: instrumentStr }
+  })
+  return response.data
+}
+
+/**
  * Fetch index prices (NIFTY 50 & NIFTY BANK) and update via callback
- * Uses quote endpoint to get OHLC data for accurate change calculation
+ * Uses quote endpoint first, falls back to OHLC when market is closed
  * @param {Function} updateTickFn - Callback (token, tickData) to update store
  */
 export async function fetchIndexPrices(updateTickFn) {
+  const instruments = 'NSE:NIFTY 50,NSE:NIFTY BANK'
+
   try {
-    const data = await fetchQuote('NSE:NIFTY 50,NSE:NIFTY BANK')
+    // Try quote first (works during market hours with full data)
+    const data = await fetchQuote(instruments)
 
     if (data['NSE:NIFTY 50']) {
       updateTickFn(INDEX_TOKENS.NIFTY_50, toTickFormatFromQuote(data['NSE:NIFTY 50']))
@@ -94,8 +137,22 @@ export async function fetchIndexPrices(updateTickFn) {
     if (data['NSE:NIFTY BANK']) {
       updateTickFn(INDEX_TOKENS.NIFTY_BANK, toTickFormatFromQuote(data['NSE:NIFTY BANK']))
     }
-  } catch (error) {
-    console.error('Failed to fetch index prices:', error)
+  } catch (quoteError) {
+    // Quote failed (likely outside market hours) - fallback to OHLC
+    console.debug('Quote API failed, falling back to OHLC:', quoteError.message)
+
+    try {
+      const ohlcData = await fetchOHLC(instruments)
+
+      if (ohlcData['NSE:NIFTY 50']) {
+        updateTickFn(INDEX_TOKENS.NIFTY_50, toTickFormatFromOHLC(ohlcData['NSE:NIFTY 50']))
+      }
+      if (ohlcData['NSE:NIFTY BANK']) {
+        updateTickFn(INDEX_TOKENS.NIFTY_BANK, toTickFormatFromOHLC(ohlcData['NSE:NIFTY BANK']))
+      }
+    } catch (ohlcError) {
+      console.error('Failed to fetch index prices (both quote and OHLC failed):', ohlcError)
+    }
   }
 }
 

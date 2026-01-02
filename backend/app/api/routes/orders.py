@@ -443,3 +443,36 @@ async def get_quote(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get quote: {str(e)}"
         )
+
+
+@router.get("/ohlc")
+async def get_ohlc(
+    instruments: str = Query(..., description="Comma-separated instruments (EXCHANGE:SYMBOL)"),
+    user: User = Depends(get_current_user),
+    broker: BrokerConnection = Depends(get_current_broker_connection)
+):
+    """
+    Get OHLC data for instruments. Works even outside market hours.
+
+    Args:
+        instruments: Comma-separated instruments (e.g., NSE:NIFTY 50,NSE:NIFTY BANK)
+
+    Returns:
+        OHLC data with open, high, low, close, and last_price
+    """
+    try:
+        instrument_list = [i.strip() for i in instruments.split(",")]
+        kite_service = KiteOrderService(broker.access_token)
+        ohlc = await kite_service.get_ohlc(instrument_list)
+        return ohlc
+
+    except TokenException as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Broker session expired. Please login again. ({str(e)})"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get OHLC: {str(e)}"
+        )
