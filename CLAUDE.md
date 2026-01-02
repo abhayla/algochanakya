@@ -234,20 +234,14 @@ Use these skills for faster, consistent results:
 | `docs-maintainer` | After code changes | **YES** |
 | `test-fixer` | Diagnose failing tests | On demand |
 | `e2e-test-generator` | Generate Playwright tests | On demand |
-| `vitest-generator` | Generate unit tests | On demand |
-| `vue-component-generator` | Create Vue components | On demand |
-| `autopilot-assistant` | AutoPilot config guidance | On demand |
-| `trading-constants-manager` | Enforce trading constants | On demand |
-| `claude-chrome-testing` | Browser debugging, visual verification | On demand |
+| `vitest-generator` | Generate Vitest unit tests | On demand |
+| `vue-component-generator` | Create Vue 3 components/Pinia stores | On demand |
+| `autopilot-assistant` | AutoPilot strategy config guidance | On demand |
+| `trading-constants-manager` | Enforce centralized trading constants | On demand |
 
-## Claude Chrome Integration
+## Key URLs
 
-**Setup:** `claude --chrome` | **Verify:** `/chrome`
-
-**Use Chrome for:** Debug failing tests, WebSocket testing, visual verification, live UI debugging
-**Use Playwright for:** CI/CD, running all E2E tests
-
-**Key URLs:** Dashboard `/dashboard`, Watchlist `/watchlist`, Positions `/positions`, Option Chain `/optionchain`, Strategy `/strategy`, Strategy Library `/strategies`, AutoPilot `/autopilot`, AI `/ai`, OFO `/ofo`, Settings `/settings`
+Dashboard `/dashboard`, Watchlist `/watchlist`, Positions `/positions`, Option Chain `/optionchain`, Strategy `/strategy`, Strategy Library `/strategies`, AutoPilot `/autopilot`, AI `/ai`, OFO `/ofo`, Settings `/settings`
 
 **Console Prefixes:** `[AutoPilot WS]`, `[OptionChain]`, `[Strategy]`, `[AI Regime]`, `[AI Risk]`
 

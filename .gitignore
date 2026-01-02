@@ -204,3 +204,6 @@ tests/test-*.js
 # Ensure docs folders are NOT ignored (override any pattern matches)
 !docs/external/
 !docs/plans/
+
+# Temporary OpenAPI files
+*openapi_temp.json
