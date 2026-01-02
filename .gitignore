@@ -53,7 +53,9 @@ test-results/
 tests/screenshots/
 tests/config/credentials.js
 tests/config/.auth-token
+tests/config/.auth-token-prod
 tests/config/.auth-state.json
+tests/config/.auth-state-prod.json
 
 # Playwright
 node_modules/
