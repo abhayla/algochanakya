@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **OHLC Endpoint for Market-Closed Fallback** - New `/api/orders/ohlc` and `/api/orders/quote` endpoints for fetching index prices when market is closed. Frontend automatically falls back to OHLC data when quote API fails outside market hours.
 - **AI + AutoPilot Integration** (Week 3 - AutoPilot AI)
   - AI Config integration with AutoPilot StrategyMonitor and OrderExecutor
   - Confidence-based position sizing in order execution (tiered multipliers: SKIP 0x, LOW 1.0x, MEDIUM 1.5x, HIGH 2.0x)

@@ -28,11 +28,19 @@
 - [x] Fallback when WebSocket unavailable
 - [x] Return LTP with timestamp
 
+## OHLC & Quote Fetching
+- [x] Get OHLC (Open/High/Low/Close) for instruments
+- [x] Get full quote with OHLC and bid/ask spread
+- [x] Frontend fallback to OHLC when quote fails (market closed)
+- [x] Return last_price with OHLC data
+
 ## API Requirements
 - [x] POST /api/orders/basket - Place basket order
 - [x] GET /api/orders/positions - Get broker positions
 - [x] POST /api/orders/import-positions - Import as strategy
 - [x] GET /api/orders/ltp - Get LTP for instruments
+- [x] GET /api/orders/ohlc - Get OHLC data for instruments (market-closed fallback)
+- [x] GET /api/orders/quote - Get full quote with OHLC and bid/ask
 
 ## Order Request Schema
 - [x] tradingsymbol (e.g., "NIFTY24DEC24500CE")
@@ -47,9 +55,12 @@
 - [x] Kite Connect order placement API
 - [x] Kite Connect positions API
 - [x] Kite Connect LTP API
+- [x] Kite Connect OHLC API
+- [x] Kite Connect Quote API
 - [x] Used by Strategy Builder
 - [x] Used by Positions feature
 - [x] Used by AutoPilot
+- [x] Used by P/L Grid (index prices fallback)
 
 ## Error Handling
 - [x] Insufficient margin errors
@@ -65,4 +76,4 @@
 - [x] Order status tracking
 
 ---
-Last updated: 2025-12-22
+Last updated: 2026-01-02

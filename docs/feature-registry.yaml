@@ -373,9 +373,12 @@ features:
   orders:
     name: "Order Management"
     docs_folder: "docs/features/orders/"
-    description: "Order placement and management (basket orders, positions import)"
+    description: "Order placement and management (basket orders, positions import, LTP/OHLC fetching)"
     backend_files:
       - "backend/app/api/routes/orders.py"
+      - "backend/app/services/kite_orders.py"
+    frontend_files:
+      - "frontend/src/composables/usePriceFallback.js"
     used_by_features:
       - strategy-builder
       - positions

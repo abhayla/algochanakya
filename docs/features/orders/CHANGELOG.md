@@ -4,6 +4,13 @@ All notable changes to the Orders feature will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- OHLC endpoint for market-closed price fallback (file: backend/app/api/routes/orders.py)
+- Quote endpoint for full market data including OHLC and bid/ask (file: backend/app/api/routes/orders.py)
+- get_ohlc() method in KiteOrderService (file: backend/app/services/kite_orders.py)
+- get_quote() method in KiteOrderService (file: backend/app/services/kite_orders.py)
+- Frontend OHLC fallback when quote API fails outside market hours (file: frontend/src/composables/usePriceFallback.js)
+
 ## [1.0.0] - 2024-12-05
 
 ### Added
