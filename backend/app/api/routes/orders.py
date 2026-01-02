@@ -410,3 +410,36 @@ async def get_ltp(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get LTP: {str(e)}"
         )
+
+
+@router.get("/quote")
+async def get_quote(
+    instruments: str = Query(..., description="Comma-separated instruments (EXCHANGE:SYMBOL)"),
+    user: User = Depends(get_current_user),
+    broker: BrokerConnection = Depends(get_current_broker_connection)
+):
+    """
+    Get full quote for instruments (OHLC, bid/ask, volume).
+
+    Args:
+        instruments: Comma-separated instruments (e.g., NSE:NIFTY 50,NSE:NIFTY BANK)
+
+    Returns:
+        Quote data with OHLC, bid/ask spreads, and volume
+    """
+    try:
+        instrument_list = [i.strip() for i in instruments.split(",")]
+        kite_service = KiteOrderService(broker.access_token)
+        quote = await kite_service.get_quote(instrument_list)
+        return quote
+
+    except TokenException as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Broker session expired. Please login again. ({str(e)})"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get quote: {str(e)}"
+        )
