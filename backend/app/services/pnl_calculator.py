@@ -353,11 +353,17 @@ def generate_spot_range(
     """
     Generate spot price range for P/L columns.
 
+    Column Range Formula:
+    - Min = min(floor(current_spot/interval)*interval, lowest_strike) - padding
+    - Max = max(ceil(current_spot/interval)*interval, highest_strike) + padding
+
+    This ensures columns span from current spot to all strikes with buffer.
+
     Args:
         strikes: List of strike prices in the strategy
         current_spot: Current spot price
         interval: Price interval between columns (50 or 100)
-        padding: Padding beyond min/max strikes (default 200)
+        padding: Padding beyond min/max range (default 200)
         breakevens: List of breakeven points to include
         include_strikes: Whether to include all strike prices in the range
 
@@ -374,21 +380,21 @@ def generate_spot_range(
     min_strike = min(strikes)
     max_strike = max(strikes)
 
-    # Calculate base range with padding
-    min_spot = min_strike - padding
-    max_spot = max_strike + padding
+    # Calculate current spot rounded to interval boundaries
+    spot_floor = (current_spot // interval) * interval
+    spot_ceil = math.ceil(current_spot / interval) * interval
 
-    # Extend range to always include currentSpot ± 200
-    min_spot = min(min_spot, current_spot - 200)
-    max_spot = max(max_spot, current_spot + 200)
+    # Apply the column range formula:
+    # Min = min(floor(current_spot/interval)*interval, lowest_strike) - padding
+    # Max = max(ceil(current_spot/interval)*interval, highest_strike) + padding
+    min_spot = min(spot_floor, min_strike) - padding
+    max_spot = max(spot_ceil, max_strike) + padding
 
     # Generate spots at interval steps
-    start = (min_spot // interval) * interval
-    # Use ceiling division to ensure we include spots beyond max_spot
-    # range() excludes endpoint, so we add one more interval
-    end = math.ceil(max_spot / interval) * interval + interval
+    start = int((min_spot // interval) * interval)
+    end = int(math.ceil(max_spot / interval) * interval)
 
-    spots = list(range(int(start), int(end), interval))
+    spots = list(range(start, end + interval, interval))
 
     # Add current spot rounded to nearest integer (not to interval)
     current_spot_rounded = round(current_spot)

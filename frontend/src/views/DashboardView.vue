@@ -35,6 +35,18 @@ const authStore = useAuthStore()
             <p class="card-description">View real-time option chain with Open Interest, Implied Volatility, and Greeks for NIFTY, BANKNIFTY & FINNIFTY</p>
           </router-link>
 
+          <!-- OFO Card -->
+          <router-link to="/ofo" class="dashboard-card card-ofo" data-testid="dashboard-ofo-card">
+            <div class="card-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M12 6v6l4 2"/>
+              </svg>
+            </div>
+            <h3 class="card-title">OFO</h3>
+            <p class="card-description">Options For Options - Find optimal option combinations based on premium, margin, and risk-reward ratios</p>
+          </router-link>
+
           <!-- Strategy Builder Card -->
           <router-link to="/strategy" class="dashboard-card card-strategy" data-testid="dashboard-strategy-card">
             <div class="card-icon">
@@ -185,6 +197,18 @@ const authStore = useAuthStore()
 }
 .card-optionchain .card-icon {
   background: #a855f7;
+  color: white;
+}
+
+/* OFO - Indigo theme */
+.card-ofo {
+  background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+}
+.card-ofo:hover {
+  border-color: #6366f1;
+}
+.card-ofo .card-icon {
+  background: #6366f1;
   color: white;
 }
 

@@ -357,7 +357,7 @@ data-testid="kite-header-user-avatar"
 | Page Object | File | Key Selectors |
 |-------------|------|---------------|
 | LoginPage | `pages/LoginPage.js` | `login-zerodha-button`, `login-error-message` |
-| DashboardPage | `pages/DashboardPage.js` | `dashboard-watchlist-card`, `dashboard-strategy-card` |
+| DashboardPage | `pages/DashboardPage.js` | `dashboard-optionchain-card`, `dashboard-ofo-card`, `dashboard-strategy-card` |
 | WatchlistPage | `pages/WatchlistPage.js` | `watchlist-search-input`, `watchlist-tabs`, `watchlist-instrument-row` |
 | OptionChainPage | `pages/OptionChainPage.js` | `optionchain-underlying-tabs`, `optionchain-table`, `optionchain-strike-row-*` |
 | StrategyBuilderPage | `pages/StrategyBuilderPage.js` | `strategy-add-row-button`, `strategy-leg-row-*`, `strategy-payoff-chart` |
@@ -374,10 +374,11 @@ data-testid="kite-header-user-avatar"
 
 **DashboardView.vue:**
 - `data-testid="dashboard-page"`
-- `data-testid="dashboard-watchlist-card"`
-- `data-testid="dashboard-strategy-card"`
 - `data-testid="dashboard-optionchain-card"`
+- `data-testid="dashboard-ofo-card"`
+- `data-testid="dashboard-strategy-card"`
 - `data-testid="dashboard-positions-card"`
+- `data-testid="dashboard-strategies-card"`
 
 **WatchlistView.vue:**
 - `data-testid="watchlist-page"`

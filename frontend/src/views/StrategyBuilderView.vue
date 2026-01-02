@@ -726,20 +726,17 @@ const displayedSpotPrices = computed(() => {
     : null
   const currentSpot = liveSpot  // Use live market data, not backend grid value
 
-  // Get strike prices from legs
-  const strikes = strategyStore.legs
-    .map(leg => parseFloat(leg.strike_price))
-    .filter(s => !isNaN(s))
+  // Generate ALL strikes at 100-point intervals from min to max
+  const interval = 100  // Standard strike interval for all underlyings
+  const minSpot = Math.min(...spots)
+  const maxSpot = Math.max(...spots)
 
-  // Start with all spots if count is reasonable, otherwise sample
   let result = []
+  const start = Math.floor(minSpot / interval) * interval
+  const end = Math.ceil(maxSpot / interval) * interval
 
-  if (spots.length <= 25) {
-    result = [...spots]
-  } else {
-    // Sample at regular intervals
-    const step = Math.ceil(spots.length / 15)
-    result = spots.filter((spot, i) => i % step === 0)
+  for (let strike = start; strike <= end; strike += interval) {
+    result.push(strike)
   }
 
   // ALWAYS add breakeven values as columns (keep exact values for P/L = 0)
@@ -751,14 +748,7 @@ const displayedSpotPrices = computed(() => {
     }
   })
 
-  // Add strike prices as columns
-  strikes.forEach(s => {
-    if (!result.includes(s)) {
-      result.push(s)
-    }
-  })
-
-  // Add current spot
+  // Add current spot as SPOT column (highlighted separately)
   if (currentSpot) {
     const rounded = Math.round(currentSpot)
     if (!result.includes(rounded)) {

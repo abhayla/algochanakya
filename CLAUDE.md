@@ -72,7 +72,7 @@ cd backend && pytest tests/ -v
 
 AlgoChanakya is an options trading platform (similar to Sensibull) with FastAPI backend and Vue.js 3 frontend, integrating with Zerodha Kite Connect for broker operations.
 
-**Tech Stack:** FastAPI + async SQLAlchemy + PostgreSQL + Redis | Vue 3 + Vite + Pinia + Tailwind CSS 4 | Playwright (117 E2E spec files) + Vitest + pytest
+**Tech Stack:** FastAPI + async SQLAlchemy + PostgreSQL + Redis | Vue 3 + Vite + Pinia + Tailwind CSS 4 | Playwright (100+ E2E spec files) + Vitest + pytest
 
 **Production:** https://algochanakya.com (Windows Server 2022, PM2, Nginx/Cloudflare)
 
@@ -238,6 +238,7 @@ Use these skills for faster, consistent results:
 | `vue-component-generator` | Create Vue components | On demand |
 | `autopilot-assistant` | AutoPilot config guidance | On demand |
 | `trading-constants-manager` | Enforce trading constants | On demand |
+| `claude-chrome-testing` | Browser debugging, visual verification | On demand |
 
 ## Claude Chrome Integration
 
@@ -252,7 +253,7 @@ Use these skills for faster, consistent results:
 
 ## Testing
 
-117 E2E spec files. See [docs/testing/README.md](docs/testing/README.md) for complete documentation.
+100+ E2E spec files. See [docs/testing/README.md](docs/testing/README.md) for complete documentation.
 
 **Config:** 180s timeout, 1 worker (sequential), auth state reused via `./tests/config/.auth-state.json`. Auth token stored in `./tests/config/.auth-token`. Projects: `setup` (login), `chromium` (main), `isolated` (fresh context).
 

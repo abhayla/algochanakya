@@ -7,12 +7,12 @@
 - [x] Quick access to all modules
 
 ## Navigation Cards
-- [x] Watchlist card with description and icon
-- [x] Positions card with description and icon
 - [x] Option Chain card with description and icon
+- [x] OFO (Options For Options) card with description and icon
 - [x] Strategy Builder card with description and icon
+- [x] Positions card with description and icon
 - [x] Strategy Library card with description and icon
-- [x] AutoPilot card with description and icon
+- [ ] AutoPilot card with description and icon (hidden - not production ready)
 
 ## Card Features
 - [x] Feature name
@@ -28,7 +28,7 @@
 - [x] Mobile-friendly
 
 ## Navigation Flow
-- [x] Login redirects to /watchlist (skips dashboard)
+- [x] Login redirects to /dashboard
 - [x] Dashboard accessible at /dashboard
 - [x] All cards link to respective features
 
@@ -39,4 +39,4 @@
 - [ ] Quick actions
 
 ---
-Last updated: 2025-12-22
+Last updated: 2026-01-02

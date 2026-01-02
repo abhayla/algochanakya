@@ -30,23 +30,12 @@ test.describe('Dashboard - Happy Path @happy', () => {
     await expect(dashboardPage.title).toContainText('Welcome');
   });
 
-  test('all four navigation cards are visible', async () => {
-    await expect(dashboardPage.watchlistCard).toBeVisible();
-    await expect(dashboardPage.strategyCard).toBeVisible();
+  test('all five navigation cards are visible', async () => {
     await expect(dashboardPage.optionchainCard).toBeVisible();
+    await expect(dashboardPage.ofoCard).toBeVisible();
+    await expect(dashboardPage.strategyCard).toBeVisible();
     await expect(dashboardPage.positionsCard).toBeVisible();
-  });
-
-  test('watchlist card navigates to /watchlist', async ({ authenticatedPage }) => {
-    await dashboardPage.goToWatchlist();
-    await authenticatedPage.waitForURL('**/watchlist**');
-    expect(authenticatedPage.url()).toContain('/watchlist');
-  });
-
-  test('strategy card navigates to /strategy', async ({ authenticatedPage }) => {
-    await dashboardPage.goToStrategy();
-    await authenticatedPage.waitForURL('**/strategy**');
-    expect(authenticatedPage.url()).toContain('/strategy');
+    await expect(dashboardPage.strategiesCard).toBeVisible();
   });
 
   test('option chain card navigates to /optionchain', async ({ authenticatedPage }) => {
@@ -55,9 +44,27 @@ test.describe('Dashboard - Happy Path @happy', () => {
     expect(authenticatedPage.url()).toContain('/optionchain');
   });
 
+  test('ofo card navigates to /ofo', async ({ authenticatedPage }) => {
+    await dashboardPage.goToOFO();
+    await authenticatedPage.waitForURL('**/ofo**');
+    expect(authenticatedPage.url()).toContain('/ofo');
+  });
+
+  test('strategy card navigates to /strategy', async ({ authenticatedPage }) => {
+    await dashboardPage.goToStrategy();
+    await authenticatedPage.waitForURL('**/strategy**');
+    expect(authenticatedPage.url()).toContain('/strategy');
+  });
+
   test('positions card navigates to /positions', async ({ authenticatedPage }) => {
     await dashboardPage.goToPositions();
     await authenticatedPage.waitForURL('**/positions**');
     expect(authenticatedPage.url()).toContain('/positions');
+  });
+
+  test('strategies card navigates to /strategies', async ({ authenticatedPage }) => {
+    await dashboardPage.goToStrategies();
+    await authenticatedPage.waitForURL('**/strategies**');
+    expect(authenticatedPage.url()).toContain('/strategies');
   });
 });

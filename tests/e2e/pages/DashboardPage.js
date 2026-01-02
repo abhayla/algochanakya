@@ -28,20 +28,24 @@ export class DashboardPage extends BasePage {
     return this.getByTestId('dashboard-cards');
   }
 
-  get watchlistCard() {
-    return this.getByTestId('dashboard-watchlist-card');
+  get optionchainCard() {
+    return this.getByTestId('dashboard-optionchain-card');
+  }
+
+  get ofoCard() {
+    return this.getByTestId('dashboard-ofo-card');
   }
 
   get strategyCard() {
     return this.getByTestId('dashboard-strategy-card');
   }
 
-  get optionchainCard() {
-    return this.getByTestId('dashboard-optionchain-card');
-  }
-
   get positionsCard() {
     return this.getByTestId('dashboard-positions-card');
+  }
+
+  get strategiesCard() {
+    return this.getByTestId('dashboard-strategies-card');
   }
 
   // Actions
@@ -50,20 +54,24 @@ export class DashboardPage extends BasePage {
     await this.waitForLoad();
   }
 
-  async goToWatchlist() {
-    await this.watchlistCard.click();
+  async goToOptionChain() {
+    await this.optionchainCard.click();
+  }
+
+  async goToOFO() {
+    await this.ofoCard.click();
   }
 
   async goToStrategy() {
     await this.strategyCard.click();
   }
 
-  async goToOptionChain() {
-    await this.optionchainCard.click();
-  }
-
   async goToPositions() {
     await this.positionsCard.click();
+  }
+
+  async goToStrategies() {
+    await this.strategiesCard.click();
   }
 
   // Assertions
@@ -72,10 +80,11 @@ export class DashboardPage extends BasePage {
   }
 
   async areCardsVisible() {
-    const watchlist = await this.isTestIdVisible('dashboard-watchlist-card');
-    const strategy = await this.isTestIdVisible('dashboard-strategy-card');
     const optionchain = await this.isTestIdVisible('dashboard-optionchain-card');
+    const ofo = await this.isTestIdVisible('dashboard-ofo-card');
+    const strategy = await this.isTestIdVisible('dashboard-strategy-card');
     const positions = await this.isTestIdVisible('dashboard-positions-card');
-    return watchlist && strategy && optionchain && positions;
+    const strategies = await this.isTestIdVisible('dashboard-strategies-card');
+    return optionchain && ofo && strategy && positions && strategies;
   }
 }

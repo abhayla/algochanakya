@@ -16,6 +16,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Tests for different underlyings (NIFTY, BANKNIFTY, FINNIFTY)
 - Tests for different lot sizes and strike ranges
 
+## [1.1.0] - 2026-01-02
+
+### Changed
+- "Open in Builder" now shows full P/L grid column range from spot to all strikes (related fix in Strategy Builder v1.2.0)
+
 ## [1.0.0] - 2025-12-XX
 
 ### Added

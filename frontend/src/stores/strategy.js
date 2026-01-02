@@ -3,8 +3,11 @@ import { ref, computed } from 'vue'
 import api from '../services/api'
 import { fetchLegLTP as fetchLegLTPFromAPI } from '@/composables/usePriceFallback'
 import { getLotSize, getIndexToken, getIndexSymbol } from '@/constants/trading'
+import { useWatchlistStore } from '@/stores/watchlist'
 
 export const useStrategyStore = defineStore('strategy', () => {
+  // Get watchlist store for live spot prices
+  const watchlistStore = useWatchlistStore()
   // State
   const strategies = ref([])
   const currentStrategy = ref(null)
@@ -341,8 +344,20 @@ export const useStrategyStore = defineStore('strategy', () => {
     error.value = null
 
     try {
+      // Get live spot price from watchlist store
+      const liveSpot = underlying.value === 'NIFTY'
+        ? watchlistStore.indexTicks?.nifty50?.ltp
+        : underlying.value === 'BANKNIFTY'
+        ? watchlistStore.indexTicks?.niftyBank?.ltp
+        : underlying.value === 'FINNIFTY'
+        ? watchlistStore.indexTicks?.finnifty?.ltp
+        : underlying.value === 'SENSEX'
+        ? watchlistStore.indexTicks?.sensex?.ltp
+        : null
+
       const response = await api.post('/api/strategies/calculate', {
         underlying: underlying.value,
+        current_spot: liveSpot,  // Send live spot for column range calculation
         legs: legsWithEntry.map(leg => ({
           strike: parseFloat(leg.strike_price),
           contract_type: leg.contract_type,

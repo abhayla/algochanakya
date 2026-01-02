@@ -7,6 +7,15 @@ All notable changes to the Strategy Builder feature will be documented in this f
 ### Added
 - User preferences for P/L grid configuration (file: backend/app/api/routes/user_preferences.py)
 
+## [1.2.0] - 2026-01-02
+
+### Changed
+- P/L grid column range now uses both current spot AND strikes (file: backend/app/services/pnl_calculator.py)
+  - New formula: Min = min(floor(current_spot/100)*100, lowest_strike) - 200
+  - New formula: Max = max(ceil(current_spot/100)*100, highest_strike) + 200
+  - Generates all 100-point interval columns between Min and Max
+- Frontend now sends live current_spot to backend for accurate range calculation (file: frontend/src/stores/strategy.js)
+
 ## [1.1.0] - 2024-12-06
 
 ### Changed

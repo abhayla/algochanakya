@@ -111,7 +111,7 @@ class KiteTickerService:
         if self._subscribed_tokens:
             logger.info(f"Resubscribing to {len(self._subscribed_tokens)} tokens")
             ws.subscribe(list(self._subscribed_tokens))
-            ws.set_mode(ws.MODE_LTP, list(self._subscribed_tokens))
+            ws.set_mode(ws.MODE_QUOTE, list(self._subscribed_tokens))
 
     def _on_close(self, ws, code, reason):
         """Callback when WebSocket closes."""

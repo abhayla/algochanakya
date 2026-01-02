@@ -30,6 +30,14 @@
 - [x] Linear interpolation for breakeven/strike P&L values
 - [x] Color gradient (green for profit zones, red for loss zones)
 
+### P/L Grid Column Range Formula
+- [x] Min = min(floor(current_spot/100)*100, lowest_strike) - 200
+- [x] Max = max(ceil(current_spot/100)*100, highest_strike) + 200
+- [x] Generate all 100-point interval columns between Min and Max
+- [x] Include SPOT column (current live spot price)
+- [x] Include BE columns (exact breakeven points where P/L = 0)
+- [x] Send live current_spot from frontend to backend for range calculation
+
 ## Summary Metrics
 - [x] Max Profit calculation
 - [x] Max Loss calculation
@@ -117,4 +125,4 @@
 - [x] Trading constants for lot sizes
 
 ---
-Last updated: 2025-12-22
+Last updated: 2026-01-02
