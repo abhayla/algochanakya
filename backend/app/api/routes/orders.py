@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
 from typing import List, Optional
 from uuid import UUID
+from kiteconnect.exceptions import TokenException
 
 from app.database import get_db
 from app.models import User, BrokerConnection, Strategy, StrategyLeg, Instrument
@@ -138,6 +139,11 @@ async def place_basket_order(
 
     except HTTPException:
         raise
+    except TokenException as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Broker session expired. Please login again. ({str(e)})"
+        )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -174,6 +180,11 @@ async def get_positions(
 
         return positions
 
+    except TokenException as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Broker session expired. Please login again. ({str(e)})"
+        )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -268,6 +279,11 @@ async def import_positions(
 
     except HTTPException:
         raise
+    except TokenException as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Broker session expired. Please login again. ({str(e)})"
+        )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -291,6 +307,11 @@ async def get_orders(
         orders = await kite_service.get_orders()
         return orders
 
+    except TokenException as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Broker session expired. Please login again. ({str(e)})"
+        )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -314,6 +335,11 @@ async def get_margins(
         margins = await kite_service.get_margins()
         return margins
 
+    except TokenException as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Broker session expired. Please login again. ({str(e)})"
+        )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -341,6 +367,11 @@ async def cancel_order(
         result = await kite_service.cancel_order(order_id)
         return {"success": True, "order_id": result}
 
+    except TokenException as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Broker session expired. Please login again. ({str(e)})"
+        )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -369,6 +400,11 @@ async def get_ltp(
         ltp = await kite_service.get_ltp(instrument_list)
         return ltp
 
+    except TokenException as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Broker session expired. Please login again. ({str(e)})"
+        )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

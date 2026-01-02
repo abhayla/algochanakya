@@ -9,6 +9,7 @@ from sqlalchemy import select, and_
 from typing import Optional
 from datetime import datetime, date
 import math
+from kiteconnect.exceptions import TokenException
 
 from app.database import get_db
 from app.models import User, BrokerConnection, Instrument
@@ -393,6 +394,12 @@ async def get_option_chain(
 
     except HTTPException:
         raise
+    except TokenException as e:
+        # Kite access token is invalid or expired - return 401 to trigger frontend redirect
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Broker session expired. Please login again. ({str(e)})"
+        )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -479,6 +486,11 @@ async def find_strike_by_delta(
 
     except HTTPException:
         raise
+    except TokenException as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Broker session expired. Please login again. ({str(e)})"
+        )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -529,6 +541,11 @@ async def find_strike_by_premium(
 
     except HTTPException:
         raise
+    except TokenException as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Broker session expired. Please login again. ({str(e)})"
+        )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

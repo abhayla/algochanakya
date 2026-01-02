@@ -728,6 +728,36 @@ export const useStrategyStore = defineStore('strategy', () => {
     calculatePnL()
   }
 
+  // Add leg from OFO (Options For Options)
+  function addLegFromOFO(leg) {
+    const newLeg = {
+      temp_id: generateTempId(),
+      expiry_date: leg.expiry_date,
+      contract_type: leg.contract_type,
+      transaction_type: leg.transaction_type,
+      strike_price: leg.strike_price,
+      lots: leg.lots || 1,
+      strategy_type: 'Custom',
+      entry_price: leg.entry_price,
+      exit_price: null,
+      instrument_token: leg.instrument_token,
+      tradingsymbol: leg.tradingsymbol || null
+    }
+    legs.value.push(newLeg)
+
+    // Fetch strikes for the expiry if not already fetched
+    if (leg.expiry_date && !strikes.value[leg.expiry_date]) {
+      fetchStrikes(leg.expiry_date)
+    }
+  }
+
+  // Clear legs only (keep strategy settings)
+  function clearLegs() {
+    legs.value = []
+    pnlGrid.value = null
+    selectedLegIndices.value = []
+  }
+
   // Clear / Reset
   function clearStrategy() {
     currentStrategy.value = null
@@ -872,6 +902,8 @@ export const useStrategyStore = defineStore('strategy', () => {
     isLegUsingCMPEntry,
     fetchLegLTP,
     addLegFromOptionChain,
+    addLegFromOFO,
+    clearLegs,
     clearStrategy,
     reset,
     validateStrategy,

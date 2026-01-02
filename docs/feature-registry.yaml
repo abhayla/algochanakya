@@ -158,6 +158,20 @@ auto_detect_patterns:
   - pattern: "frontend/src/views/SettingsView.vue"
     feature: settings
 
+  # OFO (Options For Options)
+  - pattern: "backend/app/api/routes/ofo.py"
+    feature: ofo
+  - pattern: "backend/app/schemas/ofo.py"
+    feature: ofo
+  - pattern: "backend/app/services/ofo_calculator.py"
+    feature: ofo
+  - pattern: "frontend/src/views/OFOView.vue"
+    feature: ofo
+  - pattern: "frontend/src/stores/ofo.js"
+    feature: ofo
+  - pattern: "frontend/src/components/ofo/**"
+    feature: ofo
+
 
 # ============================================================================
 # FEATURE MAPPINGS
@@ -388,6 +402,29 @@ features:
       - "frontend/src/views/DashboardView.vue"
     tests:
       - "tests/e2e/specs/dashboard/**"
+
+  # --------------------------------------------------------------------------
+  # OFO (OPTIONS FOR OPTIONS)
+  # --------------------------------------------------------------------------
+  ofo:
+    name: "OFO - Options For Options"
+    docs_folder: "docs/features/ofo/"
+    description: "Options strategy finder and optimizer. Calculates and ranks strategy combinations (Iron Condor, Straddles, Spreads, etc.) based on max profit, risk-reward ratio."
+    backend_files:
+      - "backend/app/api/routes/ofo.py"
+      - "backend/app/schemas/ofo.py"
+      - "backend/app/services/ofo_calculator.py"
+    frontend_files:
+      - "frontend/src/views/OFOView.vue"
+      - "frontend/src/stores/ofo.js"
+      - "frontend/src/components/ofo/StrategyMultiSelect.vue"
+      - "frontend/src/components/ofo/ResultCard.vue"
+      - "frontend/src/components/ofo/StrategyGroup.vue"
+    tests:
+      - "tests/e2e/specs/ofo/**"
+    related_features:
+      - option-chain
+      - strategy-builder
 
   # --------------------------------------------------------------------------
   # AI CONFIGURATION

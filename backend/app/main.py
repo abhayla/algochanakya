@@ -8,7 +8,7 @@ import traceback
 
 from app.config import settings
 from app.database import init_db, close_db, AsyncSessionLocal
-from app.api.routes import health, auth, watchlist, instruments, websocket, options, strategy, orders, optionchain, positions, strategy_wizard, constants, user_preferences
+from app.api.routes import health, auth, watchlist, instruments, websocket, options, strategy, orders, optionchain, positions, strategy_wizard, constants, user_preferences, ofo
 from app.api.v1.autopilot import router as autopilot_router
 from app.api.v1.ai import router as ai_router
 from app.websocket.routes import router as autopilot_ws_router
@@ -119,10 +119,10 @@ async def global_exception_handler(request: Request, exc: Exception):
         }
     )
 
-# CORS middleware
+# CORS middleware - use allow_origin_regex for more flexible matching
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
+    allow_origin_regex=r"http://localhost:\d+",  # Allow any localhost port
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -137,6 +137,7 @@ app.include_router(options.router, prefix="/api/options", tags=["Options"])
 app.include_router(strategy.router, prefix="/api/strategies", tags=["Strategies"])
 app.include_router(orders.router, prefix="/api/orders", tags=["Orders"])
 app.include_router(optionchain.router, prefix="/api/optionchain", tags=["OptionChain"])
+app.include_router(ofo.router, prefix="/api/ofo", tags=["OFO"])
 app.include_router(positions.router, prefix="/api/positions", tags=["Positions"])
 app.include_router(strategy_wizard.router, prefix="/api/strategy-library", tags=["Strategy Library"])
 app.include_router(constants.router, prefix="/api/constants", tags=["Constants"])

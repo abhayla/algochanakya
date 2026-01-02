@@ -106,12 +106,38 @@ async function performLogin() {
     // Navigate to login
     await page.goto(FRONTEND_URL + '/login');
     await page.waitForLoadState('networkidle');
+    console.log('Login page loaded');
+
+    // Pre-flight check: verify API is working (use relative URL since Vite proxies)
+    const apiCheck = await page.evaluate(async () => {
+      try {
+        const resp = await fetch('/api/auth/zerodha/login');
+        return await resp.json();
+      } catch (e) {
+        return { error: e.message };
+      }
+    });
+    console.log('API pre-check:', JSON.stringify(apiCheck));
+
+    if (!apiCheck.login_url) {
+      console.log('API check failed, but continuing with button click...');
+    }
 
     // Click Zerodha login
+    console.log('Clicking Zerodha login button...');
+
+    // Listen for console messages
+    page.on('console', msg => console.log('Browser console:', msg.type(), msg.text()));
+    page.on('pageerror', err => console.log('Page error:', err.message));
+
     await page.click('[data-testid="login-zerodha-button"]');
 
-    // Wait for Kite login page
-    await page.waitForURL('**/kite.zerodha.com/**', { timeout: 15000 });
+    // Wait a bit to see if there are any errors
+    await page.waitForTimeout(2000);
+    console.log('Current URL after click:', page.url());
+
+    // Wait for Kite login page (increased timeout)
+    await page.waitForURL('**/kite.zerodha.com/**', { timeout: 60000 });
     console.log('Reached Kite login page');
 
     if (credentials?.kite?.userId && credentials?.kite?.password) {
@@ -143,8 +169,23 @@ async function performLogin() {
     }
 
     // Wait for callback (after TOTP)
-    await page.waitForURL('**/callback**', { timeout: 120000 });
-    console.log('Login successful, processing callback...');
+    // Listen for response errors
+    page.on('response', response => {
+      if (response.status() >= 400) {
+        console.log(`Response error: ${response.status()} ${response.url()}`);
+      }
+    });
+    page.on('requestfailed', request => {
+      console.log(`Request failed: ${request.url()} - ${request.failure()?.errorText}`);
+    });
+
+    try {
+      await page.waitForURL('**/callback**', { timeout: 120000 });
+      console.log('Login successful, processing callback...');
+    } catch (e) {
+      console.log('Current URL when failed:', page.url());
+      throw e;
+    }
 
     // Wait for redirect to frontend
     await page.waitForURL(`${FRONTEND_URL}/**`, { timeout: 15000 });

@@ -43,6 +43,12 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/ofo',
+      name: 'ofo',
+      component: () => import('../views/OFOView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/strategy',
       name: 'strategy',
       component: () => import('../views/StrategyBuilderView.vue'),

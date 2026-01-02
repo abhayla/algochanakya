@@ -123,3 +123,13 @@ Location: C:\Users\Administrator\.claude\plans\serialized-discovering-shannon.md
   - `apscheduler` - Daily job scheduling
 
   Start with Week 1 deliverables. After completing Week 1, proceed to Week 2.
+
+
+Create a new page 'OFO' which means Options For Options. Add its link on the menu.  
+On this page, I want to provide the best stragety options to user every 15 mins (configurable) for all strategy types, for all expiries and for all underlyings indexes. User will select underlying and expiry (like optionchain screen), show 3 cards for each strategy type for the selected underlying and expiry. Calculation for the each strategy card should be done based on the all CE/PE data in the option chain, which is not 0, 0.5 or Null. For e.g. For NIFTY, current week expiry i.e 6-Jan-20226, for calculating best Iron condor strategy card, create Iron Condor strategy for all rows (where CMP is not 0, 0.5 or Null) and calculate net profit. Then create cards for the Iron Condor strategy which has the top 3 profits. Do the same for all other strategies. 
+Provide a multi-select drop down option (after expiry drop down) to select strategies and see their corresponding top 3 profit cards. Each card will have option to open the strategy in strategy builder, place order with the logged in broker. 
+Find out how much time does it takes for you to perform these calculatios starting from selecting underlyings, expiry, Strategy to displaying cards on the screen. If it takes less than 1 second then we can add this functionality on needed basis else we will limit it to 15 minutes or some other configurable time interval.
+Card should have a row for each leg of strategy type with Columns - Expiry, CE/PE, Buy/Sell, Strike Price, CMP, Lots, Qty, P/L 
+
+Calculation for these strategies should happen every 15 mins starting 9:30 AM  IST to 3:15 PM IST on days when market is open. 
+If market is closed and/or before next 15 min calculation, all the last calculated strategies should be displayed until new calulation is done. 

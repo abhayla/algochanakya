@@ -164,6 +164,7 @@ const showUserDropdown = ref(false);
 const navItems = [
   { path: '/dashboard', label: 'Dashboard' },
   { path: '/optionchain', label: 'Option Chain' },
+  { path: '/ofo', label: 'OFO' },
   { path: '/strategy', label: 'Strategy' },
   { path: '/positions', label: 'Positions' },
   // Hidden for initial deployment - not fully tested

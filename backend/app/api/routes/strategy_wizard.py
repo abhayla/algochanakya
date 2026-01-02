@@ -10,6 +10,7 @@ from sqlalchemy import select, func
 from typing import List, Optional
 from datetime import date
 from decimal import Decimal
+from kiteconnect.exceptions import TokenException
 
 from app.database import get_db
 from app.config import settings
@@ -490,6 +491,11 @@ async def deploy_template(
 
     except HTTPException:
         raise
+    except TokenException as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Broker session expired. Please login again. ({str(e)})"
+        )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
