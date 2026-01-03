@@ -59,7 +59,7 @@ npm test
 npx playwright test tests/e2e/specs/positions/positions.happy.spec.js
 
 # Run tests by screen
-npm run test:specs:positions    # positions, optionchain, strategy, strategylibrary, autopilot, navigation, audit, login, dashboard, watchlist
+npm run test:specs:positions    # positions, optionchain, strategy, strategylibrary, autopilot, navigation, audit, login, dashboard, watchlist, ofo
 
 # Database migration (from backend/)
 alembic revision --autogenerate -m "description" && alembic upgrade head
@@ -138,6 +138,7 @@ npm run generate:test              # Generate new test from template
 - **Strategy Builder** - P/L modes: "At Expiry" (intrinsic) and "Current" (Black-Scholes via scipy)
 - **AutoPilot** - Automated execution with conditions, adjustments, kill switch. 16 database tables. See [docs/autopilot/](docs/autopilot/)
 - **AI Module** - Market regime (6 types), risk states (GREEN/YELLOW/RED), trust ladder (Sandbox→Supervised→Autonomous). Paper trading graduation: 15 days + 25 trades + 55% win rate. Key tables: `ai_user_config`, `ai_decisions_log`, `ai_model_registry`, `ai_learning_reports`. See [docs/ai/](docs/ai/)
+- **SmartAPI Integration** (In Progress) - AngelOne SmartAPI for market data (live WebSocket + historical OHLC). Kite remains for orders. See `docs/plans/smartapi-integration-plan.md`. Key files: `backend/app/services/smartapi_*.py`, `frontend/src/components/settings/SmartAPISettings.vue`. Credentials stored encrypted in `smartapi_credentials` table.
 
 **Database:** Async PostgreSQL (asyncpg) + Redis for sessions. Run `alembic upgrade head` after git pull.
 
@@ -197,11 +198,21 @@ import { getLotSize, getStrikeStep } from '@/constants/trading'
 
 ### Environment Variables
 
-**Backend (`backend/.env`):** `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET`, `KITE_API_KEY`, `KITE_API_SECRET`, `ANTHROPIC_API_KEY` (for AI)
+**Backend (`backend/.env`):** `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET`, `KITE_API_KEY`, `KITE_API_SECRET`, `ANTHROPIC_API_KEY` (for AI), `ANGEL_API_KEY` (for SmartAPI market data)
 
 **Frontend (`frontend/.env`):** `VITE_API_BASE_URL=http://localhost:8000`, `VITE_WS_URL=ws://localhost:8000` (optional, defaults to API URL)
 
 **Production Build:** Create `frontend/.env.production` with `VITE_API_BASE_URL=https://algochanakya.com` before `npm run build` - without this, API calls default to localhost!
+
+### Encryption for Credentials
+
+Use `backend/app/utils/encryption.py` for encrypting sensitive stored credentials:
+
+```python
+from app.utils.encryption import encrypt, decrypt
+encrypted = encrypt("sensitive_data")
+decrypted = decrypt(encrypted)
+```
 
 ### Authentication Error Handling
 
@@ -247,7 +258,7 @@ Dashboard `/dashboard`, Watchlist `/watchlist`, Positions `/positions`, Option C
 
 ## Testing
 
-100+ E2E spec files. See [docs/testing/README.md](docs/testing/README.md) for complete documentation.
+~360 tests total (290+ E2E + 70 backend pytest). See [docs/testing/README.md](docs/testing/README.md) for complete documentation.
 
 **Config:** 180s timeout, 1 worker (sequential), auth state reused via `./tests/config/.auth-state.json`. Auth token stored in `./tests/config/.auth-token`. Projects: `setup` (login), `chromium` (main), `isolated` (fresh context).
 
@@ -282,6 +293,31 @@ Dashboard `/dashboard`, Watchlist `/watchlist`, Positions `/positions`, Option C
 ### Testing
 - **Wrong import** - Use `auth.fixture.js`, NOT `@playwright/test`
 - **CSS/text selectors** - Use `data-testid` only
+
+## SmartAPI Testing
+
+SmartAPI credentials (client_id, PIN, TOTP secret) are stored encrypted in the `smartapi_credentials` table. To generate a TOTP for testing:
+
+```bash
+# From backend/ directory
+cd backend
+venv\Scripts\activate
+python generate_totp.py
+```
+
+This decrypts the stored TOTP secret and generates the current 6-digit code (valid for 30 seconds).
+
+**Key Files:**
+- `backend/generate_totp.py` - Utility script to generate current TOTP
+- `backend/app/models/smartapi_credentials.py` - Credentials model (`encrypted_totp_secret` column)
+- `backend/app/services/smartapi_auth.py` - Auth service with `generate_totp()` method
+- `backend/app/utils/encryption.py` - Fernet encryption for credentials
+
+**How it works:**
+1. User saves credentials via Settings → SmartAPI Settings
+2. PIN and TOTP secret are encrypted with Fernet (using JWT_SECRET-derived key)
+3. On authentication, TOTP secret is decrypted and `pyotp.TOTP(secret).now()` generates the code
+4. Code is used with `SmartConnect.generateSession(client_id, pin, totp_code)`
 
 ## Debug Commands
 
