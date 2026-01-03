@@ -2,7 +2,9 @@
 Orders API Routes
 
 Basket orders, positions, and order management via Kite Connect.
+Market data endpoints route to SmartAPI or Kite based on user preference.
 """
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
@@ -12,6 +14,8 @@ from kiteconnect.exceptions import TokenException
 
 from app.database import get_db
 from app.models import User, BrokerConnection, Strategy, StrategyLeg, Instrument
+from app.models.user_preferences import UserPreferences, MarketDataSource
+from app.models.smartapi_credentials import SmartAPICredentials
 from app.schemas.strategies import (
     BasketOrderRequest,
     BasketOrderResponse,
@@ -23,9 +27,55 @@ from app.schemas.strategies import (
     TransactionType,
 )
 from app.services.kite_orders import KiteOrderService, parse_positions_to_legs
+from app.services.smartapi_market_data import create_market_data_service
 from app.utils.dependencies import get_current_user, get_current_broker_connection
+from app.config import settings
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+async def get_user_market_data_source(user_id, db: AsyncSession) -> str:
+    """
+    Get user's preferred market data source.
+
+    Args:
+        user_id: User ID
+        db: Database session
+
+    Returns:
+        Market data source ('smartapi' or 'kite')
+    """
+    result = await db.execute(
+        select(UserPreferences).where(UserPreferences.user_id == user_id)
+    )
+    preferences = result.scalar_one_or_none()
+
+    if preferences and preferences.market_data_source:
+        return preferences.market_data_source
+
+    return MarketDataSource.SMARTAPI  # Default to SmartAPI
+
+
+async def get_smartapi_credentials(user_id, db: AsyncSession):
+    """
+    Get user's SmartAPI credentials if configured.
+
+    Args:
+        user_id: User ID
+        db: Database session
+
+    Returns:
+        SmartAPICredentials or None
+    """
+    result = await db.execute(
+        select(SmartAPICredentials).where(
+            SmartAPICredentials.user_id == user_id,
+            SmartAPICredentials.is_active == True
+        )
+    )
+    return result.scalar_one_or_none()
 
 
 @router.post("/basket", response_model=BasketOrderResponse)
@@ -383,10 +433,12 @@ async def cancel_order(
 async def get_ltp(
     instruments: str = Query(..., description="Comma-separated instruments (EXCHANGE:SYMBOL)"),
     user: User = Depends(get_current_user),
-    broker: BrokerConnection = Depends(get_current_broker_connection)
+    broker: BrokerConnection = Depends(get_current_broker_connection),
+    db: AsyncSession = Depends(get_db)
 ):
     """
     Get LTP for instruments.
+    Routes to SmartAPI or Kite based on user preference.
 
     Args:
         instruments: Comma-separated instruments
@@ -396,6 +448,34 @@ async def get_ltp(
     """
     try:
         instrument_list = [i.strip() for i in instruments.split(",")]
+
+        # Check user's preferred market data source
+        market_data_source = await get_user_market_data_source(user.id, db)
+
+        # Try SmartAPI if preferred
+        if market_data_source == MarketDataSource.SMARTAPI:
+            credentials = await get_smartapi_credentials(user.id, db)
+            if credentials and credentials.jwt_token:
+                try:
+                    logger.info(f"[Orders] Using SmartAPI for LTP: {len(instrument_list)} instruments")
+                    smartapi_service = create_market_data_service(
+                        api_key=settings.ANGEL_API_KEY,
+                        jwt_token=credentials.jwt_token
+                    )
+                    ltp_data = await smartapi_service.get_ltp(instrument_list)
+
+                    # Convert to Kite-compatible format
+                    result = {}
+                    for key, ltp in ltp_data.items():
+                        result[key] = {'last_price': float(ltp)}
+
+                    return result
+                except Exception as e:
+                    logger.warning(f"[Orders] SmartAPI LTP failed, falling back to Kite: {e}")
+                    # Fall through to Kite
+
+        # Use Kite (either as primary or fallback)
+        logger.info(f"[Orders] Using Kite for LTP: {len(instrument_list)} instruments")
         kite_service = KiteOrderService(broker.access_token)
         ltp = await kite_service.get_ltp(instrument_list)
         return ltp
@@ -416,10 +496,12 @@ async def get_ltp(
 async def get_quote(
     instruments: str = Query(..., description="Comma-separated instruments (EXCHANGE:SYMBOL)"),
     user: User = Depends(get_current_user),
-    broker: BrokerConnection = Depends(get_current_broker_connection)
+    broker: BrokerConnection = Depends(get_current_broker_connection),
+    db: AsyncSession = Depends(get_db)
 ):
     """
     Get full quote for instruments (OHLC, bid/ask, volume).
+    Routes to SmartAPI or Kite based on user preference.
 
     Args:
         instruments: Comma-separated instruments (e.g., NSE:NIFTY 50,NSE:NIFTY BANK)
@@ -429,6 +511,46 @@ async def get_quote(
     """
     try:
         instrument_list = [i.strip() for i in instruments.split(",")]
+
+        # Check user's preferred market data source
+        market_data_source = await get_user_market_data_source(user.id, db)
+
+        # Try SmartAPI if preferred
+        if market_data_source == MarketDataSource.SMARTAPI:
+            credentials = await get_smartapi_credentials(user.id, db)
+            if credentials and credentials.jwt_token:
+                try:
+                    logger.info(f"[Orders] Using SmartAPI for quote: {len(instrument_list)} instruments")
+                    smartapi_service = create_market_data_service(
+                        api_key=settings.ANGEL_API_KEY,
+                        jwt_token=credentials.jwt_token
+                    )
+                    quote_data = await smartapi_service.get_full_quote(instrument_list)
+
+                    # Convert to Kite-compatible format
+                    result = {}
+                    for key, quote in quote_data.items():
+                        result[key] = {
+                            'instrument_token': quote.get('token'),
+                            'last_price': float(quote.get('ltp', 0)),
+                            'ohlc': {
+                                'open': float(quote.get('open', 0)),
+                                'high': float(quote.get('high', 0)),
+                                'low': float(quote.get('low', 0)),
+                                'close': float(quote.get('close', 0)),
+                            },
+                            'volume': quote.get('volume', 0),
+                            'oi': quote.get('oi', 0),
+                            'depth': quote.get('depth', {'buy': [], 'sell': []}),
+                        }
+
+                    return result
+                except Exception as e:
+                    logger.warning(f"[Orders] SmartAPI quote failed, falling back to Kite: {e}")
+                    # Fall through to Kite
+
+        # Use Kite (either as primary or fallback)
+        logger.info(f"[Orders] Using Kite for quote: {len(instrument_list)} instruments")
         kite_service = KiteOrderService(broker.access_token)
         quote = await kite_service.get_quote(instrument_list)
         return quote
@@ -449,10 +571,12 @@ async def get_quote(
 async def get_ohlc(
     instruments: str = Query(..., description="Comma-separated instruments (EXCHANGE:SYMBOL)"),
     user: User = Depends(get_current_user),
-    broker: BrokerConnection = Depends(get_current_broker_connection)
+    broker: BrokerConnection = Depends(get_current_broker_connection),
+    db: AsyncSession = Depends(get_db)
 ):
     """
     Get OHLC data for instruments. Works even outside market hours.
+    Routes to SmartAPI or Kite based on user preference.
 
     Args:
         instruments: Comma-separated instruments (e.g., NSE:NIFTY 50,NSE:NIFTY BANK)
@@ -462,6 +586,43 @@ async def get_ohlc(
     """
     try:
         instrument_list = [i.strip() for i in instruments.split(",")]
+
+        # Check user's preferred market data source
+        market_data_source = await get_user_market_data_source(user.id, db)
+
+        # Try SmartAPI if preferred
+        if market_data_source == MarketDataSource.SMARTAPI:
+            credentials = await get_smartapi_credentials(user.id, db)
+            if credentials and credentials.jwt_token:
+                try:
+                    logger.info(f"[Orders] Using SmartAPI for OHLC: {len(instrument_list)} instruments")
+                    smartapi_service = create_market_data_service(
+                        api_key=settings.ANGEL_API_KEY,
+                        jwt_token=credentials.jwt_token
+                    )
+                    quote_data = await smartapi_service.get_full_quote(instrument_list)
+
+                    # Convert to Kite-compatible OHLC format
+                    result = {}
+                    for key, quote in quote_data.items():
+                        result[key] = {
+                            'instrument_token': quote.get('token'),
+                            'last_price': float(quote.get('ltp', 0)),
+                            'ohlc': {
+                                'open': float(quote.get('open', 0)),
+                                'high': float(quote.get('high', 0)),
+                                'low': float(quote.get('low', 0)),
+                                'close': float(quote.get('close', 0)),
+                            },
+                        }
+
+                    return result
+                except Exception as e:
+                    logger.warning(f"[Orders] SmartAPI OHLC failed, falling back to Kite: {e}")
+                    # Fall through to Kite
+
+        # Use Kite (either as primary or fallback)
+        logger.info(f"[Orders] Using Kite for OHLC: {len(instrument_list)} instruments")
         kite_service = KiteOrderService(broker.access_token)
         ohlc = await kite_service.get_ohlc(instrument_list)
         return ohlc

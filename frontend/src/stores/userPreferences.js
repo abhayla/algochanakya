@@ -9,7 +9,8 @@ import api from '@/services/api'
 export const useUserPreferencesStore = defineStore('userPreferences', {
   state: () => ({
     preferences: {
-      pnl_grid_interval: 100  // Default value
+      pnl_grid_interval: 100,  // Default value
+      market_data_source: 'smartapi'  // Default to SmartAPI
     },
     loading: false,
     saving: false,
@@ -17,7 +18,8 @@ export const useUserPreferencesStore = defineStore('userPreferences', {
   }),
 
   getters: {
-    pnlGridInterval: (state) => state.preferences?.pnl_grid_interval || 100
+    pnlGridInterval: (state) => state.preferences?.pnl_grid_interval || 100,
+    marketDataSource: (state) => state.preferences?.market_data_source || 'smartapi'
   },
 
   actions: {
@@ -74,6 +76,21 @@ export const useUserPreferencesStore = defineStore('userPreferences', {
 
       return await this.updatePreferences({
         pnl_grid_interval: interval
+      })
+    },
+
+    /**
+     * Update market data source
+     *
+     * @param {string} source - 'smartapi' or 'kite'
+     */
+    async updateMarketDataSource(source) {
+      if (source !== 'smartapi' && source !== 'kite') {
+        throw new Error('Source must be either "smartapi" or "kite"')
+      }
+
+      return await this.updatePreferences({
+        market_data_source: source
       })
     }
   }

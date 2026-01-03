@@ -24,6 +24,10 @@ class Settings(BaseSettings):
     KITE_API_SECRET: str
     KITE_REDIRECT_URL: str
 
+    # AngelOne SmartAPI (optional - for market data)
+    ANGEL_API_KEY: str = ""  # For live data (WebSocket)
+    ANGEL_API_KEY_HISTORICAL: str = ""  # For historical data
+
     # Frontend
     FRONTEND_URL: str
 

@@ -180,7 +180,8 @@ async function performLogin() {
     });
 
     try {
-      await page.waitForURL('**/callback**', { timeout: 120000 });
+      // Increased timeout to 180 seconds for TOTP entry
+      await page.waitForURL('**/callback**', { timeout: 180000 });
       console.log('Login successful, processing callback...');
     } catch (e) {
       console.log('Current URL when failed:', page.url());

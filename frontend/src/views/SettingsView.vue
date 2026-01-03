@@ -8,9 +8,18 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserPreferencesStore } from '@/stores/userPreferences'
 import KiteLayout from '@/components/layout/KiteLayout.vue'
+import SmartAPISettings from '@/components/settings/SmartAPISettings.vue'
+import MarketDataSourceToggle from '@/components/settings/MarketDataSourceToggle.vue'
 
 const router = useRouter()
 const store = useUserPreferencesStore()
+
+// Trigger for refreshing MarketDataSourceToggle after credentials change
+const sourceRefreshTrigger = ref(0)
+
+const handleCredentialsUpdated = () => {
+  sourceRefreshTrigger.value++
+}
 
 const localPreferences = ref(null)
 const hasChanges = ref(false)
@@ -132,7 +141,30 @@ const handleReset = () => {
           </div>
         </div>
 
-        <!-- More settings sections can be added here in the future -->
+        <!-- Market Data Settings -->
+        <div class="settings-section">
+          <div class="section-header">
+            <h2 class="section-title">Market Data Source</h2>
+            <p class="section-subtitle">Choose where to get live market data from</p>
+          </div>
+          <div class="section-content">
+            <MarketDataSourceToggle
+              :refresh-trigger="sourceRefreshTrigger"
+              @source-changed="handleCredentialsUpdated"
+            />
+          </div>
+        </div>
+
+        <!-- SmartAPI Settings -->
+        <div class="settings-section">
+          <div class="section-header">
+            <h2 class="section-title">AngelOne SmartAPI</h2>
+            <p class="section-subtitle">Configure AngelOne credentials for market data</p>
+          </div>
+          <div class="section-content">
+            <SmartAPISettings @credentials-updated="handleCredentialsUpdated" />
+          </div>
+        </div>
       </div>
     </div>
   </KiteLayout>

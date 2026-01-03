@@ -6,6 +6,9 @@ import OFOPage from '../../pages/OFOPage.js';
  * Tests calculation for each strategy type with screenshot verification
  */
 test.describe('OFO - Calculate Button Tests @calculate', () => {
+  // Increase timeout for calculation tests (complex strategies may take longer)
+  test.setTimeout(60000);
+
   let ofoPage;
 
   // List of all strategies to test

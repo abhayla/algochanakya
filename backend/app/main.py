@@ -8,7 +8,7 @@ import traceback
 
 from app.config import settings
 from app.database import init_db, close_db, AsyncSessionLocal
-from app.api.routes import health, auth, watchlist, instruments, websocket, options, strategy, orders, optionchain, positions, strategy_wizard, constants, user_preferences, ofo
+from app.api.routes import health, auth, watchlist, instruments, websocket, options, strategy, orders, optionchain, positions, strategy_wizard, constants, user_preferences, ofo, smartapi
 from app.api.v1.autopilot import router as autopilot_router
 from app.api.v1.ai import router as ai_router
 from app.websocket.routes import router as autopilot_ws_router
@@ -142,6 +142,7 @@ app.include_router(positions.router, prefix="/api/positions", tags=["Positions"]
 app.include_router(strategy_wizard.router, prefix="/api/strategy-library", tags=["Strategy Library"])
 app.include_router(constants.router, prefix="/api/constants", tags=["Constants"])
 app.include_router(user_preferences.router, prefix="/api/user/preferences", tags=["User Preferences"])
+app.include_router(smartapi.router, prefix="/api/smartapi", tags=["SmartAPI"])
 app.include_router(autopilot_router, prefix="/api/v1/autopilot", tags=["AutoPilot"])
 app.include_router(ai_router, prefix="/api/v1/ai", tags=["AI"])
 app.include_router(autopilot_ws_router, tags=["AutoPilot WebSocket"])

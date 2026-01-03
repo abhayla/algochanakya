@@ -70,6 +70,14 @@ export class BasePage {
   }
 
   /**
+   * Assert element with data-testid is hidden (throws if visible)
+   */
+  async assertHidden(testId) {
+    const locator = this.page.locator(`[data-testid="${testId}"]`);
+    await locator.waitFor({ state: 'hidden', timeout: 10000 });
+  }
+
+  /**
    * Get text content by data-testid
    */
   async getTestIdText(testId) {

@@ -38,9 +38,11 @@ async def get_user_preferences(
 
     if not preferences:
         # Create default preferences
+        from app.models.user_preferences import MarketDataSource
         preferences = UserPreferences(
             user_id=user.id,
-            pnl_grid_interval=100
+            pnl_grid_interval=100,
+            market_data_source=MarketDataSource.SMARTAPI
         )
         db.add(preferences)
         await db.commit()
@@ -86,6 +88,16 @@ async def update_user_preferences(
             raise HTTPException(
                 status_code=400,
                 detail="pnl_grid_interval must be either 50 or 100"
+            )
+
+    # Validate market_data_source
+    if 'market_data_source' in update_data:
+        from app.models.user_preferences import MarketDataSource
+        source = update_data['market_data_source']
+        if source not in MarketDataSource.VALID_SOURCES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"market_data_source must be one of: {MarketDataSource.VALID_SOURCES}"
             )
 
     for key, value in update_data.items():

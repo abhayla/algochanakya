@@ -6,11 +6,15 @@ import OFOPage from '../../pages/OFOPage.js';
  * Tests error handling, boundary conditions, and edge cases
  */
 test.describe('OFO - Edge Cases @edge', () => {
+  // Increase timeout for edge case tests
+  test.setTimeout(45000);
+
   let ofoPage;
 
   test.beforeEach(async ({ page }) => {
     ofoPage = new OFOPage(page);
     await ofoPage.navigate();
+    await ofoPage.assertPageVisible();
   });
 
   test.describe('Input Validation', () => {

@@ -26,5 +26,8 @@ class User(Base):
     # AI relationships
     ai_config = relationship("AIUserConfig", back_populates="user", uselist=False)
 
+    # SmartAPI credentials
+    smartapi_credentials = relationship("SmartAPICredentials", back_populates="user", uselist=False)
+
     def __repr__(self):
         return f"<User {self.id} email={self.email}>"
