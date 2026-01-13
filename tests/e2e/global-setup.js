@@ -19,7 +19,8 @@ import fs from 'fs';
 import path from 'path';
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
-const API_BASE = process.env.API_BASE || 'http://localhost:8000';
+// Dev backend uses port 8001 (production uses 8000 - NEVER use 8000 for dev)
+const API_BASE = process.env.API_BASE || 'http://localhost:8001';
 const AUTH_STATE_PATH = './tests/config/.auth-state.json';
 const TOKEN_FILE = './tests/config/.auth-token';
 

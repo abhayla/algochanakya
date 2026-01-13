@@ -4,7 +4,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## CRITICAL: Mandatory Behaviors
 
-### 0. Protected Files - DO NOT MODIFY
+### 0. Production vs Development - NEVER TOUCH PRODUCTION
+
+**Development folder:** `C:\Abhay\VideCoding\algochanakya` - Work ONLY here
+**Production folder:** `C:\Apps\algochanakya` - **NEVER read, modify, or interact with this folder**
+
+Production runs on the same machine. NEVER:
+- Kill, restart, or interfere with production processes
+- Read or modify files in `C:\Apps\algochanakya`
+- Copy files to/from production
+- Run commands that affect the production folder
+
+If the backend at localhost:8000 is the production instance, start the dev backend separately or ask the user how to proceed.
+
+### 0.1. Protected Files - DO NOT MODIFY
 
 The `notes` file in the project root is a personal file. **NEVER read, modify, or commit changes to this file.**
 
@@ -44,15 +57,17 @@ Before implementing features, refactors, or architectural changes:
 
 **Requirements:** Python 3.11+ | Node.js 20+ | PostgreSQL | Redis
 
+**IMPORTANT:** Production runs on port 8000. Development defaults to port **8001**.
+
 ```bash
-# Start backend (from backend/)
+# Start dev backend (from backend/) - defaults to port 8001
 venv\Scripts\activate && python run.py    # Windows
 source venv/bin/activate && python run.py # Linux/Mac
 
-# Start frontend (from frontend/)
+# Start frontend (from frontend/) - defaults to localhost:5173
 npm run dev
 
-# Run all E2E tests (from root)
+# Run all E2E tests (from root) - uses dev backend on 8001
 npm test
 
 # Run single test file
@@ -346,13 +361,20 @@ const ws = new WebSocket('wss://algochanakya.com/ws/ticks?token=YOUR_JWT')
 
 ## Production Debugging
 
+**IMPORTANT:** Production runs on the SAME machine as development. **NEVER interfere with production processes or files.**
+
+| Environment | Path | Port |
+|-------------|------|------|
+| **Development** | `C:\Abhay\VideCoding\algochanakya` | Backend: 8001, Frontend: 5173 |
+| **Production** | `C:\Apps\algochanakya` (DO NOT TOUCH) | Backend: 8000, Frontend: 3004 |
+
 **Server:** Windows Server 2022 (544934-ABHAYVPS) | https://algochanakya.com
 
-**PM2 Logs:**
+**PM2 Logs (read-only observation only):**
 ```bash
 pm2 logs algochanakya-backend    # Backend logs
 pm2 logs algochanakya-frontend   # Frontend logs (static serve)
-pm2 restart algochanakya-backend # Restart backend
+# NEVER run pm2 restart - ask user to do it manually
 ```
 
 **Common Production Issues:**

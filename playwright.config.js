@@ -56,10 +56,11 @@ export default defineConfig({
     storageState: './tests/config/.auth-state.json',
   },
 
+  // Dev servers - use port 8001 for backend (production uses 8000)
   webServer: [
     {
-      command: 'cd backend && venv\\Scripts\\activate && python run.py',
-      url: 'http://localhost:8000/api/health',
+      command: 'cd backend && venv\\Scripts\\activate && python run.py --port 8001',
+      url: 'http://localhost:8001/api/health',
       reuseExistingServer: true,
       timeout: 30000,
     },
