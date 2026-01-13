@@ -162,6 +162,7 @@ run-strike-ladder-tests.sh
 backend/scripts/find_strategy.py
 backend/scripts/delete_test_strategies.py
 tests/e2e/specs/get-token.spec.js
+tests/e2e/debug-*.spec.js
 
 # Test output files
 test-output.txt
@@ -207,3 +208,6 @@ tests/test-*.js
 
 # Temporary OpenAPI files
 *openapi_temp.json
+
+# Claude Code temporary directories
+tmpclaude-*

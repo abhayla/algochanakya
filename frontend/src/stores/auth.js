@@ -41,6 +41,33 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  async function initiateAngelOneLogin() {
+    loading.value = true
+    try {
+      const response = await api.post('/api/auth/angelone/login')
+      if (response.data.success && response.data.token) {
+        // Store token and redirect
+        localStorage.setItem('access_token', response.data.token)
+        isAuthenticated.value = true
+        // Redirect to callback to complete auth flow
+        window.location.href = response.data.redirect_url
+        return { success: true }
+      } else {
+        loading.value = false
+        return {
+          success: false,
+          error: response.data.detail || 'Login failed',
+        }
+      }
+    } catch (error) {
+      loading.value = false
+      return {
+        success: false,
+        error: error.response?.data?.detail || 'Failed to login with Angel One. Make sure SmartAPI credentials are configured in Settings.',
+      }
+    }
+  }
+
   function setToken(token) {
     localStorage.setItem('access_token', token)
     isAuthenticated.value = true
@@ -101,6 +128,7 @@ export const useAuthStore = defineStore('auth', () => {
     loading,
     login,
     initiateZerodhaLogin,
+    initiateAngelOneLogin,
     setToken,
     fetchUser,
     logout,

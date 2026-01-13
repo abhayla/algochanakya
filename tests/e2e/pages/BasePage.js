@@ -16,10 +16,30 @@ export class BasePage {
 
   /**
    * Navigate to the page URL
+   * First ensures localStorage is set (storage state may not apply on direct URL navigation)
    */
   async navigate() {
-    await this.page.goto(this.url);
-    await this.page.waitForLoadState('networkidle');
+    // First go to home to ensure storage state is applied
+    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    await this.page.goto(baseUrl);
+    await this.page.waitForLoadState('domcontentloaded');
+
+    // Debug: Check localStorage
+    const token = await this.page.evaluate(() => localStorage.getItem('access_token'));
+    console.log('[BasePage] Token after home navigation:', token ? 'EXISTS' : 'MISSING');
+
+    // Now navigate to the target URL
+    if (this.url && this.url !== '/') {
+      await this.page.goto(baseUrl + this.url);
+      await this.page.waitForLoadState('networkidle');
+
+      // Debug: Check localStorage after target navigation
+      const tokenAfter = await this.page.evaluate(() => localStorage.getItem('access_token'));
+      console.log('[BasePage] Token after target navigation:', tokenAfter ? 'EXISTS' : 'MISSING');
+      console.log('[BasePage] Current URL:', this.page.url());
+    } else {
+      await this.page.waitForLoadState('networkidle');
+    }
   }
 
   /**

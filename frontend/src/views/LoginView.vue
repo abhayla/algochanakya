@@ -18,7 +18,11 @@ const handleZerodhaLogin = async () => {
 }
 
 const handleAngelOneLogin = async () => {
-  error.value = 'Angel One integration coming soon!'
+  error.value = ''
+  const result = await authStore.initiateAngelOneLogin()
+  if (!result.success) {
+    error.value = result.error
+  }
 }
 
 const scrollToLogin = () => {

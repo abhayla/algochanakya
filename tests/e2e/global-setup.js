@@ -3,10 +3,15 @@
  *
  * This script:
  * 1. Checks if valid auth state exists (reuse if valid)
- * 2. If not, performs login with stored credentials (only TOTP manual)
+ * 2. If not, performs login via AngelOne/SmartAPI with auto-TOTP (no manual entry needed)
  * 3. Saves auth state for all tests to reuse
  *
  * Result: Login happens ONCE, all tests share the same session.
+ *
+ * AngelOne/SmartAPI Authentication:
+ * - Uses stored credentials from database (encrypted)
+ * - Auto-generates TOTP code using pyotp
+ * - No manual TOTP entry required
  */
 
 import { chromium } from '@playwright/test';
@@ -18,18 +23,9 @@ const API_BASE = process.env.API_BASE || 'http://localhost:8000';
 const AUTH_STATE_PATH = './tests/config/.auth-state.json';
 const TOKEN_FILE = './tests/config/.auth-token';
 
-// Load credentials
-let credentials = null;
-try {
-  const module = await import('../config/credentials.js');
-  credentials = module.credentials;
-} catch (e) {
-  console.log('No credentials.js found - will need manual login');
-}
-
 /**
  * Check if existing auth state is still valid
- * Validates both JWT token AND Kite broker access token
+ * Validates JWT token via /api/auth/me endpoint
  */
 async function isAuthStateValid() {
   try {
@@ -51,7 +47,7 @@ async function isAuthStateValid() {
       return false;
     }
 
-    // Step 1: Validate JWT token with API
+    // Validate JWT token with API
     const response = await fetch(`${API_BASE}/api/auth/me`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
@@ -63,23 +59,18 @@ async function isAuthStateValid() {
 
     console.log('JWT token is valid');
 
-    // Step 2: Validate Kite broker access token
-    // Kite tokens expire daily around 6 AM IST, so we need to check this
-    const brokerResponse = await fetch(`${API_BASE}/api/auth/broker/validate`, {
+    // Validate SmartAPI session is active
+    const smartapiResponse = await fetch(`${API_BASE}/api/smartapi/credentials`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
 
-    if (!brokerResponse.ok) {
-      const errorData = await brokerResponse.json().catch(() => ({}));
-      console.log('Kite broker token is expired or invalid:', errorData.detail || 'Unknown error');
-      console.log('Fresh login required to get new Kite access token');
-      return false;
-    }
-
-    const brokerData = await brokerResponse.json();
-    if (!brokerData.is_valid) {
-      console.log('Kite broker token validation failed:', brokerData.message || 'Token invalid');
-      return false;
+    if (smartapiResponse.ok) {
+      const smartapiData = await smartapiResponse.json();
+      if (smartapiData.has_credentials && smartapiData.is_active) {
+        console.log('SmartAPI session is active');
+      } else {
+        console.log('SmartAPI session needs re-authentication (will auto-refresh)');
+      }
     }
 
     console.log('Existing auth state is valid - reusing');
@@ -91,11 +82,13 @@ async function isAuthStateValid() {
 }
 
 /**
- * Perform login and save auth state
+ * Perform AngelOne/SmartAPI login
+ * Uses stored credentials with auto-TOTP (no manual entry needed)
  */
-async function performLogin() {
+async function performAngelOneLogin() {
   console.log('\n========================================');
-  console.log('  PERFORMING LOGIN (one-time setup)');
+  console.log('  PERFORMING ANGELONE/SMARTAPI LOGIN');
+  console.log('  (auto-TOTP - no manual entry needed)');
   console.log('========================================\n');
 
   const browser = await chromium.launch({ headless: false });
@@ -103,90 +96,53 @@ async function performLogin() {
   const page = await context.newPage();
 
   try {
-    // Navigate to login
+    // Navigate to login page
     await page.goto(FRONTEND_URL + '/login');
     await page.waitForLoadState('networkidle');
     console.log('Login page loaded');
 
-    // Pre-flight check: verify API is working (use relative URL since Vite proxies)
-    const apiCheck = await page.evaluate(async () => {
-      try {
-        const resp = await fetch('/api/auth/zerodha/login');
-        return await resp.json();
-      } catch (e) {
-        return { error: e.message };
+    // Listen for console messages
+    page.on('console', msg => {
+      if (msg.type() === 'error') {
+        console.log('Browser console error:', msg.text());
       }
     });
-    console.log('API pre-check:', JSON.stringify(apiCheck));
-
-    if (!apiCheck.login_url) {
-      console.log('API check failed, but continuing with button click...');
-    }
-
-    // Click Zerodha login
-    console.log('Clicking Zerodha login button...');
-
-    // Listen for console messages
-    page.on('console', msg => console.log('Browser console:', msg.type(), msg.text()));
     page.on('pageerror', err => console.log('Page error:', err.message));
 
-    await page.click('[data-testid="login-zerodha-button"]');
+    // Click AngelOne login button (uses SmartAPI with auto-TOTP)
+    console.log('Clicking AngelOne login button...');
+    await page.click('[data-testid="login-angelone-button"]');
 
-    // Wait a bit to see if there are any errors
-    await page.waitForTimeout(2000);
-    console.log('Current URL after click:', page.url());
+    // Wait for login to complete (auto-TOTP, should be fast)
+    console.log('Waiting for AngelOne authentication (auto-TOTP)...');
 
-    // Wait for Kite login page (increased timeout)
-    await page.waitForURL('**/kite.zerodha.com/**', { timeout: 60000 });
-    console.log('Reached Kite login page');
-
-    if (credentials?.kite?.userId && credentials?.kite?.password) {
-      // Auto-fill credentials
-      const userIdInput = page.locator('input[type="text"]#userid, input[name="user_id"], input[placeholder*="User"]').first();
-      await userIdInput.waitFor({ state: 'visible', timeout: 10000 });
-      await userIdInput.fill(credentials.kite.userId);
-      console.log(`Auto-filled User ID: ${credentials.kite.userId}`);
-
-      const passwordInput = page.locator('input[type="password"]').first();
-      await passwordInput.waitFor({ state: 'visible', timeout: 5000 });
-      await passwordInput.fill(credentials.kite.password);
-      console.log('Auto-filled password');
-
-      // Click login
-      const loginButton = page.locator('button[type="submit"], button:has-text("Login")').first();
-      await loginButton.click();
-      console.log('Clicked login button');
-
-      // Wait for TOTP page
-      console.log('\n========================================');
-      console.log('  ENTER TOTP NOW (60 seconds)');
-      console.log('========================================\n');
-    } else {
-      console.log('\n========================================');
-      console.log('  COMPLETE LOGIN MANUALLY');
-      console.log('  (credentials not configured)');
-      console.log('========================================\n');
-    }
-
-    // Wait for callback (after TOTP)
-    // Listen for response errors
-    page.on('response', response => {
-      if (response.status() >= 400) {
-        console.log(`Response error: ${response.status()} ${response.url()}`);
-      }
-    });
-    page.on('requestfailed', request => {
-      console.log(`Request failed: ${request.url()} - ${request.failure()?.errorText}`);
-    });
-
+    // Wait for either redirect to callback or error message
     try {
-      // Increased timeout to 180 seconds for TOTP entry
-      await page.waitForURL('**/callback**', { timeout: 180000 });
-      console.log('Login successful, processing callback...');
+      await Promise.race([
+        page.waitForURL('**/callback**', { timeout: 30000 }),
+        page.waitForURL('**/dashboard**', { timeout: 30000 }),
+        page.waitForSelector('[data-testid="login-error-message"]', { timeout: 30000 })
+      ]);
     } catch (e) {
-      console.log('Current URL when failed:', page.url());
+      console.log('Timeout waiting for login response');
+      const errorElement = await page.$('[data-testid="login-error-message"]');
+      if (errorElement) {
+        const errorText = await errorElement.textContent();
+        console.log('Login error:', errorText);
+        throw new Error(`Login failed: ${errorText}`);
+      }
       throw e;
     }
+
+    // Check if we got an error
+    const errorElement = await page.$('[data-testid="login-error-message"]');
+    if (errorElement) {
+      const errorText = await errorElement.textContent();
+      console.log('Login error:', errorText);
+      throw new Error(`Login failed: ${errorText}`);
+    }
+
+    console.log('Login successful, processing callback...');
 
     // Wait for redirect to frontend
     await page.waitForURL(`${FRONTEND_URL}/**`, { timeout: 15000 });
@@ -215,6 +171,7 @@ async function performLogin() {
 
     console.log('\n========================================');
     console.log('  LOGIN COMPLETE - Ready for tests');
+    console.log('  Using AngelOne/SmartAPI for market data');
     console.log('========================================\n');
 
   } finally {
@@ -232,8 +189,8 @@ async function globalSetup() {
   const isValid = await isAuthStateValid();
 
   if (!isValid) {
-    // Need fresh login
-    await performLogin();
+    // Need fresh login via AngelOne/SmartAPI
+    await performAngelOneLogin();
   }
 
   console.log('\n--- Global Setup Complete ---\n');

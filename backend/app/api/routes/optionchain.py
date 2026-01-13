@@ -2,18 +2,23 @@
 Option Chain API Routes
 
 Endpoints for full option chain with OI, IV, Greeks, and live prices.
+Uses SmartAPI for market data (default) or Kite as fallback.
 """
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
 from typing import Optional
 from datetime import datetime, date
+from decimal import Decimal
 import math
+import logging
 from kiteconnect.exceptions import TokenException
 
 from app.database import get_db
 from app.models import User, BrokerConnection, Instrument
 from app.services.kite_orders import KiteOrderService
+from app.services.smartapi_market_data import SmartAPIMarketData, SmartAPIMarketDataError
+from app.services.smartapi_instruments import get_smartapi_instruments
 from app.services.strike_finder_service import StrikeFinderService
 from app.utils.dependencies import get_current_user, get_current_broker_connection
 from app.schemas.autopilot import (
@@ -22,6 +27,9 @@ from app.schemas.autopilot import (
     StrikeFindResponse
 )
 from app.constants import LOT_SIZES, INDEX_TOKENS, INDEX_SYMBOLS
+from app.config import settings
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -198,13 +206,30 @@ async def get_option_chain(
                     detail="Invalid date format. Use YYYY-MM-DD or DD-MMM-YYYY"
                 )
 
-        # Initialize Kite service
-        kite_service = KiteOrderService(broker.access_token)
+        # Determine which market data service to use based on broker type
+        use_smartapi = broker.broker == "angelone"
 
-        # Get spot price
-        spot_symbol = INDEX_SYMBOLS.get(underlying)
-        spot_quote = await kite_service.get_quote([spot_symbol])
-        spot_price = spot_quote.get(spot_symbol, {}).get("last_price", 0)
+        if use_smartapi:
+            # Use SmartAPI for market data
+            logger.info(f"[OptionChain] Using SmartAPI for market data")
+            smartapi_service = SmartAPIMarketData(
+                api_key=settings.ANGEL_API_KEY,
+                jwt_token=broker.access_token
+            )
+
+            # Get spot price using SmartAPI
+            spot_quote = await smartapi_service.get_index_quote(underlying)
+            if spot_quote:
+                spot_price = float(spot_quote.get("ltp", 0))
+            else:
+                spot_price = 0
+        else:
+            # Use Kite for market data (legacy/fallback)
+            logger.info(f"[OptionChain] Using Kite for market data")
+            kite_service = KiteOrderService(broker.access_token)
+            spot_symbol = INDEX_SYMBOLS.get(underlying)
+            spot_quote = await kite_service.get_quote([spot_symbol])
+            spot_price = spot_quote.get(spot_symbol, {}).get("last_price", 0)
 
         if not spot_price:
             raise HTTPException(
@@ -257,11 +282,57 @@ async def get_option_chain(
         all_quotes = {}
         instrument_list = [f"NFO:{inst.tradingsymbol}" for inst in instruments]
 
-        for i in range(0, len(instrument_list), 500):
-            batch = instrument_list[i:i+500]
-            if batch:
-                quotes = await kite_service.get_quote(batch)
-                all_quotes.update(quotes)
+        if use_smartapi:
+            # Use SmartAPI for quotes
+            # SmartAPI uses different tokens than Kite, need to lookup by tradingsymbol
+            smartapi_instruments = get_smartapi_instruments()
+            nfo_tokens = []
+            token_to_symbol = {}  # Map SmartAPI token -> NFO:symbol
+
+            for inst in instruments:
+                # Look up SmartAPI token from tradingsymbol
+                smartapi_token = await smartapi_instruments.lookup_token(inst.tradingsymbol, "NFO")
+                if smartapi_token:
+                    nfo_tokens.append(smartapi_token)
+                    token_to_symbol[smartapi_token] = f"NFO:{inst.tradingsymbol}"
+                else:
+                    logger.warning(f"[OptionChain] No SmartAPI token found for {inst.tradingsymbol}")
+
+            logger.info(f"[OptionChain] Fetching quotes for {len(nfo_tokens)} instruments via SmartAPI")
+
+            # Fetch in batches of 50 (SmartAPI limit is lower than Kite's 500)
+            for i in range(0, len(nfo_tokens), 50):
+                batch = nfo_tokens[i:i+50]
+                if batch:
+                    try:
+                        quotes = await smartapi_service.get_quote("NFO", batch, mode="FULL")
+                        # Map back to NFO:symbol format
+                        for token, quote in quotes.items():
+                            symbol_key = token_to_symbol.get(token)
+                            if symbol_key:
+                                # Convert SmartAPI quote to Kite-like format
+                                all_quotes[symbol_key] = {
+                                    "last_price": float(quote.get("ltp", 0)),
+                                    "oi": quote.get("oi", 0),
+                                    "volume": quote.get("volume", 0),
+                                    "ohlc": {
+                                        "open": float(quote.get("open", 0)),
+                                        "high": float(quote.get("high", 0)),
+                                        "low": float(quote.get("low", 0)),
+                                        "close": float(quote.get("close", 0))
+                                    },
+                                    "depth": quote.get("depth", {"buy": [], "sell": []})
+                                }
+                    except SmartAPIMarketDataError as e:
+                        logger.warning(f"[OptionChain] SmartAPI quote batch failed: {e}")
+                        continue
+        else:
+            # Use Kite for quotes
+            for i in range(0, len(instrument_list), 500):
+                batch = instrument_list[i:i+500]
+                if batch:
+                    quotes = await kite_service.get_quote(batch)
+                    all_quotes.update(quotes)
 
         # Calculate days to expiry
         today = date.today()
@@ -399,6 +470,18 @@ async def get_option_chain(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Broker session expired. Please login again. ({str(e)})"
+        )
+    except SmartAPIMarketDataError as e:
+        # SmartAPI error - could be token issue or API error
+        error_msg = str(e).lower()
+        if "token" in error_msg or "auth" in error_msg or "session" in error_msg:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"SmartAPI session expired. Please login again. ({str(e)})"
+            )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"SmartAPI error: {str(e)}"
         )
     except Exception as e:
         raise HTTPException(
