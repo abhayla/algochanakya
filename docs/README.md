@@ -149,7 +149,7 @@ Each feature has its own folder with README.md, REQUIREMENTS.md, and CHANGELOG.m
 
 ## Testing
 
-- **[Testing Guide](testing/README.md)** - ~310 tests (240 E2E + 70 backend pytest)
+- **[Testing Guide](testing/README.md)** - ~184 test files (121 E2E + 63 backend pytest)
 - **[Conventions](testing/conventions.md)** - data-testid naming conventions
 
 ## Decisions

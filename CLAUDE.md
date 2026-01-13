@@ -70,7 +70,7 @@ cd backend && pytest tests/ -v
 
 ## Project Overview
 
-AlgoChanakya is an options trading platform (similar to Sensibull) with FastAPI backend and Vue.js 3 frontend, integrating with Zerodha Kite Connect for broker operations.
+AlgoChanakya is an options trading platform (similar to Sensibull) with FastAPI backend and Vue.js 3 frontend. Uses **AngelOne SmartAPI** as the default for all market data (live prices, historical OHLC) with auto-TOTP authentication. Zerodha Kite Connect is used for order execution only.
 
 **Tech Stack:** FastAPI + async SQLAlchemy + PostgreSQL + Redis | Vue 3 + Vite + Pinia + Tailwind CSS 4 | Playwright (100+ E2E spec files) + Vitest + pytest
 
@@ -106,8 +106,8 @@ npm run test:coverage # Unit tests with coverage
 ### E2E Tests (from project root)
 
 ```bash
-npm test                           # All tests (login once with TOTP)
-npm run test:specs:{screen}        # By screen: login, dashboard, positions, watchlist, optionchain, strategy, strategylibrary, autopilot, navigation, audit
+npm test                           # All tests (auto-login via SmartAPI)
+npm run test:specs:{screen}        # By screen: login, dashboard, positions, watchlist, optionchain, strategy, strategylibrary, autopilot, navigation, audit, ofo
 npm run test:happy                 # All happy path tests
 npm run test:edge                  # All edge case tests
 npm run test:headed                # With visible browser
@@ -132,13 +132,13 @@ npm run generate:test              # Generate new test from template
 ## Architecture Overview
 
 **Key Modules:**
-- **Authentication** - Zerodha OAuth → JWT in localStorage + Redis. Use `get_current_user` / `get_current_broker_connection` dependencies.
+- **Authentication** - SmartAPI with auto-TOTP (default) or Zerodha OAuth. JWT stored in localStorage + Redis. Use `get_current_user` / `get_current_broker_connection` dependencies. SmartAPI credentials stored encrypted in `smartapi_credentials` table.
 - **WebSocket Live Prices** - `ws://localhost:8000/ws/ticks?token=<jwt>`. KiteTickerService is singleton. Index tokens: NIFTY=256265, BANKNIFTY=260105, FINNIFTY=257801, SENSEX=265
 - **Option Chain** - IV via Newton-Raphson, Greeks via Black-Scholes. Max Pain, PCR calculated.
 - **Strategy Builder** - P/L modes: "At Expiry" (intrinsic) and "Current" (Black-Scholes via scipy)
 - **AutoPilot** - Automated execution with conditions, adjustments, kill switch. 16 database tables. See [docs/autopilot/](docs/autopilot/)
 - **AI Module** - Market regime (6 types), risk states (GREEN/YELLOW/RED), trust ladder (Sandbox→Supervised→Autonomous). Paper trading graduation: 15 days + 25 trades + 55% win rate. Key tables: `ai_user_config`, `ai_decisions_log`, `ai_model_registry`, `ai_learning_reports`. See [docs/ai/](docs/ai/)
-- **SmartAPI Integration** (In Progress) - AngelOne SmartAPI for market data (live WebSocket + historical OHLC). Kite remains for orders. See `docs/plans/smartapi-integration-plan.md`. Key files: `backend/app/services/smartapi_*.py`, `frontend/src/components/settings/SmartAPISettings.vue`. Credentials stored encrypted in `smartapi_credentials` table.
+- **SmartAPI Integration** (Default) - AngelOne SmartAPI is the **default market data source** for live WebSocket prices and historical OHLC. Kite remains for order execution. Uses auto-TOTP (no manual TOTP entry). Key files: `backend/app/services/smartapi_*.py`, `frontend/src/components/settings/SmartAPISettings.vue`. See `docs/plans/smartapi-integration-plan.md`.
 
 **Database:** Async PostgreSQL (asyncpg) + Redis for sessions. Run `alembic upgrade head` after git pull.
 
@@ -258,9 +258,9 @@ Dashboard `/dashboard`, Watchlist `/watchlist`, Positions `/positions`, Option C
 
 ## Testing
 
-~360 tests total (290+ E2E + 70 backend pytest). See [docs/testing/README.md](docs/testing/README.md) for complete documentation.
+~184 test files (121 E2E spec files + 63 backend pytest files). See [docs/testing/README.md](docs/testing/README.md) for complete documentation.
 
-**Config:** 180s timeout, 1 worker (sequential), auth state reused via `./tests/config/.auth-state.json`. Auth token stored in `./tests/config/.auth-token`. Projects: `setup` (login), `chromium` (main), `isolated` (fresh context).
+**Config:** 180s timeout, 1 worker (sequential), auth state reused via `./tests/config/.auth-state.json`. Auth token stored in `./tests/config/.auth-token`. Projects: `setup` (SmartAPI auto-login), `chromium` (main), `isolated` (fresh context). **SmartAPI auto-TOTP** - no manual TOTP entry required.
 
 ### E2E Test Rules (CRITICAL)
 
@@ -294,30 +294,37 @@ Dashboard `/dashboard`, Watchlist `/watchlist`, Positions `/positions`, Option C
 - **Wrong import** - Use `auth.fixture.js`, NOT `@playwright/test`
 - **CSS/text selectors** - Use `data-testid` only
 
-## SmartAPI Testing
+## SmartAPI (Default Market Data Source)
 
-SmartAPI credentials (client_id, PIN, TOTP secret) are stored encrypted in the `smartapi_credentials` table. To generate a TOTP for testing:
+SmartAPI is the **default market data source** for all live prices and historical OHLC. Uses **auto-TOTP** - no manual TOTP entry required.
 
-```bash
-# From backend/ directory
-cd backend
-venv\Scripts\activate
-python generate_totp.py
-```
+**Credentials:** Stored encrypted in `smartapi_credentials` table (client_id, encrypted PIN, encrypted TOTP secret).
 
-This decrypts the stored TOTP secret and generates the current 6-digit code (valid for 30 seconds).
-
-**Key Files:**
-- `backend/generate_totp.py` - Utility script to generate current TOTP
-- `backend/app/models/smartapi_credentials.py` - Credentials model (`encrypted_totp_secret` column)
-- `backend/app/services/smartapi_auth.py` - Auth service with `generate_totp()` method
-- `backend/app/utils/encryption.py` - Fernet encryption for credentials
-
-**How it works:**
+**Authentication Flow:**
 1. User saves credentials via Settings → SmartAPI Settings
 2. PIN and TOTP secret are encrypted with Fernet (using JWT_SECRET-derived key)
-3. On authentication, TOTP secret is decrypted and `pyotp.TOTP(secret).now()` generates the code
+3. On authentication, TOTP secret is decrypted and `pyotp.TOTP(secret).now()` generates the code automatically
 4. Code is used with `SmartConnect.generateSession(client_id, pin, totp_code)`
+
+**E2E Tests:** Use SmartAPI for authentication (no manual TOTP needed). The `global-setup.js` authenticates via `/api/smartapi/authenticate` endpoint.
+
+**Manual TOTP Generation (for debugging):**
+```bash
+cd backend && venv\Scripts\activate && python generate_totp.py
+```
+
+**Key Files:**
+- `backend/app/services/smartapi_auth.py` - Auth service with auto-TOTP
+- `backend/app/services/smartapi_ticker.py` - WebSocket V2 for live prices
+- `backend/app/services/smartapi_historical.py` - Historical OHLC data
+- `backend/app/api/routes/smartapi.py` - Credential management endpoints
+- `frontend/src/components/settings/SmartAPISettings.vue` - Settings UI
+
+**API Endpoints:**
+- `POST /api/smartapi/authenticate` - Authenticate with stored credentials (auto-TOTP)
+- `GET /api/smartapi/credentials` - Check if credentials exist
+- `POST /api/smartapi/credentials` - Store encrypted credentials
+- `POST /api/smartapi/test-connection` - Test connection before saving
 
 ## Debug Commands
 
@@ -351,7 +358,7 @@ pm2 restart algochanakya-backend # Restart backend
 **Common Production Issues:**
 - **API calls fail:** Check `frontend/.env.production` has `VITE_API_BASE_URL=https://algochanakya.com`
 - **OAuth fails:** Verify Kite redirect URL = `https://algochanakya.com/api/auth/zerodha/callback`
-- **"Incorrect api_key or access_token":** Kite access token expired (24h). User must re-login via Zerodha OAuth.
+- **"Incorrect api_key or access_token":** SmartAPI token expired (8h) or Kite access token expired (24h). SmartAPI auto-refreshes via stored credentials; Kite requires re-login via OAuth.
 - **WebSocket won't connect:** Check `VITE_WS_URL` in `.env.production`, ensure wss:// for HTTPS
 
 **Full deployment docs:** `C:\Apps\shared\docs\ALGOCHANAKYA-SETUP.md` on VPS

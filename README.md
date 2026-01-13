@@ -9,7 +9,7 @@ Comprehensive documentation is available in the [docs/](docs/README.md) folder:
 - **[Architecture](docs/architecture/)** - System design, authentication, WebSocket, database
 - **[API Reference](docs/api/)** - Endpoint documentation and OpenAPI spec
 - **[Guides](docs/guides/)** - Setup, database configuration, troubleshooting
-- **[Testing](docs/testing/)** - E2E test architecture (~1400 tests across 102 files)
+- **[Testing](docs/testing/)** - E2E test architecture (~184 test files: 121 E2E + 63 backend)
 
 ## Tech Stack
 
