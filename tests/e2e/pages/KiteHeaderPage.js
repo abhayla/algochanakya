@@ -47,6 +47,28 @@ export class KiteHeaderPage extends BasePage {
     return this.getByTestId('kite-header-logout-button');
   }
 
+  // ============ Index Prices Selectors ============
+
+  get indexPricesContainer() {
+    return this.getByTestId('kite-header-index-prices');
+  }
+
+  get nifty50Item() {
+    return this.getByTestId('kite-header-index-nifty50');
+  }
+
+  get nifty50Value() {
+    return this.getByTestId('kite-header-index-value-nifty50');
+  }
+
+  get niftyBankItem() {
+    return this.getByTestId('kite-header-index-niftybank');
+  }
+
+  get niftyBankValue() {
+    return this.getByTestId('kite-header-index-value-niftybank');
+  }
+
   // ============ Actions ============
 
   async openUserMenu() {
@@ -99,5 +121,43 @@ export class KiteHeaderPage extends BasePage {
    */
   async isUserDropdownVisible() {
     return await this.userDropdown.isVisible();
+  }
+
+  // ============ Index Price Helpers ============
+
+  /**
+   * Get NIFTY 50 price as a number
+   * @returns {Promise<number>} Price value or NaN if not available
+   */
+  async getNifty50Price() {
+    const text = await this.nifty50Value.textContent();
+    return parseFloat(text.replace(/,/g, ''));
+  }
+
+  /**
+   * Get NIFTY BANK price as a number
+   * @returns {Promise<number>} Price value or NaN if not available
+   */
+  async getNiftyBankPrice() {
+    const text = await this.niftyBankValue.textContent();
+    return parseFloat(text.replace(/,/g, ''));
+  }
+
+  /**
+   * Wait for index prices to load (non-zero values)
+   * @param {number} timeout - Max wait time in ms (default 10000)
+   */
+  async waitForIndexPrices(timeout = 10000) {
+    await this.page.waitForFunction(
+      () => {
+        const niftyEl = document.querySelector('[data-testid="kite-header-index-value-nifty50"]');
+        const bankEl = document.querySelector('[data-testid="kite-header-index-value-niftybank"]');
+        if (!niftyEl || !bankEl) return false;
+        const niftyPrice = parseFloat(niftyEl.textContent.replace(/,/g, ''));
+        const bankPrice = parseFloat(bankEl.textContent.replace(/,/g, ''));
+        return niftyPrice > 0 && bankPrice > 0;
+      },
+      { timeout }
+    );
   }
 }
