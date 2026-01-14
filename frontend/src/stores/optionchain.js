@@ -73,7 +73,8 @@ export const useOptionChainStore = defineStore('optionchain', () => {
   const filteredChain = computed(() => {
     if (!chain.value.length) return []
 
-    // Find ATM index
+    // Find ATM row
+    const atmRow = chain.value.find(row => row.is_atm)
     const atmIdx = chain.value.findIndex(row => row.is_atm)
     if (atmIdx === -1) return chain.value
 
@@ -94,7 +95,8 @@ export const useOptionChainStore = defineStore('optionchain', () => {
     if (strikesRange.value >= 50) {
       if (skipFactor > 1) {
         // Filter to show strikes at 100-point boundaries (divisible by gridInterval)
-        return chain.value.filter(row => row.strike % gridInterval === 0)
+        // BUT always include the ATM strike even if it's not aligned
+        return chain.value.filter(row => row.is_atm || row.strike % gridInterval === 0)
       }
       return chain.value
     }
@@ -104,22 +106,20 @@ export const useOptionChainStore = defineStore('optionchain', () => {
 
     if (skipFactor > 1) {
       // Filter strikes that are at 100-point boundaries (divisible by gridInterval)
-      const alignedStrikes = chain.value.filter(row => row.strike % gridInterval === 0)
+      // BUT always include the ATM strike even if it's not aligned
+      const alignedStrikes = chain.value.filter(row => row.is_atm || row.strike % gridInterval === 0)
 
-      // Find nearest aligned strike to ATM
-      const atmStrikeValue = chain.value[atmIdx].strike
-      const alignedAtmIdx = alignedStrikes.findIndex(row =>
-        Math.abs(row.strike - atmStrikeValue) <= gridInterval / 2
-      )
+      // Find ATM index in filtered list
+      const alignedAtmIdx = alignedStrikes.findIndex(row => row.is_atm)
 
       if (alignedAtmIdx === -1) {
-        // Fallback: if no aligned strike found near ATM, use center of aligned strikes
+        // Fallback: if no ATM found, use center of aligned strikes
         const centerIdx = Math.floor(alignedStrikes.length / 2)
         const start = Math.max(0, centerIdx - strikesRange.value)
         const end = Math.min(alignedStrikes.length, centerIdx + strikesRange.value + 1)
         strikes = alignedStrikes.slice(start, end)
       } else {
-        // Get strikesRange strikes on each side of aligned ATM
+        // Get strikesRange strikes on each side of ATM
         const start = Math.max(0, alignedAtmIdx - strikesRange.value)
         const end = Math.min(alignedStrikes.length, alignedAtmIdx + strikesRange.value + 1)
         strikes = alignedStrikes.slice(start, end)

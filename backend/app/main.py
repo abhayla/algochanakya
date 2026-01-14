@@ -55,6 +55,18 @@ async def lifespan(app: FastAPI):
     # Auto-download instruments if needed
     await check_and_download_instruments()
 
+    # Pre-warm SmartAPI instrument cache
+    # Downloads 185k instruments (~20-30s) ONCE on startup
+    # Eliminates cold-start penalty for first API request
+    try:
+        from app.services.smartapi_instruments import get_smartapi_instruments
+        print("[INFO] Pre-warming SmartAPI instrument cache...")
+        smartapi_instruments = get_smartapi_instruments()
+        count = await smartapi_instruments.download_master()
+        print(f"[SUCCESS] SmartAPI instruments cached: {count} instruments")
+    except Exception as e:
+        print(f"[WARNING] SmartAPI pre-warm failed (will retry on first request): {e}")
+
     # Note: Strategy Monitor requires a valid Kite session to start.
     # It will be initialized when a user with valid broker connection
     # activates a strategy. See app/services/strategy_monitor.py for details.

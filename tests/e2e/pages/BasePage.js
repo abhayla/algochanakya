@@ -31,14 +31,16 @@ export class BasePage {
     // Now navigate to the target URL
     if (this.url && this.url !== '/') {
       await this.page.goto(baseUrl + this.url);
-      await this.page.waitForLoadState('networkidle');
+      // Use domcontentloaded instead of networkidle
+      // networkidle doesn't work well with WebSocket connections (never becomes idle)
+      await this.page.waitForLoadState('domcontentloaded');
 
       // Debug: Check localStorage after target navigation
       const tokenAfter = await this.page.evaluate(() => localStorage.getItem('access_token'));
       console.log('[BasePage] Token after target navigation:', tokenAfter ? 'EXISTS' : 'MISSING');
       console.log('[BasePage] Current URL:', this.page.url());
     } else {
-      await this.page.waitForLoadState('networkidle');
+      await this.page.waitForLoadState('domcontentloaded');
     }
   }
 

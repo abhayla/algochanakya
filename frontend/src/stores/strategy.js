@@ -178,19 +178,20 @@ export const useStrategyStore = defineStore('strategy', () => {
   async function addLeg(legData = null) {
     const defaultExpiry = expiries.value[0] || ''
 
-    // Ensure strikes are loaded for the default expiry
+    // Ensure strikes are loaded for the default expiry (required for strike dropdown)
     if (defaultExpiry && !strikes.value[defaultExpiry]) {
       await fetchStrikes(defaultExpiry)
     }
 
-    // Calculate ATM strike if not provided
+    // Ensure spot price is loaded for ATM strike calculation
+    // This is critical - wait for spot price before calculating ATM strike
+    if (currentSpot.value === 0 && !legData?.strike_price) {
+      await fetchSpotPrice()
+    }
+
+    // Calculate ATM strike if spot price is available
     let defaultStrike = null
     if (!legData?.strike_price && defaultExpiry && strikes.value[defaultExpiry]) {
-      // If spot price is not yet loaded, try to fetch it
-      if (currentSpot.value === 0) {
-        await fetchSpotPrice()
-      }
-
       if (currentSpot.value > 0) {
         defaultStrike = findNearestStrike(currentSpot.value, strikes.value[defaultExpiry])
       }
@@ -209,20 +210,24 @@ export const useStrategyStore = defineStore('strategy', () => {
       instrument_token: null,
       tradingsymbol: null,
     }
+
+    // Add leg to the array
+    const legIndex = legs.value.length
     legs.value.push(newLeg)
 
-    // If we set a default strike, fetch instrument token
+    // If we have a strike, fetch instrument token and calculate P/L
     if (defaultStrike && defaultExpiry) {
-      const legIndex = legs.value.length - 1
       const data = await fetchInstrumentToken(defaultExpiry, defaultStrike, newLeg.contract_type)
-      if (data) {
+      if (data && legs.value[legIndex]) {
         legs.value[legIndex].instrument_token = data.instrument_token
         legs.value[legIndex].tradingsymbol = data.tradingsymbol
       }
+      // Auto-calculate P/L after adding leg
+      await calculatePnL()
+    } else {
+      // No strike set (spot price unavailable), calculate P/L anyway (will likely show error)
+      await calculatePnL()
     }
-
-    // Auto-calculate P/L after adding leg
-    calculatePnL()
   }
 
   function updateLeg(index, updates) {
@@ -252,6 +257,9 @@ export const useStrategyStore = defineStore('strategy', () => {
               // Auto-calculate P/L after token update
               calculatePnL()
             })
+        } else {
+          // Leg is incomplete but still recalculate with available legs
+          calculatePnL()
         }
       } else {
         // Auto-calculate P/L for other field changes
@@ -316,7 +324,13 @@ export const useStrategyStore = defineStore('strategy', () => {
     )
 
     if (validLegs.length === 0) {
-      return { success: false, error: 'Legs must have strike price and instrument token' }
+      const missingTokenLegs = legs.value.filter(leg => leg.strike_price && leg.expiry_date && !leg.instrument_token)
+      if (missingTokenLegs.length > 0) {
+        error.value = `Unable to fetch instrument data for ${missingTokenLegs.length} leg(s). Please check your internet connection or try again.`
+      } else {
+        error.value = 'Legs must have strike price, expiry, and instrument token'
+      }
+      return { success: false, error: error.value }
     }
 
     // Fetch LTP from API for legs without WebSocket CMP (as fallback)
@@ -337,7 +351,8 @@ export const useStrategyStore = defineStore('strategy', () => {
     }).filter(leg => leg.effective_entry != null)  // Still need SOME entry value
 
     if (legsWithEntry.length === 0) {
-      return { success: false, error: 'No valid entry prices or CMP available for calculation' }
+      error.value = 'Unable to get market prices for options. Please check if market is open or try again.'
+      return { success: false, error: error.value }
     }
 
     isLoading.value = true
@@ -764,6 +779,9 @@ export const useStrategyStore = defineStore('strategy', () => {
     if (leg.expiry_date && !strikes.value[leg.expiry_date]) {
       fetchStrikes(leg.expiry_date)
     }
+
+    // Auto-calculate P/L after adding leg from OFO
+    calculatePnL()
   }
 
   // Clear legs only (keep strategy settings)

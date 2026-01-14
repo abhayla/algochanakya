@@ -32,7 +32,9 @@ export const useWatchlistStore = defineStore('watchlist', () => {
 
   const indexTicks = computed(() => ({
     nifty50: ticks.value[256265] || { ltp: null, change: null, change_percent: null },
-    niftyBank: ticks.value[260105] || { ltp: null, change: null, change_percent: null }
+    niftyBank: ticks.value[260105] || { ltp: null, change: null, change_percent: null },
+    finnifty: ticks.value[257801] || { ltp: null, change: null, change_percent: null },
+    sensex: ticks.value[265] || { ltp: null, change: null, change_percent: null }
   }))
 
   // Actions

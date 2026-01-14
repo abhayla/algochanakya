@@ -89,14 +89,35 @@ export default class OptionChainPage extends BasePage {
   async navigate() {
     await super.navigate();
     await this.waitForPageLoad();
+    // Wait for initial API response (table, empty state, or error)
+    // This prevents race conditions where tests run before data loads
+    await this.waitForInitialLoad();
   }
 
   async waitForPageLoad() {
     await this.waitForTestId('optionchain-page');
   }
 
+  /**
+   * Wait for initial page load - ensures option chain data has loaded
+   * SmartAPI instruments are pre-warmed in global-setup, so this should be fast
+   */
+  async waitForInitialLoad() {
+    // Wait for option chain table OR empty state to appear
+    // This indicates the API call has completed and Vue has rendered
+    try {
+      await Promise.race([
+        this.page.locator('[data-testid="optionchain-table"] tbody tr').first().waitFor({ state: 'visible', timeout: 15000 }),
+        this.page.locator('[data-testid="optionchain-empty-state"]').waitFor({ state: 'visible', timeout: 15000 })
+      ]);
+    } catch {
+      // If neither appears within timeout, continue anyway
+      // Individual test assertions will catch any issues
+    }
+  }
+
   async waitForChainLoad() {
-    // Wait for table or empty state
+    // Wait for table or empty state - used by tests that need full data
     await Promise.race([
       this.waitForTestId('optionchain-table'),
       this.waitForTestId('optionchain-empty-state')

@@ -150,14 +150,14 @@ const scrollToLogin = () => {
             <!-- Zerodha Login Button -->
             <button
               @click="handleZerodhaLogin"
-              :disabled="authStore.loading"
+              :disabled="authStore.zerodhaLoading"
               class="w-full text-gray-700 text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-3 mb-3"
               style="height: 48px; background-color: #f5f9ff; border: 0.8px solid #bfd7f2; border-radius: 8px; padding: 11px 12px 11px 16px;"
               data-testid="login-zerodha-button"
             >
               <!-- Kite Logo -->
               <img src="../assets/kite-logo.png" alt="Kite" style="height: 24px; width: auto;" class="flex-shrink-0" />
-              <span v-if="!authStore.loading">Login with Zerodha</span>
+              <span v-if="!authStore.zerodhaLoading">Login with Zerodha</span>
               <span v-else class="flex items-center">
                 <svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-gray-500" width="20" height="20" fill="none" viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -183,13 +183,21 @@ const scrollToLogin = () => {
             <!-- Angel One Login Button -->
             <button
               @click="handleAngelOneLogin"
-              class="w-full text-gray-700 text-sm font-medium transition-all flex items-center justify-center space-x-3 mb-3"
+              :disabled="authStore.angelOneLoading"
+              class="w-full text-gray-700 text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-3 mb-3"
               style="height: 44px; background-color: #ffffff; border: 0.8px solid #d8dce3; border-radius: 6px; padding: 11px 15px;"
               data-testid="login-angelone-button"
             >
               <!-- Angel One Logo -->
               <img src="../assets/angelone-logo.png" alt="Angel One" style="height: 24px; width: auto;" class="flex-shrink-0" />
-              <span>Angel One</span>
+              <span v-if="!authStore.angelOneLoading">Angel One</span>
+              <span v-else class="flex items-center">
+                <svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-gray-500" width="20" height="20" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Connecting...
+              </span>
             </button>
             <p class="text-center text-sm text-gray-500 mb-6">
               Don't have an Angel One account?

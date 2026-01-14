@@ -6,6 +6,8 @@ export const useAuthStore = defineStore('auth', () => {
   const user = ref(null)
   const isAuthenticated = ref(false)
   const loading = ref(false)
+  const zerodhaLoading = ref(false)
+  const angelOneLoading = ref(false)
 
   async function login(credentials) {
     loading.value = true
@@ -26,14 +28,14 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function initiateZerodhaLogin() {
-    loading.value = true
+    zerodhaLoading.value = true
     try {
       const response = await api.get('/api/auth/zerodha/login')
       const loginUrl = response.data.login_url
       window.location.href = loginUrl
       return { success: true }
     } catch (error) {
-      loading.value = false
+      zerodhaLoading.value = false
       return {
         success: false,
         error: error.response?.data?.detail || 'Failed to initiate Zerodha login',
@@ -42,7 +44,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function initiateAngelOneLogin() {
-    loading.value = true
+    angelOneLoading.value = true
     try {
       const response = await api.post('/api/auth/angelone/login')
       if (response.data.success && response.data.token) {
@@ -53,14 +55,14 @@ export const useAuthStore = defineStore('auth', () => {
         window.location.href = response.data.redirect_url
         return { success: true }
       } else {
-        loading.value = false
+        angelOneLoading.value = false
         return {
           success: false,
           error: response.data.detail || 'Login failed',
         }
       }
     } catch (error) {
-      loading.value = false
+      angelOneLoading.value = false
       return {
         success: false,
         error: error.response?.data?.detail || 'Failed to login with Angel One. Make sure SmartAPI credentials are configured in Settings.',
@@ -126,6 +128,8 @@ export const useAuthStore = defineStore('auth', () => {
     user,
     isAuthenticated,
     loading,
+    zerodhaLoading,
+    angelOneLoading,
     login,
     initiateZerodhaLogin,
     initiateAngelOneLogin,

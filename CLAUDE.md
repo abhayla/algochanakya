@@ -74,7 +74,9 @@ npm test
 npx playwright test tests/e2e/specs/positions/positions.happy.spec.js
 
 # Run tests by screen
-npm run test:specs:positions    # positions, optionchain, strategy, strategylibrary, autopilot, navigation, audit, login, dashboard, watchlist, ofo
+npm run test:specs:positions    # By screen: positions, optionchain, strategy, strategylibrary, autopilot, navigation, audit, login, dashboard, watchlist, ofo, header
+npm run test:specs:header          # Header component tests (index prices, etc.)
+npm run test:main-features         # Dashboard, OptionChain, OFO, Strategy, StrategyLibrary together
 
 # Database migration (from backend/)
 alembic revision --autogenerate -m "description" && alembic upgrade head
@@ -89,7 +91,7 @@ AlgoChanakya is an options trading platform (similar to Sensibull) with FastAPI 
 
 **Tech Stack:** FastAPI + async SQLAlchemy + PostgreSQL + Redis | Vue 3 + Vite + Pinia + Tailwind CSS 4 | Playwright (100+ E2E spec files) + Vitest + pytest
 
-**Production:** https://algochanakya.com (Windows Server 2022, PM2, Nginx/Cloudflare)
+**Production:** https://algochanakya.com (Windows Server 2022, PM2, Nginx/Cloudflare) - App not production-ready yet
 
 **Documentation:** See [docs/README.md](docs/README.md) for architecture, API reference, and testing guides.
 
@@ -127,6 +129,7 @@ npm run test:happy                 # All happy path tests
 npm run test:edge                  # All edge case tests
 npm run test:headed                # With visible browser
 npm run test:debug                 # Debug mode
+npm run test:ui                    # Interactive UI mode for debugging
 npm run test:audit                 # Accessibility audits
 npm run test:isolated              # Tests needing fresh context (login, OAuth)
 npx playwright test path/to/spec  # Single file
@@ -153,7 +156,7 @@ npm run generate:test              # Generate new test from template
 - **Strategy Builder** - P/L modes: "At Expiry" (intrinsic) and "Current" (Black-Scholes via scipy)
 - **AutoPilot** - Automated execution with conditions, adjustments, kill switch. 16 database tables. See [docs/autopilot/](docs/autopilot/)
 - **AI Module** - Market regime (6 types), risk states (GREEN/YELLOW/RED), trust ladder (Sandbox→Supervised→Autonomous). Paper trading graduation: 15 days + 25 trades + 55% win rate. Key tables: `ai_user_config`, `ai_decisions_log`, `ai_model_registry`, `ai_learning_reports`. See [docs/ai/](docs/ai/)
-- **SmartAPI Integration** (Default) - AngelOne SmartAPI is the **default market data source** for live WebSocket prices and historical OHLC. Kite remains for order execution. Uses auto-TOTP (no manual TOTP entry). Key files: `backend/app/services/smartapi_*.py`, `frontend/src/components/settings/SmartAPISettings.vue`. See `docs/plans/smartapi-integration-plan.md`.
+- **SmartAPI Integration** (Default) - AngelOne SmartAPI is the **default market data source** for live WebSocket prices and historical OHLC. Kite remains for order execution. Uses auto-TOTP (no manual TOTP entry). Credentials stored encrypted in `smartapi_credentials` table. Key files: `backend/app/services/smartapi_auth.py` (auth with auto-TOTP), `smartapi_ticker.py` (WebSocket V2), `smartapi_historical.py` (OHLC), `backend/app/api/routes/smartapi.py` (endpoints), `frontend/src/components/settings/SmartAPISettings.vue` (UI). API: `POST /api/smartapi/authenticate`, `GET/POST /api/smartapi/credentials`, `POST /api/smartapi/test-connection`.
 
 **Database:** Async PostgreSQL (asyncpg) + Redis for sessions. Run `alembic upgrade head` after git pull.
 
@@ -215,7 +218,7 @@ import { getLotSize, getStrikeStep } from '@/constants/trading'
 
 **Backend (`backend/.env`):** `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET`, `KITE_API_KEY`, `KITE_API_SECRET`, `ANTHROPIC_API_KEY` (for AI), `ANGEL_API_KEY` (for SmartAPI market data)
 
-**Frontend (`frontend/.env`):** `VITE_API_BASE_URL=http://localhost:8000`, `VITE_WS_URL=ws://localhost:8000` (optional, defaults to API URL)
+**Frontend (`frontend/.env`):** `VITE_API_BASE_URL=http://localhost:8001` (dev port), `VITE_WS_URL=ws://localhost:8001` (optional, defaults to API URL)
 
 **Production Build:** Create `frontend/.env.production` with `VITE_API_BASE_URL=https://algochanakya.com` before `npm run build` - without this, API calls default to localhost!
 
@@ -273,7 +276,7 @@ Dashboard `/dashboard`, Watchlist `/watchlist`, Positions `/positions`, Option C
 
 ## Testing
 
-~184 test files (121 E2E spec files + 63 backend pytest files). See [docs/testing/README.md](docs/testing/README.md) for complete documentation.
+~190 test files (123 E2E spec files + 67 backend pytest files). See [docs/testing/README.md](docs/testing/README.md) for complete documentation.
 
 **Config:** 180s timeout, 1 worker (sequential), auth state reused via `./tests/config/.auth-state.json`. Auth token stored in `./tests/config/.auth-token`. Projects: `setup` (SmartAPI auto-login), `chromium` (main), `isolated` (fresh context). **SmartAPI auto-TOTP** - no manual TOTP entry required.
 
@@ -309,53 +312,32 @@ Dashboard `/dashboard`, Watchlist `/watchlist`, Positions `/positions`, Option C
 - **Wrong import** - Use `auth.fixture.js`, NOT `@playwright/test`
 - **CSS/text selectors** - Use `data-testid` only
 
-## SmartAPI (Default Market Data Source)
+## CI/CD
 
-SmartAPI is the **default market data source** for all live prices and historical OHLC. Uses **auto-TOTP** - no manual TOTP entry required.
+GitHub Actions runs automatically on push/PR to `main` and `develop`:
 
-**Credentials:** Stored encrypted in `smartapi_credentials` table (client_id, encrypted PIN, encrypted TOTP secret).
+| Workflow | File | Description |
+|----------|------|-------------|
+| **Backend Tests** | `.github/workflows/backend-tests.yml` | pytest with PostgreSQL/Redis services |
+| **E2E Tests** | `.github/workflows/e2e-tests.yml` | Playwright with full stack (30min timeout) |
 
-**Authentication Flow:**
-1. User saves credentials via Settings → SmartAPI Settings
-2. PIN and TOTP secret are encrypted with Fernet (using JWT_SECRET-derived key)
-3. On authentication, TOTP secret is decrypted and `pyotp.TOTP(secret).now()` generates the code automatically
-4. Code is used with `SmartConnect.generateSession(client_id, pin, totp_code)`
-
-**E2E Tests:** Use SmartAPI for authentication (no manual TOTP needed). The `global-setup.js` authenticates via `/api/smartapi/authenticate` endpoint.
-
-**Manual TOTP Generation (for debugging):**
-```bash
-cd backend && venv\Scripts\activate && python generate_totp.py
-```
-
-**Key Files:**
-- `backend/app/services/smartapi_auth.py` - Auth service with auto-TOTP
-- `backend/app/services/smartapi_ticker.py` - WebSocket V2 for live prices
-- `backend/app/services/smartapi_historical.py` - Historical OHLC data
-- `backend/app/api/routes/smartapi.py` - Credential management endpoints
-- `frontend/src/components/settings/SmartAPISettings.vue` - Settings UI
-
-**API Endpoints:**
-- `POST /api/smartapi/authenticate` - Authenticate with stored credentials (auto-TOTP)
-- `GET /api/smartapi/credentials` - Check if credentials exist
-- `POST /api/smartapi/credentials` - Store encrypted credentials
-- `POST /api/smartapi/test-connection` - Test connection before saving
+Allure reports deploy to GitHub Pages on main branch merges.
 
 ## Debug Commands
 
 ```bash
-curl http://localhost:8000/api/health          # Check backend health
+curl http://localhost:8001/api/health          # Check dev backend health (8001)
 npx playwright test path/to/spec --debug       # Debug E2E test
 npx playwright show-trace trace.zip            # View trace
 ```
 
 ```javascript
-// Browser console - test WebSocket (local)
-const ws = new WebSocket('ws://localhost:8000/ws/ticks?token=YOUR_JWT')
+// Browser console - test WebSocket (dev on port 8001)
+const ws = new WebSocket('ws://localhost:8001/ws/ticks?token=YOUR_JWT')
 ws.onmessage = (e) => console.log(JSON.parse(e.data))
 ws.send(JSON.stringify({action: 'subscribe', tokens: [256265], mode: 'quote'}))
 
-// Production (use wss:// for HTTPS)
+// Production (use wss:// for HTTPS, port 8000)
 const ws = new WebSocket('wss://algochanakya.com/ws/ticks?token=YOUR_JWT')
 ```
 

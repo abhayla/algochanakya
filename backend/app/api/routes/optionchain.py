@@ -238,79 +238,92 @@ async def get_option_chain(
             )
 
         # Get instruments for this expiry
-        query = select(Instrument).where(
-            and_(
-                Instrument.name == underlying,
-                Instrument.expiry == expiry_date,
-                Instrument.instrument_type.in_(["CE", "PE"]),
-                Instrument.exchange == "NFO"
-            )
-        ).order_by(Instrument.strike)
-
-        result = await db.execute(query)
-        instruments = result.scalars().all()
-
-        if not instruments:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="No instruments found for this expiry"
-            )
-
-        # Organize by strike
         strikes_data = {}
         instrument_map = {}  # token -> instrument
-
-        for inst in instruments:
-            strike = float(inst.strike)
-            if strike not in strikes_data:
-                strikes_data[strike] = {"strike": strike, "ce": None, "pe": None}
-
-            inst_data = {
-                "instrument_token": inst.instrument_token,
-                "tradingsymbol": inst.tradingsymbol,
-                "lot_size": inst.lot_size
-            }
-
-            if inst.instrument_type == "CE":
-                strikes_data[strike]["ce"] = inst_data
-            else:
-                strikes_data[strike]["pe"] = inst_data
-
-            instrument_map[inst.instrument_token] = inst
-
-        # Get live quotes for all instruments (batch in groups of 500)
         all_quotes = {}
-        instrument_list = [f"NFO:{inst.tradingsymbol}" for inst in instruments]
+        lot_size = LOT_SIZES.get(underlying, 1)
 
         if use_smartapi:
-            # Use SmartAPI for quotes
-            # SmartAPI uses different tokens than Kite, need to lookup by tradingsymbol
+            # Use SmartAPI instruments directly (different format than Kite)
             smartapi_instruments = get_smartapi_instruments()
+
+            # Format expiry for SmartAPI: "2026-01-27" -> "27JAN2026"
+            expiry_str = expiry_date.strftime("%d%b%Y").upper()
+            logger.info(f"[OptionChain] Fetching SmartAPI instruments for {underlying} expiry {expiry_str}")
+
+            # Get options from SmartAPI master
+            smartapi_options = await smartapi_instruments.get_option_chain_tokens(underlying, expiry_str, "NFO")
+
+            if not smartapi_options:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"No instruments found for {underlying} expiry {expiry_str}"
+                )
+
+            logger.info(f"[OptionChain] Found {len(smartapi_options)} SmartAPI instruments")
+
+            # Organize by strike and collect tokens for quote fetch
             nfo_tokens = []
-            token_to_symbol = {}  # Map SmartAPI token -> NFO:symbol
+            token_to_symbol = {}
 
-            for inst in instruments:
-                # Look up SmartAPI token from tradingsymbol
-                smartapi_token = await smartapi_instruments.lookup_token(inst.tradingsymbol, "NFO")
-                if smartapi_token:
-                    nfo_tokens.append(smartapi_token)
-                    token_to_symbol[smartapi_token] = f"NFO:{inst.tradingsymbol}"
+            for opt in smartapi_options:
+                symbol = opt.get('symbol', '')
+                token = opt.get('token')
+                strike_raw = opt.get('strike', 0)
+                inst_type = opt.get('instrumenttype', '')
+
+                # Skip futures
+                if 'FUT' in symbol:
+                    continue
+
+                # SmartAPI strike is in paise (e.g., 2560000 = 25600)
+                # Convert to rupees
+                try:
+                    strike = float(strike_raw) / 100.0
+                except (ValueError, TypeError):
+                    continue
+
+                if strike <= 0:
+                    continue
+
+                # Determine option type from symbol (ends with CE or PE)
+                if symbol.endswith('CE'):
+                    opt_type = 'CE'
+                elif symbol.endswith('PE'):
+                    opt_type = 'PE'
                 else:
-                    logger.warning(f"[OptionChain] No SmartAPI token found for {inst.tradingsymbol}")
+                    continue
 
-            logger.info(f"[OptionChain] Fetching quotes for {len(nfo_tokens)} instruments via SmartAPI")
+                if strike not in strikes_data:
+                    strikes_data[strike] = {"strike": strike, "ce": None, "pe": None}
 
-            # Fetch in batches of 50 (SmartAPI limit is lower than Kite's 500)
+                inst_data = {
+                    "instrument_token": token,
+                    "tradingsymbol": symbol,
+                    "lot_size": int(opt.get('lotsize', lot_size))
+                }
+
+                if opt_type == "CE":
+                    strikes_data[strike]["ce"] = inst_data
+                else:
+                    strikes_data[strike]["pe"] = inst_data
+
+                # Collect token for quote fetch
+                if token:
+                    nfo_tokens.append(token)
+                    token_to_symbol[token] = f"NFO:{symbol}"
+
+            logger.info(f"[OptionChain] Organized {len(strikes_data)} strikes, fetching quotes for {len(nfo_tokens)} instruments")
+
+            # Fetch quotes in batches of 50
             for i in range(0, len(nfo_tokens), 50):
                 batch = nfo_tokens[i:i+50]
                 if batch:
                     try:
                         quotes = await smartapi_service.get_quote("NFO", batch, mode="FULL")
-                        # Map back to NFO:symbol format
                         for token, quote in quotes.items():
                             symbol_key = token_to_symbol.get(token)
                             if symbol_key:
-                                # Convert SmartAPI quote to Kite-like format
                                 all_quotes[symbol_key] = {
                                     "last_price": float(quote.get("ltp", 0)),
                                     "oi": quote.get("oi", 0),
@@ -326,13 +339,59 @@ async def get_option_chain(
                     except SmartAPIMarketDataError as e:
                         logger.warning(f"[OptionChain] SmartAPI quote batch failed: {e}")
                         continue
+
         else:
-            # Use Kite for quotes
+            # Use Kite instruments table (legacy/fallback)
+            query = select(Instrument).where(
+                and_(
+                    Instrument.name == underlying,
+                    Instrument.expiry == expiry_date,
+                    Instrument.instrument_type.in_(["CE", "PE"]),
+                    Instrument.exchange == "NFO"
+                )
+            ).order_by(Instrument.strike)
+
+            result = await db.execute(query)
+            instruments = result.scalars().all()
+
+            if not instruments:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="No instruments found for this expiry"
+                )
+
+            # Organize by strike
+            for inst in instruments:
+                strike = float(inst.strike)
+                if strike not in strikes_data:
+                    strikes_data[strike] = {"strike": strike, "ce": None, "pe": None}
+
+                inst_data = {
+                    "instrument_token": inst.instrument_token,
+                    "tradingsymbol": inst.tradingsymbol,
+                    "lot_size": inst.lot_size
+                }
+
+                if inst.instrument_type == "CE":
+                    strikes_data[strike]["ce"] = inst_data
+                else:
+                    strikes_data[strike]["pe"] = inst_data
+
+                instrument_map[inst.instrument_token] = inst
+
+            # Get quotes from Kite
+            instrument_list = [f"NFO:{inst.tradingsymbol}" for inst in instruments]
             for i in range(0, len(instrument_list), 500):
                 batch = instrument_list[i:i+500]
                 if batch:
                     quotes = await kite_service.get_quote(batch)
                     all_quotes.update(quotes)
+
+        if not strikes_data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No option strikes found for this expiry"
+            )
 
         # Calculate days to expiry
         today = date.today()

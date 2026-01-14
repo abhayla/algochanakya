@@ -34,6 +34,7 @@
     "test:consistency": "playwright test tests/e2e/specs/audit/",
     "test:specs:audit": "playwright test tests/e2e/specs/audit/",
     "test:specs:header": "playwright test tests/e2e/specs/header/",
+    "test:specs:ofo": "playwright test tests/e2e/specs/ofo/",
     "test:isolated": "playwright test --project=isolated",
     "allure:generate": "allure generate allure-results --clean -o allure-report",
     "allure:open": "allure open allure-report",

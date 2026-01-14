@@ -2,8 +2,10 @@ Start both frontend (port 5173) and backend (port 8000), then open the dashboard
 
 update .gitignore, commit and sync. sync notes file also into git
 
-Perform comprehensive testing of AI Autopilot feature. Currently market is open, so use paper trading feature to place order and exist with all possible permutations and combinations. Fix any issues that you find and test. Do not stop until you fully test Ai Autopilot feature. Perform testing as if you are human. Use (using playwright and Claude Chrome) in headed mode as every human does. Testing should be done in browser. You can use multiple browser window to speed up the testing. Perform all feature testing, UI testing. Add this condition to Passing criteria - take screenshot after each testing and verify it to ensure that it matched with the requirement. Check if you have Claude Chrome access or use it?
-If any issue or error found then fix it and retest it. Do this in loop until the issue is fixed and test passes.
+Perform comprehensive testing of AI Autopilot feature. Currently market is open, so use paper trading feature to place order and exist with all possible permutations and combinations. Fix any issues that you find and test. Do not stop until you fully test Ai Autopilot feature. Perform testing as if you are human. Use (using playwright and Claude Chrome) in headed mode as every human does. Testing should be done in browser. You can use multiple browser window to speed up the testing. Perform all feature testing, UI testing. 
+
+Add this condition to Passing criteria - take screenshot after each testing, analyze the screenshot to verify it matches with the expected output. Do not pass the test until this is done. Check if you have Claude Chrome access or use it?
+If any issue or error found then fix it and retest it. Do this in loop until the issue is fixed and test passes. 
 
 
 Do not proceed until you have 100% confidence of what I want. Ask me questions until you reach that confidence. Ask one question at a time. Tell me the number of questions you are going to ask. After each response and before asking next question, check the related codebase and docs. For each question, always give your recommendation. Your recommendation should be based on best practices and standards.
@@ -132,4 +134,7 @@ Find out how much time does it takes for you to perform these calculatios starti
 Card should have a row for each leg of strategy type with Columns - Expiry, CE/PE, Buy/Sell, Strike Price, CMP, Lots, Qty, P/L 
 
 Calculation for these strategies should happen every 15 mins starting 9:30 AM  IST to 3:15 PM IST on days when market is open. 
-If market is closed and/or before next 15 min calculation, all the last calculated strategies should be displayed until new calulation is done. 
+If market is closed and/or before next 15 min calculation, all the last calculated strategies should be displayed until new calulation is done.
+
+
+https://medevel.com/19-os-flutter-projects-samples/

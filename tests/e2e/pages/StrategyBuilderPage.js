@@ -79,6 +79,10 @@ export default class StrategyBuilderPage extends BasePage {
 
   async waitForPageLoad() {
     await this.waitForTestId('strategy-page');
+    // Wait for underlying tabs to be visible (indicates toolbar loaded)
+    await this.underlyingTabs.waitFor({ state: 'visible', timeout: 10000 });
+    // Wait for API calls to complete (expiries and spot price)
+    await this.page.waitForLoadState('networkidle').catch(() => {});
   }
 
   async selectUnderlying(underlying) {
@@ -116,8 +120,9 @@ export default class StrategyBuilderPage extends BasePage {
     await this.addRowButton.click();
   }
 
-  async waitForLegCount(expectedCount, timeout = 10000) {
+  async waitForLegCount(expectedCount, timeout = 20000) {
     // Wait for the leg count to reach the expected value
+    // Increased timeout from 10s to 20s due to async API calls in addLeg()
     await this.page.waitForFunction(
       ({ selector, count }) => {
         const rows = document.querySelectorAll(selector);
@@ -135,7 +140,65 @@ export default class StrategyBuilderPage extends BasePage {
         return btn && !btn.disabled;
       },
       '[data-testid="strategy-add-row-button"]',
-      { timeout: 10000 }
+      { timeout: 15000 }
+    );
+  }
+
+  /**
+   * Wait for spot price to be loaded and displayed
+   * @param {number} timeout - Timeout in milliseconds
+   */
+  async waitForSpotPrice(timeout = 15000) {
+    await this.page.waitForFunction(
+      () => {
+        const spotCard = document.querySelector('[data-testid="strategy-spot-card"] .value');
+        if (!spotCard) return false;
+        const text = spotCard.textContent.trim();
+        // Spot is loaded when it shows a positive number (not '-' or '0')
+        const value = parseFloat(text.replace(/,/g, ''));
+        return value > 0;
+      },
+      { timeout }
+    );
+  }
+
+  /**
+   * Wait for strike to be populated in a leg row
+   * @param {number} rowIndex - Zero-based row index
+   * @param {number} timeout - Timeout in milliseconds
+   */
+  async waitForStrikePopulated(rowIndex = 0, timeout = 20000) {
+    await this.page.waitForFunction(
+      ({ selector, index }) => {
+        const rows = document.querySelectorAll(selector);
+        if (rows.length <= index) return false;
+        const row = rows[index];
+        const strikeSelect = row.querySelectorAll('select')[3]; // 4th select is strike
+        return strikeSelect && strikeSelect.value && strikeSelect.value !== '' && parseFloat(strikeSelect.value) > 0;
+      },
+      { selector: '[data-testid="strategy-table"] tbody tr.leg-row', index: rowIndex },
+      { timeout }
+    );
+  }
+
+  /**
+   * Wait for CMP to be populated in a leg row
+   * @param {number} rowIndex - Zero-based row index
+   * @param {number} timeout - Timeout in milliseconds
+   */
+  async waitForCMPPopulated(rowIndex = 0, timeout = 20000) {
+    await this.page.waitForFunction(
+      ({ selector, index }) => {
+        const rows = document.querySelectorAll(selector);
+        if (rows.length <= index) return false;
+        const row = rows[index];
+        const cmpCell = row.querySelectorAll('td')[8]; // 9th td is CMP
+        if (!cmpCell) return false;
+        const text = cmpCell.textContent.trim();
+        return text && text !== '-' && parseFloat(text.replace(/,/g, '')) > 0;
+      },
+      { selector: '[data-testid="strategy-table"] tbody tr.leg-row', index: rowIndex },
+      { timeout }
     );
   }
 
@@ -222,6 +285,25 @@ export default class StrategyBuilderPage extends BasePage {
 
   async hasSummaryCards() {
     return await this.summaryGrid.isVisible().catch(() => false);
+  }
+
+  /**
+   * Get the count of P/L spot price columns in the table header
+   * These are the columns with class "th-spot" that show P/L at different spot prices
+   * @returns {Promise<number>} Count of P/L columns
+   */
+  async getPnLColumnCount() {
+    const columns = await this.table.locator('th.th-spot').count();
+    return columns;
+  }
+
+  /**
+   * Check if P/L grid is rendered (has spot price columns)
+   * @returns {Promise<boolean>} True if P/L columns exist
+   */
+  async hasPnLGrid() {
+    const count = await this.getPnLColumnCount();
+    return count > 0;
   }
 
   async getLegStrikeValue(rowIndex = 0) {
@@ -492,8 +574,266 @@ export default class StrategyBuilderPage extends BasePage {
   }
 
   async waitForPnLUpdate() {
-    // Wait for loading indicator to appear and disappear
-    // This indicates P/L calculation has completed
+    // Wait for P/L calculation to complete by checking for P/L columns
+    // The P/L grid columns (th.th-spot) appear after calculation
     await this.page.waitForTimeout(500); // Brief delay for calculation to trigger
+
+    // Wait for P/L grid columns to appear (max 10 seconds)
+    try {
+      await this.table.locator('th.th-spot').first().waitFor({
+        state: 'visible',
+        timeout: 10000
+      });
+    } catch (e) {
+      // If columns don't appear, wait additional time and continue
+      // (calculation might have failed, which is a valid test failure)
+      await this.page.waitForTimeout(2000);
+    }
+  }
+
+  // ============ Enhanced Verification Methods ============
+
+  /**
+   * Get CMP value for a specific leg
+   * @param {number} index - Zero-based row index
+   * @returns {number|null} CMP value or null if not available
+   */
+  async getLegCMP(index) {
+    const row = this.getLegRow(index);
+    const cmpText = await row.locator('td').nth(8).textContent().catch(() => '-');
+    if (!cmpText || cmpText.trim() === '-' || cmpText.trim() === '') {
+      return null;
+    }
+    return parseFloat(cmpText.replace(/,/g, ''));
+  }
+
+  /**
+   * Check if error banner is visible on the page
+   * @returns {boolean} True if any error banner is visible
+   */
+  async hasErrorBanner() {
+    // Check for specific error banner patterns used in Strategy Builder
+    // Be more specific to avoid false positives from P/L cells or other elements
+    const errorSelectors = [
+      '[data-testid="strategy-error"]',  // Primary error element
+      '.bg-red-100.border-red',  // Error banner with both classes
+      '.error-banner',
+      // More specific error alert patterns
+      '[class*="error-alert"]',
+      '[class*="alert-danger"]',
+      '[class*="alert"][class*="error"]'
+    ];
+
+    for (const selector of errorSelectors) {
+      const element = this.page.locator(selector);
+      if (await element.isVisible().catch(() => false)) {
+        // Extra check: ensure it's not just a negative number display
+        const text = await element.textContent().catch(() => '');
+        // Error banners typically have actual error messages, not just numbers
+        if (text && text.length > 10 && !/^[-\d,.\s]+$/.test(text.trim())) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Get error banner text if visible
+   * @returns {string|null} Error text or null if no error
+   */
+  async getErrorBannerText() {
+    const errorSelectors = [
+      '[data-testid="strategy-error"]',
+      '.bg-red-100.border-red',
+      '.error-banner',
+      '[class*="error-alert"]',
+      '[class*="alert-danger"]'
+    ];
+
+    for (const selector of errorSelectors) {
+      const element = this.page.locator(selector);
+      if (await element.isVisible().catch(() => false)) {
+        const text = await element.textContent().catch(() => '');
+        // Only return text if it looks like an error message (not just a number)
+        if (text && text.length > 10 && !/^[-\d,.\s]+$/.test(text.trim())) {
+          return text;
+        }
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Check if payoff chart has rendered content (not blank)
+   * Uses Chart.js with canvas element
+   * @returns {boolean} True if chart has rendered content
+   */
+  async isPayoffChartRendered() {
+    // The PayoffChart component uses Chart.js which renders to canvas
+    // Check for canvas element in the payoff section
+    const canvasSelectors = [
+      '.payoff-chart canvas',
+      '[data-testid="strategy-payoff-section"] canvas',
+      '.payoff-section canvas'
+    ];
+
+    for (const selector of canvasSelectors) {
+      const canvas = this.page.locator(selector);
+      if (await canvas.isVisible().catch(() => false)) {
+        // Canvas exists and is visible - check if it has actual content
+        // We can check if the canvas has been drawn to by checking its data URL length
+        const hasContent = await this.page.evaluate((sel) => {
+          const canvasEl = document.querySelector(sel);
+          if (!canvasEl) return false;
+          // Check if canvas context has been used (data URL will be longer than blank canvas)
+          try {
+            const dataUrl = canvasEl.toDataURL();
+            // A blank canvas has ~1.5KB data URL, rendered chart has much more
+            return dataUrl.length > 5000;
+          } catch (e) {
+            // If we can't access the canvas, assume it's rendered if visible
+            return true;
+          }
+        }, selector).catch(() => false);
+
+        if (hasContent) {
+          return true;
+        }
+      }
+    }
+
+    // Fallback: Check for SVG-based charts (some chart libraries use SVG)
+    const svgPaths = this.page.locator('.payoff-chart svg path, [data-testid="strategy-payoff-section"] svg path');
+    const pathCount = await svgPaths.count().catch(() => 0);
+    if (pathCount > 0) {
+      return true;
+    }
+
+    // Check for recharts-based charts
+    const chartContainer = this.page.locator('.recharts-wrapper, .payoff-chart .recharts-wrapper');
+    if (await chartContainer.isVisible().catch(() => false)) {
+      const lineElements = chartContainer.locator('.recharts-line, .recharts-area');
+      return await lineElements.count() > 0;
+    }
+
+    return false;
+  }
+
+  /**
+   * Get the count of rendered chart elements (canvas or SVG)
+   * @returns {number} Count of chart elements (1 for canvas, or SVG path count)
+   */
+  async getPayoffChartPathCount() {
+    // Check for canvas first (Chart.js)
+    const canvasSelectors = [
+      '.payoff-chart canvas',
+      '[data-testid="strategy-payoff-section"] canvas'
+    ];
+
+    for (const selector of canvasSelectors) {
+      const canvas = this.page.locator(selector);
+      if (await canvas.isVisible().catch(() => false)) {
+        // Canvas found - return 1 to indicate chart exists
+        return 1;
+      }
+    }
+
+    // Fallback to SVG path counting
+    const svgSelectors = [
+      '[data-testid="strategy-payoff-section"] svg path',
+      '.payoff-chart svg path',
+      '#payoffChart path',
+      '.recharts-line path',
+      '.recharts-area path'
+    ];
+
+    let totalCount = 0;
+    for (const selector of svgSelectors) {
+      totalCount += await this.page.locator(selector).count().catch(() => 0);
+    }
+    return totalCount;
+  }
+
+  /**
+   * Assert no errors are present on the page
+   * Throws if error banner is visible
+   */
+  async assertNoErrors() {
+    const hasError = await this.hasErrorBanner();
+    if (hasError) {
+      const errorText = await this.getErrorBannerText();
+      throw new Error(`Error banner visible: ${errorText}`);
+    }
+  }
+
+  /**
+   * Assert payoff chart is rendered (not blank)
+   * Throws if chart is empty
+   */
+  async assertPayoffChartRendered() {
+    const isRendered = await this.isPayoffChartRendered();
+    if (!isRendered) {
+      throw new Error('Payoff chart is blank - no chart elements rendered');
+    }
+  }
+
+  /**
+   * Assert CMP changed after an action
+   * @param {number} cmpBefore - CMP value before action
+   * @param {number} cmpAfter - CMP value after action
+   * @param {string} actionDescription - Description for error message
+   */
+  assertCMPChanged(cmpBefore, cmpAfter, actionDescription = 'action') {
+    if (cmpBefore === cmpAfter) {
+      throw new Error(`CMP did not change after ${actionDescription}: before=${cmpBefore}, after=${cmpAfter}`);
+    }
+  }
+
+  /**
+   * Build trading symbol from leg details
+   * @param {Object} legDetails - Leg details object
+   * @param {string} underlying - NIFTY, BANKNIFTY, etc.
+   * @returns {string|null} Trading symbol or null if incomplete
+   */
+  buildTradingSymbol(legDetails, underlying = 'NIFTY') {
+    if (!legDetails.expiry || !legDetails.strike || !legDetails.type) {
+      return null;
+    }
+
+    // Parse expiry date (format varies: "27 Jan 20", "2026-01-27", etc.)
+    const expiry = legDetails.expiry.trim();
+    const strike = legDetails.strike.trim();
+    const type = legDetails.type.trim();
+
+    // Try to parse and format expiry
+    // Expected output format: NIFTY27JAN26500CE
+    try {
+      // Common formats: "27 Jan 20" or "2026-01-27"
+      let formattedExpiry;
+      if (expiry.includes('-')) {
+        // ISO format: 2026-01-27
+        const date = new Date(expiry);
+        const day = date.getDate().toString().padStart(2, '0');
+        const month = date.toLocaleString('en-US', { month: 'short' }).toUpperCase();
+        const year = date.getFullYear().toString().slice(-2);
+        formattedExpiry = `${day}${month}${year}`;
+      } else {
+        // Format: "27 Jan 20" or "27 Jan 2026"
+        const parts = expiry.split(' ');
+        if (parts.length >= 3) {
+          const day = parts[0].padStart(2, '0');
+          const month = parts[1].toUpperCase().slice(0, 3);
+          const year = parts[2].slice(-2);
+          formattedExpiry = `${day}${month}${year}`;
+        } else {
+          return null;
+        }
+      }
+
+      return `${underlying}${formattedExpiry}${strike}${type}`;
+    } catch (e) {
+      return null;
+    }
   }
 }

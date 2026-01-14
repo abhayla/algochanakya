@@ -17,6 +17,7 @@ from app.models.smartapi_credentials import SmartAPICredentials
 from app.models.user_preferences import MarketDataSource
 from app.utils.jwt import verify_access_token
 from app.utils.encryption import decrypt
+from app.utils.smartapi_utils import get_valid_smartapi_credentials
 from app.services.kite_ticker import kite_ticker_service
 from app.services.smartapi_ticker import smartapi_ticker_service
 from app.config import settings
@@ -221,7 +222,8 @@ async def websocket_ticks(
                 logger.info("Connecting to SmartAPI WebSocket...")
                 try:
                     async for db in get_db():
-                        credentials, pin, totp_secret = await get_smartapi_credentials(user.id, db)
+                        # Use get_valid_smartapi_credentials which auto-refreshes expired tokens
+                        credentials = await get_valid_smartapi_credentials(user.id, db, auto_refresh=True)
                         break
 
                     if credentials and credentials.jwt_token:

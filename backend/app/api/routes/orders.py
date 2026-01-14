@@ -29,6 +29,7 @@ from app.schemas.strategies import (
 from app.services.kite_orders import KiteOrderService, parse_positions_to_legs
 from app.services.smartapi_market_data import create_market_data_service
 from app.utils.dependencies import get_current_user, get_current_broker_connection
+from app.utils.smartapi_utils import get_valid_smartapi_credentials
 from app.config import settings
 
 logger = logging.getLogger(__name__)
@@ -454,7 +455,8 @@ async def get_ltp(
 
         # Try SmartAPI if preferred
         if market_data_source == MarketDataSource.SMARTAPI:
-            credentials = await get_smartapi_credentials(user.id, db)
+            # Use get_valid_smartapi_credentials which auto-refreshes expired tokens
+            credentials = await get_valid_smartapi_credentials(user.id, db, auto_refresh=True)
             if credentials and credentials.jwt_token:
                 try:
                     logger.info(f"[Orders] Using SmartAPI for LTP: {len(instrument_list)} instruments")
@@ -469,7 +471,14 @@ async def get_ltp(
                     for key, ltp in ltp_data.items():
                         result[key] = {'last_price': float(ltp)}
 
-                    return result
+                    # Check if we got data for all requested instruments
+                    # If SmartAPI returned empty or partial, fall back to Kite for missing ones
+                    missing_instruments = [i for i in instrument_list if i not in result]
+                    if missing_instruments:
+                        logger.warning(f"[Orders] SmartAPI returned empty for {len(missing_instruments)} instruments, falling back to Kite")
+                        # Fall through to Kite for missing instruments
+                    else:
+                        return result
                 except Exception as e:
                     logger.warning(f"[Orders] SmartAPI LTP failed, falling back to Kite: {e}")
                     # Fall through to Kite
@@ -517,7 +526,8 @@ async def get_quote(
 
         # Try SmartAPI if preferred
         if market_data_source == MarketDataSource.SMARTAPI:
-            credentials = await get_smartapi_credentials(user.id, db)
+            # Use get_valid_smartapi_credentials which auto-refreshes expired tokens
+            credentials = await get_valid_smartapi_credentials(user.id, db, auto_refresh=True)
             if credentials and credentials.jwt_token:
                 try:
                     logger.info(f"[Orders] Using SmartAPI for quote: {len(instrument_list)} instruments")
@@ -592,7 +602,8 @@ async def get_ohlc(
 
         # Try SmartAPI if preferred
         if market_data_source == MarketDataSource.SMARTAPI:
-            credentials = await get_smartapi_credentials(user.id, db)
+            # Use get_valid_smartapi_credentials which auto-refreshes expired tokens
+            credentials = await get_valid_smartapi_credentials(user.id, db, auto_refresh=True)
             if credentials and credentials.jwt_token:
                 try:
                     logger.info(f"[Orders] Using SmartAPI for OHLC: {len(instrument_list)} instruments")

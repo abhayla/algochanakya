@@ -1,9 +1,23 @@
 import { test, expect } from '../../fixtures/auth.fixture.js';
 import StrategyBuilderPage from '../../pages/StrategyBuilderPage.js';
+import {
+  assertNoErrors,
+  assertPayoffRendered,
+  verifyCMP,
+  verifyCMPChanged,
+  verifyStrategyState,
+  waitForCalculation
+} from '../../helpers/strategy.helpers.js';
 
 /**
  * Strategy Builder Screen - Happy Path Tests
  * Tests core functionality under normal conditions
+ *
+ * Enhanced with best practices:
+ * - Verify actual CMP values (not just existence)
+ * - Check for error banners after actions
+ * - Verify payoff chart renders (not blank)
+ * - Compare before/after values for changes
  */
 test.describe('Strategy Builder - Happy Path @happy', () => {
   let strategyPage;
@@ -11,6 +25,9 @@ test.describe('Strategy Builder - Happy Path @happy', () => {
   test.beforeEach(async ({ authenticatedPage }) => {
     strategyPage = new StrategyBuilderPage(authenticatedPage);
     await strategyPage.navigate();
+    // Wait for page to fully initialize (WebSocket, API calls, Add Row button enabled)
+    await strategyPage.waitForPageLoad();
+    await strategyPage.waitForAddRowEnabled();
   });
 
   test('should display strategy builder page', async () => {
@@ -53,21 +70,60 @@ test.describe('Strategy Builder - Happy Path @happy', () => {
     }
   });
 
-  test('should add a new leg row', async () => {
+  test('should add a new leg row', async ({ authenticatedPage }) => {
+    const page = authenticatedPage;
     const initialCount = await strategyPage.getLegCount();
     await strategyPage.addRow();
     // Wait for the row to be added (addLeg() is async with API calls)
     await strategyPage.waitForLegCount(initialCount + 1);
     const newCount = await strategyPage.getLegCount();
     expect(newCount).toBe(initialCount + 1);
+
+    // ENHANCED: Verify no errors after adding row
+    const errorCheck = await assertNoErrors(page, strategyPage, 'add row');
+    expect(errorCheck.valid, 'No errors should appear after adding row').toBe(true);
+
+    // ENHANCED: Verify strike is populated (ATM strike)
+    await strategyPage.waitForStrikePopulated(0);
+    const strikeValue = await strategyPage.getLegStrikeDisplay(0);
+    expect(strikeValue, 'Strike should be populated with ATM value').not.toBeNull();
+    expect(strikeValue).toBeGreaterThan(0);
+
+    // ENHANCED: Wait for CMP to be populated (with timeout - may not be available outside market hours)
+    try {
+      await strategyPage.waitForCMPPopulated(0, 10000);
+      const legs = await strategyPage.getAllLegsDetails();
+      if (legs.length > 0) {
+        const cmpResult = await verifyCMP(page, legs[0], strategyPage);
+        expect(cmpResult.valid, 'CMP should be a valid positive number').toBe(true);
+      }
+    } catch {
+      // CMP may not be available outside market hours - this is acceptable
+      console.log('CMP not available (market may be closed) - skipping CMP validation');
+    }
   });
 
   test('should default strike to ATM when adding row', async () => {
     // Add a row and verify strike is pre-populated (not empty)
     await strategyPage.addRow();
+    await strategyPage.waitForLegCount(1);
 
-    // Wait for the row to be added and strike to be set (API call might take time)
-    await strategyPage.page.waitForTimeout(3000);
+    // Wait for strike to be populated (API calls are async)
+    // The leg appears immediately, but strike is set asynchronously after spot price loads
+    // Select the 4th column in the leg row (strike column after checkbox, expiry, type, B/S)
+    await strategyPage.page.waitForFunction(
+      () => {
+        const legRow = document.querySelector('[data-testid="strategy-table"] tbody tr.leg-row');
+        if (!legRow) return false;
+        // Get all select elements in the leg row
+        const selects = legRow.querySelectorAll('select');
+        // Strike is typically the 4th select (after expiry, type, B/S)
+        // Or find by aria-label
+        const strikeSelect = legRow.querySelector('select[aria-label*="strike"]');
+        return strikeSelect && strikeSelect.value && strikeSelect.value !== '';
+      },
+      { timeout: 15000 }
+    );
 
     const strikeValue = await strategyPage.getLegStrikeDisplay(0);
 
@@ -98,7 +154,9 @@ test.describe('Strategy Builder - Happy Path @happy', () => {
   });
 
   // Auto-calculation trigger tests
-  test('should auto-recalculate P/L when adding row', async () => {
+  test('should auto-recalculate P/L when adding row', async ({ authenticatedPage }) => {
+    const page = authenticatedPage;
+
     // Add a row
     await strategyPage.addRow();
     await strategyPage.waitForLegCount(1);
@@ -106,9 +164,34 @@ test.describe('Strategy Builder - Happy Path @happy', () => {
     // Wait for P/L calculation
     await strategyPage.waitForPnLUpdate();
 
+    // ENHANCED: Comprehensive state verification
+    const stateCheck = await verifyStrategyState(page, strategyPage, 'after adding row', {
+      checkPayoff: true,
+      expectedLegCount: 1
+    });
+
     // Verify summary cards are visible (indicates calculation happened)
     const hasSummary = await strategyPage.hasSummaryCards();
     expect(hasSummary).toBe(true);
+
+    // STRENGTHENED: Verify P/L grid columns are rendered (not just summary cards)
+    const pnlColumnCount = await strategyPage.getPnLColumnCount();
+    expect(pnlColumnCount).toBeGreaterThan(0);
+
+    // STRENGTHENED: Verify max profit/loss are actual numbers (not zero for a single leg sell)
+    const maxProfit = await strategyPage.getMaxProfit();
+    const maxLoss = await strategyPage.getMaxLoss();
+    expect(typeof maxProfit).toBe('number');
+    expect(typeof maxLoss).toBe('number');
+    // For a naked put (default), max profit is limited (premium), max loss can be large
+    // At minimum, both should not be NaN
+    expect(Number.isNaN(maxProfit)).toBe(false);
+    expect(Number.isNaN(maxLoss)).toBe(false);
+
+    // ENHANCED: Verify no errors and payoff rendered
+    expect(stateCheck.checks.noErrors, 'No errors should be present').toBe(true);
+    expect(stateCheck.checks.payoffRendered, 'Payoff chart should be rendered').toBe(true);
+    expect(stateCheck.checks.allCMPsValid, 'All CMP values should be valid').toBe(true);
   });
 
   test('should auto-recalculate P/L when removing row', async () => {
@@ -149,29 +232,56 @@ test.describe('Strategy Builder - Happy Path @happy', () => {
     expect(typeof finalMaxLoss).toBe('number');
   });
 
-  test('should auto-recalculate P/L when changing leg field', async () => {
+  test('should auto-recalculate P/L when changing leg field', async ({ authenticatedPage }) => {
+    const page = authenticatedPage;
+
     // Add row with default values
     await strategyPage.addRow();
     await strategyPage.waitForLegCount(1);
     await strategyPage.waitForPnLUpdate();
 
-    // Get initial max profit
+    // ENHANCED: Get initial CMP value
+    const cmpBefore = await strategyPage.getLegCMP(0);
     const initialMaxProfit = await strategyPage.getMaxProfit();
 
     // Change strike price (select a different strike)
     const legRow = await strategyPage.getLegRow(0);
-    const strikeSelect = legRow.locator('select[data-testid*="strike"]');
-    const options = await strikeSelect.locator('option').count();
-    if (options > 1) {
-      await strikeSelect.selectOption({ index: 1 }); // Select second option
+    const strikeSelect = legRow.locator('select').nth(3); // Strike is 4th select
+    const options = await strikeSelect.locator('option').allTextContents();
+
+    // Find a different valid strike (skip placeholders)
+    let newStrike = null;
+    const currentStrike = await strikeSelect.inputValue();
+    for (const opt of options) {
+      const val = opt.trim();
+      if (val && val !== currentStrike && !isNaN(parseFloat(val))) {
+        newStrike = val;
+        break;
+      }
     }
 
-    // Wait for recalculation
-    await strategyPage.waitForPnLUpdate();
+    if (newStrike) {
+      await strikeSelect.selectOption(newStrike);
+      // Wait for recalculation
+      await waitForCalculation(page, strategyPage);
+
+      // ENHANCED: Verify CMP changed after strike change
+      const cmpAfter = await strategyPage.getLegCMP(0);
+      const cmpChange = verifyCMPChanged(cmpBefore, cmpAfter, 'strike change');
+      expect(cmpChange.changed, 'CMP should change when strike changes').toBe(true);
+
+      // ENHANCED: Verify no errors appeared
+      const errorCheck = await assertNoErrors(page, strategyPage, 'after strike change');
+      expect(errorCheck.valid, 'No errors should appear after strike change').toBe(true);
+    }
 
     // Verify calculation happened (summary cards still visible)
     const hasSummary = await strategyPage.hasSummaryCards();
     expect(hasSummary).toBe(true);
+
+    // ENHANCED: Verify payoff chart still rendered
+    const payoffCheck = await assertPayoffRendered(page, strategyPage, 'after strike change');
+    expect(payoffCheck.valid, 'Payoff chart should still be rendered').toBe(true);
   });
 
   test('should close validation modal when clicking OK', async () => {

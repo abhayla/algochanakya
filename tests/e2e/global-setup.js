@@ -181,6 +181,32 @@ async function performAngelOneLogin() {
 }
 
 /**
+ * Pre-warm SmartAPI instrument cache
+ * Downloads 185k instruments BEFORE tests run to avoid cold-start penalty
+ */
+async function prewarmSmartAPIInstruments(token) {
+  console.log('\n--- Pre-warming SmartAPI Instrument Cache ---\n');
+  console.log('This downloads 185k instruments (~20-30s) to avoid slow first API call...');
+
+  try {
+    // Call options expiries endpoint - this triggers SmartAPI instrument download
+    const response = await fetch(`${API_BASE}/api/options/expiries?underlying=NIFTY`, {
+      headers: { 'Authorization': `Bearer ${token}` },
+      timeout: 60000
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      console.log(`SmartAPI instruments pre-warmed. Found ${data.expiries?.length || 0} NIFTY expiries.`);
+    } else {
+      console.log(`Pre-warm response: ${response.status} ${response.statusText}`);
+    }
+  } catch (e) {
+    console.log('SmartAPI pre-warm failed (will retry on first test):', e.message);
+  }
+}
+
+/**
  * Global setup function - called by Playwright
  */
 async function globalSetup() {
@@ -192,6 +218,13 @@ async function globalSetup() {
   if (!isValid) {
     // Need fresh login via AngelOne/SmartAPI
     await performAngelOneLogin();
+  }
+
+  // Pre-warm SmartAPI instrument cache
+  // This ensures first option chain test doesn't hit cold-start penalty
+  const token = fs.existsSync(TOKEN_FILE) ? fs.readFileSync(TOKEN_FILE, 'utf8').trim() : null;
+  if (token) {
+    await prewarmSmartAPIInstruments(token);
   }
 
   console.log('\n--- Global Setup Complete ---\n');

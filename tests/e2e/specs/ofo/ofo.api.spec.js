@@ -2,7 +2,7 @@ import { test, expect, authFixture } from '../../fixtures/auth.fixture.js';
 import fs from 'fs';
 import path from 'path';
 
-const API_BASE = process.env.API_BASE || 'http://localhost:8000';
+const API_BASE = process.env.API_BASE || 'http://localhost:8001';
 const TOKEN_FILE = path.join(process.cwd(), 'tests', 'config', '.auth-token');
 
 /**

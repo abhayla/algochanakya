@@ -1014,16 +1014,25 @@ async function applyStrategyTypeLegs(strategyTypeKey) {
   const templateLegs = getStrategyLegs(strategyTypeKey)
   if (!templateLegs || templateLegs.length === 0) return
 
+  // Ensure expiries are loaded first (required for strike calculation)
+  if (!strategyStore.expiries || strategyStore.expiries.length === 0) {
+    await strategyStore.fetchExpiries()
+  }
+
   // Get the first available expiry
   const expiry = strategyStore.expiries[0] || null
+  if (!expiry) {
+    console.warn('[Strategy] Cannot apply strategy template: no expiries available')
+    return
+  }
 
   // Ensure we have spot price for ATM calculation
-  if (!strategyStore.currentSpot) {
+  if (!strategyStore.currentSpot || strategyStore.currentSpot === 0) {
     await strategyStore.fetchSpotPrice()
   }
 
   // Ensure strikes are loaded for the expiry
-  if (expiry && (!strategyStore.strikes[expiry] || strategyStore.strikes[expiry].length === 0)) {
+  if (!strategyStore.strikes[expiry] || strategyStore.strikes[expiry].length === 0) {
     await strategyStore.fetchStrikes(expiry)
   }
 
@@ -1272,7 +1281,11 @@ onMounted(async () => {
     strategyName.value = strategyStore.currentStrategy?.name || ''
     selectedStrategyId.value = route.params.id
   } else {
-    await strategyStore.fetchExpiries()
+    // Fetch expiries and spot price in parallel for faster initialization
+    await Promise.all([
+      strategyStore.fetchExpiries(),
+      strategyStore.fetchSpotPrice()
+    ])
 
     // Auto-calculate if legs exist (e.g., from Option Chain navigation)
     if (strategyStore.legs.length > 0) {

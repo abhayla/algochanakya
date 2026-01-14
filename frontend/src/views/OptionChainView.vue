@@ -21,7 +21,7 @@
           </div>
 
           <!-- Expiry Select -->
-          <select v-model="store.expiry" @change="handleExpiryChange" class="expiry-select" data-testid="optionchain-expiry-select">
+          <select v-model="store.expiry" @change="handleExpiryChange" class="expiry-select" data-testid="optionchain-expiry-select" aria-label="Select expiry date">
             <option v-for="exp in store.expiries" :key="exp" :value="exp">{{ formatExpiry(exp) }}</option>
           </select>
         </div>
@@ -123,7 +123,7 @@
             </label>
           </div>
 
-          <select v-model="store.strikesRange" class="range-select" data-testid="optionchain-strikes-range">
+          <select v-model="store.strikesRange" class="range-select" data-testid="optionchain-strikes-range" aria-label="Number of strikes to display">
             <option :value="5">5 Strikes</option>
             <option :value="10">10 Strikes</option>
             <option :value="15">15 Strikes</option>
@@ -545,7 +545,7 @@ onUnmounted(() => {
   font-weight: 500;
   background: transparent;
   border: none;
-  color: #6c757d;
+  color: #495057; /* Darker gray for better contrast (4.5:1 on #f0f0f0) */
   cursor: pointer;
   border-radius: 3px;
   transition: all 0.15s ease;
@@ -611,7 +611,7 @@ onUnmounted(() => {
 
 .dte-label {
   font-size: 11px;
-  color: #6c757d;
+  color: #495057; /* Darker gray for better contrast (4.5:1) */
 }
 
 .dte-value {
@@ -625,7 +625,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  color: #6c757d;
+  color: #495057; /* Darker gray for better contrast */
   cursor: pointer;
 }
 
@@ -640,7 +640,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  color: #6c757d;
+  color: #495057; /* Darker gray for better contrast */
   cursor: pointer;
 }
 
@@ -673,7 +673,7 @@ onUnmounted(() => {
   padding: 6px 16px;
   font-size: 12px;
   font-weight: 500;
-  background: #387ed1;
+  background: #2563eb; /* Darker blue for better contrast (4.5:1 with white) */
   color: white;
   border: none;
   border-radius: 3px;
@@ -682,7 +682,7 @@ onUnmounted(() => {
 }
 
 .refresh-btn:hover {
-  background: #2c6cb8;
+  background: #1d4ed8;
 }
 
 .refresh-btn:disabled {
@@ -694,7 +694,7 @@ onUnmounted(() => {
   padding: 6px 16px;
   font-size: 12px;
   font-weight: 500;
-  background: #387ed1;
+  background: #2563eb; /* Darker blue for better contrast (4.5:1 with white) */
   color: white;
   border: none;
   border-radius: 3px;
@@ -706,7 +706,7 @@ onUnmounted(() => {
 }
 
 .find-strike-btn:hover {
-  background: #2c6cb8;
+  background: #1d4ed8;
 }
 
 .find-strike-btn svg {
@@ -743,9 +743,9 @@ onUnmounted(() => {
 }
 
 .text-green { color: #00b386; }
-.text-red { color: #e74c3c; }
+.text-red { color: #dc2626; } /* Darker red for better contrast (4.5:1 on white) */
 .text-purple { color: #9c27b0; }
-.text-muted { color: #adb5bd; }
+.text-muted { color: #6b7280; } /* Darker gray for better contrast */
 
 .summary-right {
   margin-left: auto;
@@ -775,7 +775,7 @@ onUnmounted(() => {
 
 .interval-label {
   font-size: 11px;
-  color: #6c757d;
+  color: #495057; /* Darker gray for better contrast */
   text-transform: uppercase;
   margin-right: 4px;
 }

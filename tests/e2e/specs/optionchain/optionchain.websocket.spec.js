@@ -183,6 +183,7 @@ test.describe('Option Chain - Live Price Updates @websocket', () => {
     const pcrElement = optionChainPage.pcrValue.locator('.value');
     const pcrText = await pcrElement.textContent();
     const pcrValue = parseFloat(pcrText);
+    // PCR should be > 0 when market is open and data is available
     expect(pcrValue).toBeGreaterThan(0);
   });
 
@@ -209,9 +210,10 @@ test.describe('Option Chain - Live Price Updates @websocket', () => {
     const hasTable = await optionChainPage.table.isVisible().catch(() => false);
 
     if (hasTable) {
-      // Look for ATM row (highlighted row)
+      // Look for ATM row (highlighted row) or ATM badge
       const atmRow = optionChainPage.table.locator('.atm-row');
-      const hasAtm = await atmRow.count() > 0;
+      const atmBadge = optionChainPage.table.locator('.atm-badge');
+      const hasAtm = await atmRow.count() > 0 || await atmBadge.count() > 0;
       expect(hasAtm).toBe(true);
     }
   });

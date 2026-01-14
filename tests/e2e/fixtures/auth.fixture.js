@@ -15,7 +15,8 @@ import path from 'path';
 import { StyleAudit } from '../helpers/style-audit.helper.js';
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
-const API_BASE = process.env.API_BASE || 'http://localhost:8000';
+// Dev backend uses port 8001 (production uses 8000 - NEVER use 8000 for dev)
+const API_BASE = process.env.API_BASE || 'http://localhost:8001';
 const TOKEN_FILE = path.join(process.cwd(), 'tests', 'config', '.auth-token');
 
 // Token cache for session reuse
