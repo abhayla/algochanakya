@@ -26,6 +26,11 @@ from .exceptions import (
 )
 from .rate_limiter import RateLimiter, broker_rate_limiters, rate_limited
 from .token_manager import TokenManager, TokenManagerFactory
+from .smartapi_adapter import SmartAPIMarketDataAdapter
+from .factory import (
+    get_market_data_adapter,
+    get_user_market_data_adapter,
+)
 
 __all__ = [
     # Adapters and types
@@ -40,6 +45,11 @@ __all__ = [
     "PaytmMarketDataCredentials",
     "OHLCVCandle",
     "Instrument",
+    # Broker adapters
+    "SmartAPIMarketDataAdapter",
+    # Factory
+    "get_market_data_adapter",
+    "get_user_market_data_adapter",
     # Ticker service
     "TickerService",
     "get_ticker_service",
