@@ -41,7 +41,11 @@ git status && git log --oneline -5
 Before implementing features, refactors, or architectural changes:
 1. **State understanding** in 2-3 sentences
 2. **Research codebase** for existing patterns
-3. **Ask questions** if gaps exist (scope, design, integration)
+3. **Check relevant documentation:**
+   - [Developer Quick Reference](docs/DEVELOPER-QUICK-REFERENCE.md) for task-specific docs
+   - [Implementation Checklist](docs/IMPLEMENTATION-CHECKLIST.md) for ongoing work
+   - [Broker Abstraction](docs/architecture/broker-abstraction.md) for multi-broker design
+4. **Ask questions** if gaps exist (scope, design, integration)
 
 **Skip clarification for:** Doc changes, obvious bug fixes, explicit user instructions.
 
@@ -75,8 +79,11 @@ npx playwright test tests/e2e/specs/positions/positions.happy.spec.js
 
 # Run tests by screen
 npm run test:specs:positions    # By screen: positions, optionchain, strategy, strategylibrary, autopilot, navigation, audit, login, dashboard, watchlist, ofo, header
-npm run test:specs:header          # Header component tests (index prices, etc.)
-npm run test:main-features         # Dashboard, OptionChain, OFO, Strategy, StrategyLibrary together
+npm run test:specs:header       # Header component tests (index prices, etc.)
+npm run test:main-features      # Dashboard, OptionChain, OFO, Strategy, StrategyLibrary together
+npm run test:deploy             # Tests with @deploy tag (strategy deployment)
+npm run test:visual             # Visual regression tests
+npm run test:visual:update      # Update visual snapshots
 
 # Database migration (from backend/)
 alembic revision --autogenerate -m "description" && alembic upgrade head
@@ -84,6 +91,102 @@ alembic revision --autogenerate -m "description" && alembic upgrade head
 # Backend tests
 cd backend && pytest tests/ -v
 ```
+
+## Core Purpose: Multi-Broker Architecture
+
+**Primary Goal:** AlgoChanakya is designed as a **broker-agnostic platform** where adding a new broker requires **zero code changes** - only adapter implementation and factory registration.
+
+### Why Multi-Broker Support?
+
+Indian broker APIs vary significantly:
+- **Pricing:** Zerodha charges ₹500/month for market data; many others offer FREE APIs
+- **Cost Optimization:** Users can mix FREE data providers with their funded broker for orders
+- **Flexibility:** Switch brokers without reinstalling, test multiple providers for reliability/latency
+- **User Choice:** No lock-in to a single broker
+
+**Example FREE Setup:** SmartAPI (FREE data) + Zerodha Personal API (FREE orders) = ₹0/month
+
+### Two Independent Broker Systems
+
+The platform maintains **two separate abstractions** for maximum flexibility:
+
+#### 1. Market Data Brokers
+**Purpose:** Live prices, historical OHLC, WebSocket ticks, instrument data
+
+**Why Separate:** Many brokers offer free market data but charge for trading APIs. Users can use a free provider while executing orders through their funded broker.
+
+**Interface:** `MarketDataBrokerAdapter` (to be implemented)
+
+**Factory:** `get_market_data_adapter(broker_type, credentials)`
+
+#### 2. Order Execution Brokers
+**Purpose:** Placing orders, managing positions, account margins
+
+**Why Separate:** Requires funded broker account. Separating allows users to keep existing broker while using cheaper data sources.
+
+**Interface:** `BrokerAdapter` (implemented in `backend/app/services/brokers/base.py`)
+
+**Factory:** `get_broker_adapter(broker_type, credentials)` (implemented)
+
+### Supported Brokers
+
+| Broker | Market Data | Order Execution | Status |
+|--------|-------------|-----------------|--------|
+| **Angel One** (SmartAPI) | FREE | FREE | In Progress (Default for data) |
+| **Zerodha** (Kite Connect) | ₹500/mo | FREE | Implemented (orders only) |
+| **Upstox** | FREE | FREE | Planned |
+| **Fyers** | FREE | FREE | Planned |
+| **Alice Blue** (ANT API) | FREE | FREE | Planned |
+| **Kotak** (Neo API) | FREE | FREE | Planned |
+| **Dhan** | FREE or ₹499/mo* | FREE | Planned |
+| **Paytm Money** | FREE | FREE | Planned |
+| **Samco** | FREE | FREE | Planned |
+| **Shoonya/Finvasia** | FREE | FREE | Planned (Zero brokerage) |
+| **Pocketful** | FREE | FREE | Planned |
+| **TradeSmart** | FREE | FREE | Planned |
+| **ICICI Direct** (Breeze) | FREE (limited) | FREE | Planned |
+
+**Notes:**
+- **Zerodha:** "Connect" tier (₹500/mo for data+orders) vs "Personal" tier (FREE for orders only)
+- **Dhan:** FREE if 25 F&O trades/month, else ₹499/month + taxes
+- All order execution APIs are FREE (use user's funded broker account)
+
+### Current Implementation Status
+
+**✅ Implemented:**
+- `BrokerAdapter` interface for order execution (`backend/app/services/brokers/base.py`)
+- `KiteAdapter` for Zerodha order execution
+- Unified data models: `UnifiedOrder`, `UnifiedPosition`, `UnifiedQuote`
+- Factory pattern: `get_broker_adapter()` in `backend/app/services/brokers/factory.py`
+- SmartAPI services for market data:
+  - `smartapi_auth.py` - Auto-TOTP authentication
+  - `smartapi_ticker.py` - WebSocket V2 live prices
+  - `smartapi_market_data.py` - REST quotes
+  - `smartapi_historical.py` - OHLCV data
+  - `smartapi_instruments.py` - Instrument lookup
+
+**🚧 To Be Implemented:**
+- `MarketDataBrokerAdapter` interface for unified market data access
+- Wrap SmartAPI services in market data adapter
+- Create `KiteMarketDataAdapter` (for users who want to pay ₹500/mo for Kite data)
+- Create `AngelAdapter` for Angel One order execution
+- Abstract `TickerService` interface for unified WebSocket management
+- Refactor routes to use broker factories instead of hardcoded services
+- User settings UI for broker selection (market data + order execution)
+
+**📚 Documentation:**
+- [Broker Abstraction Architecture](docs/architecture/broker-abstraction.md) - Complete technical design
+- [ADR-002: Multi-Broker Abstraction](docs/decisions/002-broker-abstraction.md) - Decision rationale and alternatives
+
+### Adding a New Broker (Future State)
+
+Once abstraction is complete, adding a broker will require:
+1. Create adapter class implementing `BrokerAdapter` or `MarketDataBrokerAdapter`
+2. Register in factory (`_BROKER_ADAPTERS` dict)
+3. Add credentials table (if needed) + migration
+4. Update frontend settings dropdown
+
+**Zero changes** to routes, services, or business logic required.
 
 ## Project Overview
 
@@ -150,20 +253,29 @@ npm run generate:test              # Generate new test from template
 ## Architecture Overview
 
 **Key Modules:**
+- **Broker Abstraction** - Dual system: Market data brokers (SmartAPI, planned: Kite/Upstox) + Order execution brokers (Kite implemented, planned: Angel/Upstox). Factory pattern with unified data models (`UnifiedOrder`, `UnifiedPosition`, `UnifiedQuote`). See [Multi-Broker Architecture](#core-purpose-multi-broker-architecture).
 - **Authentication** - SmartAPI with auto-TOTP (default) or Zerodha OAuth. JWT stored in localStorage + Redis. Use `get_current_user` / `get_current_broker_connection` dependencies. SmartAPI credentials stored encrypted in `smartapi_credentials` table.
-- **WebSocket Live Prices** - `ws://localhost:8000/ws/ticks?token=<jwt>`. KiteTickerService is singleton. Index tokens: NIFTY=256265, BANKNIFTY=260105, FINNIFTY=257801, SENSEX=265
+- **WebSocket Live Prices** - Dev: `ws://localhost:8001/ws/ticks?token=<jwt>` | Prod: `wss://algochanakya.com/ws/ticks?token=<jwt>`. SmartAPI ticker (default) and KiteTickerService (both singleton). Index tokens: NIFTY=256265, BANKNIFTY=260105, FINNIFTY=257801, SENSEX=265
 - **Option Chain** - IV via Newton-Raphson, Greeks via Black-Scholes. Max Pain, PCR calculated.
 - **Strategy Builder** - P/L modes: "At Expiry" (intrinsic) and "Current" (Black-Scholes via scipy)
 - **AutoPilot** - Automated execution with conditions, adjustments, kill switch. 16 database tables. See [docs/autopilot/](docs/autopilot/)
 - **AI Module** - Market regime (6 types), risk states (GREEN/YELLOW/RED), trust ladder (Sandbox→Supervised→Autonomous). Paper trading graduation: 15 days + 25 trades + 55% win rate. Key tables: `ai_user_config`, `ai_decisions_log`, `ai_model_registry`, `ai_learning_reports`. See [docs/ai/](docs/ai/)
-- **SmartAPI Integration** (Default) - AngelOne SmartAPI is the **default market data source** for live WebSocket prices and historical OHLC. Kite remains for order execution. Uses auto-TOTP (no manual TOTP entry). Credentials stored encrypted in `smartapi_credentials` table. Key files: `backend/app/services/smartapi_auth.py` (auth with auto-TOTP), `smartapi_ticker.py` (WebSocket V2), `smartapi_historical.py` (OHLC), `backend/app/api/routes/smartapi.py` (endpoints), `frontend/src/components/settings/SmartAPISettings.vue` (UI). API: `POST /api/smartapi/authenticate`, `GET/POST /api/smartapi/credentials`, `POST /api/smartapi/test-connection`.
+- **SmartAPI Integration** (Default Market Data) - AngelOne SmartAPI is the **default market data source** for live WebSocket prices and historical OHLC. Kite remains for order execution. Uses auto-TOTP (no manual TOTP entry). Credentials stored encrypted in `smartapi_credentials` table. Key files: `backend/app/services/smartapi_auth.py` (auth with auto-TOTP), `smartapi_ticker.py` (WebSocket V2), `smartapi_historical.py` (OHLC), `backend/app/api/routes/smartapi.py` (endpoints), `frontend/src/components/settings/SmartAPISettings.vue` (UI). API: `POST /api/smartapi/authenticate`, `GET/POST /api/smartapi/credentials`, `POST /api/smartapi/test-connection`.
 
 **Database:** Async PostgreSQL (asyncpg) + Redis for sessions. Run `alembic upgrade head` after git pull.
 
 **Key Services:**
-- `app/services/kite_ticker.py` - Singleton WebSocket for live prices
-- `app/services/pnl_calculator.py` - Black-Scholes P/L calculations
-- `app/services/condition_engine.py` - AutoPilot entry/adjustment evaluation
+- **Broker Adapters:**
+  - `app/services/brokers/base.py` - `BrokerAdapter` interface, unified data models
+  - `app/services/brokers/factory.py` - `get_broker_adapter()` factory
+  - `app/services/brokers/kite_adapter.py` - Zerodha order execution adapter
+- **Market Data Services:**
+  - `app/services/smartapi_ticker.py` - SmartAPI WebSocket V2 (default)
+  - `app/services/kite_ticker.py` - Kite WebSocket (singleton, legacy)
+  - `app/services/smartapi_historical.py` - Historical OHLCV data
+- **Core Services:**
+  - `app/services/pnl_calculator.py` - Black-Scholes P/L calculations
+  - `app/services/condition_engine.py` - AutoPilot entry/adjustment evaluation
 
 **Key AI Services:**
 - `app/services/ai/market_regime.py` - 6 market regime types (TRENDING_BULLISH, TRENDING_BEARISH, RANGEBOUND, VOLATILE, PRE_EVENT, EVENT_DAY)
@@ -185,6 +297,29 @@ npm run generate:test              # Generate new test from template
 - `POST /api/v1/ai/backtest/run` - Run historical backtest
 
 ## Important Patterns
+
+### Broker Abstraction (CRITICAL)
+
+**NEVER directly use broker-specific APIs (KiteConnect, SmartAPI client).** Always use broker adapters and factories:
+
+```python
+# Backend - Order Execution
+from app.services.brokers.factory import get_broker_adapter
+adapter = get_broker_adapter(user.order_broker_type, credentials)
+order = await adapter.place_order(...)  # Returns UnifiedOrder
+
+# Backend - Market Data (once abstraction complete)
+from app.services.brokers.market_data.factory import get_market_data_adapter
+data_adapter = get_market_data_adapter(user.market_data_broker_type, credentials)
+quote = await data_adapter.get_live_quote(symbol)  # Returns UnifiedQuote
+```
+
+**Unified Data Models** - All broker adapters convert to/from these broker-agnostic models:
+- `UnifiedOrder` - Normalized order structure (order_id, tradingsymbol, side, status, etc.)
+- `UnifiedPosition` - Normalized position (tradingsymbol, quantity, pnl, average_price, etc.)
+- `UnifiedQuote` - Normalized quote (last_price, ohlc, volume, bid/ask, etc.)
+
+See `backend/app/services/brokers/base.py` for complete definitions.
 
 ### Trading Constants (CRITICAL)
 
@@ -249,9 +384,16 @@ decrypted = decrypt(encrypted)
 
 ## Documentation
 
+**⭐ PRIMARY DOCS FOR IMPLEMENTATION:**
+1. **[Developer Quick Reference](docs/DEVELOPER-QUICK-REFERENCE.md)** - All docs organized by task (NEW - use this first!)
+2. **[Implementation Checklist](docs/IMPLEMENTATION-CHECKLIST.md)** - Current implementation tasks with docs links
+3. **[Broker Abstraction Architecture](docs/architecture/broker-abstraction.md)** - Primary architecture (multi-broker)
+
 **Feature Registry:** `docs/feature-registry.yaml` maps code files to features. After code changes, use `docs-maintainer` skill to update docs automatically.
 
 **Feature Docs:** `docs/features/{feature}/` with README.md, REQUIREMENTS.md, CHANGELOG.md for each feature.
+
+**Architecture Docs:** `docs/architecture/` - Complete system design (authentication, WebSocket, database, broker abstraction)
 
 ## Claude Code Skills
 
@@ -267,6 +409,8 @@ Use these skills for faster, consistent results:
 | `vue-component-generator` | Create Vue 3 components/Pinia stores | On demand |
 | `autopilot-assistant` | AutoPilot strategy config guidance | On demand |
 | `trading-constants-manager` | Enforce centralized trading constants | On demand |
+| `save-session` | Save context for later: /save-session [name] | On demand |
+| `start-session` | Resume saved session: /start-session [name] | On demand |
 
 ## Key URLs
 
@@ -299,9 +443,12 @@ Dashboard `/dashboard`, Watchlist `/watchlist`, Positions `/positions`, Option C
 ## Common Pitfalls
 
 ### Backend
+- **Direct broker API usage** - NEVER import `KiteConnect` or `SmartAPI` directly. Use broker adapters from `app.services.brokers/`
+- **Hardcoded broker assumptions** - Don't assume Kite or SmartAPI; code should work with any broker via abstraction
 - **Forgot to import model in `alembic/env.py`** - Autogenerate won't detect it
 - **Sync database operations** - All SQLAlchemy must use `async/await`
 - **Hardcoded trading constants** - Use `app.constants.trading` instead
+- **Mixing broker concerns** - Keep market data separate from order execution (dual system)
 
 ### Frontend
 - **Missing `data-testid`** - Required for E2E tests; use `[screen]-[component]-[element]`

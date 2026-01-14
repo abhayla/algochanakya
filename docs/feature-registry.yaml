@@ -147,6 +147,20 @@ auto_detect_patterns:
     feature: ai-configuration
   - pattern: "frontend/src/views/ai/**"
     feature: ai-configuration
+
+  # Broker Abstraction (Multi-broker system)
+  - pattern: "backend/app/services/brokers/base.py"
+    feature: broker-abstraction
+  - pattern: "backend/app/services/brokers/factory.py"
+    feature: broker-abstraction
+  - pattern: "backend/app/services/brokers/kite_adapter.py"
+    feature: broker-abstraction
+  - pattern: "backend/app/services/brokers/**_adapter.py"
+    feature: broker-abstraction
+  - pattern: "backend/app/services/smartapi_*.py"
+    feature: broker-abstraction
+  - pattern: "backend/app/models/smartapi_credentials.py"
+    feature: broker-abstraction
   - pattern: "frontend/src/stores/aiConfig.js"
     feature: ai-configuration
 
@@ -492,6 +506,22 @@ shared_files:
     - "backend/app/utils/**"
     - "frontend/src/utils/**"
 
+  broker-abstraction:
+    - "backend/app/services/brokers/**"
+    - "backend/app/services/smartapi_*.py"
+    - "backend/app/models/smartapi_credentials.py"
+    docs: "docs/architecture/broker-abstraction.md"
+    adr: "docs/decisions/002-broker-abstraction.md"
+
+  documentation:
+    - "docs/DEVELOPER-QUICK-REFERENCE.md"
+    - "docs/IMPLEMENTATION-CHECKLIST.md"
+    - "docs/README.md"
+    - "docs/architecture/**"
+    - "docs/decisions/**"
+    - ".github/PULL_REQUEST_TEMPLATE.md"
+    - "CLAUDE.md"
+
 
 # ============================================================================
 # UNASSIGNED FILES
@@ -505,6 +535,9 @@ unassigned: []
 # METADATA
 # ============================================================================
 
-version: "1.1.0"
-last_updated: "2025-12-24"
+version: "1.2.0"
+last_updated: "2026-01-14"
 maintained_by: "docs-maintainer skill"
+changelog:
+  - "1.2.0 (2026-01-14): Added broker-abstraction and documentation sections"
+  - "1.1.0 (2025-12-24): Initial comprehensive registry"

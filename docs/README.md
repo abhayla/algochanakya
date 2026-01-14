@@ -2,6 +2,19 @@
 
 Welcome to the AlgoChanakya documentation. This index provides quick access to all documentation resources.
 
+## 🚀 For Developers
+
+**New to the project?** Start here:
+
+1. **[Developer Quick Reference](DEVELOPER-QUICK-REFERENCE.md)** ⭐ - All docs organized by development task
+2. **[CLAUDE.md](../CLAUDE.md)** - Complete project guide (commands, patterns, pitfalls)
+3. **[Architecture Overview](architecture/overview.md)** - System design and tech stack
+4. **[Broker Abstraction](architecture/broker-abstraction.md)** - Multi-broker architecture (primary design)
+
+**Common Tasks:**
+- [Adding API Routes](../CLAUDE.md#adding-new-api-routes) | [Adding Database Models](../CLAUDE.md#adding-new-database-models) | [Using Broker Adapters](../CLAUDE.md#broker-abstraction-critical)
+- [E2E Test Rules](../CLAUDE.md#e2e-test-rules-critical) | [Trading Constants](../CLAUDE.md#trading-constants-critical)
+
 ## Production Deployment
 
 | Property | Value |
@@ -113,8 +126,9 @@ docs/
 ## Architecture
 
 - **[Overview](architecture/overview.md)** - Tech stack (Vue 3 + FastAPI + PostgreSQL), project structure
+- **[Broker Abstraction](architecture/broker-abstraction.md)** ⭐ - Multi-broker system (market data + order execution)
 - **[Authentication](architecture/authentication.md)** - Zerodha OAuth flow, JWT sessions, protected routes
-- **[WebSocket](architecture/websocket.md)** - Live price streaming via Kite WebSocket
+- **[WebSocket](architecture/websocket.md)** - Live price streaming via Kite/SmartAPI WebSocket
 - **[Database](architecture/database.md)** - SQLAlchemy models, Alembic migrations
 
 ## Guides
@@ -157,6 +171,8 @@ Each feature has its own folder with README.md, REQUIREMENTS.md, and CHANGELOG.m
 Architecture Decision Records document why key decisions were made:
 
 - **[ADR-001: Tech Stack](decisions/001-tech-stack.md)** - Vue 3, FastAPI, PostgreSQL
+- **[ADR-002: Multi-Broker Abstraction](decisions/002-broker-abstraction.md)** - Dual broker system architecture
+- **[ADR Template](decisions/template.md)** - Template for new ADRs
 
 ## Contributing
 

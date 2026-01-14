@@ -74,7 +74,27 @@ Frontend (Vue.js 3)          Backend (FastAPI)           Database (PostgreSQL)
 
 ## Feature Status
 
-- [ ] Phase 1: Core Strategy Builder
-- [ ] Phase 2: Real-time Monitoring
-- [ ] Phase 3: Adjustments & Semi-Auto
-- [ ] Phase 4: Templates & Analytics
+- [x] **Phase 1: Core Strategy Builder** - 16 DB tables, ConditionEngine with 10+ trigger types, StrategyBuilderView with wizard UI
+- [x] **Phase 2: Real-time Monitoring** - Premium/Theta/Delta charts, Greeks calculator, DTEZoneIndicator, GammaRiskAlert
+- [x] **Phase 3: Adjustments & Semi-Auto** - 13+ adjustment triggers, 8 action types (exit, hedge, roll, scale), Kill switch, Re-entry config
+- [x] **Phase 4: Templates & Analytics** - 8 system templates, Analytics service, Trade journal, Backtesting, Performance metrics
+- [x] **Phase 5: Advanced Features** - 9 sub-phases (5A-5I) including position leg tracking, AI suggestions, staged entry, what-if simulation
+
+**Implementation Summary:**
+- 47+ frontend components in `frontend/src/components/autopilot/`
+- 80+ backend services across `backend/app/services/` and `backend/app/api/`
+- 37+ E2E test spec files in `tests/e2e/specs/autopilot/`
+- See phase completion docs in this directory for detailed implementation notes
+
+## Related Documentation
+
+- [UI/UX Design](ui-ux-design.md) - Detailed screen designs and user flows
+- [Component Design](component-design.md) - Vue.js component specifications
+- [Database Schema](database-schema.md) - All 16 AutoPilot tables
+- [API Contracts](api-contracts.md) - FastAPI endpoint specifications
+- [Broker Abstraction](../architecture/broker-abstraction.md) - Order execution via broker adapters
+- [WebSocket Architecture](../architecture/websocket.md) - Live price monitoring
+
+**See also:**
+- [CLAUDE.md - AutoPilot](../../CLAUDE.md#architecture-overview) for key services reference
+- [Testing Guide](../testing/README.md) - E2E test architecture

@@ -187,4 +187,10 @@ Returns current user info.
 ## Related Documentation
 
 - [Overview](overview.md) - System architecture
+- [Broker Abstraction](broker-abstraction.md) - Multi-broker credential management
 - [Database](database.md) - User and BrokerConnection models
+- [WebSocket](websocket.md) - JWT authentication for WebSocket connections
+
+**See also:**
+- [CLAUDE.md - Authentication](../../CLAUDE.md#authentication-error-handling) for error handling patterns
+- [CLAUDE.md - Encryption](../../CLAUDE.md#encryption-for-credentials) for credential storage

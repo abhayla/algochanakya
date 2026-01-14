@@ -221,4 +221,8 @@ Authorization: Bearer <token>
 ## Related Documentation
 
 - [Overview](overview.md) - System architecture
+- [Broker Abstraction](broker-abstraction.md) - Multi-broker market data design
 - [Authentication](authentication.md) - JWT tokens
+- [Database Schema](database.md) - Instrument and watchlist tables
+
+**See also:** [CLAUDE.md - WebSocket](../../CLAUDE.md#architecture-overview) for production URLs and index tokens

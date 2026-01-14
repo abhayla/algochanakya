@@ -276,4 +276,11 @@ Sessions expire based on `JWT_EXPIRY_HOURS` setting.
 ## Related Documentation
 
 - [Overview](overview.md) - System architecture
+- [Broker Abstraction](broker-abstraction.md) - Broker credentials and symbol mapping tables
+- [Authentication](authentication.md) - User and BrokerConnection models
+- [AutoPilot Database Schema](../autopilot/database-schema.md) - AutoPilot-specific tables
 - [Database Setup](../guides/database-setup.md) - Configuration guide
+
+**See also:**
+- [CLAUDE.md - Adding Models](../../CLAUDE.md#adding-new-database-models) for step-by-step guide
+- [CLAUDE.md - Common Pitfalls](../../CLAUDE.md#common-pitfalls) for alembic/env.py import reminder

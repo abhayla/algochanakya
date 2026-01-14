@@ -117,8 +117,7 @@ We chose the following technology stack:
 
 ## Related Decisions
 
-- [ADR-002](002-database-hosting.md) - VPS database hosting (future)
-- [ADR-003](003-websocket-architecture.md) - WebSocket design (future)
+- [ADR-002](002-broker-abstraction.md) - Multi-Broker Abstraction Architecture
 
 ## References
 

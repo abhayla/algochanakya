@@ -13,10 +13,14 @@ from app.database import Base
 
 class MarketDataSource:
     """Valid market data source values."""
-    SMARTAPI = "smartapi"
-    KITE = "kite"
+    SMARTAPI = "smartapi"  # Angel One SmartAPI - FREE
+    KITE = "kite"          # Zerodha Kite Connect - ₹500/mo
+    UPSTOX = "upstox"      # Upstox - FREE
+    DHAN = "dhan"          # Dhan - FREE (25 F&O trades/mo) or ₹499/mo
+    FYERS = "fyers"        # Fyers - FREE
+    PAYTM = "paytm"        # Paytm Money - FREE
 
-    VALID_SOURCES = [SMARTAPI, KITE]
+    VALID_SOURCES = [SMARTAPI, KITE, UPSTOX, DHAN, FYERS, PAYTM]
 
 
 class UserPreferences(Base):
@@ -51,7 +55,7 @@ class UserPreferences(Base):
             name='check_pnl_grid_interval'
         ),
         CheckConstraint(
-            "market_data_source IN ('smartapi', 'kite')",
+            "market_data_source IN ('smartapi', 'kite', 'upstox', 'dhan', 'fyers', 'paytm')",
             name='check_market_data_source'
         ),
     )

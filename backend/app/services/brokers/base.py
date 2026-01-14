@@ -3,6 +3,12 @@ Base Broker Adapter - Priority 4.2
 
 Defines the abstract interface that all broker adapters must implement.
 Provides unified data models for orders, positions, and quotes.
+
+IMPORTANT: Before implementing a new broker adapter:
+1. Review docs/architecture/broker-abstraction.md - "Adding a New Broker" section
+2. Check docs/IMPLEMENTATION-CHECKLIST.md for current Phase status
+3. See docs/DEVELOPER-QUICK-REFERENCE.md for testing requirements
+4. Never use direct broker APIs in routes - always use this abstraction
 """
 
 from abc import ABC, abstractmethod

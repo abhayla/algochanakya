@@ -3,6 +3,11 @@ Broker Factory - Priority 4.2
 
 Factory for creating broker adapters based on broker type.
 Provides a unified way to get the appropriate adapter for a user's broker.
+
+IMPORTANT: Before modifying this file, review:
+- docs/architecture/broker-abstraction.md - Multi-broker architecture
+- docs/DEVELOPER-QUICK-REFERENCE.md - Development patterns
+- docs/IMPLEMENTATION-CHECKLIST.md - Current implementation tasks
 """
 
 import logging
