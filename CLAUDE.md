@@ -153,26 +153,37 @@ The platform maintains **two separate abstractions** for maximum flexibility:
 
 ### Current Implementation Status
 
-**✅ Implemented:**
-- `BrokerAdapter` interface for order execution (`backend/app/services/brokers/base.py`)
-- `KiteAdapter` for Zerodha order execution
-- Unified data models: `UnifiedOrder`, `UnifiedPosition`, `UnifiedQuote`
-- Factory pattern: `get_broker_adapter()` in `backend/app/services/brokers/factory.py`
-- SmartAPI services for market data:
+**✅ Phase 1 & 2 Complete (Jan 2026):**
+- **Order Execution Abstraction:**
+  - `BrokerAdapter` interface (`backend/app/services/brokers/base.py`)
+  - `KiteAdapter` for Zerodha order execution
+  - Unified data models: `UnifiedOrder`, `UnifiedPosition`, `UnifiedQuote`
+  - Factory: `get_broker_adapter()` in `backend/app/services/brokers/factory.py`
+
+- **Market Data Abstraction (NEW):**
+  - `MarketDataBrokerAdapter` interface (`backend/app/services/brokers/market_data/market_data_base.py`)
+  - `SmartAPIMarketDataAdapter` implementation (`backend/app/services/brokers/market_data/smartapi_adapter.py`)
+  - Factory: `get_market_data_adapter()` in `backend/app/services/brokers/market_data/factory.py`
+  - `TickerServiceBase` interface for unified WebSocket (`backend/app/services/brokers/market_data/ticker_base.py`)
+  - **Infrastructure:**
+    - `TokenManager` - Cross-broker token/symbol mapping (`token_manager.py`)
+    - `RateLimiter` - Per-broker API rate limiting (`rate_limiter.py`)
+    - `SymbolConverter` - Canonical ↔ broker-specific symbols (`symbol_converter.py`)
+  - **Database:** `broker_instrument_tokens` table for token mapping across brokers
+
+- **Legacy SmartAPI Services (to be wrapped by adapter):**
   - `smartapi_auth.py` - Auto-TOTP authentication
   - `smartapi_ticker.py` - WebSocket V2 live prices
   - `smartapi_market_data.py` - REST quotes
   - `smartapi_historical.py` - OHLCV data
   - `smartapi_instruments.py` - Instrument lookup
 
-**🚧 To Be Implemented:**
-- `MarketDataBrokerAdapter` interface for unified market data access
-- Wrap SmartAPI services in market data adapter
+**🚧 Phase 3-5 To Be Implemented:**
+- Refactor routes to use broker factories instead of hardcoded services
 - Create `KiteMarketDataAdapter` (for users who want to pay ₹500/mo for Kite data)
 - Create `AngelAdapter` for Angel One order execution
-- Abstract `TickerService` interface for unified WebSocket management
-- Refactor routes to use broker factories instead of hardcoded services
-- User settings UI for broker selection (market data + order execution)
+- Complete user settings UI for broker selection (market data + order execution)
+- Migrate legacy ticker services to implement `TickerServiceBase` interface
 
 **📚 Documentation:**
 - [Broker Abstraction Architecture](docs/architecture/broker-abstraction.md) - Complete technical design
@@ -265,14 +276,26 @@ npm run generate:test              # Generate new test from template
 **Database:** Async PostgreSQL (asyncpg) + Redis for sessions. Run `alembic upgrade head` after git pull.
 
 **Key Services:**
-- **Broker Adapters:**
+- **Broker Adapters (Order Execution):**
   - `app/services/brokers/base.py` - `BrokerAdapter` interface, unified data models
   - `app/services/brokers/factory.py` - `get_broker_adapter()` factory
   - `app/services/brokers/kite_adapter.py` - Zerodha order execution adapter
-- **Market Data Services:**
+
+- **Market Data Abstraction (NEW - Phase 2 Complete):**
+  - `app/services/brokers/market_data/market_data_base.py` - `MarketDataBrokerAdapter` interface
+  - `app/services/brokers/market_data/ticker_base.py` - `TickerServiceBase` interface
+  - `app/services/brokers/market_data/factory.py` - `get_market_data_adapter()` factory
+  - `app/services/brokers/market_data/smartapi_adapter.py` - SmartAPI implementation
+  - `app/services/brokers/market_data/token_manager.py` - Cross-broker token/symbol mapping
+  - `app/services/brokers/market_data/rate_limiter.py` - Per-broker rate limiting
+  - `app/services/brokers/market_data/symbol_converter.py` - Canonical ↔ broker symbols
+  - `app/services/brokers/market_data/exceptions.py` - Market data errors
+
+- **Legacy Market Data Services (to be replaced by adapters):**
   - `app/services/smartapi_ticker.py` - SmartAPI WebSocket V2 (default)
   - `app/services/kite_ticker.py` - Kite WebSocket (singleton, legacy)
   - `app/services/smartapi_historical.py` - Historical OHLCV data
+
 - **Core Services:**
   - `app/services/pnl_calculator.py` - Black-Scholes P/L calculations
   - `app/services/condition_engine.py` - AutoPilot entry/adjustment evaluation
@@ -308,10 +331,16 @@ from app.services.brokers.factory import get_broker_adapter
 adapter = get_broker_adapter(user.order_broker_type, credentials)
 order = await adapter.place_order(...)  # Returns UnifiedOrder
 
-# Backend - Market Data (once abstraction complete)
+# Backend - Market Data (Phase 2 Complete - Use This!)
 from app.services.brokers.market_data.factory import get_market_data_adapter
 data_adapter = get_market_data_adapter(user.market_data_broker_type, credentials)
 quote = await data_adapter.get_live_quote(symbol)  # Returns UnifiedQuote
+historical = await data_adapter.get_historical_data(symbol, from_date, to_date, interval)
+
+# Backend - Token/Symbol Conversion (NEW)
+from app.services.brokers.market_data.token_manager import token_manager
+broker_token = await token_manager.get_broker_token("NIFTY 26 DEC 24000 CE", "smartapi")
+canonical_symbol = await token_manager.get_canonical_symbol(256265, "smartapi")
 ```
 
 **Unified Data Models** - All broker adapters convert to/from these broker-agnostic models:
@@ -319,7 +348,9 @@ quote = await data_adapter.get_live_quote(symbol)  # Returns UnifiedQuote
 - `UnifiedPosition` - Normalized position (tradingsymbol, quantity, pnl, average_price, etc.)
 - `UnifiedQuote` - Normalized quote (last_price, ohlc, volume, bid/ask, etc.)
 
-See `backend/app/services/brokers/base.py` for complete definitions.
+See `backend/app/services/brokers/base.py` and `backend/app/services/brokers/market_data/market_data_base.py` for complete definitions.
+
+**Important:** All symbol references must use **canonical format** (Kite format) internally. Use `SymbolConverter` to translate broker-specific symbols.
 
 ### Trading Constants (CRITICAL)
 
@@ -342,6 +373,21 @@ import { getLotSize, getStrikeStep } from '@/constants/trading'
 2. Import in `backend/app/models/__init__.py`
 3. Import in `backend/alembic/env.py` (required for autogenerate)
 4. Run: `alembic revision --autogenerate -m "description" && alembic upgrade head`
+
+### Broker Abstraction Database Tables
+
+**`broker_instrument_tokens`** (NEW - Added Jan 2026) - Cross-broker token/symbol mapping:
+- Stores canonical symbol (Kite format) mapped to broker-specific symbols and tokens
+- Enables token/symbol conversion across all supported brokers
+- Indexed on `canonical_symbol`, `broker`, `broker_symbol`, `broker_token`, `expiry`
+- Unique constraint: `(canonical_symbol, broker)`
+- Used by `TokenManager` for efficient lookups
+
+**`user_preferences`** - User broker selection (columns added):
+- `market_data_source` - Which broker for market data (smartapi, kite, upstox, dhan, fyers, paytm)
+- Constraint updated to support 6 brokers (migration: `bc0dd372730d`)
+
+**`smartapi_credentials`** - Encrypted SmartAPI credentials for auto-TOTP authentication
 
 ### Adding New API Routes
 
@@ -366,6 +412,23 @@ from app.utils.encryption import encrypt, decrypt
 encrypted = encrypt("sensitive_data")
 decrypted = decrypt(encrypted)
 ```
+
+### Rate Limiting for Broker APIs (NEW)
+
+Market data adapters automatically handle broker-specific rate limits via `RateLimiter`:
+
+```python
+from app.services.brokers.market_data.rate_limiter import RateLimiter
+
+# Automatically enforced by adapters - no manual intervention needed
+# SmartAPI: 1 request per second
+# Kite: 3 requests per second
+# Upstox/Dhan/Fyers: 10 requests per second
+
+# Rate limiter is singleton per broker, handles concurrent requests automatically
+```
+
+**Important:** Don't bypass the adapter to avoid rate limiting - it will cause API bans!
 
 ### Authentication Error Handling
 
@@ -443,8 +506,11 @@ Dashboard `/dashboard`, Watchlist `/watchlist`, Positions `/positions`, Option C
 ## Common Pitfalls
 
 ### Backend
-- **Direct broker API usage** - NEVER import `KiteConnect` or `SmartAPI` directly. Use broker adapters from `app.services.brokers/`
+- **Direct broker API usage** - NEVER import `KiteConnect` or `SmartAPI` directly. Use broker adapters from `app.services.brokers/` and market data adapters from `app.services.brokers.market_data/`
 - **Hardcoded broker assumptions** - Don't assume Kite or SmartAPI; code should work with any broker via abstraction
+- **Bypassing market data abstraction** - Use `get_market_data_adapter()` instead of directly calling `SmartAPIMarketData`, `SmartAPIHistorical`, etc.
+- **Symbol format confusion** - Always use canonical format (Kite format) internally; use `SymbolConverter` for broker-specific symbols
+- **Token lookup without TokenManager** - Use `token_manager.get_broker_token()` instead of manual lookups; it handles caching and cross-broker mapping
 - **Forgot to import model in `alembic/env.py`** - Autogenerate won't detect it
 - **Sync database operations** - All SQLAlchemy must use `async/await`
 - **Hardcoded trading constants** - Use `app.constants.trading` instead
