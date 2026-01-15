@@ -7,17 +7,11 @@ Endpoints for finding and ranking the best option strategy combinations.
 import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_
 from datetime import datetime, date
-from kiteconnect.exceptions import TokenException as KiteTokenException
-from SmartApi.smartExceptions import TokenException as SmartAPITokenException
 
 from app.database import get_db
-from app.models import User, BrokerConnection, Instrument
-from app.services.kite_orders import KiteOrderService
+from app.models import User, BrokerConnection
 from app.services.ofo_calculator import ofo_calculator
-from app.services.smartapi_market_data import SmartAPIMarketData, SmartAPIMarketDataError
-from app.services.smartapi_instruments import get_smartapi_instruments
 from app.utils.dependencies import get_current_user, get_current_broker_connection
 from app.schemas.ofo import (
     OFOCalculateRequest,
@@ -26,8 +20,7 @@ from app.schemas.ofo import (
     OFOLegResult,
     OFO_AVAILABLE_STRATEGIES
 )
-from app.constants import LOT_SIZES, INDEX_SYMBOLS
-from app.config import settings
+from app.constants import LOT_SIZES
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +75,8 @@ async def calculate_ofo_strategies(
                 detail=f"Invalid strategy type: {strategy_type}. Valid types: {valid_strategy_keys}"
             )
 
+    from app.services.brokers.market_data import get_user_market_data_adapter
+
     try:
         # Parse expiry date
         try:
@@ -92,181 +87,87 @@ async def calculate_ofo_strategies(
                 detail="Invalid date format. Use YYYY-MM-DD"
             )
 
-        # Determine which market data service to use based on broker type
-        use_smartapi = broker.broker == "angelone"
-        lot_size = LOT_SIZES.get(underlying, 1)
-        strikes_data = {}
-        all_quotes = {}
+        # Get market data adapter (automatically uses user's preferred broker)
+        logger.info(f"[OFO] Fetching market data via adapter for {underlying}")
+        adapter = await get_user_market_data_adapter(user.id, db)
 
-        if use_smartapi:
-            # Use SmartAPI for market data
-            logger.info(f"[OFO] Using SmartAPI for market data")
-            smartapi_service = SmartAPIMarketData(
-                api_key=settings.ANGEL_API_KEY,
-                jwt_token=broker.access_token
+        lot_size = LOT_SIZES.get(underlying, 1)
+
+        # Get spot price via adapter
+        ltp_map = await adapter.get_ltp([underlying])
+        spot_price = float(ltp_map.get(underlying, 0))
+
+        if not spot_price:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Could not get spot price"
             )
 
-            # Get spot price using SmartAPI
-            spot_quote = await smartapi_service.get_index_quote(underlying)
-            if spot_quote:
-                spot_price = float(spot_quote.get("ltp", 0))
+        # Get instruments for this expiry from adapter
+        all_instruments = await adapter.get_instruments("NFO")
+
+        # Filter for our underlying and expiry
+        instruments = [
+            inst for inst in all_instruments
+            if inst.name == underlying and
+               inst.instrument_type in ["CE", "PE"] and
+               hasattr(inst, 'expiry') and inst.expiry == expiry_date
+        ]
+
+        if not instruments:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"No instruments found for {underlying} expiry {expiry_date}"
+            )
+
+        logger.info(f"[OFO] Found {len(instruments)} instruments for {underlying}")
+
+        # Organize by strike
+        strikes_data = {}
+        canonical_symbols = []
+
+        for inst in instruments:
+            strike = float(inst.strike) if hasattr(inst, 'strike') else 0
+            if strike <= 0:
+                continue
+
+            if strike not in strikes_data:
+                strikes_data[strike] = {"strike": strike, "ce": None, "pe": None}
+
+            inst_data = {
+                "instrument_token": inst.instrument_token,
+                "tradingsymbol": inst.canonical_symbol,
+                "lot_size": inst.lot_size
+            }
+
+            if inst.instrument_type == "CE":
+                strikes_data[strike]["ce"] = inst_data
             else:
-                spot_price = 0
+                strikes_data[strike]["pe"] = inst_data
 
-            if not spot_price:
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="Could not get spot price"
-                )
+            # Collect canonical symbols for quote fetch
+            canonical_symbols.append(inst.canonical_symbol)
 
-            # Use SmartAPI instruments directly
-            smartapi_instruments = get_smartapi_instruments()
+        logger.info(f"[OFO] Organized {len(strikes_data)} strikes, fetching quotes for {len(canonical_symbols)} instruments")
 
-            # Format expiry for SmartAPI: "2026-01-27" -> "27JAN2026"
-            expiry_str = expiry_date.strftime("%d%b%Y").upper()
-            logger.info(f"[OFO] Fetching SmartAPI instruments for {underlying} expiry {expiry_str}")
-
-            # Get options from SmartAPI master
-            smartapi_options = await smartapi_instruments.get_option_chain_tokens(underlying, expiry_str, "NFO")
-
-            if not smartapi_options:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"No instruments found for {underlying} expiry {expiry_str}"
-                )
-
-            logger.info(f"[OFO] Found {len(smartapi_options)} SmartAPI instruments")
-
-            # Organize by strike and collect tokens for quote fetch
-            nfo_tokens = []
-            token_to_symbol = {}
-
-            for opt in smartapi_options:
-                symbol = opt.get('symbol', '')
-                token = opt.get('token')
-                strike_raw = opt.get('strike', 0)
-
-                # Skip futures
-                if 'FUT' in symbol:
-                    continue
-
-                # SmartAPI strike is in paise (e.g., 2560000 = 25600)
-                # Convert to rupees
+        # Fetch quotes in batches of 50
+        all_quotes = {}
+        for i in range(0, len(canonical_symbols), 50):
+            batch = canonical_symbols[i:i+50]
+            if batch:
                 try:
-                    strike = float(strike_raw) / 100.0
-                except (ValueError, TypeError):
+                    quotes = await adapter.get_quote(batch)
+                    for symbol, unified_quote in quotes.items():
+                        # Store with NFO: prefix for compatibility
+                        symbol_key = f"NFO:{symbol}"
+                        all_quotes[symbol_key] = {
+                            "last_price": float(unified_quote.last_price),
+                            "oi": unified_quote.oi,
+                            "volume": unified_quote.volume
+                        }
+                except Exception as e:
+                    logger.warning(f"[OFO] Quote batch failed: {e}")
                     continue
-
-                if strike <= 0:
-                    continue
-
-                # Determine option type from symbol (ends with CE or PE)
-                if symbol.endswith('CE'):
-                    opt_type = 'CE'
-                elif symbol.endswith('PE'):
-                    opt_type = 'PE'
-                else:
-                    continue
-
-                if strike not in strikes_data:
-                    strikes_data[strike] = {"strike": strike, "ce": None, "pe": None}
-
-                inst_data = {
-                    "instrument_token": token,
-                    "tradingsymbol": symbol,
-                    "lot_size": int(opt.get('lotsize', lot_size))
-                }
-
-                if opt_type == "CE":
-                    strikes_data[strike]["ce"] = inst_data
-                else:
-                    strikes_data[strike]["pe"] = inst_data
-
-                # Collect token for quote fetch
-                if token:
-                    nfo_tokens.append(token)
-                    token_to_symbol[token] = f"NFO:{symbol}"
-
-            logger.info(f"[OFO] Organized {len(strikes_data)} strikes, fetching quotes for {len(nfo_tokens)} instruments")
-
-            # Fetch quotes in batches of 50
-            for i in range(0, len(nfo_tokens), 50):
-                batch = nfo_tokens[i:i+50]
-                if batch:
-                    try:
-                        quotes = await smartapi_service.get_quote("NFO", batch, mode="FULL")
-                        for token, quote in quotes.items():
-                            symbol_key = token_to_symbol.get(token)
-                            if symbol_key:
-                                all_quotes[symbol_key] = {
-                                    "last_price": float(quote.get("ltp", 0)),
-                                    "oi": quote.get("oi", 0),
-                                    "volume": quote.get("volume", 0)
-                                }
-                    except SmartAPIMarketDataError as e:
-                        logger.warning(f"[OFO] SmartAPI quote batch failed: {e}")
-                        continue
-
-        else:
-            # Use Kite for market data (legacy/fallback)
-            logger.info(f"[OFO] Using Kite for market data")
-            kite_service = KiteOrderService(broker.access_token)
-
-            # Get spot price
-            spot_symbol = INDEX_SYMBOLS.get(underlying)
-            spot_quote = await kite_service.get_quote([spot_symbol])
-            spot_price = spot_quote.get(spot_symbol, {}).get("last_price", 0)
-
-            if not spot_price:
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="Could not get spot price"
-                )
-
-            # Get instruments for this expiry from DB
-            query = select(Instrument).where(
-                and_(
-                    Instrument.name == underlying,
-                    Instrument.expiry == expiry_date,
-                    Instrument.instrument_type.in_(["CE", "PE"]),
-                    Instrument.exchange == "NFO"
-                )
-            ).order_by(Instrument.strike)
-
-            result = await db.execute(query)
-            instruments = result.scalars().all()
-
-            if not instruments:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="No instruments found for this expiry"
-                )
-
-            # Organize by strike
-            for inst in instruments:
-                strike = float(inst.strike)
-                if strike not in strikes_data:
-                    strikes_data[strike] = {"strike": strike, "ce": None, "pe": None}
-
-                inst_data = {
-                    "instrument_token": inst.instrument_token,
-                    "tradingsymbol": inst.tradingsymbol,
-                    "lot_size": inst.lot_size
-                }
-
-                if inst.instrument_type == "CE":
-                    strikes_data[strike]["ce"] = inst_data
-                else:
-                    strikes_data[strike]["pe"] = inst_data
-
-            # Get live quotes for all instruments (batch in groups of 500)
-            instrument_list = [f"NFO:{inst.tradingsymbol}" for inst in instruments]
-
-            for i in range(0, len(instrument_list), 500):
-                batch = instrument_list[i:i+500]
-                if batch:
-                    quotes = await kite_service.get_quote(batch)
-                    all_quotes.update(quotes)
 
         if not strikes_data:
             raise HTTPException(
@@ -362,19 +263,8 @@ async def calculate_ofo_strategies(
 
     except HTTPException:
         raise
-    except (KiteTokenException, SmartAPITokenException):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Broker session expired. Please re-login."
-        )
-    except SmartAPIMarketDataError as e:
-        logger.error(f"[OFO] SmartAPI error: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"Market data service error: {str(e)}"
-        )
     except Exception as e:
-        logger.error(f"[OFO] Unexpected error: {e}")
+        logger.error(f"[OFO] Error calculating OFO strategies: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error calculating OFO strategies: {str(e)}"
