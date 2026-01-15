@@ -49,7 +49,10 @@ class SmartAPIMarketDataCredentials(BrokerCredentials):
     client_id: str
     jwt_token: str
     feed_token: str
-    broker_type: str = "smartapi"
+
+    def __post_init__(self):
+        if not hasattr(self, 'broker_type') or not self.broker_type:
+            object.__setattr__(self, 'broker_type', "smartapi")
 
 
 @dataclass
@@ -57,7 +60,10 @@ class KiteMarketDataCredentials(BrokerCredentials):
     """Kite-specific credentials for market data."""
     api_key: str
     access_token: str
-    broker_type: str = "kite"
+
+    def __post_init__(self):
+        if not hasattr(self, 'broker_type') or not self.broker_type:
+            object.__setattr__(self, 'broker_type', "kite")
 
 
 @dataclass
@@ -65,7 +71,10 @@ class UpstoxMarketDataCredentials(BrokerCredentials):
     """Upstox-specific credentials for market data."""
     api_key: str
     access_token: str
-    broker_type: str = "upstox"
+
+    def __post_init__(self):
+        if not hasattr(self, 'broker_type') or not self.broker_type:
+            object.__setattr__(self, 'broker_type', "upstox")
 
 
 @dataclass
@@ -73,7 +82,10 @@ class DhanMarketDataCredentials(BrokerCredentials):
     """Dhan-specific credentials for market data."""
     client_id: str
     access_token: str
-    broker_type: str = "dhan"
+
+    def __post_init__(self):
+        if not hasattr(self, 'broker_type') or not self.broker_type:
+            object.__setattr__(self, 'broker_type', "dhan")
 
 
 @dataclass
@@ -81,7 +93,10 @@ class FyersMarketDataCredentials(BrokerCredentials):
     """Fyers-specific credentials for market data."""
     app_id: str
     access_token: str
-    broker_type: str = "fyers"
+
+    def __post_init__(self):
+        if not hasattr(self, 'broker_type') or not self.broker_type:
+            object.__setattr__(self, 'broker_type', "fyers")
 
 
 @dataclass
@@ -89,7 +104,10 @@ class PaytmMarketDataCredentials(BrokerCredentials):
     """Paytm-specific credentials for market data."""
     api_key: str
     access_token: str
-    broker_type: str = "paytm"
+
+    def __post_init__(self):
+        if not hasattr(self, 'broker_type') or not self.broker_type:
+            object.__setattr__(self, 'broker_type', "paytm")
 
 
 @dataclass
