@@ -170,18 +170,15 @@ async def _create_kite_adapter(user_id: UUID, db: AsyncSession) -> MarketDataBro
             access_token=conn.access_token
         )
 
-        # Create and initialize adapter (Phase 3 - not implemented yet)
-        raise NotImplementedError("Kite market data adapter not yet implemented (Phase 3)")
+        # Create and initialize adapter
+        from app.services.brokers.market_data.kite_adapter import KiteMarketDataAdapter
+        adapter = KiteMarketDataAdapter(credentials, db)
+        await adapter.connect()
 
-        # Future implementation:
-        # from app.services.brokers.market_data.kite_adapter import KiteMarketDataAdapter
-        # adapter = KiteMarketDataAdapter(credentials, db)
-        # await adapter.connect()
-        # return adapter
+        logger.info(f"[Factory] Created Kite adapter for user {user_id}")
+        return adapter
 
     except AuthenticationError:
-        raise
-    except NotImplementedError:
         raise
     except Exception as e:
         logger.error(f"[Factory] Failed to create Kite adapter: {e}")
