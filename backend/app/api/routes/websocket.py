@@ -2,7 +2,11 @@
 WebSocket API Routes
 
 Real-time data streaming endpoint for frontend clients.
-Supports routing between SmartAPI and Kite based on user preference.
+Routes to SmartAPI or Kite ticker service based on user preference.
+
+Note: WebSocket uses singleton ticker services (smartapi_ticker_service,
+kite_ticker_service) to manage persistent connections for multiple users.
+This is different from REST API routes which use get_user_market_data_adapter().
 """
 import json
 import logging
@@ -178,32 +182,28 @@ async def websocket_ticks(
                 user_id = str(user.id)
                 print(f"[WS] User authenticated: {user_id}", flush=True)
 
-                # Get user's preferred market data source
+                # Get user's preferred market data source and select ticker service
                 market_data_source = await get_user_market_data_source(user.id, db)
-                print(f"[WS] Market data source: {market_data_source}", flush=True)
+                print(f"[WS] Preferred market data source: {market_data_source}", flush=True)
 
-                # Try SmartAPI first if preferred
+                # Select appropriate ticker service (singleton services for WebSocket)
                 if market_data_source == MarketDataSource.SMARTAPI:
+                    # Check if SmartAPI credentials are available
                     credentials, pin, totp_secret = await get_smartapi_credentials(user.id, db)
                     if credentials and credentials.jwt_token and credentials.feed_token:
                         ticker_service = smartapi_ticker_service
-                        print(f"[WS] Using SmartAPI ticker", flush=True)
+                        print(f"[WS] Selected SmartAPI ticker service", flush=True)
                     else:
-                        print(f"[WS] SmartAPI not configured, falling back to Kite", flush=True)
+                        # Fall back to Kite if SmartAPI not configured
+                        print(f"[WS] SmartAPI credentials not found, using Kite", flush=True)
                         market_data_source = MarketDataSource.KITE
-
-                # Use Kite if SmartAPI not available or not preferred
-                if market_data_source == MarketDataSource.KITE or ticker_service is None:
-                    broker_connection = await get_user_broker_connection(user.id, db)
-                    kite_access_token = broker_connection.access_token
+                        ticker_service = kite_ticker_service
+                else:
+                    # Use Kite ticker service
                     ticker_service = kite_ticker_service
-                    market_data_source = MarketDataSource.KITE
-                    print(f"[WS] Using Kite ticker", flush=True)
+                    print(f"[WS] Selected Kite ticker service", flush=True)
 
-                    if kite_access_token:
-                        print(f"[WS] Kite token found: ...{kite_access_token[-10:]}", flush=True)
-
-                logger.info(f"WebSocket authenticated for user {user_id}, source: {market_data_source}")
+                logger.info(f"WebSocket authenticated for user {user_id}, using {market_data_source}")
 
             except Exception as e:
                 await websocket.send_json({
@@ -214,15 +214,15 @@ async def websocket_ticks(
                 return
             break  # Exit the async for after first iteration
 
-        # Connect to the selected ticker service
+        # Connect to the selected ticker service if not already connected
+        connection_failed = False
+
         if market_data_source == MarketDataSource.SMARTAPI:
-            # Connect SmartAPI if not connected
             if not smartapi_ticker_service.is_connected:
                 print(f"[WS] Connecting to SmartAPI WebSocket...", flush=True)
                 logger.info("Connecting to SmartAPI WebSocket...")
                 try:
                     async for db in get_db():
-                        # Use get_valid_smartapi_credentials which auto-refreshes expired tokens
                         credentials = await get_valid_smartapi_credentials(user.id, db, auto_refresh=True)
                         break
 
@@ -234,25 +234,28 @@ async def websocket_ticks(
                             feed_token=credentials.feed_token
                         )
 
-                        # Wait for connection
-                        for i in range(20):
+                        # Wait for connection (10 seconds max)
+                        for _ in range(20):
                             await asyncio.sleep(0.5)
                             if smartapi_ticker_service.is_connected:
-                                print(f"[WS] SmartAPI WebSocket connected!", flush=True)
-                                logger.info("SmartAPI WebSocket connected!")
+                                print(f"[WS] SmartAPI WebSocket connected", flush=True)
                                 break
                         else:
-                            print(f"[WS] SmartAPI connection timeout, falling back to Kite", flush=True)
-                            ticker_service = kite_ticker_service
-                            market_data_source = MarketDataSource.KITE
+                            connection_failed = True
+                            print(f"[WS] SmartAPI connection timeout", flush=True)
 
                 except Exception as e:
-                    print(f"[WS] SmartAPI connection failed: {e}, falling back to Kite", flush=True)
+                    connection_failed = True
+                    print(f"[WS] SmartAPI connection failed: {e}", flush=True)
                     logger.error(f"SmartAPI connection failed: {e}")
+
+                # Fall back to Kite if SmartAPI connection failed
+                if connection_failed:
+                    print(f"[WS] Falling back to Kite", flush=True)
                     ticker_service = kite_ticker_service
                     market_data_source = MarketDataSource.KITE
+                    connection_failed = False  # Reset for Kite connection attempt
 
-        # Connect Kite if needed (either as primary or fallback)
         if market_data_source == MarketDataSource.KITE:
             if not kite_ticker_service.is_connected:
                 print(f"[WS] Connecting to Kite WebSocket...", flush=True)
@@ -265,16 +268,15 @@ async def websocket_ticks(
 
                     await kite_ticker_service.connect(kite_access_token)
 
-                    # Wait for connection
-                    for i in range(20):
+                    # Wait for connection (10 seconds max)
+                    for _ in range(20):
                         await asyncio.sleep(0.5)
                         if kite_ticker_service.is_connected:
-                            print(f"[WS] Kite WebSocket connected!", flush=True)
-                            logger.info("Kite WebSocket connected!")
+                            print(f"[WS] Kite WebSocket connected", flush=True)
                             break
                     else:
-                        print(f"[WS] Kite WebSocket connection timeout, but continuing...", flush=True)
-                        logger.warning("Kite WebSocket connection timeout, but continuing...")
+                        print(f"[WS] Kite connection timeout, but continuing...", flush=True)
+                        logger.warning("Kite connection timeout")
 
                 except Exception as e:
                     print(f"[WS] Kite connection failed: {e}", flush=True)
@@ -311,16 +313,15 @@ async def websocket_ticks(
                 if action == "subscribe":
                     tokens = data.get("tokens", [])
                     mode = data.get("mode", "ltp")  # ltp, quote, or full
-                    exchange = data.get("exchange", "NFO")  # For SmartAPI
+                    exchange = data.get("exchange", "NFO")  # Used by SmartAPI
 
                     if tokens:
+                        # Convert tokens to appropriate type and subscribe
                         if market_data_source == MarketDataSource.SMARTAPI:
-                            # SmartAPI uses string tokens
-                            tokens = [str(t) for t in tokens]
+                            tokens = [str(t) for t in tokens]  # SmartAPI uses string tokens
                             await ticker_service.subscribe(tokens, user_id, exchange, mode)
                         else:
-                            # Kite uses integer tokens
-                            tokens = [int(t) for t in tokens]
+                            tokens = [int(t) for t in tokens]  # Kite uses integer tokens
                             await ticker_service.subscribe(tokens, user_id, mode)
 
                         await websocket.send_json({
@@ -333,9 +334,10 @@ async def websocket_ticks(
 
                 elif action == "unsubscribe":
                     tokens = data.get("tokens", [])
-                    exchange = data.get("exchange", "NFO")
+                    exchange = data.get("exchange", "NFO")  # Used by SmartAPI
 
                     if tokens:
+                        # Convert tokens to appropriate type and unsubscribe
                         if market_data_source == MarketDataSource.SMARTAPI:
                             tokens = [str(t) for t in tokens]
                             await ticker_service.unsubscribe(tokens, user_id, exchange)
