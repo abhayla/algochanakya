@@ -439,62 +439,47 @@ async def get_ltp(
 ):
     """
     Get LTP for instruments.
-    Routes to SmartAPI or Kite based on user preference.
+    Uses user's preferred market data broker (SmartAPI or Kite).
 
     Args:
-        instruments: Comma-separated instruments
+        instruments: Comma-separated instruments (e.g., NFO:NIFTY25APR25000CE,NSE:NIFTY)
 
     Returns:
-        LTP data
+        LTP data in format: {"EXCHANGE:SYMBOL": {"last_price": float}}
     """
+    from app.services.brokers.market_data import get_user_market_data_adapter
+
     try:
         instrument_list = [i.strip() for i in instruments.split(",")]
 
-        # Check user's preferred market data source
-        market_data_source = await get_user_market_data_source(user.id, db)
+        # Get market data adapter (automatically uses user's preferred broker)
+        adapter = await get_user_market_data_adapter(user.id, db)
 
-        # Try SmartAPI if preferred
-        if market_data_source == MarketDataSource.SMARTAPI:
-            # Use get_valid_smartapi_credentials which auto-refreshes expired tokens
-            credentials = await get_valid_smartapi_credentials(user.id, db, auto_refresh=True)
-            if credentials and credentials.jwt_token:
-                try:
-                    logger.info(f"[Orders] Using SmartAPI for LTP: {len(instrument_list)} instruments")
-                    smartapi_service = create_market_data_service(
-                        api_key=settings.ANGEL_API_KEY,
-                        jwt_token=credentials.jwt_token
-                    )
-                    ltp_data = await smartapi_service.get_ltp(instrument_list)
+        # Extract canonical symbols (remove EXCHANGE: prefix)
+        canonical_symbols = []
+        symbol_map = {}  # canonical -> original format
+        for inst in instrument_list:
+            if ":" in inst:
+                exchange, symbol = inst.split(":", 1)
+                canonical_symbols.append(symbol)
+                symbol_map[symbol] = inst
+            else:
+                canonical_symbols.append(inst)
+                symbol_map[inst] = inst
 
-                    # Convert to Kite-compatible format
-                    result = {}
-                    for key, ltp in ltp_data.items():
-                        result[key] = {'last_price': float(ltp)}
+        # Get LTP via adapter (returns Decimal values)
+        ltp_data = await adapter.get_ltp(canonical_symbols)
 
-                    # Check if we got data for all requested instruments
-                    # If SmartAPI returned empty or partial, fall back to Kite for missing ones
-                    missing_instruments = [i for i in instrument_list if i not in result]
-                    if missing_instruments:
-                        logger.warning(f"[Orders] SmartAPI returned empty for {len(missing_instruments)} instruments, falling back to Kite")
-                        # Fall through to Kite for missing instruments
-                    else:
-                        return result
-                except Exception as e:
-                    logger.warning(f"[Orders] SmartAPI LTP failed, falling back to Kite: {e}")
-                    # Fall through to Kite
+        # Convert to expected format with original keys
+        result = {}
+        for canonical_symbol, ltp_decimal in ltp_data.items():
+            original_key = symbol_map.get(canonical_symbol, canonical_symbol)
+            result[original_key] = {'last_price': float(ltp_decimal)}
 
-        # Use Kite (either as primary or fallback)
-        logger.info(f"[Orders] Using Kite for LTP: {len(instrument_list)} instruments")
-        kite_service = KiteOrderService(broker.access_token)
-        ltp = await kite_service.get_ltp(instrument_list)
-        return ltp
+        return result
 
-    except TokenException as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Broker session expired. Please login again. ({str(e)})"
-        )
     except Exception as e:
+        logger.error(f"[Orders] Failed to get LTP: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get LTP: {str(e)}"
@@ -510,67 +495,62 @@ async def get_quote(
 ):
     """
     Get full quote for instruments (OHLC, bid/ask, volume).
-    Routes to SmartAPI or Kite based on user preference.
+    Uses user's preferred market data broker (SmartAPI or Kite).
 
     Args:
-        instruments: Comma-separated instruments (e.g., NSE:NIFTY 50,NSE:NIFTY BANK)
+        instruments: Comma-separated instruments (e.g., NSE:NIFTY 50,NFO:NIFTY25APR25000CE)
 
     Returns:
-        Quote data with OHLC, bid/ask spreads, and volume
+        Quote data with OHLC, bid/ask spreads, volume, and depth
     """
+    from app.services.brokers.market_data import get_user_market_data_adapter
+
     try:
         instrument_list = [i.strip() for i in instruments.split(",")]
 
-        # Check user's preferred market data source
-        market_data_source = await get_user_market_data_source(user.id, db)
+        # Get market data adapter (automatically uses user's preferred broker)
+        adapter = await get_user_market_data_adapter(user.id, db)
 
-        # Try SmartAPI if preferred
-        if market_data_source == MarketDataSource.SMARTAPI:
-            # Use get_valid_smartapi_credentials which auto-refreshes expired tokens
-            credentials = await get_valid_smartapi_credentials(user.id, db, auto_refresh=True)
-            if credentials and credentials.jwt_token:
-                try:
-                    logger.info(f"[Orders] Using SmartAPI for quote: {len(instrument_list)} instruments")
-                    smartapi_service = create_market_data_service(
-                        api_key=settings.ANGEL_API_KEY,
-                        jwt_token=credentials.jwt_token
-                    )
-                    quote_data = await smartapi_service.get_full_quote(instrument_list)
+        # Extract canonical symbols (remove EXCHANGE: prefix)
+        canonical_symbols = []
+        symbol_map = {}  # canonical -> original format
+        for inst in instrument_list:
+            if ":" in inst:
+                exchange, symbol = inst.split(":", 1)
+                canonical_symbols.append(symbol)
+                symbol_map[symbol] = inst
+            else:
+                canonical_symbols.append(inst)
+                symbol_map[inst] = inst
 
-                    # Convert to Kite-compatible format
-                    result = {}
-                    for key, quote in quote_data.items():
-                        result[key] = {
-                            'instrument_token': quote.get('token'),
-                            'last_price': float(quote.get('ltp', 0)),
-                            'ohlc': {
-                                'open': float(quote.get('open', 0)),
-                                'high': float(quote.get('high', 0)),
-                                'low': float(quote.get('low', 0)),
-                                'close': float(quote.get('close', 0)),
-                            },
-                            'volume': quote.get('volume', 0),
-                            'oi': quote.get('oi', 0),
-                            'depth': quote.get('depth', {'buy': [], 'sell': []}),
-                        }
+        # Get quotes via adapter (returns UnifiedQuote objects)
+        quote_data = await adapter.get_quote(canonical_symbols)
 
-                    return result
-                except Exception as e:
-                    logger.warning(f"[Orders] SmartAPI quote failed, falling back to Kite: {e}")
-                    # Fall through to Kite
+        # Convert to expected format with original keys
+        result = {}
+        for canonical_symbol, unified_quote in quote_data.items():
+            original_key = symbol_map.get(canonical_symbol, canonical_symbol)
+            result[original_key] = {
+                'instrument_token': unified_quote.instrument_token,
+                'last_price': float(unified_quote.last_price),
+                'ohlc': {
+                    'open': float(unified_quote.open),
+                    'high': float(unified_quote.high),
+                    'low': float(unified_quote.low),
+                    'close': float(unified_quote.close),
+                },
+                'volume': unified_quote.volume,
+                'oi': unified_quote.oi,
+                'depth': {
+                    'buy': [{'price': float(unified_quote.bid_price), 'quantity': unified_quote.bid_quantity}] if unified_quote.bid_price else [],
+                    'sell': [{'price': float(unified_quote.ask_price), 'quantity': unified_quote.ask_quantity}] if unified_quote.ask_price else []
+                },
+            }
 
-        # Use Kite (either as primary or fallback)
-        logger.info(f"[Orders] Using Kite for quote: {len(instrument_list)} instruments")
-        kite_service = KiteOrderService(broker.access_token)
-        quote = await kite_service.get_quote(instrument_list)
-        return quote
+        return result
 
-    except TokenException as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Broker session expired. Please login again. ({str(e)})"
-        )
     except Exception as e:
+        logger.error(f"[Orders] Failed to get quote: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get quote: {str(e)}"
@@ -586,64 +566,56 @@ async def get_ohlc(
 ):
     """
     Get OHLC data for instruments. Works even outside market hours.
-    Routes to SmartAPI or Kite based on user preference.
+    Uses user's preferred market data broker (SmartAPI or Kite).
 
     Args:
-        instruments: Comma-separated instruments (e.g., NSE:NIFTY 50,NSE:NIFTY BANK)
+        instruments: Comma-separated instruments (e.g., NSE:NIFTY 50,NFO:NIFTY25APR25000CE)
 
     Returns:
         OHLC data with open, high, low, close, and last_price
     """
+    from app.services.brokers.market_data import get_user_market_data_adapter
+
     try:
         instrument_list = [i.strip() for i in instruments.split(",")]
 
-        # Check user's preferred market data source
-        market_data_source = await get_user_market_data_source(user.id, db)
+        # Get market data adapter (automatically uses user's preferred broker)
+        adapter = await get_user_market_data_adapter(user.id, db)
 
-        # Try SmartAPI if preferred
-        if market_data_source == MarketDataSource.SMARTAPI:
-            # Use get_valid_smartapi_credentials which auto-refreshes expired tokens
-            credentials = await get_valid_smartapi_credentials(user.id, db, auto_refresh=True)
-            if credentials and credentials.jwt_token:
-                try:
-                    logger.info(f"[Orders] Using SmartAPI for OHLC: {len(instrument_list)} instruments")
-                    smartapi_service = create_market_data_service(
-                        api_key=settings.ANGEL_API_KEY,
-                        jwt_token=credentials.jwt_token
-                    )
-                    quote_data = await smartapi_service.get_full_quote(instrument_list)
+        # Extract canonical symbols (remove EXCHANGE: prefix)
+        canonical_symbols = []
+        symbol_map = {}  # canonical -> original format
+        for inst in instrument_list:
+            if ":" in inst:
+                exchange, symbol = inst.split(":", 1)
+                canonical_symbols.append(symbol)
+                symbol_map[symbol] = inst
+            else:
+                canonical_symbols.append(inst)
+                symbol_map[inst] = inst
 
-                    # Convert to Kite-compatible OHLC format
-                    result = {}
-                    for key, quote in quote_data.items():
-                        result[key] = {
-                            'instrument_token': quote.get('token'),
-                            'last_price': float(quote.get('ltp', 0)),
-                            'ohlc': {
-                                'open': float(quote.get('open', 0)),
-                                'high': float(quote.get('high', 0)),
-                                'low': float(quote.get('low', 0)),
-                                'close': float(quote.get('close', 0)),
-                            },
-                        }
+        # Get quotes via adapter (returns UnifiedQuote objects)
+        quote_data = await adapter.get_quote(canonical_symbols)
 
-                    return result
-                except Exception as e:
-                    logger.warning(f"[Orders] SmartAPI OHLC failed, falling back to Kite: {e}")
-                    # Fall through to Kite
+        # Convert to OHLC format with original keys
+        result = {}
+        for canonical_symbol, unified_quote in quote_data.items():
+            original_key = symbol_map.get(canonical_symbol, canonical_symbol)
+            result[original_key] = {
+                'instrument_token': unified_quote.instrument_token,
+                'last_price': float(unified_quote.last_price),
+                'ohlc': {
+                    'open': float(unified_quote.open),
+                    'high': float(unified_quote.high),
+                    'low': float(unified_quote.low),
+                    'close': float(unified_quote.close),
+                },
+            }
 
-        # Use Kite (either as primary or fallback)
-        logger.info(f"[Orders] Using Kite for OHLC: {len(instrument_list)} instruments")
-        kite_service = KiteOrderService(broker.access_token)
-        ohlc = await kite_service.get_ohlc(instrument_list)
-        return ohlc
+        return result
 
-    except TokenException as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Broker session expired. Please login again. ({str(e)})"
-        )
     except Exception as e:
+        logger.error(f"[Orders] Failed to get OHLC: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get OHLC: {str(e)}"
