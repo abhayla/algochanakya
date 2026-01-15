@@ -349,12 +349,12 @@ async def deploy_template(
     """
     Deploy a strategy template with live market data.
 
-    - Fetches current spot price from Kite
+    - Fetches current spot price via market data adapter
     - Calculates ATM strike
     - Determines actual strikes based on template offsets
     - Fetches instrument tokens and LTP for each leg
     """
-    from kiteconnect import KiteConnect
+    from app.services.brokers.market_data import get_user_market_data_adapter
 
     try:
         # Get template
@@ -369,22 +369,21 @@ async def deploy_template(
                 detail=f"Strategy template '{request.template_name}' not found"
             )
 
-        # Initialize Kite
-        kite = KiteConnect(api_key=settings.KITE_API_KEY)
-        kite.set_access_token(broker_connection.access_token)
+        # Get market data adapter (uses user's preferred broker)
+        market_data_adapter = await get_user_market_data_adapter(user.id, db)
 
         # Get underlying symbol and lot size
         underlying = request.underlying.upper()
-        underlying_symbol = f"NSE:{underlying}"
-        if underlying == "BANKNIFTY":
-            underlying_symbol = "NSE:NIFTY BANK"
-
+        # Map to canonical symbol format (used internally)
+        underlying_symbol = underlying  # NIFTY, BANKNIFTY, FINNIFTY
         lot_size = LOT_SIZES.get(underlying, 25)
 
         # Get spot price
         try:
-            ltp_data = kite.ltp([underlying_symbol])
-            spot_price = ltp_data[underlying_symbol]["last_price"]
+            ltp_map = await market_data_adapter.get_ltp([underlying_symbol])
+            spot_price = float(ltp_map.get(underlying_symbol, 0))
+            if not spot_price:
+                raise ValueError("No LTP returned")
         except Exception:
             # Fallback spot prices
             spot_price = {"NIFTY": 24000, "BANKNIFTY": 52000, "FINNIFTY": 24000}.get(underlying, 24000)
@@ -424,16 +423,21 @@ async def deploy_template(
             day_str = str(expiry.day)
             tradingsymbol = f"{underlying}{expiry_str[0:2]}{expiry.strftime('%b').upper()}{strike}{leg_type}"
 
-            # Try to get instrument token (simplified - in production would query instruments table)
+            # Try to get instrument token and LTP via market data adapter
             instrument_token = None
             ltp = None
 
             try:
-                instrument_str = f"NFO:{tradingsymbol}"
-                ltp_data = kite.ltp([instrument_str])
-                if instrument_str in ltp_data:
-                    ltp = ltp_data[instrument_str]["last_price"]
-                    instrument_token = ltp_data[instrument_str].get("instrument_token")
+                # Get LTP for this option using canonical symbol (Kite format)
+                ltp_map = await market_data_adapter.get_ltp([tradingsymbol])
+                ltp_decimal = ltp_map.get(tradingsymbol)
+                if ltp_decimal:
+                    ltp = float(ltp_decimal)
+                    # Try to get instrument token from adapter
+                    try:
+                        instrument_token = await market_data_adapter.get_token(tradingsymbol)
+                    except Exception:
+                        instrument_token = None
             except Exception:
                 pass
 
