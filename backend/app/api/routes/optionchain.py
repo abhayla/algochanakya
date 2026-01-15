@@ -2,23 +2,19 @@
 Option Chain API Routes
 
 Endpoints for full option chain with OI, IV, Greeks, and live prices.
-Uses SmartAPI for market data (default) or Kite as fallback.
+Uses unified market data adapter for broker-agnostic data access.
 """
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_
 from typing import Optional
 from datetime import datetime, date
 from decimal import Decimal
 import math
 import logging
-from kiteconnect.exceptions import TokenException
 
 from app.database import get_db
-from app.models import User, BrokerConnection, Instrument
-from app.services.kite_orders import KiteOrderService
-from app.services.smartapi_market_data import SmartAPIMarketData, SmartAPIMarketDataError
-from app.services.smartapi_instruments import get_smartapi_instruments
+from app.models import User, BrokerConnection
+from app.services.brokers.market_data import get_user_market_data_adapter
 from app.services.strike_finder_service import StrikeFinderService
 from app.utils.dependencies import get_current_user, get_current_broker_connection
 from app.schemas.autopilot import (
@@ -26,8 +22,7 @@ from app.schemas.autopilot import (
     StrikeFindByPremiumRequest,
     StrikeFindResponse
 )
-from app.constants import LOT_SIZES, INDEX_TOKENS, INDEX_SYMBOLS
-from app.config import settings
+from app.constants import LOT_SIZES
 
 logger = logging.getLogger(__name__)
 
@@ -206,30 +201,15 @@ async def get_option_chain(
                     detail="Invalid date format. Use YYYY-MM-DD or DD-MMM-YYYY"
                 )
 
-        # Determine which market data service to use based on broker type
-        use_smartapi = broker.broker == "angelone"
+        # Get market data adapter (automatically uses user's preferred broker)
+        logger.info(f"[OptionChain] Fetching market data via adapter for {underlying}")
+        adapter = await get_user_market_data_adapter(user.id, db)
 
-        if use_smartapi:
-            # Use SmartAPI for market data
-            logger.info(f"[OptionChain] Using SmartAPI for market data")
-            smartapi_service = SmartAPIMarketData(
-                api_key=settings.ANGEL_API_KEY,
-                jwt_token=broker.access_token
-            )
+        lot_size = LOT_SIZES.get(underlying, 1)
 
-            # Get spot price using SmartAPI
-            spot_quote = await smartapi_service.get_index_quote(underlying)
-            if spot_quote:
-                spot_price = float(spot_quote.get("ltp", 0))
-            else:
-                spot_price = 0
-        else:
-            # Use Kite for market data (legacy/fallback)
-            logger.info(f"[OptionChain] Using Kite for market data")
-            kite_service = KiteOrderService(broker.access_token)
-            spot_symbol = INDEX_SYMBOLS.get(underlying)
-            spot_quote = await kite_service.get_quote([spot_symbol])
-            spot_price = spot_quote.get(spot_symbol, {}).get("last_price", 0)
+        # Get spot price via adapter
+        ltp_map = await adapter.get_ltp([underlying])
+        spot_price = float(ltp_map.get(underlying, 0))
 
         if not spot_price:
             raise HTTPException(
@@ -237,155 +217,78 @@ async def get_option_chain(
                 detail="Could not get spot price"
             )
 
-        # Get instruments for this expiry
+        # Get instruments for this expiry from adapter
+        all_instruments = await adapter.get_instruments("NFO")
+
+        # Filter for our underlying and expiry
+        instruments = [
+            inst for inst in all_instruments
+            if inst.name == underlying and
+               inst.instrument_type in ["CE", "PE"] and
+               hasattr(inst, 'expiry') and inst.expiry == expiry_date
+        ]
+
+        if not instruments:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"No instruments found for {underlying} expiry {expiry_date}"
+            )
+
+        logger.info(f"[OptionChain] Found {len(instruments)} instruments for {underlying}")
+
+        # Organize by strike
         strikes_data = {}
-        instrument_map = {}  # token -> instrument
+        canonical_symbols = []
+
+        for inst in instruments:
+            strike = float(inst.strike) if hasattr(inst, 'strike') else 0
+            if strike <= 0:
+                continue
+
+            if strike not in strikes_data:
+                strikes_data[strike] = {"strike": strike, "ce": None, "pe": None}
+
+            inst_data = {
+                "instrument_token": inst.instrument_token,
+                "tradingsymbol": inst.canonical_symbol,
+                "lot_size": inst.lot_size
+            }
+
+            if inst.instrument_type == "CE":
+                strikes_data[strike]["ce"] = inst_data
+            else:
+                strikes_data[strike]["pe"] = inst_data
+
+            # Collect canonical symbols for quote fetch
+            canonical_symbols.append(inst.canonical_symbol)
+
+        logger.info(f"[OptionChain] Organized {len(strikes_data)} strikes, fetching quotes for {len(canonical_symbols)} instruments")
+
+        # Fetch quotes in batches of 50
         all_quotes = {}
-        lot_size = LOT_SIZES.get(underlying, 1)
-
-        if use_smartapi:
-            # Use SmartAPI instruments directly (different format than Kite)
-            smartapi_instruments = get_smartapi_instruments()
-
-            # Format expiry for SmartAPI: "2026-01-27" -> "27JAN2026"
-            expiry_str = expiry_date.strftime("%d%b%Y").upper()
-            logger.info(f"[OptionChain] Fetching SmartAPI instruments for {underlying} expiry {expiry_str}")
-
-            # Get options from SmartAPI master
-            smartapi_options = await smartapi_instruments.get_option_chain_tokens(underlying, expiry_str, "NFO")
-
-            if not smartapi_options:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"No instruments found for {underlying} expiry {expiry_str}"
-                )
-
-            logger.info(f"[OptionChain] Found {len(smartapi_options)} SmartAPI instruments")
-
-            # Organize by strike and collect tokens for quote fetch
-            nfo_tokens = []
-            token_to_symbol = {}
-
-            for opt in smartapi_options:
-                symbol = opt.get('symbol', '')
-                token = opt.get('token')
-                strike_raw = opt.get('strike', 0)
-                inst_type = opt.get('instrumenttype', '')
-
-                # Skip futures
-                if 'FUT' in symbol:
-                    continue
-
-                # SmartAPI strike is in paise (e.g., 2560000 = 25600)
-                # Convert to rupees
+        for i in range(0, len(canonical_symbols), 50):
+            batch = canonical_symbols[i:i+50]
+            if batch:
                 try:
-                    strike = float(strike_raw) / 100.0
-                except (ValueError, TypeError):
+                    quotes = await adapter.get_quote(batch)
+                    for symbol, unified_quote in quotes.items():
+                        # Store with NFO: prefix for compatibility
+                        symbol_key = f"NFO:{symbol}"
+                        all_quotes[symbol_key] = {
+                            "last_price": float(unified_quote.last_price),
+                            "oi": unified_quote.oi,
+                            "volume": unified_quote.volume,
+                            "ohlc": {
+                                "open": float(unified_quote.ohlc.open),
+                                "high": float(unified_quote.ohlc.high),
+                                "low": float(unified_quote.ohlc.low),
+                                "close": float(unified_quote.ohlc.close)
+                            },
+                            "depth": unified_quote.depth
+                        }
+                except Exception as e:
+                    logger.warning(f"[OptionChain] Quote batch failed: {e}")
                     continue
-
-                if strike <= 0:
-                    continue
-
-                # Determine option type from symbol (ends with CE or PE)
-                if symbol.endswith('CE'):
-                    opt_type = 'CE'
-                elif symbol.endswith('PE'):
-                    opt_type = 'PE'
-                else:
-                    continue
-
-                if strike not in strikes_data:
-                    strikes_data[strike] = {"strike": strike, "ce": None, "pe": None}
-
-                inst_data = {
-                    "instrument_token": token,
-                    "tradingsymbol": symbol,
-                    "lot_size": int(opt.get('lotsize', lot_size))
-                }
-
-                if opt_type == "CE":
-                    strikes_data[strike]["ce"] = inst_data
-                else:
-                    strikes_data[strike]["pe"] = inst_data
-
-                # Collect token for quote fetch
-                if token:
-                    nfo_tokens.append(token)
-                    token_to_symbol[token] = f"NFO:{symbol}"
-
-            logger.info(f"[OptionChain] Organized {len(strikes_data)} strikes, fetching quotes for {len(nfo_tokens)} instruments")
-
-            # Fetch quotes in batches of 50
-            for i in range(0, len(nfo_tokens), 50):
-                batch = nfo_tokens[i:i+50]
-                if batch:
-                    try:
-                        quotes = await smartapi_service.get_quote("NFO", batch, mode="FULL")
-                        for token, quote in quotes.items():
-                            symbol_key = token_to_symbol.get(token)
-                            if symbol_key:
-                                all_quotes[symbol_key] = {
-                                    "last_price": float(quote.get("ltp", 0)),
-                                    "oi": quote.get("oi", 0),
-                                    "volume": quote.get("volume", 0),
-                                    "ohlc": {
-                                        "open": float(quote.get("open", 0)),
-                                        "high": float(quote.get("high", 0)),
-                                        "low": float(quote.get("low", 0)),
-                                        "close": float(quote.get("close", 0))
-                                    },
-                                    "depth": quote.get("depth", {"buy": [], "sell": []})
-                                }
-                    except SmartAPIMarketDataError as e:
-                        logger.warning(f"[OptionChain] SmartAPI quote batch failed: {e}")
-                        continue
-
-        else:
-            # Use Kite instruments table (legacy/fallback)
-            query = select(Instrument).where(
-                and_(
-                    Instrument.name == underlying,
-                    Instrument.expiry == expiry_date,
-                    Instrument.instrument_type.in_(["CE", "PE"]),
-                    Instrument.exchange == "NFO"
-                )
-            ).order_by(Instrument.strike)
-
-            result = await db.execute(query)
-            instruments = result.scalars().all()
-
-            if not instruments:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="No instruments found for this expiry"
-                )
-
-            # Organize by strike
-            for inst in instruments:
-                strike = float(inst.strike)
-                if strike not in strikes_data:
-                    strikes_data[strike] = {"strike": strike, "ce": None, "pe": None}
-
-                inst_data = {
-                    "instrument_token": inst.instrument_token,
-                    "tradingsymbol": inst.tradingsymbol,
-                    "lot_size": inst.lot_size
-                }
-
-                if inst.instrument_type == "CE":
-                    strikes_data[strike]["ce"] = inst_data
-                else:
-                    strikes_data[strike]["pe"] = inst_data
-
-                instrument_map[inst.instrument_token] = inst
-
-            # Get quotes from Kite
-            instrument_list = [f"NFO:{inst.tradingsymbol}" for inst in instruments]
-            for i in range(0, len(instrument_list), 500):
-                batch = instrument_list[i:i+500]
-                if batch:
-                    quotes = await kite_service.get_quote(batch)
-                    all_quotes.update(quotes)
 
         if not strikes_data:
             raise HTTPException(
@@ -524,25 +427,14 @@ async def get_option_chain(
 
     except HTTPException:
         raise
-    except TokenException as e:
-        # Kite access token is invalid or expired - return 401 to trigger frontend redirect
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Broker session expired. Please login again. ({str(e)})"
-        )
-    except SmartAPIMarketDataError as e:
-        # SmartAPI error - could be token issue or API error
+    except Exception as e:
+        # Check if it's an authentication error
         error_msg = str(e).lower()
-        if "token" in error_msg or "auth" in error_msg or "session" in error_msg:
+        if any(keyword in error_msg for keyword in ["token", "auth", "session", "unauthorized"]):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=f"SmartAPI session expired. Please login again. ({str(e)})"
+                detail=f"Broker session expired. Please login again. ({str(e)})"
             )
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"SmartAPI error: {str(e)}"
-        )
-    except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to fetch option chain: {str(e)}"
@@ -597,18 +489,20 @@ async def find_strike_by_delta(
 
     Searches for the strike with delta closest to the target value.
     Optionally prefers round strikes (divisible by 100).
+
+    Note: StrikeFinderService currently uses Kite-specific implementation.
+    TODO: Refactor StrikeFinderService to use market data adapter.
     """
     try:
         from kiteconnect import KiteConnect
 
-        # Initialize Kite client
+        # TODO: Replace with adapter-based implementation
+        # For now, using Kite directly as StrikeFinderService requires it
         kite = KiteConnect(api_key="placeholder")
         kite.set_access_token(broker.access_token)
 
-        # Initialize Strike Finder service
         strike_finder = StrikeFinderService(kite, db)
 
-        # Find strike by delta
         result = await strike_finder.find_strike_by_delta(
             underlying=request.underlying,
             expiry=request.expiry,
@@ -628,12 +522,13 @@ async def find_strike_by_delta(
 
     except HTTPException:
         raise
-    except TokenException as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Broker session expired. Please login again. ({str(e)})"
-        )
     except Exception as e:
+        error_msg = str(e).lower()
+        if any(keyword in error_msg for keyword in ["token", "auth", "session", "unauthorized"]):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"Broker session expired. Please login again. ({str(e)})"
+            )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to find strike by delta: {str(e)}"
@@ -652,18 +547,20 @@ async def find_strike_by_premium(
 
     Searches for the strike with premium closest to the target value.
     Optionally prefers round strikes (divisible by 100).
+
+    Note: StrikeFinderService currently uses Kite-specific implementation.
+    TODO: Refactor StrikeFinderService to use market data adapter.
     """
     try:
         from kiteconnect import KiteConnect
 
-        # Initialize Kite client
+        # TODO: Replace with adapter-based implementation
+        # For now, using Kite directly as StrikeFinderService requires it
         kite = KiteConnect(api_key="placeholder")
         kite.set_access_token(broker.access_token)
 
-        # Initialize Strike Finder service
         strike_finder = StrikeFinderService(kite, db)
 
-        # Find strike by premium
         result = await strike_finder.find_strike_by_premium(
             underlying=request.underlying,
             expiry=request.expiry,
@@ -683,12 +580,13 @@ async def find_strike_by_premium(
 
     except HTTPException:
         raise
-    except TokenException as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Broker session expired. Please login again. ({str(e)})"
-        )
     except Exception as e:
+        error_msg = str(e).lower()
+        if any(keyword in error_msg for keyword in ["token", "auth", "session", "unauthorized"]):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"Broker session expired. Please login again. ({str(e)})"
+            )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to find strike by premium: {str(e)}"
