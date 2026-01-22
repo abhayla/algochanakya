@@ -3,6 +3,7 @@ Strategy Monitor
 
 Background service that monitors active strategies.
 Evaluates conditions and triggers order execution.
+Uses broker abstraction layer for broker-agnostic operation.
 
 Phase 3 Integrations:
 - Kill Switch: Check if enabled before processing strategies
@@ -25,7 +26,7 @@ AI Week 3 Integrations:
 """
 import asyncio
 from datetime import datetime, time, date, timezone
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Dict, List, Optional, Any, Tuple, Union
 from contextlib import asynccontextmanager
 from decimal import Decimal
 import logging
@@ -51,6 +52,7 @@ from app.services.position_leg_service import PositionLegService
 from app.services.iv_metrics_service import get_iv_metrics_service
 from app.services.delta_band_service import get_delta_band_service
 from app.services.ai.config_service import AIConfigService
+from app.services.brokers.base import BrokerAdapter
 from app.websocket.manager import get_ws_manager
 
 logger = logging.getLogger(__name__)
@@ -92,14 +94,22 @@ class StrategyMonitor:
 
     def __init__(
         self,
-        kite: KiteConnect,
+        broker_adapter: Union[BrokerAdapter, KiteConnect],
         market_data: MarketDataService,
         condition_engine: ConditionEngine
     ):
-        self.kite = kite
+        # Support both BrokerAdapter (preferred) and KiteConnect (legacy)
+        if isinstance(broker_adapter, BrokerAdapter):
+            self.broker_adapter = broker_adapter
+            self.kite = broker_adapter.get_kite_client()  # For services requiring KiteConnect
+        else:
+            # Legacy KiteConnect passed directly
+            self.kite = broker_adapter
+            self.broker_adapter = broker_adapter  # Will be treated as KiteConnect in order_executor
+
         self.market_data = market_data
         self.condition_engine = condition_engine
-        self.order_executor = get_order_executor(kite, market_data)
+        self.order_executor = get_order_executor(broker_adapter, market_data)
         self.ws_manager = get_ws_manager()
         self._running = False
         self._task: Optional[asyncio.Task] = None
@@ -1865,13 +1875,29 @@ class StrategyMonitor:
 _strategy_monitor: Optional[StrategyMonitor] = None
 
 
-async def get_strategy_monitor(kite: KiteConnect) -> StrategyMonitor:
-    """Get or create StrategyMonitor instance."""
+async def get_strategy_monitor(
+    broker_adapter: Union[BrokerAdapter, KiteConnect]
+) -> StrategyMonitor:
+    """
+    Get or create StrategyMonitor instance.
+
+    Args:
+        broker_adapter: BrokerAdapter instance (preferred) or KiteConnect (legacy)
+
+    Returns:
+        StrategyMonitor singleton instance
+    """
     global _strategy_monitor
     if _strategy_monitor is None:
+        # Get kite for market data service (still requires KiteConnect internally)
+        if isinstance(broker_adapter, BrokerAdapter):
+            kite = broker_adapter.get_kite_client()
+        else:
+            kite = broker_adapter
+
         market_data = get_market_data_service(kite)
         condition_engine = get_condition_engine(market_data)
-        _strategy_monitor = StrategyMonitor(kite, market_data, condition_engine)
+        _strategy_monitor = StrategyMonitor(broker_adapter, market_data, condition_engine)
     return _strategy_monitor
 
 

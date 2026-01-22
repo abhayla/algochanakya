@@ -1,8 +1,9 @@
 """
 Historical Data Service
 
-Fetches historical OHLC data from Kite Connect API with Redis caching.
+Fetches historical OHLC data from broker API with Redis caching.
 Supports multiple timeframes for technical analysis and regime classification.
+Uses broker abstraction layer for broker-agnostic operation.
 """
 
 import asyncio
@@ -10,7 +11,7 @@ import json
 import logging
 from datetime import datetime, date, timedelta
 from dataclasses import dataclass, asdict
-from typing import List, Optional
+from typing import List, Optional, Union
 from decimal import Decimal
 
 from kiteconnect import KiteConnect
@@ -18,6 +19,7 @@ import redis.asyncio as redis
 
 from app.config import settings
 from app.constants.trading import get_index_token, get_index_symbol
+from app.services.brokers.base import BrokerAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -86,15 +88,27 @@ class HistoricalDataService:
         "day": 3600        # 1 hour
     }
 
-    def __init__(self, kite: KiteConnect, redis_client: Optional[redis.Redis] = None):
+    def __init__(
+        self,
+        broker_adapter: Union[BrokerAdapter, KiteConnect],
+        redis_client: Optional[redis.Redis] = None
+    ):
         """
         Initialize Historical Data Service.
 
         Args:
-            kite: KiteConnect instance
+            broker_adapter: BrokerAdapter instance (preferred) or KiteConnect (legacy)
             redis_client: Optional Redis client for caching
         """
-        self.kite = kite
+        # Support both BrokerAdapter and legacy KiteConnect
+        if isinstance(broker_adapter, BrokerAdapter):
+            self.broker_adapter = broker_adapter
+            self.kite = broker_adapter.get_kite_client()
+        else:
+            # Legacy KiteConnect passed directly
+            self.kite = broker_adapter
+            self.broker_adapter = None
+
         self.redis = redis_client
         self._memory_cache: dict = {}  # Fallback if Redis unavailable
 

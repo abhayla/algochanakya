@@ -491,15 +491,16 @@ async def find_strike_by_delta(
     Optionally prefers round strikes (divisible by 100).
 
     Note: StrikeFinderService currently uses Kite-specific implementation.
-    TODO: Refactor StrikeFinderService to use market data adapter.
+    Full adapter refactoring will be done in a future phase.
     """
     try:
-        from kiteconnect import KiteConnect
+        from app.services.brokers.factory import get_broker_adapter
+        from app.services.brokers.base import BrokerType
 
-        # TODO: Replace with adapter-based implementation
-        # For now, using Kite directly as StrikeFinderService requires it
-        kite = KiteConnect(api_key="placeholder")
-        kite.set_access_token(broker.access_token)
+        # Get broker adapter and extract Kite client for StrikeFinderService
+        # TODO: Refactor StrikeFinderService to accept adapter directly
+        adapter = await get_broker_adapter(BrokerType.KITE, broker.access_token)
+        kite = adapter.get_kite_client()
 
         strike_finder = StrikeFinderService(kite, db)
 
@@ -549,15 +550,16 @@ async def find_strike_by_premium(
     Optionally prefers round strikes (divisible by 100).
 
     Note: StrikeFinderService currently uses Kite-specific implementation.
-    TODO: Refactor StrikeFinderService to use market data adapter.
+    Full adapter refactoring will be done in a future phase.
     """
     try:
-        from kiteconnect import KiteConnect
+        from app.services.brokers.factory import get_broker_adapter
+        from app.services.brokers.base import BrokerType
 
-        # TODO: Replace with adapter-based implementation
-        # For now, using Kite directly as StrikeFinderService requires it
-        kite = KiteConnect(api_key="placeholder")
-        kite.set_access_token(broker.access_token)
+        # Get broker adapter and extract Kite client for StrikeFinderService
+        # TODO: Refactor StrikeFinderService to accept adapter directly
+        adapter = await get_broker_adapter(BrokerType.KITE, broker.access_token)
+        kite = adapter.get_kite_client()
 
         strike_finder = StrikeFinderService(kite, db)
 

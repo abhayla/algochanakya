@@ -6,15 +6,18 @@ Intelligently selects option strikes based on:
 - Current market regime and volatility
 - User risk tolerance
 - Delta-based or ATM-based selection
+
+Uses broker abstraction layer for broker-agnostic operation.
 """
 
-from typing import List, Dict, Optional, Tuple, TYPE_CHECKING
+from typing import List, Dict, Optional, Tuple, TYPE_CHECKING, Union
 from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 from kiteconnect import KiteConnect
 
 from app.models.ai import AIUserConfig
 from app.services.ai.market_regime import RegimeType
+from app.services.brokers.base import BrokerAdapter
 from app.constants.trading import get_strike_step
 
 if TYPE_CHECKING:
@@ -145,8 +148,21 @@ class StrikeSelector:
     Selects strikes based on delta targets, VIX adjustments, and regime conditions.
     """
 
-    def __init__(self, kite: KiteConnect):
-        self.kite = kite
+    def __init__(self, broker_adapter: Union[BrokerAdapter, KiteConnect]):
+        """
+        Initialize Strike Selector.
+
+        Args:
+            broker_adapter: BrokerAdapter instance (preferred) or KiteConnect (legacy)
+        """
+        # Support both BrokerAdapter and legacy KiteConnect
+        if isinstance(broker_adapter, BrokerAdapter):
+            self.broker_adapter = broker_adapter
+            self.kite = broker_adapter.get_kite_client()
+        else:
+            # Legacy KiteConnect passed directly
+            self.kite = broker_adapter
+            self.broker_adapter = None
 
     async def select_strikes(
         self,

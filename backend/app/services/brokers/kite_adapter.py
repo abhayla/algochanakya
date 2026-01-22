@@ -273,6 +273,81 @@ class KiteAdapter(BrokerAdapter):
             self._log_error("get_orders", e)
             return []
 
+    async def place_basket_order(self, legs: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Place multiple orders as a basket (legacy format).
+
+        This method accepts a list of dictionaries (similar to KiteOrderService)
+        for backward compatibility with existing code.
+
+        Args:
+            legs: List of leg dictionaries with:
+                - tradingsymbol: Trading symbol
+                - exchange: Exchange (default: NFO)
+                - transaction_type: BUY or SELL
+                - quantity: Order quantity
+                - price: Limit price (optional for market orders)
+                - order_type: LIMIT or MARKET
+
+        Returns:
+            List of order results with success status and order_id or error
+        """
+        results = []
+
+        for leg in legs:
+            try:
+                if not self.kite:
+                    raise Exception("Kite client not initialized")
+
+                # Determine order type
+                order_type_str = leg.get("order_type", "LIMIT").upper()
+                if order_type_str == "LIMIT":
+                    kite_order_type = self.kite.ORDER_TYPE_LIMIT
+                else:
+                    kite_order_type = self.kite.ORDER_TYPE_MARKET
+
+                # Build order params
+                order_params = {
+                    "variety": self.kite.VARIETY_REGULAR,
+                    "exchange": leg.get("exchange", self.kite.EXCHANGE_NFO),
+                    "tradingsymbol": leg["tradingsymbol"],
+                    "transaction_type": (
+                        self.kite.TRANSACTION_TYPE_BUY
+                        if leg["transaction_type"].upper() == "BUY"
+                        else self.kite.TRANSACTION_TYPE_SELL
+                    ),
+                    "quantity": int(leg["quantity"]),
+                    "product": self.kite.PRODUCT_NRML,  # Normal for F&O
+                    "order_type": kite_order_type,
+                }
+
+                # Add price for limit orders
+                if order_type_str == "LIMIT" and leg.get("price"):
+                    order_params["price"] = float(leg["price"])
+
+                # Place order
+                order_id = self.kite.place_order(**order_params)
+
+                results.append({
+                    "tradingsymbol": leg["tradingsymbol"],
+                    "success": True,
+                    "order_id": order_id,
+                    "error": None
+                })
+
+                self._log_info("place_basket_order", f"Order placed: {order_id} for {leg['tradingsymbol']}")
+
+            except Exception as e:
+                self._log_error("place_basket_order", e)
+                results.append({
+                    "tradingsymbol": leg.get("tradingsymbol"),
+                    "success": False,
+                    "order_id": None,
+                    "error": str(e)
+                })
+
+        return results
+
     def _convert_kite_order(self, kite_order: Dict) -> UnifiedOrder:
         """Convert Kite order format to unified format."""
         status_str = kite_order.get("status", "PENDING")

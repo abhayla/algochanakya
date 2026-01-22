@@ -2,6 +2,26 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Table of Contents
+
+1. [Critical: Mandatory Behaviors](#critical-mandatory-behaviors)
+2. [Quick Start](#quick-start)
+3. [Core Purpose: Multi-Broker Architecture](#core-purpose-multi-broker-architecture)
+4. [Project Overview](#project-overview)
+5. [Development Commands](#development-commands)
+6. [Architecture Overview](#architecture-overview)
+7. [Important Patterns](#important-patterns)
+8. [Documentation](#documentation)
+9. [Claude Code Skills](#claude-code-skills)
+10. [Key URLs](#key-urls)
+11. [Testing](#testing)
+12. [Common Pitfalls](#common-pitfalls)
+13. [CI/CD](#cicd)
+14. [Debug Commands](#debug-commands)
+15. [Production Debugging](#production-debugging)
+
+---
+
 ## CRITICAL: Mandatory Behaviors
 
 ### 0. Production vs Development - NEVER TOUCH PRODUCTION
@@ -61,36 +81,31 @@ Before implementing features, refactors, or architectural changes:
 
 **Requirements:** Python 3.11+ | Node.js 20+ | PostgreSQL | Redis
 
-**IMPORTANT:** Production runs on port 8000. Development defaults to port **8001**.
+**Port Configuration:**
+| Environment | Backend | Frontend |
+|-------------|---------|----------|
+| Development | 8001 | 5173 |
+| Production | 8000 (DO NOT TOUCH) | 3004 |
 
 ```bash
-# Start dev backend (from backend/) - defaults to port 8001
+# Start dev backend (from backend/)
 venv\Scripts\activate && python run.py    # Windows
 source venv/bin/activate && python run.py # Linux/Mac
 
-# Start frontend (from frontend/) - defaults to localhost:5173
+# Start frontend (from frontend/)
 npm run dev
 
-# Run all E2E tests (from root) - uses dev backend on 8001
-npm test
-
-# Run single test file
-npx playwright test tests/e2e/specs/positions/positions.happy.spec.js
-
-# Run tests by screen
-npm run test:specs:positions    # By screen: positions, optionchain, strategy, strategylibrary, autopilot, navigation, audit, login, dashboard, watchlist, ofo, header
-npm run test:specs:header       # Header component tests (index prices, etc.)
-npm run test:main-features      # Dashboard, OptionChain, OFO, Strategy, StrategyLibrary together
-npm run test:deploy             # Tests with @deploy tag (strategy deployment)
-npm run test:visual             # Visual regression tests
-npm run test:visual:update      # Update visual snapshots
+# Run E2E tests (from root)
+npm test                                   # All tests
+npx playwright test path/to/spec.js       # Single file
 
 # Database migration (from backend/)
 alembic revision --autogenerate -m "description" && alembic upgrade head
-
-# Backend tests
-cd backend && pytest tests/ -v
 ```
+
+See [Development Commands](#development-commands) for complete command reference.
+
+---
 
 ## Core Purpose: Multi-Broker Architecture
 
@@ -130,26 +145,15 @@ The platform maintains **two separate abstractions** for maximum flexibility:
 
 ### Supported Brokers
 
-| Broker | Market Data | Order Execution | Status |
-|--------|-------------|-----------------|--------|
-| **Angel One** (SmartAPI) | FREE | FREE | In Progress (Default for data) |
-| **Zerodha** (Kite Connect) | ₹500/mo | FREE | Implemented (orders only) |
-| **Upstox** | FREE | FREE | Planned |
-| **Fyers** | FREE | FREE | Planned |
-| **Alice Blue** (ANT API) | FREE | FREE | Planned |
-| **Kotak** (Neo API) | FREE | FREE | Planned |
-| **Dhan** | FREE or ₹499/mo* | FREE | Planned |
-| **Paytm Money** | FREE | FREE | Planned |
-| **Samco** | FREE | FREE | Planned |
-| **Shoonya/Finvasia** | FREE | FREE | Planned (Zero brokerage) |
-| **Pocketful** | FREE | FREE | Planned |
-| **TradeSmart** | FREE | FREE | Planned |
-| **ICICI Direct** (Breeze) | FREE (limited) | FREE | Planned |
+| Broker | Market Data | Orders | Status |
+|--------|-------------|--------|--------|
+| **Angel One** (SmartAPI) | ✅ FREE | ✅ FREE | Default for data |
+| **Zerodha** (Kite Connect) | ₹500/mo | ✅ FREE | Orders only |
+| **Upstox/Fyers/Dhan/Others** | FREE | FREE | Planned |
 
-**Notes:**
-- **Zerodha:** "Connect" tier (₹500/mo for data+orders) vs "Personal" tier (FREE for orders only)
-- **Dhan:** FREE if 25 F&O trades/month, else ₹499/month + taxes
-- All order execution APIs are FREE (use user's funded broker account)
+**Current Setup:** SmartAPI (FREE data) + Zerodha (FREE orders) = ₹0/month
+
+See [Broker Abstraction Architecture](docs/architecture/broker-abstraction.md) for complete broker list with pricing details.
 
 ### Current Implementation Status
 
@@ -198,6 +202,8 @@ Once abstraction is complete, adding a broker will require:
 4. Update frontend settings dropdown
 
 **Zero changes** to routes, services, or business logic required.
+
+---
 
 ## Project Overview
 
@@ -319,6 +325,8 @@ npm run generate:test              # Generate new test from template
 - `GET /api/v1/ai/analytics/performance` - Performance metrics
 - `POST /api/v1/ai/backtest/run` - Run historical backtest
 
+---
+
 ## Important Patterns
 
 ### Broker Abstraction (CRITICAL)
@@ -363,9 +371,18 @@ lot_size = get_lot_size("NIFTY")  # 25
 ```
 
 ```javascript
-// Frontend (loaded from API on init)
-import { getLotSize, getStrikeStep } from '@/constants/trading'
+// Frontend - loaded from backend API on app init
+// File: frontend/src/constants/trading.js
+import { getLotSize, getStrikeStep, useTradingConstants } from '@/constants/trading'
+
+// Direct function calls
+const lotSize = getLotSize('NIFTY')  // 25
+
+// Or use the composable for reactive access
+const { LOT_SIZES, STRIKE_STEPS, loadTradingConstants } = useTradingConstants()
 ```
+
+**Note:** Frontend constants are fetched from `/api/constants/trading` on app initialization. The file contains fallback defaults that match backend values.
 
 ### Adding New Database Models
 
@@ -445,6 +462,8 @@ from app.services.brokers.market_data.rate_limiter import RateLimiter
 - `frontend/src/services/api.js` - HTTP interceptor (lines 27-35)
 - `frontend/src/stores/auth.js` - Auth state management
 
+---
+
 ## Documentation
 
 **⭐ PRIMARY DOCS FOR IMPLEMENTATION:**
@@ -475,15 +494,19 @@ Use these skills for faster, consistent results:
 | `save-session` | Save context for later: /save-session [name] | On demand |
 | `start-session` | Resume saved session: /start-session [name] | On demand |
 
+---
+
 ## Key URLs
 
 Dashboard `/dashboard`, Watchlist `/watchlist`, Positions `/positions`, Option Chain `/optionchain`, Strategy `/strategy`, Strategy Library `/strategies`, AutoPilot `/autopilot`, AI `/ai`, OFO `/ofo`, Settings `/settings`
 
 **Console Prefixes:** `[AutoPilot WS]`, `[OptionChain]`, `[Strategy]`, `[AI Regime]`, `[AI Risk]`
 
+---
+
 ## Testing
 
-~190 test files (123 E2E spec files + 67 backend pytest files). See [docs/testing/README.md](docs/testing/README.md) for complete documentation.
+~186 test files (123 E2E spec files + 63 backend pytest files). See [docs/testing/README.md](docs/testing/README.md) for complete documentation.
 
 **Config:** 180s timeout, 1 worker (sequential), auth state reused via `./tests/config/.auth-state.json`. Auth token stored in `./tests/config/.auth-token`. Projects: `setup` (SmartAPI auto-login), `chromium` (main), `isolated` (fresh context). **SmartAPI auto-TOTP** - no manual TOTP entry required.
 
@@ -502,6 +525,8 @@ Dashboard `/dashboard`, Watchlist `/watchlist`, Positions `/positions`, Option C
 - `*.visual.spec.js` - Screenshots
 - `*.api.spec.js` - API validation
 - `*.audit.spec.js` - a11y/CSS audits
+
+---
 
 ## Common Pitfalls
 
@@ -525,6 +550,8 @@ Dashboard `/dashboard`, Watchlist `/watchlist`, Positions `/positions`, Option C
 - **Wrong import** - Use `auth.fixture.js`, NOT `@playwright/test`
 - **CSS/text selectors** - Use `data-testid` only
 
+---
+
 ## CI/CD
 
 GitHub Actions runs automatically on push/PR to `main` and `develop`:
@@ -535,6 +562,8 @@ GitHub Actions runs automatically on push/PR to `main` and `develop`:
 | **E2E Tests** | `.github/workflows/e2e-tests.yml` | Playwright with full stack (30min timeout) |
 
 Allure reports deploy to GitHub Pages on main branch merges.
+
+---
 
 ## Debug Commands
 
@@ -553,6 +582,8 @@ ws.send(JSON.stringify({action: 'subscribe', tokens: [256265], mode: 'quote'}))
 // Production (use wss:// for HTTPS, port 8000)
 const ws = new WebSocket('wss://algochanakya.com/ws/ticks?token=YOUR_JWT')
 ```
+
+---
 
 ## Production Debugging
 

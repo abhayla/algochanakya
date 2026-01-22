@@ -31,7 +31,12 @@ from app.services.brokers.base import (
     OrderStatus
 )
 from app.services.brokers.kite_adapter import KiteAdapter
-from app.services.brokers.factory import get_broker_adapter
+from app.services.brokers.factory import (
+    get_broker_adapter,
+    positions_to_legacy_format,
+    orders_to_legacy_format,
+    quote_to_legacy_format,
+)
 
 __all__ = [
     "BrokerAdapter",
@@ -44,5 +49,9 @@ __all__ = [
     "ProductType",
     "OrderStatus",
     "KiteAdapter",
-    "get_broker_adapter"
+    "get_broker_adapter",
+    # Legacy format helpers
+    "positions_to_legacy_format",
+    "orders_to_legacy_format",
+    "quote_to_legacy_format",
 ]

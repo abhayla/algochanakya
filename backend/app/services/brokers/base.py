@@ -482,3 +482,20 @@ class BrokerAdapter(ABC):
     def _log_info(self, method: str, message: str):
         """Log info with context."""
         logger.info(f"[{self.broker_type.value}] {method}: {message}")
+
+    # =========================================================================
+    # Direct Client Access (for transitional compatibility)
+    # =========================================================================
+
+    def get_kite_client(self):
+        """
+        Get underlying broker client for features not yet abstracted.
+
+        This is a transitional method to support services that still need
+        direct broker client access. Should be overridden by subclasses
+        that support Kite-compatible interfaces.
+
+        Returns:
+            Underlying broker client or None
+        """
+        return None

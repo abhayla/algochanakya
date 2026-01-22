@@ -2,19 +2,23 @@
 Positions API Routes
 
 F&O Positions with live P&L, exit, and add functionality.
+Uses broker abstraction layer for broker-agnostic order execution.
 """
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, List
 from pydantic import BaseModel
 import re
-from kiteconnect.exceptions import TokenException
 
 from app.database import get_db
 from app.models import User, BrokerConnection
 from app.models.autopilot import AutoPilotOrder, AutoPilotStrategy
-from app.services.kite_orders import KiteOrderService
-from app.utils.dependencies import get_current_user, get_current_broker_connection
+from app.services.brokers import (
+    BrokerAdapter,
+    positions_to_legacy_format,
+    quote_to_legacy_format,
+)
+from app.utils.dependencies import get_current_user, get_current_broker_connection, get_broker_adapter_dep
 from sqlalchemy import select, and_
 from app.constants import LOT_SIZES
 
@@ -90,16 +94,15 @@ def parse_tradingsymbol(symbol: str) -> dict:
 async def get_positions(
     position_type: str = Query("day", description="day or net"),
     user: User = Depends(get_current_user),
-    broker: BrokerConnection = Depends(get_current_broker_connection),
+    adapter: BrokerAdapter = Depends(get_broker_adapter_dep),
     db: AsyncSession = Depends(get_db)
 ):
     """Get all F&O positions with live P&L"""
 
     try:
-        kite_service = KiteOrderService(broker.access_token)
-
-        # Get positions from Kite
-        positions_data = await kite_service.get_positions()
+        # Get positions from broker adapter (returns List[UnifiedPosition])
+        unified_positions = await adapter.get_positions()
+        positions_data = positions_to_legacy_format(unified_positions)
 
         if position_type == "day":
             raw_positions = positions_data.get("day", [])
@@ -129,7 +132,8 @@ async def get_positions(
 
         # Get live quotes for all positions
         symbols = [f"{p['exchange']}:{p['tradingsymbol']}" for p in fno_positions]
-        quotes = await kite_service.get_quote(symbols) if symbols else {}
+        unified_quotes = await adapter.get_quote(symbols) if symbols else {}
+        quotes = quote_to_legacy_format(unified_quotes)
 
         # Process positions
         processed_positions = []
@@ -206,7 +210,7 @@ async def get_positions(
 
         # Get margin info
         try:
-            margins = await kite_service.get_margins()
+            margins = await adapter.get_margins()
             equity_margin = margins.get("equity", {})
             available_margin = equity_margin.get("available", {}).get("live_balance", 0)
             used_margin = equity_margin.get("utilised", {}).get("span", 0) + equity_margin.get("utilised", {}).get("exposure", 0)
@@ -228,12 +232,14 @@ async def get_positions(
             }
         }
 
-    except TokenException as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Broker session expired. Please login again. ({str(e)})"
-        )
     except Exception as e:
+        # Check for broker-specific token errors
+        error_msg = str(e).lower()
+        if "token" in error_msg and ("invalid" in error_msg or "expired" in error_msg):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"Broker session expired. Please login again. ({str(e)})"
+            )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get positions: {str(e)}"
@@ -244,14 +250,12 @@ async def get_positions(
 async def exit_position(
     request: ExitOrderRequest,
     user: User = Depends(get_current_user),
-    broker: BrokerConnection = Depends(get_current_broker_connection),
+    adapter: BrokerAdapter = Depends(get_broker_adapter_dep),
     db: AsyncSession = Depends(get_db)
 ):
     """Exit a position (place opposite order)"""
 
     try:
-        kite_service = KiteOrderService(broker.access_token)
-
         order_legs = [{
             "tradingsymbol": request.tradingsymbol,
             "exchange": request.exchange,
@@ -261,7 +265,7 @@ async def exit_position(
             "price": request.price if request.order_type == "LIMIT" else None
         }]
 
-        results = await kite_service.place_basket_order(order_legs)
+        results = await adapter.place_basket_order(order_legs)
         result = results[0] if results else {}
 
         if result.get("success"):
@@ -278,12 +282,14 @@ async def exit_position(
 
     except HTTPException:
         raise
-    except TokenException as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Broker session expired. Please login again. ({str(e)})"
-        )
     except Exception as e:
+        # Check for broker-specific token errors
+        error_msg = str(e).lower()
+        if "token" in error_msg and ("invalid" in error_msg or "expired" in error_msg):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"Broker session expired. Please login again. ({str(e)})"
+            )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
@@ -294,14 +300,12 @@ async def exit_position(
 async def add_to_position(
     request: AddPositionRequest,
     user: User = Depends(get_current_user),
-    broker: BrokerConnection = Depends(get_current_broker_connection),
+    adapter: BrokerAdapter = Depends(get_broker_adapter_dep),
     db: AsyncSession = Depends(get_db)
 ):
     """Add to existing position"""
 
     try:
-        kite_service = KiteOrderService(broker.access_token)
-
         order_legs = [{
             "tradingsymbol": request.tradingsymbol,
             "exchange": request.exchange,
@@ -311,7 +315,7 @@ async def add_to_position(
             "price": request.price
         }]
 
-        results = await kite_service.place_basket_order(order_legs)
+        results = await adapter.place_basket_order(order_legs)
         result = results[0] if results else {}
 
         if result.get("success"):
@@ -328,12 +332,14 @@ async def add_to_position(
 
     except HTTPException:
         raise
-    except TokenException as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Broker session expired. Please login again. ({str(e)})"
-        )
     except Exception as e:
+        # Check for broker-specific token errors
+        error_msg = str(e).lower()
+        if "token" in error_msg and ("invalid" in error_msg or "expired" in error_msg):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"Broker session expired. Please login again. ({str(e)})"
+            )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
@@ -343,16 +349,15 @@ async def add_to_position(
 @router.post("/exit-all")
 async def exit_all_positions(
     user: User = Depends(get_current_user),
-    broker: BrokerConnection = Depends(get_current_broker_connection),
+    adapter: BrokerAdapter = Depends(get_broker_adapter_dep),
     db: AsyncSession = Depends(get_db)
 ):
     """Exit all open positions"""
 
     try:
-        kite_service = KiteOrderService(broker.access_token)
-
-        # Get all positions
-        positions_data = await kite_service.get_positions()
+        # Get all positions via broker adapter
+        unified_positions = await adapter.get_positions()
+        positions_data = positions_to_legacy_format(unified_positions)
         net_positions = positions_data.get("net", [])
 
         # Filter F&O positions with quantity
@@ -385,7 +390,7 @@ async def exit_all_positions(
             })
 
         # Place all exit orders
-        results = await kite_service.place_basket_order(exit_orders)
+        results = await adapter.place_basket_order(exit_orders)
 
         orders_placed = []
         errors = []
@@ -409,12 +414,14 @@ async def exit_all_positions(
             "message": f"Placed {len(orders_placed)} exit orders, {len(errors)} failed"
         }
 
-    except TokenException as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Broker session expired. Please login again. ({str(e)})"
-        )
     except Exception as e:
+        # Check for broker-specific token errors
+        error_msg = str(e).lower()
+        if "token" in error_msg and ("invalid" in error_msg or "expired" in error_msg):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"Broker session expired. Please login again. ({str(e)})"
+            )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
@@ -425,13 +432,13 @@ async def exit_all_positions(
 async def get_grouped_positions(
     group_by: str = Query("underlying", description="underlying, expiry, or strategy"),
     user: User = Depends(get_current_user),
-    broker: BrokerConnection = Depends(get_current_broker_connection),
+    adapter: BrokerAdapter = Depends(get_broker_adapter_dep),
     db: AsyncSession = Depends(get_db)
 ):
     """Get positions grouped by underlying, expiry, or strategy"""
 
     # Get base positions
-    positions_data = await get_positions("net", user, broker, db)
+    positions_data = await get_positions("net", user, adapter, db)
     positions = positions_data["positions"]
 
     if not positions:
@@ -476,7 +483,7 @@ async def get_grouped_positions(
 async def get_annotated_positions(
     position_type: str = Query("day", description="day or net"),
     user: User = Depends(get_current_user),
-    broker: BrokerConnection = Depends(get_current_broker_connection),
+    adapter: BrokerAdapter = Depends(get_broker_adapter_dep),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -490,7 +497,7 @@ async def get_annotated_positions(
     """
 
     # Get base positions data
-    positions_data = await get_positions(position_type, user, broker, db)
+    positions_data = await get_positions(position_type, user, adapter, db)
     positions = positions_data["positions"]
 
     if not positions:

@@ -1,13 +1,14 @@
 """
 Order Execution Service
 
-Executes orders via Kite Connect API for AutoPilot strategies.
+Executes orders via broker abstraction layer for AutoPilot strategies.
 Handles order placement, modification, and cancellation.
+Uses BrokerAdapter for broker-agnostic order execution.
 """
 import asyncio
 from datetime import datetime, date
 from decimal import Decimal
-from typing import Dict, List, Any, Optional, Tuple
+from typing import Dict, List, Any, Optional, Tuple, Union, TYPE_CHECKING
 from dataclasses import dataclass
 from enum import Enum
 from uuid import UUID
@@ -20,6 +21,7 @@ from app.models.autopilot import AutoPilotStrategy, AutoPilotOrder, AutoPilotLog
 from app.services.market_data import MarketDataService
 from app.services.strike_finder_service import StrikeFinderService
 from app.services.ai.config_service import AIConfigService
+from app.services.brokers.base import BrokerAdapter
 from app.constants.trading import STRIKE_STEPS, LOT_SIZES
 from app.utils.tradingsymbol import build_tradingsymbol
 
@@ -70,17 +72,33 @@ class OrderResult:
 
 class OrderExecutor:
     """
-    Executes orders via Kite Connect.
+    Executes orders via broker abstraction layer.
 
     Features:
     - Sequential and simultaneous execution
     - Slippage protection
     - Retry on failure
     - Order tracking
+
+    Note: Accepts either BrokerAdapter (preferred) or KiteConnect (legacy).
+    New code should use BrokerAdapter for broker-agnostic operation.
     """
 
-    def __init__(self, kite: KiteConnect, market_data: MarketDataService, strike_finder: StrikeFinderService = None):
-        self.kite = kite
+    def __init__(
+        self,
+        broker_adapter: Union[BrokerAdapter, KiteConnect],
+        market_data: MarketDataService,
+        strike_finder: StrikeFinderService = None
+    ):
+        # Support both BrokerAdapter and legacy KiteConnect
+        if isinstance(broker_adapter, BrokerAdapter):
+            self.broker_adapter = broker_adapter
+            self.kite = broker_adapter.get_kite_client()  # For StrikeFinderService compatibility
+        else:
+            # Legacy KiteConnect passed directly
+            self.kite = broker_adapter
+            self.broker_adapter = None
+
         self.market_data = market_data
         self.strike_finder = strike_finder
 
@@ -651,8 +669,7 @@ class OrderExecutor:
             )
 
         try:
-            # Place order via Kite
-            loop = asyncio.get_event_loop()
+            # Place order via broker adapter (preferred) or Kite directly (legacy)
             order_params = {
                 "exchange": request.exchange,
                 "tradingsymbol": request.tradingsymbol,
@@ -667,10 +684,27 @@ class OrderExecutor:
             if request.trigger_price:
                 order_params["trigger_price"] = float(request.trigger_price)
 
-            kite_order_id = await loop.run_in_executor(
-                None,
-                lambda: self.kite.place_order(variety="regular", **order_params)
-            )
+            # Use broker adapter if available (preferred), otherwise use Kite directly
+            if self.broker_adapter:
+                # Use adapter's place_order - this is the abstraction layer
+                unified_order = await self.broker_adapter.place_order(
+                    exchange=request.exchange,
+                    tradingsymbol=request.tradingsymbol,
+                    side=request.transaction_type,
+                    quantity=request.quantity,
+                    order_type=request.order_type,
+                    product=request.product,
+                    price=float(request.price) if request.price else None,
+                    trigger_price=float(request.trigger_price) if request.trigger_price else None
+                )
+                kite_order_id = unified_order.order_id
+            else:
+                # Legacy path: use KiteConnect directly
+                loop = asyncio.get_event_loop()
+                kite_order_id = await loop.run_in_executor(
+                    None,
+                    lambda: self.kite.place_order(variety="regular", **order_params)
+                )
 
             # Create order record in database with full snapshot
             order = AutoPilotOrder(
@@ -1068,7 +1102,27 @@ class OrderExecutor:
             }
 
 
-def get_order_executor(kite: KiteConnect, market_data: MarketDataService, db: AsyncSession = None) -> OrderExecutor:
-    """Create OrderExecutor instance."""
+def get_order_executor(
+    broker_adapter: Union[BrokerAdapter, KiteConnect],
+    market_data: MarketDataService,
+    db: AsyncSession = None
+) -> OrderExecutor:
+    """
+    Create OrderExecutor instance.
+
+    Args:
+        broker_adapter: BrokerAdapter instance (preferred) or KiteConnect (legacy)
+        market_data: MarketDataService for quotes and LTP
+        db: Database session for StrikeFinderService
+
+    Returns:
+        OrderExecutor instance
+    """
+    # Get kite client for StrikeFinderService
+    if isinstance(broker_adapter, BrokerAdapter):
+        kite = broker_adapter.get_kite_client()
+    else:
+        kite = broker_adapter
+
     strike_finder = StrikeFinderService(kite, db) if db else None
-    return OrderExecutor(kite, market_data, strike_finder)
+    return OrderExecutor(broker_adapter, market_data, strike_finder)

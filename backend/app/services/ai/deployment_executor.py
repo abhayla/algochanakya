@@ -2,18 +2,19 @@
 AI Deployment Executor Service
 
 Automatically deploys recommended strategies to live or paper trading.
+Uses broker abstraction layer for broker-agnostic operation.
 
 Features:
 - Strategy deployment from AI recommendations
 - Strike selection and leg configuration
-- Order placement via Kite Connect
+- Order placement via broker abstraction
 - Deployment tracking and logging
 - Paper trading support
 - Rollback on partial failures
 """
 
 import logging
-from typing import Optional, List, Dict, TYPE_CHECKING
+from typing import Optional, List, Dict, TYPE_CHECKING, Union
 from datetime import datetime
 from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,6 +22,7 @@ from kiteconnect import KiteConnect
 
 from app.models.ai import AIUserConfig
 from app.services.ai.market_regime import RegimeType
+from app.services.brokers.base import BrokerAdapter
 
 if TYPE_CHECKING:
     from app.schemas.ai import RegimeResponse
@@ -68,15 +70,30 @@ class DeploymentExecutor:
     1. Receive strategy recommendation
     2. Select optimal strikes using StrikeSelector
     3. Validate deployment rules (capital, risk limits)
-    4. Place orders via Kite Connect
+    4. Place orders via broker abstraction
     5. Track deployment status
     6. Rollback on failures
     """
 
-    def __init__(self, kite: KiteConnect, db: AsyncSession):
-        self.kite = kite
+    def __init__(self, broker_adapter: Union[BrokerAdapter, KiteConnect], db: AsyncSession):
+        """
+        Initialize Deployment Executor.
+
+        Args:
+            broker_adapter: BrokerAdapter instance (preferred) or KiteConnect (legacy)
+            db: Database session
+        """
+        # Support both BrokerAdapter and legacy KiteConnect
+        if isinstance(broker_adapter, BrokerAdapter):
+            self.broker_adapter = broker_adapter
+            self.kite = broker_adapter.get_kite_client()
+        else:
+            # Legacy KiteConnect passed directly
+            self.kite = broker_adapter
+            self.broker_adapter = None
+
         self.db = db
-        self.strike_selector = StrikeSelector(kite)
+        self.strike_selector = StrikeSelector(broker_adapter)
 
     async def deploy_strategy(
         self,

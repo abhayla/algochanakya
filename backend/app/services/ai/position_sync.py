@@ -2,9 +2,10 @@
 AI Position Synchronization Service
 
 Real-time synchronization of positions from broker with AI analysis.
+Uses broker abstraction layer for broker-agnostic operation.
 
 Features:
-- Fetch positions from Kite Connect
+- Fetch positions from broker abstraction
 - Track position changes (entry/exit)
 - Calculate real-time P&L
 - Detect strategy mismatches
@@ -13,10 +14,12 @@ Features:
 """
 
 import logging
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Union
 from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 from kiteconnect import KiteConnect
+
+from app.services.brokers.base import BrokerAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -88,8 +91,23 @@ class PositionSyncService:
     6. Log sync events
     """
 
-    def __init__(self, kite: KiteConnect, db: AsyncSession):
-        self.kite = kite
+    def __init__(self, broker_adapter: Union[BrokerAdapter, KiteConnect], db: AsyncSession):
+        """
+        Initialize Position Sync Service.
+
+        Args:
+            broker_adapter: BrokerAdapter instance (preferred) or KiteConnect (legacy)
+            db: Database session
+        """
+        # Support both BrokerAdapter and legacy KiteConnect
+        if isinstance(broker_adapter, BrokerAdapter):
+            self.broker_adapter = broker_adapter
+            self.kite = broker_adapter.get_kite_client()
+        else:
+            # Legacy KiteConnect passed directly
+            self.kite = broker_adapter
+            self.broker_adapter = None
+
         self.db = db
         self._last_positions: Dict[str, Dict] = {}
 

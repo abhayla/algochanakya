@@ -60,7 +60,7 @@ export default defineConfig({
   webServer: [
     {
       command: 'cd backend && venv\\Scripts\\activate && python run.py --port 8001',
-      url: 'http://localhost:8001/api/health',
+      url: 'http://localhost:8001/health',
       reuseExistingServer: true,
       timeout: 30000,
     },

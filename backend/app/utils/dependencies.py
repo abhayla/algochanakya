@@ -124,6 +124,8 @@ def get_kite_client(
     """
     Dependency to get KiteConnect client for current user's broker connection.
 
+    DEPRECATED: Use get_broker_adapter_dep() instead for broker-agnostic code.
+
     Args:
         broker_connection: Current user's active broker connection
 
@@ -136,3 +138,31 @@ def get_kite_client(
     kite = KiteConnect(api_key=settings.KITE_API_KEY)
     kite.set_access_token(broker_connection.access_token)
     return kite
+
+
+async def get_broker_adapter_dep(
+    broker: BrokerConnection = Depends(get_current_broker_connection)
+):
+    """
+    FastAPI dependency for broker adapter.
+
+    Returns an initialized BrokerAdapter based on the broker connection.
+    Currently defaults to Kite adapter as it's the only order execution broker.
+
+    Args:
+        broker: Current user's active broker connection
+
+    Returns:
+        Initialized BrokerAdapter instance
+
+    Usage:
+        @router.get("/positions")
+        async def get_positions(adapter: BrokerAdapter = Depends(get_broker_adapter_dep)):
+            positions = await adapter.get_positions()
+            return positions
+    """
+    from app.services.brokers.factory import get_broker_adapter
+    from app.services.brokers.base import BrokerType, BrokerAdapter
+
+    adapter = await get_broker_adapter(BrokerType.KITE, broker.access_token)
+    return adapter

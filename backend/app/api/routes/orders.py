@@ -1,7 +1,7 @@
 """
 Orders API Routes
 
-Basket orders, positions, and order management via Kite Connect.
+Basket orders, positions, and order management via broker abstraction layer.
 Market data endpoints route to SmartAPI or Kite based on user preference.
 """
 import logging
@@ -10,7 +10,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
 from typing import List, Optional
 from uuid import UUID
-from kiteconnect.exceptions import TokenException
 
 from app.database import get_db
 from app.models import User, BrokerConnection, Strategy, StrategyLeg, Instrument
@@ -26,9 +25,15 @@ from app.schemas.strategies import (
     ContractType,
     TransactionType,
 )
-from app.services.kite_orders import KiteOrderService, parse_positions_to_legs
-from app.services.smartapi_market_data import create_market_data_service
-from app.utils.dependencies import get_current_user, get_current_broker_connection
+from app.services.kite_orders import parse_positions_to_legs
+from app.services.brokers import (
+    get_broker_adapter,
+    BrokerType,
+    BrokerAdapter,
+    positions_to_legacy_format,
+    orders_to_legacy_format,
+)
+from app.utils.dependencies import get_current_user, get_current_broker_connection, get_broker_adapter_dep
 from app.utils.smartapi_utils import get_valid_smartapi_credentials
 from app.config import settings
 
@@ -83,7 +88,7 @@ async def get_smartapi_credentials(user_id, db: AsyncSession):
 async def place_basket_order(
     request: BasketOrderRequest,
     user: User = Depends(get_current_user),
-    broker: BrokerConnection = Depends(get_current_broker_connection),
+    adapter: BrokerAdapter = Depends(get_broker_adapter_dep),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -130,9 +135,8 @@ async def place_basket_order(
                 "order_type": leg.order_type,
             })
 
-        # Place orders via Kite
-        kite_service = KiteOrderService(broker.access_token)
-        order_results = await kite_service.place_basket_order(order_legs)
+        # Place orders via broker adapter
+        order_results = await adapter.place_basket_order(order_legs)
 
         # Update strategy legs with order IDs if strategy_id provided
         if request.strategy_id:
@@ -190,12 +194,14 @@ async def place_basket_order(
 
     except HTTPException:
         raise
-    except TokenException as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Broker session expired. Please login again. ({str(e)})"
-        )
     except Exception as e:
+        # Check for broker-specific token errors
+        error_msg = str(e).lower()
+        if "token" in error_msg and ("invalid" in error_msg or "expired" in error_msg):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"Broker session expired. Please login again. ({str(e)})"
+            )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to place basket order: {str(e)}"
@@ -206,10 +212,10 @@ async def place_basket_order(
 async def get_positions(
     underlying: Optional[str] = Query(None, description="Filter by underlying"),
     user: User = Depends(get_current_user),
-    broker: BrokerConnection = Depends(get_current_broker_connection)
+    adapter: BrokerAdapter = Depends(get_broker_adapter_dep)
 ):
     """
-    Get current positions from Kite.
+    Get current positions from broker.
 
     Args:
         underlying: Optional filter for underlying
@@ -218,8 +224,11 @@ async def get_positions(
         Positions data
     """
     try:
-        kite_service = KiteOrderService(broker.access_token)
-        positions = await kite_service.get_positions()
+        # Get positions via broker adapter (returns List[UnifiedPosition])
+        unified_positions = await adapter.get_positions()
+
+        # Convert to legacy format for backward compatibility
+        positions = positions_to_legacy_format(unified_positions)
 
         # Parse to leg format if underlying specified
         if underlying:
@@ -231,12 +240,14 @@ async def get_positions(
 
         return positions
 
-    except TokenException as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Broker session expired. Please login again. ({str(e)})"
-        )
     except Exception as e:
+        # Check for broker-specific token errors
+        error_msg = str(e).lower()
+        if "token" in error_msg and ("invalid" in error_msg or "expired" in error_msg):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"Broker session expired. Please login again. ({str(e)})"
+            )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get positions: {str(e)}"
@@ -247,7 +258,7 @@ async def get_positions(
 async def import_positions(
     underlying: str = Query(..., description="Underlying to import (NIFTY, BANKNIFTY, FINNIFTY)"),
     user: User = Depends(get_current_user),
-    broker: BrokerConnection = Depends(get_current_broker_connection),
+    adapter: BrokerAdapter = Depends(get_broker_adapter_dep),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -267,8 +278,9 @@ async def import_positions(
                 detail="Underlying must be NIFTY, BANKNIFTY, or FINNIFTY"
             )
 
-        kite_service = KiteOrderService(broker.access_token)
-        positions = await kite_service.get_positions()
+        # Get positions via broker adapter
+        unified_positions = await adapter.get_positions()
+        positions = positions_to_legacy_format(unified_positions)
 
         # Parse positions to legs
         position_legs = parse_positions_to_legs(positions, underlying)
@@ -330,12 +342,14 @@ async def import_positions(
 
     except HTTPException:
         raise
-    except TokenException as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Broker session expired. Please login again. ({str(e)})"
-        )
     except Exception as e:
+        # Check for broker-specific token errors
+        error_msg = str(e).lower()
+        if "token" in error_msg and ("invalid" in error_msg or "expired" in error_msg):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"Broker session expired. Please login again. ({str(e)})"
+            )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to import positions: {str(e)}"
@@ -345,25 +359,30 @@ async def import_positions(
 @router.get("/orders")
 async def get_orders(
     user: User = Depends(get_current_user),
-    broker: BrokerConnection = Depends(get_current_broker_connection)
+    adapter: BrokerAdapter = Depends(get_broker_adapter_dep)
 ):
     """
-    Get today's orders from Kite.
+    Get today's orders from broker.
 
     Returns:
         List of orders
     """
     try:
-        kite_service = KiteOrderService(broker.access_token)
-        orders = await kite_service.get_orders()
+        # Get orders via broker adapter (returns List[UnifiedOrder])
+        unified_orders = await adapter.get_orders()
+
+        # Convert to legacy format for backward compatibility
+        orders = orders_to_legacy_format(unified_orders)
         return orders
 
-    except TokenException as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Broker session expired. Please login again. ({str(e)})"
-        )
     except Exception as e:
+        # Check for broker-specific token errors
+        error_msg = str(e).lower()
+        if "token" in error_msg and ("invalid" in error_msg or "expired" in error_msg):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"Broker session expired. Please login again. ({str(e)})"
+            )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get orders: {str(e)}"
@@ -373,25 +392,27 @@ async def get_orders(
 @router.get("/margins")
 async def get_margins(
     user: User = Depends(get_current_user),
-    broker: BrokerConnection = Depends(get_current_broker_connection)
+    adapter: BrokerAdapter = Depends(get_broker_adapter_dep)
 ):
     """
-    Get account margins from Kite.
+    Get account margins from broker.
 
     Returns:
         Margin details
     """
     try:
-        kite_service = KiteOrderService(broker.access_token)
-        margins = await kite_service.get_margins()
+        # Get margins via broker adapter
+        margins = await adapter.get_margins()
         return margins
 
-    except TokenException as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Broker session expired. Please login again. ({str(e)})"
-        )
     except Exception as e:
+        # Check for broker-specific token errors
+        error_msg = str(e).lower()
+        if "token" in error_msg and ("invalid" in error_msg or "expired" in error_msg):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"Broker session expired. Please login again. ({str(e)})"
+            )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get margins: {str(e)}"
@@ -402,28 +423,30 @@ async def get_margins(
 async def cancel_order(
     order_id: str,
     user: User = Depends(get_current_user),
-    broker: BrokerConnection = Depends(get_current_broker_connection)
+    adapter: BrokerAdapter = Depends(get_broker_adapter_dep)
 ):
     """
     Cancel an order.
 
     Args:
-        order_id: Kite order ID
+        order_id: Broker order ID
 
     Returns:
         Cancellation result
     """
     try:
-        kite_service = KiteOrderService(broker.access_token)
-        result = await kite_service.cancel_order(order_id)
+        # Cancel order via broker adapter
+        result = await adapter.cancel_order(order_id)
         return {"success": True, "order_id": result}
 
-    except TokenException as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Broker session expired. Please login again. ({str(e)})"
-        )
     except Exception as e:
+        # Check for broker-specific token errors
+        error_msg = str(e).lower()
+        if "token" in error_msg and ("invalid" in error_msg or "expired" in error_msg):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"Broker session expired. Please login again. ({str(e)})"
+            )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to cancel order: {str(e)}"
