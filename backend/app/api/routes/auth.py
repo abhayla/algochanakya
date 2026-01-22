@@ -462,14 +462,18 @@ async def angelone_login(
             broker_connection_id=broker_connection.id
         )
 
-        # Store session in Redis
-        redis = await get_redis()
-        session_key = f"session:{user.id}"
-        await redis.setex(
-            session_key,
-            settings.JWT_EXPIRY_HOURS * 3600,
-            jwt_token
-        )
+        # Store session in Redis (optional - login still works without Redis)
+        try:
+            redis = await get_redis()
+            session_key = f"session:{user.id}"
+            await redis.setex(
+                session_key,
+                settings.JWT_EXPIRY_HOURS * 3600,
+                jwt_token
+            )
+        except Exception as redis_error:
+            # Redis is optional for login - warn but continue
+            logger.warning(f"[AngelOne] Redis session storage failed (continuing): {redis_error}")
 
         logger.info(f"[AngelOne] Login successful for {broker_user_id}")
 

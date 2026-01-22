@@ -26,7 +26,12 @@ class Settings(BaseSettings):
 
     # AngelOne SmartAPI (optional - for market data)
     ANGEL_API_KEY: str = ""  # For live data (WebSocket)
-    ANGEL_API_KEY_HISTORICAL: str = ""  # For historical data
+    ANGEL_API_SECRET: str = ""  # Secret for live data API
+    ANGEL_HIST_API_KEY: str = ""  # For historical data
+    ANGEL_HIST_API_SECRET: str = ""  # Secret for historical data API
+    ANGEL_TRADE_API_KEY: str = ""  # For trading API
+    ANGEL_TRADE_API_SECRET: str = ""  # Secret for trading API
+    ANGEL_API_KEY_HISTORICAL: str = ""  # Alias for ANGEL_HIST_API_KEY (legacy)
 
     # Frontend
     FRONTEND_URL: str
