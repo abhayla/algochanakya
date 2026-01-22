@@ -26,7 +26,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### 0. Production vs Development - NEVER TOUCH PRODUCTION
 
-**Development folder:** `C:\Abhay\VideCoding\algochanakya` - Work ONLY here
+**Development folder:** `D:\Abhay\VibeCoding\algochanakya` - Work ONLY here
 **Production folder:** `C:\Apps\algochanakya` - **NEVER read, modify, or interact with this folder**
 
 Production runs on the same machine. NEVER:
@@ -182,9 +182,12 @@ See [Broker Abstraction Architecture](docs/architecture/broker-abstraction.md) f
   - `smartapi_historical.py` - OHLCV data
   - `smartapi_instruments.py` - Instrument lookup
 
-**🚧 Phase 3-5 To Be Implemented:**
-- Refactor routes to use broker factories instead of hardcoded services
-- Create `KiteMarketDataAdapter` (for users who want to pay ₹500/mo for Kite data)
+**✅ Phase 3 Complete (Jan 2026):**
+- All routes refactored to use broker factories instead of hardcoded services
+- `KiteMarketDataAdapter` implemented for Kite market data
+- Routes updated: `optionchain.py`, `ofo.py`, `orders.py`, `strategy_wizard.py`, `websocket.py`
+
+**🚧 Phase 4-5 To Be Implemented:**
 - Create `AngelAdapter` for Angel One order execution
 - Complete user settings UI for broker selection (market data + order execution)
 - Migrate legacy ticker services to implement `TickerServiceBase` interface
@@ -591,7 +594,7 @@ const ws = new WebSocket('wss://algochanakya.com/ws/ticks?token=YOUR_JWT')
 
 | Environment | Path | Port |
 |-------------|------|------|
-| **Development** | `C:\Abhay\VideCoding\algochanakya` | Backend: 8001, Frontend: 5173 |
+| **Development** | `D:\Abhay\VibeCoding\algochanakya` | Backend: 8001, Frontend: 5173 |
 | **Production** | `C:\Apps\algochanakya` (DO NOT TOUCH) | Backend: 8000, Frontend: 3004 |
 
 **Server:** Windows Server 2022 (544934-ABHAYVPS) | https://algochanakya.com
