@@ -31,6 +31,46 @@ Common issues and their solutions when working with AlgoChanakya.
 2. Verify `FRONTEND_URL` matches your frontend URL
 3. Check Kite Connect app settings for correct redirect URL
 
+### AngelOne Login Timeout (Fixed Jan 2026)
+
+**Symptoms:**
+- Click "Angel One" button → Shows "Connecting..." for 10 seconds
+- Error appears: "Failed to login with Angel One. Make sure SmartAPI credentials are configured in Settings."
+- Browser console shows: `timeout of 10000ms exceeded`
+- Backend logs show successful authentication but frontend times out
+
+**Root Cause:**
+AngelOne authentication with auto-TOTP takes 20-25 seconds (measured: 22.8s). Default axios timeout is only 10 seconds, causing request to abort before backend finishes.
+
+**Solution (FIXED in commit e23306a):**
+The fix is already applied in `frontend/src/stores/auth.js` - no action needed for new deployments.
+
+**Verification Steps:**
+1. Check backend is running on correct port:
+   ```bash
+   curl http://localhost:8001/
+   # Should return: {"message":"Welcome to AlgoChanakya API",...}
+   ```
+
+2. Check `.env.local` configuration:
+   ```bash
+   cat frontend/.env.local
+   # Should show: VITE_API_BASE_URL=http://localhost:8001
+   ```
+
+3. Test AngelOne endpoint directly:
+   ```bash
+   time curl -X POST http://localhost:8001/api/auth/angelone/login
+   # Should complete in ~22 seconds with success response
+   ```
+
+**Related Issues:**
+- Backend not running on port 8001
+- `.env.local` pointing to wrong port (8005 or 8000)
+- Database connection blocked (IP not whitelisted)
+
+**See:** [docs/troubleshooting/ANGELONE-LOGIN-TIMEOUT.md](../troubleshooting/ANGELONE-LOGIN-TIMEOUT.md) for complete analysis.
+
 ### CORS Errors
 
 **Symptoms:**
@@ -53,7 +93,40 @@ Common issues and their solutions when working with AlgoChanakya.
 
 ## Database Issues
 
-### Connection Refused
+### IP Not Whitelisted (Remote Database)
+
+**Symptoms:**
+- Backend won't start with error:
+  ```
+  asyncpg.exceptions.InvalidAuthorizationSpecificationError:
+  no pg_hba.conf entry for host "XXX.XXX.XXX.XXX", user "algochanakya_user",
+  database "algochanakya", no encryption
+  ```
+- Backend startup shows: `ERROR:    Application startup failed. Exiting.`
+
+**Root Cause:**
+Remote PostgreSQL server is blocking connections from your current IP address.
+
+**Solution:**
+1. Identify your current public IP:
+   ```bash
+   curl ifconfig.me
+   ```
+
+2. Contact database administrator to whitelist your IP in `pg_hba.conf` on the PostgreSQL server
+
+3. Test connection once whitelisted:
+   ```bash
+   psql -h <DB_HOST> -U algochanakya_user -d algochanakya
+   # Should connect successfully
+   ```
+
+**Note:** This commonly occurs when:
+- Working from a new location
+- ISP changes your IP address
+- VPN connection changes your exit IP
+
+### Connection Refused (Local Database)
 
 **Symptoms:**
 - "Connection refused" error on startup

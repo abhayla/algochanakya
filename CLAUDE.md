@@ -87,6 +87,8 @@ Before implementing features, refactors, or architectural changes:
 | Development | 8001 | 5173 |
 | Production | 8000 (DO NOT TOUCH) | 3004 |
 
+**IMPORTANT:** Frontend development uses `.env.local` which overrides `.env`. Ensure `frontend/.env.local` points to dev backend (port 8001), not production (8000).
+
 ```bash
 # Start dev backend (from backend/)
 venv\Scripts\activate && python run.py    # Windows
@@ -421,6 +423,8 @@ const { LOT_SIZES, STRIKE_STEPS, loadTradingConstants } = useTradingConstants()
 
 **Frontend (`frontend/.env`):** `VITE_API_BASE_URL=http://localhost:8001` (dev port), `VITE_WS_URL=ws://localhost:8001` (optional, defaults to API URL)
 
+**Frontend Local Override (`frontend/.env.local`):** Overrides `.env` for local development. **CRITICAL:** Must point to `http://localhost:8001` for dev backend. Common mistake: pointing to wrong port (8005, 8000). This file is git-ignored.
+
 **Production Build:** Create `frontend/.env.production` with `VITE_API_BASE_URL=https://algochanakya.com` before `npm run build` - without this, API calls default to localhost!
 
 ### Encryption for Credentials
@@ -548,6 +552,8 @@ Dashboard `/dashboard`, Watchlist `/watchlist`, Positions `/positions`, Option C
 - **Missing `data-testid`** - Required for E2E tests; use `[screen]-[component]-[element]`
 - **WebSocket not cleaned up** - Close subscriptions in `onUnmounted()`
 - **Direct Kite API calls** - All broker operations go through backend
+- **Wrong backend port in `.env.local`** - Frontend `.env.local` overrides `.env`. Must point to `http://localhost:8001` for dev, not 8005 or 8000
+- **AngelOne login timeout** - AngelOne auth with auto-TOTP takes 20-25 seconds. Default axios timeout (10s) is too short. Use `timeout: 35000` in POST request to `/api/auth/angelone/login`
 
 ### Testing
 - **Wrong import** - Use `auth.fixture.js`, NOT `@playwright/test`
@@ -611,5 +617,7 @@ pm2 logs algochanakya-frontend   # Frontend logs (static serve)
 - **OAuth fails:** Verify Kite redirect URL = `https://algochanakya.com/api/auth/zerodha/callback`
 - **"Incorrect api_key or access_token":** SmartAPI token expired (8h) or Kite access token expired (24h). SmartAPI auto-refreshes via stored credentials; Kite requires re-login via OAuth.
 - **WebSocket won't connect:** Check `VITE_WS_URL` in `.env.production`, ensure wss:// for HTTPS
+- **Backend won't start - Database connection refused:** PostgreSQL server blocking your IP. Error: `no pg_hba.conf entry for host`. Solution: Whitelist your current IP in PostgreSQL `pg_hba.conf` on the database server.
+- **AngelOne login shows "Failed to login":** Either backend not running on correct port (check 8001 not 8005/8000), or request timeout (login takes 20-25s, needs 35s timeout)
 
 **Full deployment docs:** `C:\Apps\shared\docs\ALGOCHANAKYA-SETUP.md` on VPS
