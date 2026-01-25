@@ -232,6 +232,7 @@ pytest tests/ -v               # Run backend tests
 pytest tests/ -v --cov=app     # With coverage
 pytest tests/ -m unit -v       # Unit tests only
 pytest tests/ -m "not slow" -v # Skip slow tests
+pytest tests/test_file.py::test_function -v  # Single test function
 # Markers: @unit, @api, @integration, @slow
 ```
 
@@ -478,6 +479,8 @@ from app.services.brokers.market_data.rate_limiter import RateLimiter
 2. **[Implementation Checklist](docs/IMPLEMENTATION-CHECKLIST.md)** - Current implementation tasks with docs links
 3. **[Broker Abstraction Architecture](docs/architecture/broker-abstraction.md)** - Primary architecture (multi-broker)
 
+**⚠️ Stale Docs Warning:** `docs/IMPLEMENTATION-CHECKLIST.md` may be outdated. CLAUDE.md contains the authoritative implementation status.
+
 **Feature Registry:** `docs/feature-registry.yaml` maps code files to features. After code changes, use `docs-maintainer` skill to update docs automatically.
 
 **Feature Docs:** `docs/features/{feature}/` with README.md, REQUIREMENTS.md, CHANGELOG.md for each feature.
@@ -498,6 +501,7 @@ Use these skills for faster, consistent results:
 | `vue-component-generator` | Create Vue 3 components/Pinia stores | On demand |
 | `autopilot-assistant` | AutoPilot strategy config guidance | On demand |
 | `trading-constants-manager` | Enforce centralized trading constants | On demand |
+| `claude-chrome-testing` | Browser-based debugging with Playwright MCP | On demand |
 | `save-session` | Save context for later: /save-session [name] | On demand |
 | `start-session` | Resume saved session: /start-session [name] | On demand |
 
