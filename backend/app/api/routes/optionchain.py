@@ -202,6 +202,7 @@ async def get_option_chain(
                 )
 
         # Get market data adapter (automatically uses user's preferred broker)
+        print(f"[OptionChain DEBUG] Fetching market data via adapter for {underlying}")
         logger.info(f"[OptionChain] Fetching market data via adapter for {underlying}")
         adapter = await get_user_market_data_adapter(user.id, db)
 
@@ -218,15 +219,35 @@ async def get_option_chain(
             )
 
         # Get instruments for this expiry from adapter
+        print(f"[OptionChain DEBUG] Getting NFO instruments...")
         all_instruments = await adapter.get_instruments("NFO")
+        print(f"[OptionChain DEBUG] Total NFO instruments: {len(all_instruments)}")
+        logger.info(f"[OptionChain] Total NFO instruments: {len(all_instruments)}")
+
+        # Debug: Sample instruments
+        if all_instruments:
+            sample = all_instruments[:3]
+            for s in sample:
+                logger.info(f"[OptionChain] Sample: name={s.name}, option_type={s.option_type}, expiry={s.expiry}, strike={s.strike}")
 
         # Filter for our underlying and expiry
+        # Note: option_type is CE/PE, instrument_type is OPTIDX/OPTSTK
+        print(f"[OptionChain DEBUG] Filtering for {underlying} expiry {expiry_date}")
+
+        # Debug: Check sample instruments before filter
+        if all_instruments:
+            sample = all_instruments[:5]
+            for s in sample:
+                print(f"[OptionChain DEBUG] Sample: name='{s.name}', option_type='{s.option_type}', expiry={s.expiry}")
+
         instruments = [
             inst for inst in all_instruments
             if inst.name == underlying and
-               inst.instrument_type in ["CE", "PE"] and
+               inst.option_type in ["CE", "PE"] and
                hasattr(inst, 'expiry') and inst.expiry == expiry_date
         ]
+        print(f"[OptionChain DEBUG] After filter: {len(instruments)} instruments")
+        logger.info(f"[OptionChain] After filter: {len(instruments)} instruments for {underlying} expiry {expiry_date}")
 
         if not instruments:
             raise HTTPException(
@@ -236,9 +257,9 @@ async def get_option_chain(
 
         logger.info(f"[OptionChain] Found {len(instruments)} instruments for {underlying}")
 
-        # Organize by strike
+        # Organize by strike and collect tokens for quote fetch
         strikes_data = {}
-        canonical_symbols = []
+        token_to_symbol = {}  # SmartAPI token -> canonical symbol mapping
 
         for inst in instruments:
             strike = float(inst.strike) if hasattr(inst, 'strike') else 0
@@ -254,38 +275,47 @@ async def get_option_chain(
                 "lot_size": inst.lot_size
             }
 
-            if inst.instrument_type == "CE":
+            if inst.option_type == "CE":
                 strikes_data[strike]["ce"] = inst_data
             else:
                 strikes_data[strike]["pe"] = inst_data
 
-            # Collect canonical symbols for quote fetch
-            canonical_symbols.append(inst.canonical_symbol)
+            # Map token to symbol for quote lookup
+            if inst.instrument_token:
+                token_to_symbol[str(inst.instrument_token)] = inst.canonical_symbol
 
-        logger.info(f"[OptionChain] Organized {len(strikes_data)} strikes, fetching quotes for {len(canonical_symbols)} instruments")
+        logger.info(f"[OptionChain] Organized {len(strikes_data)} strikes, fetching quotes for {len(token_to_symbol)} instruments")
 
-        # Fetch quotes in batches of 50
+        # Fetch quotes in batches of 50 using tokens directly
         all_quotes = {}
-        for i in range(0, len(canonical_symbols), 50):
-            batch = canonical_symbols[i:i+50]
-            if batch:
+        tokens_list = list(token_to_symbol.keys())
+        for i in range(0, len(tokens_list), 50):
+            batch_tokens = tokens_list[i:i+50]
+            if batch_tokens:
                 try:
-                    quotes = await adapter.get_quote(batch)
-                    for symbol, unified_quote in quotes.items():
-                        # Store with NFO: prefix for compatibility
-                        symbol_key = f"NFO:{symbol}"
-                        all_quotes[symbol_key] = {
-                            "last_price": float(unified_quote.last_price),
-                            "oi": unified_quote.oi,
-                            "volume": unified_quote.volume,
-                            "ohlc": {
-                                "open": float(unified_quote.ohlc.open),
-                                "high": float(unified_quote.ohlc.high),
-                                "low": float(unified_quote.ohlc.low),
-                                "close": float(unified_quote.ohlc.close)
-                            },
-                            "depth": unified_quote.depth
-                        }
+                    # Use SmartAPI market data service directly with tokens
+                    raw_quotes = await adapter._market_data.get_quote(
+                        exchange="NFO",
+                        tokens=batch_tokens,
+                        mode="FULL"
+                    )
+                    for token, quote_data in raw_quotes.items():
+                        canonical_symbol = token_to_symbol.get(token)
+                        if canonical_symbol:
+                            # Store with NFO: prefix for compatibility
+                            symbol_key = f"NFO:{canonical_symbol}"
+                            all_quotes[symbol_key] = {
+                                "last_price": float(quote_data.get("ltp", 0)),
+                                "oi": quote_data.get("oi", 0),
+                                "volume": quote_data.get("volume", 0),
+                                "ohlc": {
+                                    "open": float(quote_data.get("open", 0)),
+                                    "high": float(quote_data.get("high", 0)),
+                                    "low": float(quote_data.get("low", 0)),
+                                    "close": float(quote_data.get("close", 0))
+                                },
+                                "depth": quote_data.get("depth", {"buy": [], "sell": []})
+                            }
                 except Exception as e:
                     logger.warning(f"[OptionChain] Quote batch failed: {e}")
                     continue

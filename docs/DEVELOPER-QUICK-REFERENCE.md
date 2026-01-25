@@ -1,6 +1,6 @@
 # Developer Quick Reference
 
-**Last Updated:** 2026-01-14
+**Last Updated:** 2026-01-24
 
 This guide provides quick access to all architecture documentation organized by development task.
 
@@ -32,7 +32,7 @@ This guide provides quick access to all architecture documentation organized by 
 - Two independent systems: Market Data Brokers + Order Execution Brokers
 - Unified data models: `UnifiedOrder`, `UnifiedPosition`, `UnifiedQuote`
 - Factory pattern for broker instantiation
-- ⚠️ Routes not yet using factory - still using direct `KiteOrderService`
+- ✅ All routes refactored to use broker factories (Phase 3 complete)
 
 ### Authentication & Security
 
@@ -297,7 +297,7 @@ ws.send(JSON.stringify({action: 'subscribe', tokens: [256265], mode: 'quote'}))
 | **Deployment Checklist** | VPS docs: `C:\Apps\shared\docs\ALGOCHANAKYA-SETUP.md` |
 
 **⚠️ CRITICAL:** Production runs on SAME machine
-- Dev: `C:\Abhay\VideCoding\algochanakya` (port 8001)
+- Dev: `D:\Abhay\VibeCoding\algochanakya` (port 8001)
 - Prod: `C:\Apps\algochanakya` (port 8000) - **NEVER touch**
 
 ---

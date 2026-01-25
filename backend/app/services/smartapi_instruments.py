@@ -66,6 +66,9 @@ class SmartAPIInstruments:
         self._instruments: List[Dict] = []
         # Structured index for O(1) lookup by (underlying, expiry, strike, option_type)
         self._structured_index: Dict[str, Dict] = {}
+        # Cache monthly expiry days: (underlying, year, month) -> day
+        # This avoids O(31) iteration on subsequent lookups
+        self._monthly_expiry_cache: Dict[str, int] = {}
 
     async def _get_redis(self) -> Optional[redis.Redis]:
         """Get Redis client, creating if needed."""
@@ -341,8 +344,10 @@ class SmartAPIInstruments:
         """
         Lookup instrument by structured components.
 
-        For monthly options (day unknown), searches all possible days.
-        For weekly options, uses the exact day from the symbol.
+        For weekly options, uses the exact day from the symbol (O(1)).
+        For monthly options:
+          - First checks cached expiry day (O(1) on repeated lookups)
+          - Falls back to searching all possible days (O(31) on first lookup)
         """
         underlying = parsed['underlying']
         year = parsed['year']
@@ -351,17 +356,31 @@ class SmartAPIInstruments:
         option_type = parsed['option_type']
 
         if parsed['format'] == 'weekly' and parsed['day']:
-            # Exact day known for weekly
+            # Exact day known for weekly - O(1)
             expiry = f"{year}-{month:02d}-{parsed['day']:02d}"
             struct_key = f"{exchange}:{underlying}:{expiry}:{strike}:{option_type}"
             if struct_key in self._structured_index:
                 return self._structured_index[struct_key]
         else:
-            # Monthly - search all possible days (typically last Thursday, but varies)
+            # Monthly - check cached expiry day first for O(1) lookup
+            cache_key = f"{underlying}:{year}:{month}"
+            cached_day = self._monthly_expiry_cache.get(cache_key)
+
+            if cached_day:
+                # Use cached expiry day - O(1)
+                expiry = f"{year}-{month:02d}-{cached_day:02d}"
+                struct_key = f"{exchange}:{underlying}:{expiry}:{strike}:{option_type}"
+                if struct_key in self._structured_index:
+                    return self._structured_index[struct_key]
+
+            # Fallback: search all possible days - O(31) on first lookup for this month
             for day in range(1, 32):
                 expiry = f"{year}-{month:02d}-{day:02d}"
                 struct_key = f"{exchange}:{underlying}:{expiry}:{strike}:{option_type}"
                 if struct_key in self._structured_index:
+                    # Cache this day for future lookups
+                    self._monthly_expiry_cache[cache_key] = day
+                    logger.debug(f"[SmartAPI] Cached monthly expiry: {cache_key} -> day {day}")
                     return self._structured_index[struct_key]
 
         return None

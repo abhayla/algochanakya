@@ -50,7 +50,8 @@ export class BasePage {
   async goto(url) {
     const targetUrl = url || this.url;
     await this.page.goto(targetUrl);
-    await this.page.waitForLoadState('networkidle');
+    // Don't use networkidle - WebSocket connections keep network active
+    await this.page.waitForLoadState('domcontentloaded');
   }
 
   /**
@@ -108,10 +109,13 @@ export class BasePage {
 
   /**
    * Wait for page to be fully loaded
+   * Note: We don't use 'networkidle' because WebSocket connections keep the network active
    */
   async waitForLoad() {
-    await this.page.waitForLoadState('networkidle');
-    await this.page.waitForTimeout(500); // Vue rendering buffer
+    // Wait for DOM to be ready and any initial data fetching to complete
+    await this.page.waitForLoadState('domcontentloaded');
+    // Give Vue a moment to render after data arrives
+    await this.page.waitForTimeout(500);
   }
 
   /**

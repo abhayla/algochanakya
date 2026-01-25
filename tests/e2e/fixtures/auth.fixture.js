@@ -43,6 +43,7 @@ export const authFixture = {
 
   /**
    * Set token in page localStorage and reload
+   * Waits for auth to be fully initialized before returning
    */
   async _setTokenInPage(page, token) {
     await page.goto(FRONTEND_URL);
@@ -52,6 +53,28 @@ export const authFixture = {
     }, token);
     await page.reload();
     await page.waitForLoadState('domcontentloaded');
+
+    // Wait for Vue router's auth check to complete
+    // The router guard calls checkAuth() which makes an API call to /api/auth/me
+    // We need this to finish before navigating to protected routes
+
+    // Navigate to dashboard (protected route) and wait for auth redirect to settle
+    await page.goto(FRONTEND_URL + '/dashboard');
+    await page.waitForLoadState('domcontentloaded');
+
+    // Wait a bit for any potential redirects to complete
+    await page.waitForTimeout(1000);
+
+    // Check if we stayed on dashboard or got redirected to login
+    const currentUrl = page.url();
+    if (currentUrl.includes('/login')) {
+      console.warn('[Auth Fixture] Redirected to login - token may be invalid');
+      // Try to validate the token via API to get more info
+      const isValid = await this.validateToken(page, token);
+      console.log('[Auth Fixture] Token API validation result:', isValid);
+    } else {
+      console.log('[Auth Fixture] Auth confirmed - on protected route:', currentUrl);
+    }
   },
 
   /**

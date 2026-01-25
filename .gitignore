@@ -211,3 +211,12 @@ tests/test-*.js
 
 # Claude Code temporary directories
 tmpclaude-*
+
+# Backend reports directory
+backend/reports/
+
+# Temporary SmartAPI files
+smartapi_temp.json
+
+# Corrupted filenames (Windows path artifacts)
+D?AbhayVibeCoding*

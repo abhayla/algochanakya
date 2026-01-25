@@ -83,23 +83,16 @@ async def _create_smartapi_adapter(user_id: UUID, db: AsyncSession) -> MarketDat
     Raises:
         AuthenticationError: If credentials not found
     """
+    from app.utils.smartapi_utils import get_valid_smartapi_credentials
+
     try:
-        # Get SmartAPI credentials
-        result = await db.execute(
-            select(SmartAPICredentials).where(SmartAPICredentials.user_id == user_id)
-        )
-        creds = result.scalar_one_or_none()
+        # Get SmartAPI credentials with automatic token refresh if expired
+        creds = await get_valid_smartapi_credentials(user_id, db, auto_refresh=True)
 
         if not creds:
             raise AuthenticationError(
                 "smartapi",
-                "SmartAPI credentials not found. Please configure in Settings."
-            )
-
-        if not creds.is_active:
-            raise AuthenticationError(
-                "smartapi",
-                "SmartAPI credentials are inactive. Please re-authenticate."
+                "SmartAPI credentials not found or token refresh failed. Please check Settings."
             )
 
         # Create credentials object
@@ -112,9 +105,11 @@ async def _create_smartapi_adapter(user_id: UUID, db: AsyncSession) -> MarketDat
         )
 
         # Create and initialize adapter
+        # Skip instrument download - it's lazy-loaded only when needed for option symbols
+        # This makes index quote requests fast
         from app.services.brokers.market_data.smartapi_adapter import SmartAPIMarketDataAdapter
         adapter = SmartAPIMarketDataAdapter(credentials, db)
-        await adapter.connect()
+        await adapter.connect(skip_instrument_download=True)
 
         logger.info(f"[Factory] Created SmartAPI adapter for user {user_id}")
         return adapter

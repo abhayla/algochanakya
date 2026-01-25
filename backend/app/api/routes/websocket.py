@@ -11,6 +11,7 @@ This is different from REST API routes which use get_user_market_data_adapter().
 import json
 import logging
 import asyncio
+from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -24,7 +25,16 @@ from app.utils.encryption import decrypt
 from app.utils.smartapi_utils import get_valid_smartapi_credentials
 from app.services.kite_ticker import kite_ticker_service
 from app.services.smartapi_ticker import smartapi_ticker_service
+from app.services.smartapi_market_data import SmartAPIMarketData
 from app.config import settings
+
+# Mapping of Kite index tokens to SmartAPI tokens and names (for initial REST quotes)
+KITE_TO_SMARTAPI_INDEX = {
+    256265: {'smartapi_token': '99926000', 'exchange': 'NSE', 'name': 'NIFTY 50'},      # NIFTY 50
+    260105: {'smartapi_token': '99926009', 'exchange': 'NSE', 'name': 'NIFTY BANK'},    # NIFTY BANK
+    257801: {'smartapi_token': '99926037', 'exchange': 'NSE', 'name': 'NIFTY FIN'},     # FINNIFTY
+    265: {'smartapi_token': '99919000', 'exchange': 'BSE', 'name': 'SENSEX'},           # SENSEX
+}
 
 logger = logging.getLogger(__name__)
 
@@ -147,6 +157,87 @@ async def get_smartapi_credentials(user_id, db: AsyncSession):
         return None, None, None
 
 
+async def fetch_initial_index_quotes(
+    kite_tokens: List[int],
+    jwt_token: str,
+    websocket: WebSocket
+) -> None:
+    """
+    Fetch initial index quotes via REST API and send to client.
+
+    This ensures the UI shows last prices even when market is closed
+    and no live ticks are being received.
+
+    Args:
+        kite_tokens: List of Kite instrument tokens
+        jwt_token: SmartAPI JWT token
+        websocket: Client WebSocket connection
+    """
+    try:
+        # Filter to only index tokens we can map
+        index_tokens_to_fetch = []
+        for kite_token in kite_tokens:
+            if kite_token in KITE_TO_SMARTAPI_INDEX:
+                index_tokens_to_fetch.append(kite_token)
+
+        if not index_tokens_to_fetch:
+            return
+
+        # Create market data service
+        market_data = SmartAPIMarketData(
+            api_key=settings.ANGEL_API_KEY,
+            jwt_token=jwt_token
+        )
+
+        # Group by exchange and fetch quotes
+        by_exchange: Dict[str, List[tuple]] = {}
+        for kite_token in index_tokens_to_fetch:
+            info = KITE_TO_SMARTAPI_INDEX[kite_token]
+            exchange = info['exchange']
+            if exchange not in by_exchange:
+                by_exchange[exchange] = []
+            by_exchange[exchange].append((kite_token, info['smartapi_token'], info['name']))
+
+        ticks = []
+        for exchange, token_info_list in by_exchange.items():
+            smartapi_tokens = [t[1] for t in token_info_list]
+
+            try:
+                quotes = await market_data.get_quote(exchange, smartapi_tokens, mode='FULL')
+
+                for kite_token, smartapi_token, name in token_info_list:
+                    quote = quotes.get(smartapi_token)
+                    if quote:
+                        ltp = float(quote.get('ltp', 0))
+                        close = float(quote.get('close', 0))
+                        change = ltp - close if ltp and close else 0
+                        change_percent = (change / close * 100) if close else 0
+
+                        ticks.append({
+                            'token': kite_token,  # Use Kite token for frontend compatibility
+                            'ltp': ltp,
+                            'change': round(change, 2),
+                            'change_percent': round(change_percent, 2),
+                            'open': float(quote.get('open', 0)),
+                            'high': float(quote.get('high', 0)),
+                            'low': float(quote.get('low', 0)),
+                            'close': close,
+                            'volume': quote.get('volume', 0),
+                        })
+                        logger.info(f"[WS] Initial quote for {name}: LTP={ltp}, Close={close}")
+
+            except Exception as e:
+                logger.warning(f"[WS] Failed to fetch initial quotes for {exchange}: {e}")
+
+        # Send initial ticks to client
+        if ticks:
+            await websocket.send_json({"type": "ticks", "data": ticks})
+            logger.info(f"[WS] Sent {len(ticks)} initial index quotes to client")
+
+    except Exception as e:
+        logger.error(f"[WS] Error fetching initial quotes: {e}")
+
+
 @router.websocket("/ws/ticks")
 async def websocket_ticks(
     websocket: WebSocket,
@@ -168,6 +259,7 @@ async def websocket_ticks(
     user_id = None
     ticker_service = None  # Will be set to either kite or smartapi ticker
     market_data_source = None
+    smartapi_jwt_token = None  # Store SmartAPI JWT for REST API calls
 
     try:
         # Accept connection
@@ -192,6 +284,7 @@ async def websocket_ticks(
                     credentials, pin, totp_secret = await get_smartapi_credentials(user.id, db)
                     if credentials and credentials.jwt_token and credentials.feed_token:
                         ticker_service = smartapi_ticker_service
+                        smartapi_jwt_token = credentials.jwt_token  # Store for REST API calls
                         print(f"[WS] Selected SmartAPI ticker service", flush=True)
                     else:
                         # Fall back to Kite if SmartAPI not configured
@@ -227,6 +320,7 @@ async def websocket_ticks(
                         break
 
                     if credentials and credentials.jwt_token:
+                        smartapi_jwt_token = credentials.jwt_token  # Update with refreshed token
                         await smartapi_ticker_service.connect(
                             jwt_token=credentials.jwt_token,
                             api_key=settings.ANGEL_API_KEY,
@@ -316,10 +410,22 @@ async def websocket_ticks(
                     exchange = data.get("exchange", "NFO")  # Used by SmartAPI
 
                     if tokens:
+                        # Store original tokens for initial quote fetch (as integers)
+                        original_tokens = [int(t) for t in tokens]
+
                         # Convert tokens to appropriate type and subscribe
                         if market_data_source == MarketDataSource.SMARTAPI:
                             tokens = [str(t) for t in tokens]  # SmartAPI uses string tokens
                             await ticker_service.subscribe(tokens, user_id, exchange, mode)
+
+                            # Fetch initial quotes via REST API for index tokens
+                            # This ensures UI shows last prices even when market is closed
+                            if smartapi_jwt_token:
+                                await fetch_initial_index_quotes(
+                                    original_tokens,
+                                    smartapi_jwt_token,
+                                    websocket
+                                )
                         else:
                             tokens = [int(t) for t in tokens]  # Kite uses integer tokens
                             await ticker_service.subscribe(tokens, user_id, mode)

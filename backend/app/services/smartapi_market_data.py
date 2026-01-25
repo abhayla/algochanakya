@@ -11,6 +11,7 @@ from typing import Dict, List, Optional, Any
 from SmartApi import SmartConnect
 
 from app.services.smartapi_instruments import get_smartapi_instruments
+from app.services.brokers.market_data.rate_limiter import broker_rate_limiters
 
 logger = logging.getLogger(__name__)
 
@@ -95,6 +96,9 @@ class SmartAPIMarketData:
             exchange_tokens = {exchange: tokens}
 
             logger.info(f"[SmartAPI] Fetching {mode} quote for {len(tokens)} tokens on {exchange}")
+
+            # Rate limit: SmartAPI allows 1 request/second
+            await broker_rate_limiters.acquire("smartapi")
 
             # Call API with correct signature: getMarketData(mode, exchangeTokens)
             response = api.getMarketData(mode_str, exchange_tokens)
@@ -341,15 +345,16 @@ class SmartAPIMarketData:
         # Index tokens in SmartAPI (hardcoded as they don't change)
         index_tokens = {
             'NIFTY': {'exchange': 'NSE', 'token': '99926000'},
+            'NIFTY 50': {'exchange': 'NSE', 'token': '99926000'},  # Alias
             'BANKNIFTY': {'exchange': 'NSE', 'token': '99926009'},
+            'NIFTY BANK': {'exchange': 'NSE', 'token': '99926009'},  # Alias
             'FINNIFTY': {'exchange': 'NSE', 'token': '99926037'},
             'SENSEX': {'exchange': 'BSE', 'token': '99919000'},
         }
 
         index_info = index_tokens.get(index.upper())
         if not index_info:
-            logger.warning(f"[SmartAPI] Unknown index: {index}")
-            return None
+            raise SmartAPIMarketDataError(f"Unknown index: {index}. Supported: {list(index_tokens.keys())}")
 
         quotes = await self.get_quote(
             index_info['exchange'],
@@ -357,7 +362,11 @@ class SmartAPIMarketData:
             mode='FULL'
         )
 
-        return quotes.get(index_info['token'])
+        quote_data = quotes.get(index_info['token'])
+        if not quote_data:
+            raise SmartAPIMarketDataError(f"Empty quote response for index {index}")
+
+        return quote_data
 
     def _group_by_exchange(self, instruments: List[str]) -> Dict[str, List[str]]:
         """

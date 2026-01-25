@@ -60,6 +60,25 @@ export class PositionsPage extends BasePage {
   async waitForPageLoad() {
     await this.waitForTestId('positions-page');
     await this.waitForLoad();
+    // Wait for loading to complete - either table or empty state should be visible
+    await this.waitForLoadingComplete();
+  }
+
+  /**
+   * Wait for the positions loading to complete
+   * Once loading is done, either positions-table or positions-empty-state will be visible
+   */
+  async waitForLoadingComplete() {
+    // Wait for loading spinner/text to disappear and content to appear
+    // We check for either table or empty state to be visible
+    await this.page.waitForFunction(
+      () => {
+        const table = document.querySelector('[data-testid="positions-table"]');
+        const empty = document.querySelector('[data-testid="positions-empty-state"]');
+        return table !== null || empty !== null;
+      },
+      { timeout: 15000 }
+    );
   }
 
   async selectDayPositions() {

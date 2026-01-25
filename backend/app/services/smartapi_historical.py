@@ -4,14 +4,18 @@ SmartAPI Historical Data Service
 REST API for historical OHLCV candle data from AngelOne SmartAPI.
 Used for charts, backtesting, and after-market OHLC fallback.
 """
+import json
 import logging
 from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Dict, List, Optional, Any
 
+import redis.asyncio as redis
 from SmartApi import SmartConnect
 
+from app.config import settings
 from app.services.smartapi_instruments import get_smartapi_instruments
+from app.services.brokers.market_data.rate_limiter import broker_rate_limiters
 
 logger = logging.getLogger(__name__)
 
@@ -64,18 +68,44 @@ class SmartAPIHistorical:
         'ONE_DAY': 2000,       # ~5.5 years
     }
 
-    def __init__(self, api_key: str, jwt_token: str):
+    # Cache TTL per interval type (seconds)
+    # Daily data rarely changes, intraday data changes frequently
+    CACHE_TTL = {
+        'ONE_MINUTE': 60,        # 1 minute - cache for 1 min
+        'THREE_MINUTE': 180,     # 3 minutes
+        'FIVE_MINUTE': 300,      # 5 minutes
+        'TEN_MINUTE': 600,       # 10 minutes
+        'FIFTEEN_MINUTE': 900,   # 15 minutes
+        'THIRTY_MINUTE': 1800,   # 30 minutes
+        'ONE_HOUR': 3600,        # 1 hour
+        'ONE_DAY': 86400,        # 24 hours
+    }
+
+    CACHE_PREFIX = "smartapi:historical:"
+
+    def __init__(self, api_key: str, jwt_token: str, redis_client: Optional[redis.Redis] = None):
         """
         Initialize historical data service.
 
         Args:
             api_key: AngelOne API key
             jwt_token: JWT token from authentication
+            redis_client: Optional Redis client for caching
         """
         self.api_key = api_key
         self.jwt_token = jwt_token
         self._api: Optional[SmartConnect] = None
         self._instruments = get_smartapi_instruments()
+        self._redis = redis_client
+
+    async def _get_redis(self) -> Optional[redis.Redis]:
+        """Get Redis client, creating if needed."""
+        if self._redis is None:
+            try:
+                self._redis = redis.from_url(settings.REDIS_URL)
+            except Exception as e:
+                logger.warning(f"[SmartAPI Historical] Redis not available: {e}")
+        return self._redis
 
     def _get_api(self) -> SmartConnect:
         """Get or create SmartConnect instance."""
@@ -83,6 +113,67 @@ class SmartAPIHistorical:
             self._api = SmartConnect(api_key=self.api_key)
             self._api.setAccessToken(self.jwt_token)
         return self._api
+
+    def _make_cache_key(
+        self,
+        exchange: str,
+        symbol_token: str,
+        interval: str,
+        from_date: str,
+        to_date: str
+    ) -> str:
+        """Generate cache key for historical data request."""
+        return f"{self.CACHE_PREFIX}{exchange}:{symbol_token}:{interval}:{from_date}:{to_date}"
+
+    async def _get_from_cache(self, cache_key: str) -> Optional[List[Dict[str, Any]]]:
+        """Try to get candles from Redis cache."""
+        redis_client = await self._get_redis()
+        if not redis_client:
+            return None
+
+        try:
+            data = await redis_client.get(cache_key)
+            if data:
+                # Parse cached JSON, converting string values back to Decimal
+                candles = json.loads(data)
+                for candle in candles:
+                    for key in ['open', 'high', 'low', 'close']:
+                        if key in candle:
+                            candle[key] = Decimal(str(candle[key]))
+                logger.debug(f"[SmartAPI Historical] Cache hit: {cache_key}")
+                return candles
+        except Exception as e:
+            logger.warning(f"[SmartAPI Historical] Cache read error: {e}")
+        return None
+
+    async def _store_in_cache(
+        self,
+        cache_key: str,
+        candles: List[Dict[str, Any]],
+        interval: str
+    ) -> None:
+        """Store candles in Redis cache with appropriate TTL."""
+        redis_client = await self._get_redis()
+        if not redis_client:
+            return
+
+        try:
+            # Get TTL for this interval
+            ttl = self.CACHE_TTL.get(interval, 300)  # Default 5 min
+
+            # Convert Decimal to float for JSON serialization
+            serializable = []
+            for candle in candles:
+                c = candle.copy()
+                for key in ['open', 'high', 'low', 'close']:
+                    if key in c and isinstance(c[key], Decimal):
+                        c[key] = float(c[key])
+                serializable.append(c)
+
+            await redis_client.setex(cache_key, ttl, json.dumps(serializable))
+            logger.debug(f"[SmartAPI Historical] Cached {len(candles)} candles with TTL {ttl}s")
+        except Exception as e:
+            logger.warning(f"[SmartAPI Historical] Cache write error: {e}")
 
     async def get_candles(
         self,
@@ -93,7 +184,7 @@ class SmartAPIHistorical:
         to_date: str
     ) -> List[Dict[str, Any]]:
         """
-        Fetch historical OHLCV candles.
+        Fetch historical OHLCV candles with Redis caching.
 
         Args:
             exchange: Exchange (NSE, NFO, etc.)
@@ -108,13 +199,19 @@ class SmartAPIHistorical:
         Raises:
             SmartAPIHistoricalError: If fetch fails
         """
+        # Map interval first for cache key
+        smartapi_interval = self.INTERVALS.get(interval.lower(), interval.upper())
+        if smartapi_interval not in self.INTERVALS.values():
+            raise SmartAPIHistoricalError(f"Invalid interval: {interval}")
+
+        # Check cache first
+        cache_key = self._make_cache_key(exchange, symbol_token, smartapi_interval, from_date, to_date)
+        cached = await self._get_from_cache(cache_key)
+        if cached is not None:
+            return cached
+
         try:
             api = self._get_api()
-
-            # Map interval
-            smartapi_interval = self.INTERVALS.get(interval.lower(), interval.upper())
-            if smartapi_interval not in self.INTERVALS.values():
-                raise SmartAPIHistoricalError(f"Invalid interval: {interval}")
 
             # Build request payload
             payload = {
@@ -127,6 +224,9 @@ class SmartAPIHistorical:
 
             logger.info(f"[SmartAPI] Fetching {smartapi_interval} candles for {symbol_token} on {exchange}")
 
+            # Rate limit: SmartAPI allows 1 request/second
+            await broker_rate_limiters.acquire("smartapi")
+
             # Call API
             response = api.getCandleData(payload)
 
@@ -136,7 +236,12 @@ class SmartAPIHistorical:
                 raise SmartAPIHistoricalError(f"Historical fetch failed: {error_msg}")
 
             # Parse candles
-            return self._parse_candles(response.get('data', []))
+            candles = self._parse_candles(response.get('data', []))
+
+            # Cache the result
+            await self._store_in_cache(cache_key, candles, smartapi_interval)
+
+            return candles
 
         except SmartAPIHistoricalError:
             raise

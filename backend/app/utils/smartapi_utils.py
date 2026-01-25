@@ -57,16 +57,46 @@ async def get_valid_smartapi_credentials(
 
     # Check if token is valid
     if credentials.jwt_token and credentials.token_expiry:
-        # Add buffer to avoid edge cases
-        expiry_with_buffer = credentials.token_expiry - timedelta(minutes=TOKEN_REFRESH_BUFFER_MINUTES)
         now = datetime.now(timezone.utc)
 
-        if now < expiry_with_buffer:
-            # Token is still valid
-            logger.debug(f"[SmartAPI] Token valid until {credentials.token_expiry}")
-            return credentials
-        else:
-            logger.info(f"[SmartAPI] Token expired or expiring soon for user {user_id}")
+        # SmartAPI tokens are flushed at 5 AM IST daily
+        # Check if token was generated before today's 5 AM IST
+        from zoneinfo import ZoneInfo
+        ist = ZoneInfo('Asia/Kolkata')
+        now_ist = now.astimezone(ist)
+
+        # Calculate today's 5 AM IST in UTC
+        todays_5am_ist = now_ist.replace(hour=5, minute=0, second=0, microsecond=0)
+        if now_ist.hour < 5:
+            # Before 5 AM, use yesterday's 5 AM as the cutoff
+            todays_5am_ist = todays_5am_ist - timedelta(days=1)
+        todays_5am_utc = todays_5am_ist.astimezone(timezone.utc)
+
+        # Check if token was generated before the last 5 AM flush
+        needs_refresh = False
+        if credentials.last_auth_at:
+            # Ensure last_auth_at is timezone-aware UTC for comparison
+            last_auth_utc = credentials.last_auth_at
+            if last_auth_utc.tzinfo is None:
+                # Assume naive datetime is in UTC (standard DB practice)
+                last_auth_utc = last_auth_utc.replace(tzinfo=timezone.utc)
+            else:
+                last_auth_utc = last_auth_utc.astimezone(timezone.utc)
+
+            logger.debug(f"[SmartAPI] Token check: last_auth_at={last_auth_utc}, 5am_cutoff={todays_5am_utc}")
+
+            if last_auth_utc < todays_5am_utc:
+                logger.info(f"[SmartAPI] Token was generated before 5 AM IST flush ({last_auth_utc} < {todays_5am_utc}), needs refresh for user {user_id}")
+                needs_refresh = True
+
+        if not needs_refresh:
+            # Add buffer to avoid edge cases
+            if now < (credentials.token_expiry - timedelta(minutes=TOKEN_REFRESH_BUFFER_MINUTES)):
+                # Token is still valid
+                logger.debug(f"[SmartAPI] Token valid until {credentials.token_expiry}")
+                return credentials
+            else:
+                logger.info(f"[SmartAPI] Token expired or expiring soon for user {user_id}")
     else:
         logger.info(f"[SmartAPI] No JWT token for user {user_id}")
 

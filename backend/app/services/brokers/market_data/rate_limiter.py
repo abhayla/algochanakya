@@ -15,6 +15,7 @@ Rate Limits (per broker):
 import asyncio
 import time
 from collections import deque
+from functools import wraps
 from typing import Dict, Optional
 
 
@@ -35,8 +36,8 @@ class RateLimiter:
         "kite": 3,       # 3 req/sec (default tier)
         "upstox": 25,    # 25 req/sec
         "dhan": 10,      # 10 req/sec
-        "fyers": 1,      # 1 req/sec
         "fyers": 10,     # 10 req/sec
+        "paytm": 10,     # 10 req/sec
     }
 
     def __init__(self, broker: str, requests_per_second: Optional[int] = None):
@@ -126,6 +127,7 @@ def rate_limited(broker: str):
             pass
     """
     def decorator(func):
+        @wraps(func)
         async def wrapper(*args, **kwargs):
             await broker_rate_limiters.acquire(broker)
             return await func(*args, **kwargs)

@@ -107,8 +107,20 @@ class SmartAPIAuth:
             # Get feed token for WebSocket
             feed_token = api.getfeedToken()
 
-            # Token expiry is typically end of day, but we'll set it to 8 hours for safety
-            token_expiry = datetime.now(timezone.utc) + timedelta(hours=8)
+            # SmartAPI tokens are flushed at 5 AM IST daily (not 8 hours)
+            # Calculate next 5 AM IST as the expiry time
+            from zoneinfo import ZoneInfo
+            ist = ZoneInfo('Asia/Kolkata')
+            now_ist = datetime.now(ist)
+
+            # If it's before 5 AM, expiry is today at 5 AM
+            # If it's after 5 AM, expiry is tomorrow at 5 AM
+            if now_ist.hour < 5:
+                expiry_ist = now_ist.replace(hour=5, minute=0, second=0, microsecond=0)
+            else:
+                expiry_ist = (now_ist + timedelta(days=1)).replace(hour=5, minute=0, second=0, microsecond=0)
+
+            token_expiry = expiry_ist.astimezone(timezone.utc)
 
             result = {
                 'jwt_token': session_data.get('jwtToken'),
@@ -153,7 +165,17 @@ class SmartAPIAuth:
             session_data = data['data']
             feed_token = api.getfeedToken()
 
-            token_expiry = datetime.now(timezone.utc) + timedelta(hours=8)
+            # SmartAPI tokens are flushed at 5 AM IST daily
+            from zoneinfo import ZoneInfo
+            ist = ZoneInfo('Asia/Kolkata')
+            now_ist = datetime.now(ist)
+
+            if now_ist.hour < 5:
+                expiry_ist = now_ist.replace(hour=5, minute=0, second=0, microsecond=0)
+            else:
+                expiry_ist = (now_ist + timedelta(days=1)).replace(hour=5, minute=0, second=0, microsecond=0)
+
+            token_expiry = expiry_ist.astimezone(timezone.utc)
 
             return {
                 'jwt_token': session_data.get('jwtToken'),

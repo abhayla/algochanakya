@@ -91,7 +91,7 @@ algochanakya/
    ```bash
    python run.py
    ```
-   Backend will run at: http://localhost:8000
+   Backend will run at: http://localhost:8001 (dev) or http://localhost:8000 (prod)
 
 ### Frontend Setup
 
@@ -170,9 +170,10 @@ npm run preview
 - **Positions** - Live F&O positions with P&L tracking
 - **Order Placement** - Basket orders via Kite API
 
-### Planned
+### In Progress
 
-- Additional brokers (Upstox, Angel One, Fyers)
+- **Multi-broker abstraction** - SmartAPI (Angel One) implemented for market data, Kite for orders
+- Additional brokers planned: Upstox, Fyers, Dhan
 - Backtesting capabilities
 - Advanced risk management tools
 
