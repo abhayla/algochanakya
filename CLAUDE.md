@@ -283,7 +283,7 @@ npm run generate:test              # Generate new test from template
 - **Strategy Builder** - P/L modes: "At Expiry" (intrinsic) and "Current" (Black-Scholes via scipy)
 - **AutoPilot** - Automated execution with conditions, adjustments, kill switch. 16 database tables. See [docs/autopilot/](docs/autopilot/)
 - **AI Module** - Market regime (6 types), risk states (GREEN/YELLOW/RED), trust ladder (Sandbox→Supervised→Autonomous). Paper trading graduation: 15 days + 25 trades + 55% win rate. Key tables: `ai_user_config`, `ai_decisions_log`, `ai_model_registry`, `ai_learning_reports`. See [docs/ai/](docs/ai/)
-- **SmartAPI Integration** (Default Market Data) - AngelOne SmartAPI is the **default market data source** for live WebSocket prices and historical OHLC. Kite remains for order execution. Uses auto-TOTP (no manual TOTP entry). Credentials stored encrypted in `smartapi_credentials` table. Key files: `backend/app/services/smartapi_auth.py` (auth with auto-TOTP), `smartapi_ticker.py` (WebSocket V2), `smartapi_historical.py` (OHLC), `backend/app/api/routes/smartapi.py` (endpoints), `frontend/src/components/settings/SmartAPISettings.vue` (UI). API: `POST /api/smartapi/authenticate`, `GET/POST /api/smartapi/credentials`, `POST /api/smartapi/test-connection`.
+- **SmartAPI Integration** (Default Market Data) - AngelOne SmartAPI is the **default market data source** for live WebSocket prices and historical OHLC. Kite remains for order execution. Uses auto-TOTP (no manual TOTP entry). Credentials stored encrypted in `smartapi_credentials` table. Key files: `backend/app/services/legacy/smartapi_auth.py` (auth with auto-TOTP), `legacy/smartapi_ticker.py` (WebSocket V2), `legacy/smartapi_historical.py` (OHLC), `backend/app/api/routes/smartapi.py` (endpoints), `frontend/src/components/settings/SmartAPISettings.vue` (UI). API: `POST /api/smartapi/authenticate`, `GET/POST /api/smartapi/credentials`, `POST /api/smartapi/test-connection`.
 
 **Database:** Async PostgreSQL (asyncpg) + Redis for sessions. Run `alembic upgrade head` after git pull.
 
@@ -304,13 +304,25 @@ npm run generate:test              # Generate new test from template
   - `app/services/brokers/market_data/exceptions.py` - Market data errors
 
 - **Legacy Market Data Services (to be replaced by adapters):**
-  - `app/services/smartapi_ticker.py` - SmartAPI WebSocket V2 (default)
-  - `app/services/kite_ticker.py` - Kite WebSocket (singleton, legacy)
-  - `app/services/smartapi_historical.py` - Historical OHLCV data
+  - `app/services/legacy/smartapi_ticker.py` - SmartAPI WebSocket V2 (default)
+  - `app/services/legacy/kite_ticker.py` - Kite WebSocket (singleton, legacy)
+  - `app/services/legacy/smartapi_historical.py` - Historical OHLCV data
 
-- **Core Services:**
-  - `app/services/pnl_calculator.py` - Black-Scholes P/L calculations
-  - `app/services/condition_engine.py` - AutoPilot entry/adjustment evaluation
+- **AutoPilot Services (26 files):**
+  - `app/services/autopilot/condition_engine.py` - Entry/adjustment condition evaluation
+  - `app/services/autopilot/order_executor.py` - Order placement and execution
+  - `app/services/autopilot/strategy_monitor.py` - Real-time strategy monitoring
+  - `app/services/autopilot/kill_switch.py` - Emergency position exit
+  - `app/services/autopilot/adjustment_engine.py` - Strategy adjustment logic
+  - `app/services/autopilot/suggestion_engine.py` - Adjustment suggestions
+  - (20 more services in `autopilot/` directory)
+
+- **Options Calculation Services (8 files):**
+  - `app/services/options/pnl_calculator.py` - Black-Scholes P/L calculations
+  - `app/services/options/greeks_calculator.py` - Delta, gamma, theta, vega calculations
+  - `app/services/options/payoff_calculator.py` - Strategy payoff diagrams
+  - `app/services/options/iv_metrics_service.py` - Implied volatility metrics
+  - (4 more services in `options/` directory)
 
 **Key AI Services:**
 - `app/services/ai/market_regime.py` - 6 market regime types (TRENDING_BULLISH, TRENDING_BEARISH, RANGEBOUND, VOLATILE, PRE_EVENT, EVENT_DAY)
