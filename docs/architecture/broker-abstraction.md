@@ -158,6 +158,8 @@ The platform has **two independent broker systems** to allow maximum flexibility
 - **Factory:** `backend/app/services/brokers/factory.py` - `get_broker_adapter()`
 - **Implementation:** `KiteAdapter` in `backend/app/services/brokers/kite_adapter.py`
 
+**⚠️ Broker Name Mismatch:** `BrokerConnection.broker` column stores display names ("zerodha", "angelone") while `BrokerType` enum uses different values ("kite", "angel"). A broker name mapping utility is planned to normalize DB values via migration.
+
 #### Market Data (Partial)
 - **SmartAPI Services:**
   - `backend/app/services/smartapi_auth.py` - Authentication with auto-TOTP
@@ -197,10 +199,24 @@ The platform has **two independent broker systems** to allow maximum flexibility
 - [ ] Refactor `OrderExecutor` to accept `BrokerAdapter` instead of `KiteConnect`
 
 #### Ticker Service Abstraction
-- [ ] Create `TickerService` interface in `backend/app/services/brokers/ticker/base.py`
-- [ ] Make `KiteTickerService` implement `TickerService`
-- [ ] Make `SmartAPITickerService` implement `TickerService`
-- [ ] Create factory/registry for ticker selection
+
+**Status:** 📋 Planned (See [ADR-003](../decisions/003-multi-broker-ticker-architecture.md))
+
+**New Architecture (Multi-Broker Ticker System):**
+- [ ] Create `MultiTenantTickerService` interface (replaces dead `TickerService`)
+- [ ] Remove dead WebSocket stubs from `MarketDataBrokerAdapter` in `market_data_base.py` (subscribe, unsubscribe, on_tick, connect, disconnect, is_connected) - these methods belong exclusively in `MultiTenantTickerService`, not in REST market data adapter
+- [ ] Create `TickerServiceManager` (multiton pattern)
+- [ ] Create `system_broker_sessions` table (Tier 1 credentials)
+- [ ] Implement `SmartAPITickerAdapter` (wraps existing service)
+- [ ] Implement `KiteTickerAdapter` (wraps existing service)
+- [ ] Create stub adapters for Upstox, Dhan, Fyers, Paytm
+- [ ] Refactor `websocket.py` from 534→150 lines (remove broker if/else)
+- [ ] Add system auth service for app-level credentials
+- [ ] Deprecate legacy singletons (`smartapi_ticker_service`, `kite_ticker_service`)
+
+**Key Improvement:** Moves from hardcoded singletons to broker-agnostic manager pattern. WebSocket functionality lives exclusively in `MultiTenantTickerService`, achieving clear separation between REST market data and WebSocket tickers. Adding new broker = implement adapter + register in factory (zero route changes).
+
+**See:** [Multi-Broker Ticker Implementation Guide](./multi-broker-ticker-implementation.md), [API Reference](../api/multi-broker-ticker-api.md)
 
 #### User Configuration
 - [ ] Add `market_data_broker` and `order_execution_broker` to `users` table

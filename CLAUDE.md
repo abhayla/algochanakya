@@ -190,6 +190,7 @@ See [Broker Abstraction Architecture](docs/architecture/broker-abstraction.md) f
 - Routes updated: `optionchain.py`, `ofo.py`, `orders.py`, `strategy_wizard.py`, `websocket.py`
 
 **🚧 Phase 4-5 To Be Implemented:**
+- Remove dead WebSocket stubs from `MarketDataBrokerAdapter` (moved to `MultiTenantTickerService`)
 - Create `AngelAdapter` for Angel One order execution
 - Complete user settings UI for broker selection (market data + order execution)
 - Migrate legacy ticker services to implement `TickerServiceBase` interface
@@ -548,6 +549,9 @@ The learning engine at `.claude/learning/knowledge.db` records every error and f
 1. **[Developer Quick Reference](docs/DEVELOPER-QUICK-REFERENCE.md)** - All docs organized by task (NEW - use this first!)
 2. **[Implementation Checklist](docs/IMPLEMENTATION-CHECKLIST.md)** - Current implementation tasks with docs links
 3. **[Broker Abstraction Architecture](docs/architecture/broker-abstraction.md)** - Primary architecture (multi-broker)
+4. **[Multi-Broker Ticker Architecture](docs/decisions/003-multi-broker-ticker-architecture.md)** - ADR for ticker refactoring (Proposed)
+   - [Implementation Guide](docs/architecture/multi-broker-ticker-implementation.md) - Step-by-step implementation plan
+   - [API Reference](docs/api/multi-broker-ticker-api.md) - Complete API documentation for ticker system
 
 **⚠️ Stale Docs Warning:** `docs/IMPLEMENTATION-CHECKLIST.md` may be outdated. CLAUDE.md contains the authoritative implementation status.
 
@@ -623,6 +627,7 @@ Dashboard `/dashboard`, Watchlist `/watchlist`, Positions `/positions`, Option C
 - **Bypassing market data abstraction** - Use `get_market_data_adapter()` instead of directly calling `SmartAPIMarketData`, `SmartAPIHistorical`, etc.
 - **Symbol format confusion** - Always use canonical format (Kite format) internally; use `SymbolConverter` for broker-specific symbols
 - **Token lookup without TokenManager** - Use `token_manager.get_broker_token()` instead of manual lookups; it handles caching and cross-broker mapping
+- **Broker name mismatch** - BrokerConnection stores 'zerodha'/'angelone' but BrokerType uses 'kite'/'angel'. Use the broker name mapping utility when converting between DB values and enum values.
 - **Forgot to import model in `alembic/env.py`** - Autogenerate won't detect it
 - **Sync database operations** - All SQLAlchemy must use `async/await`
 - **Hardcoded trading constants** - Use `app.constants.trading` instead
