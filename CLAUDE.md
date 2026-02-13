@@ -2,23 +2,61 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+**Last Updated:** February 2026
+**Primary Implementation Status:** Phase 3 Complete (Multi-broker abstraction for market data + order execution)
+
+> **Note:** This is a comprehensive guide (~700 lines). Use Ctrl+F to search for specific topics, or check the Table of Contents. For task-specific docs, see [Developer Quick Reference](docs/DEVELOPER-QUICK-REFERENCE.md).
+
 ## Table of Contents
 
-1. [Critical: Mandatory Behaviors](#critical-mandatory-behaviors)
-2. [Quick Start](#quick-start)
-3. [Core Purpose: Multi-Broker Architecture](#core-purpose-multi-broker-architecture)
-4. [Project Overview](#project-overview)
-5. [Development Commands](#development-commands)
-6. [Architecture Overview](#architecture-overview)
-7. [Important Patterns](#important-patterns)
-8. [Documentation](#documentation)
-9. [Claude Code Skills](#claude-code-skills)
-10. [Key URLs](#key-urls)
-11. [Testing](#testing)
-12. [Common Pitfalls](#common-pitfalls)
-13. [CI/CD](#cicd)
-14. [Debug Commands](#debug-commands)
-15. [Production Debugging](#production-debugging)
+1. [Quick Command Cheat Sheet](#quick-command-cheat-sheet)
+2. [Critical: Mandatory Behaviors](#critical-mandatory-behaviors)
+3. [Quick Start](#quick-start)
+4. [Core Purpose: Multi-Broker Architecture](#core-purpose-multi-broker-architecture)
+5. [Project Overview](#project-overview)
+6. [Development Commands](#development-commands)
+7. [Architecture Overview](#architecture-overview)
+8. [Important Patterns](#important-patterns)
+9. [Documentation](#documentation)
+10. [Claude Code Skills](#claude-code-skills)
+11. [Key URLs](#key-urls)
+12. [Testing](#testing)
+13. [Common Pitfalls](#common-pitfalls)
+14. [Troubleshooting Common Errors](#troubleshooting-common-errors)
+15. [CI/CD](#cicd)
+16. [Debug Commands](#debug-commands)
+17. [Production Debugging](#production-debugging)
+
+---
+
+## Quick Command Cheat Sheet
+
+**Most Common Commands** - Quick reference for daily development:
+
+| Task | Command | Location |
+|------|---------|----------|
+| **Start dev backend** | `venv\Scripts\activate && python run.py` | `backend/` |
+| **Start frontend** | `npm run dev` | `frontend/` |
+| **Run all E2E tests** | `npm test` | root |
+| **Run single E2E test** | `npx playwright test path/to/spec.js` | root |
+| **Database migration** | `alembic revision --autogenerate -m "msg" && alembic upgrade head` | `backend/` |
+| **Apply migrations only** | `alembic upgrade head` | `backend/` |
+| **Check git status** | `git status && git log --oneline -5` | root |
+| **Auto-verify after changes** | `Skill(skill="auto-verify")` | Claude Code |
+| **Backend tests** | `pytest tests/ -v` | `backend/` |
+| **Frontend unit tests** | `npm run test` | `frontend/` |
+| **Debug E2E test** | `npx playwright test path/to/spec --debug` | root |
+| **Check backend health** | `curl http://localhost:8001/api/health` | terminal |
+
+**Port Reference:**
+
+| Service | Development | Production (DO NOT TOUCH) |
+|---------|-------------|---------------------------|
+| Backend API | `localhost:8001` | `localhost:8000` |
+| Frontend | `localhost:5173` | `localhost:3004` |
+| WebSocket | `ws://localhost:8001/ws/ticks` | `wss://algochanakya.com/ws/ticks` |
+| Database | `localhost:5432` | `localhost:5432` |
+| Redis | `localhost:6379` | `localhost:6379` |
 
 ---
 
@@ -81,13 +119,7 @@ Before implementing features, refactors, or architectural changes:
 
 **Requirements:** Python 3.11+ | Node.js 20+ | PostgreSQL | Redis
 
-**Port Configuration:**
-| Environment | Backend | Frontend |
-|-------------|---------|----------|
-| Development | 8001 | 5173 |
-| Production | 8000 (DO NOT TOUCH) | 3004 |
-
-**IMPORTANT:** Frontend development uses `.env.local` which overrides `.env`. Ensure `frontend/.env.local` points to dev backend (port 8001), not production (8000).
+**IMPORTANT:** Frontend development uses `.env.local` which overrides `.env`. Ensure `frontend/.env.local` points to dev backend (port 8001), not production (8000). See [Port Reference](#quick-command-cheat-sheet) for all service ports.
 
 ```bash
 # Start dev backend (from backend/)
@@ -643,6 +675,43 @@ Dashboard `/dashboard`, Watchlist `/watchlist`, Positions `/positions`, Option C
 ### Testing
 - **Wrong import** - Use `auth.fixture.js`, NOT `@playwright/test`
 - **CSS/text selectors** - Use `data-testid` only
+
+---
+
+## Troubleshooting Common Errors
+
+**Error Messages and Solutions** - Quick fixes for frequently encountered issues:
+
+| Error Message | Cause | Solution |
+|--------------|-------|----------|
+| `ModuleNotFoundError: No module named 'app'` | Backend venv not activated | Run `venv\Scripts\activate` in `backend/` |
+| `Connection refused [Errno 61]` or `[Errno 111]` | Backend not running | Start backend: `cd backend && python run.py` |
+| `401 Unauthorized` | Expired JWT or broker token | Re-login via `/login` in frontend |
+| `403 Forbidden` on broker API | Invalid/expired broker credentials | Re-authenticate (SmartAPI auto-refreshes, Kite needs OAuth) |
+| `Incorrect api_key or access_token` | SmartAPI/Kite token expired | SmartAPI: auto-refreshes. Kite: re-login via OAuth |
+| `Target page, context or browser has been closed` | Playwright test timeout | Increase timeout or fix test. Check `playwright.config.js` |
+| `ECONNREFUSED 127.0.0.1:5432` | PostgreSQL not running | Start PostgreSQL service |
+| `ECONNREFUSED 127.0.0.1:6379` | Redis not running | Start Redis service: `redis-server` |
+| `relation "table_name" does not exist` | Missing database migration | Run `alembic upgrade head` in `backend/` |
+| `no pg_hba.conf entry for host` | PostgreSQL blocking IP | Whitelist IP in PostgreSQL `pg_hba.conf` |
+| File path encoding issues (e.g., `\357\200\272`) | UTF-8 encoding in Windows paths | Use `git status --porcelain` or fix file system encoding |
+| `npm ERR! ENOENT: no such file or directory` | node_modules not installed | Run `npm install` in `frontend/` |
+| `Cannot find module '@/...'` | Frontend path alias not resolved | Check Vite config, restart dev server |
+| `WebSocket connection failed` | Wrong WS URL or backend down | Check `.env.local` has correct WS URL, ensure backend running |
+| `Database connection pool exhausted` | Too many concurrent connections | Check for unclosed connections, increase pool size |
+| `Rate limit exceeded` | Too many broker API calls | Adapters handle this automatically - don't bypass them |
+| `alembic.util.exc.CommandError` | Alembic config issue | Check `alembic.ini` and `DATABASE_URL` in `.env` |
+| `playwright: command not found` | Playwright not installed | Run `npm install` in project root |
+| Backend starts on wrong port (8000 instead of 8001) | Wrong `.env` configuration | Check `backend/.env` has correct `PORT=8001` |
+| Frontend API calls fail with 404 | Wrong API base URL | Check `frontend/.env.local` has `VITE_API_BASE_URL=http://localhost:8001` |
+
+**General Debugging Steps:**
+1. Check if all services are running (backend, PostgreSQL, Redis)
+2. Verify environment variables (`.env`, `.env.local`) have correct values
+3. Run `git status && git log --oneline -5` to check current state
+4. Check browser console and network tab for frontend issues
+5. Check backend logs for detailed error messages
+6. Use `/health-check` skill for automated codebase health scan
 
 ---
 
