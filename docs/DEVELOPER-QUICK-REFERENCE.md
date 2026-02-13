@@ -6,6 +6,37 @@ This guide provides quick access to all architecture documentation organized by 
 
 ---
 
+## Quick Commands
+
+**Most Common Commands** - Quick reference for daily development:
+
+| Task | Command | Location |
+|------|---------|----------|
+| **Start dev backend** | `venv\Scripts\activate && python run.py` | `backend/` |
+| **Start frontend** | `npm run dev` | `frontend/` |
+| **Run all E2E tests** | `npm test` | root |
+| **Run single E2E test** | `npx playwright test path/to/spec.js` | root |
+| **Database migration** | `alembic revision --autogenerate -m "msg" && alembic upgrade head` | `backend/` |
+| **Apply migrations only** | `alembic upgrade head` | `backend/` |
+| **Check git status** | `git status && git log --oneline -5` | root |
+| **Auto-verify after changes** | `Skill(skill="auto-verify")` | Claude Code |
+| **Backend tests** | `pytest tests/ -v` | `backend/` |
+| **Frontend unit tests** | `npm run test` | `frontend/` |
+| **Debug E2E test** | `npx playwright test path/to/spec --debug` | root |
+| **Check backend health** | `curl http://localhost:8001/api/health` | terminal |
+
+**Port Reference:**
+
+| Service | Development | Production (DO NOT TOUCH) |
+|---------|-------------|---------------------------|
+| Backend API | `localhost:8001` | `localhost:8000` |
+| Frontend | `localhost:5173` | `localhost:3004` |
+| WebSocket | `ws://localhost:8001/ws/ticks` | `wss://algochanakya.com/ws/ticks` |
+| Database | `localhost:5432` | `localhost:5432` |
+| Redis | `localhost:6379` | `localhost:6379` |
+
+---
+
 ## 🚀 Getting Started
 
 | What You Need | Documentation |
