@@ -99,11 +99,11 @@ auto_detect_patterns:
     feature: autopilot
   - pattern: "backend/app/services/autopilot/strategy_monitor.py"
     feature: autopilot
-  - pattern: "backend/app/services/order_executor.py"
+  - pattern: "backend/app/services/autopilot/order_executor.py"
     feature: autopilot
-  - pattern: "backend/app/services/adjustment_engine.py"
+  - pattern: "backend/app/services/autopilot/adjustment_engine.py"
     feature: autopilot
-  - pattern: "backend/app/services/suggestion_engine.py"
+  - pattern: "backend/app/services/autopilot/suggestion_engine.py"
     feature: autopilot
   - pattern: "backend/app/services/options/greeks_calculator.py"
     feature: autopilot
@@ -121,7 +121,7 @@ auto_detect_patterns:
   # WebSocket (shared service)
   - pattern: "backend/app/api/routes/websocket.py"
     feature: websocket
-  - pattern: "backend/app/services/kite_ticker.py"
+  - pattern: "backend/app/services/legacy/kite_ticker.py"
     feature: websocket
 
   # Orders
@@ -157,9 +157,11 @@ auto_detect_patterns:
     feature: broker-abstraction
   - pattern: "backend/app/services/brokers/**_adapter.py"
     feature: broker-abstraction
-  - pattern: "backend/app/services/smartapi_*.py"
+  - pattern: "backend/app/services/legacy/smartapi_*.py"
     feature: broker-abstraction
   - pattern: "backend/app/models/smartapi_credentials.py"
+    feature: broker-abstraction
+  - pattern: "backend/app/services/brokers/market_data/*.py"
     feature: broker-abstraction
   - pattern: "frontend/src/stores/aiConfig.js"
     feature: ai-configuration
@@ -227,7 +229,7 @@ features:
       - "backend/app/api/routes/websocket.py"
       - "backend/app/models/watchlists.py"
       - "backend/app/models/instruments.py"
-      - "backend/app/services/kite_ticker.py"
+      - "backend/app/services/legacy/kite_ticker.py"
       - "backend/app/services/instruments.py"
     frontend_files:
       - "frontend/src/views/WatchlistView.vue"
@@ -247,7 +249,7 @@ features:
     description: "Live F&O positions view with real-time P&L tracking"
     backend_files:
       - "backend/app/api/routes/positions.py"
-      - "backend/app/services/kite_ticker.py"
+      - "backend/app/services/legacy/kite_ticker.py"
     frontend_files:
       - "frontend/src/views/PositionsView.vue"
       - "frontend/src/stores/positions.js"
@@ -266,7 +268,7 @@ features:
     backend_files:
       - "backend/app/api/routes/optionchain.py"
       - "backend/app/api/routes/options.py"
-      - "backend/app/services/kite_ticker.py"
+      - "backend/app/services/legacy/kite_ticker.py"
     frontend_files:
       - "frontend/src/views/OptionChainView.vue"
       - "frontend/src/stores/optionchain.js"
@@ -287,7 +289,7 @@ features:
       - "backend/app/api/routes/orders.py"
       - "backend/app/models/strategies.py"
       - "backend/app/services/options/pnl_calculator.py"
-      - "backend/app/services/kite_ticker.py"
+      - "backend/app/services/legacy/kite_ticker.py"
     frontend_files:
       - "frontend/src/views/StrategyBuilderView.vue"
       - "frontend/src/stores/strategy.js"
@@ -333,12 +335,12 @@ features:
       - "backend/app/api/v1/autopilot/simulation.py"
       - "backend/app/api/v1/autopilot/option_chain.py"
       - "backend/app/models/autopilot.py"
-      - "backend/app/services/market_data.py"
+      - "backend/app/services/legacy/market_data.py"
       - "backend/app/services/autopilot/condition_engine.py"
-      - "backend/app/services/strategy_monitor.py"
-      - "backend/app/services/order_executor.py"
-      - "backend/app/services/adjustment_engine.py"
-      - "backend/app/services/suggestion_engine.py"
+      - "backend/app/services/autopilot/strategy_monitor.py"
+      - "backend/app/services/autopilot/order_executor.py"
+      - "backend/app/services/autopilot/adjustment_engine.py"
+      - "backend/app/services/autopilot/suggestion_engine.py"
       - "backend/app/services/options/greeks_calculator.py"
       - "backend/app/websocket/manager.py"
     frontend_files:
@@ -371,7 +373,9 @@ features:
     description: "Shared WebSocket service for live price streaming (used by multiple features)"
     backend_files:
       - "backend/app/api/routes/websocket.py"
-      - "backend/app/services/kite_ticker.py"
+      - "backend/app/services/legacy/kite_ticker.py"
+      - "backend/app/services/legacy/smartapi_ticker.py"
+      - "backend/app/services/brokers/market_data/ticker_base.py"
     frontend_files:
       - "frontend/src/stores/watchlist.js"
       - "frontend/src/stores/positions.js"
@@ -383,6 +387,26 @@ features:
       - option-chain
       - strategy-builder
       - autopilot
+    additional_docs:
+      - "docs/decisions/003-multi-broker-ticker-architecture.md"
+      - "docs/architecture/multi-broker-ticker-implementation.md"
+      - "docs/api/multi-broker-ticker-api.md"
+
+  multi-broker-ticker:
+    name: "Multi-Broker Ticker System"
+    docs_folder: "docs/features/websocket/"
+    description: "Multi-tenant ticker architecture for concurrent broker WebSocket connections (ADR-003)"
+    backend_files:
+      - "backend/app/services/brokers/market_data/ticker_base.py"
+      - "backend/app/api/routes/websocket.py"
+    additional_docs:
+      - "docs/decisions/003-multi-broker-ticker-architecture.md"
+      - "docs/architecture/multi-broker-ticker-implementation.md"
+      - "docs/api/multi-broker-ticker-api.md"
+      - "docs/architecture/websocket-ticker-architectures-comparison.md"
+    related_features:
+      - websocket
+      - broker-abstraction
 
   orders:
     name: "Order Management"
@@ -390,7 +414,7 @@ features:
     description: "Order placement and management (basket orders, positions import, LTP/OHLC fetching)"
     backend_files:
       - "backend/app/api/routes/orders.py"
-      - "backend/app/services/kite_orders.py"
+      - "backend/app/services/legacy/kite_orders.py"
     frontend_files:
       - "frontend/src/composables/usePriceFallback.js"
     used_by_features:
@@ -508,10 +532,13 @@ shared_files:
 
   broker-abstraction:
     - "backend/app/services/brokers/**"
-    - "backend/app/services/smartapi_*.py"
+    - "backend/app/services/legacy/smartapi_*.py"
     - "backend/app/models/smartapi_credentials.py"
+    - "backend/app/models/broker_instrument_tokens.py"
     docs: "docs/architecture/broker-abstraction.md"
     adr: "docs/decisions/002-broker-abstraction.md"
+    additional_docs:
+      - "docs/decisions/003-multi-broker-ticker-architecture.md"
 
   documentation:
     - "docs/DEVELOPER-QUICK-REFERENCE.md"
@@ -535,9 +562,10 @@ unassigned: []
 # METADATA
 # ============================================================================
 
-version: "1.2.0"
-last_updated: "2026-01-14"
+version: "1.3.0"
+last_updated: "2026-02-13"
 maintained_by: "docs-maintainer skill"
 changelog:
+  - "1.3.0 (2026-02-13): Fixed stale paths (legacy/ prefix), added multi-broker-ticker feature, added ADR-003 references, added market data adapter patterns"
   - "1.2.0 (2026-01-14): Added broker-abstraction and documentation sections"
   - "1.1.0 (2025-12-24): Initial comprehensive registry"

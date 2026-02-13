@@ -222,6 +222,20 @@ Dhan returns all prices in RUPEES. No paise conversion needed.
 
 See [error-codes.md](./references/error-codes.md) for complete error catalog.
 
+## Related Skills
+
+For cross-broker work, consult these complementary skills:
+
+| Skill | When to Use |
+|-------|-------------|
+| `/upstox-expert` | Both modern free APIs — compare unique WS features (Dhan: 200-depth, Upstox: Greeks) |
+| `/smartapi-expert` | Compare auth approaches — Dhan static token vs SmartAPI auto-TOTP |
+| `/fyers-expert` | Compare unique features — Fyers has dual WS + order updates, Dhan has deep depth |
+| `/auto-verify` | After any Dhan adapter change — run verification immediately |
+| `/docs-maintainer` | After adapter changes — update feature registry, comparison matrix, CHANGELOG |
+
+**Cross-Broker Comparison:** See [comparison-matrix.md](../broker-shared/comparison-matrix.md) for pricing, rate limits, WebSocket capabilities, and symbol format differences across all 6 brokers.
+
 ## References
 
 - [Authentication Flow](./references/auth-flow.md) - API token setup

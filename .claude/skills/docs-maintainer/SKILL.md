@@ -63,6 +63,46 @@ The skill uses `docs/feature-registry.yaml` to map code files to features. This 
 | **Any major change** | Root CHANGELOG.md (under [Unreleased]) | High-level summary |
 | **Architecture change** | CLAUDE.md, docs/architecture/*.md | Pattern update, new service docs |
 
+## Broker-Specific Documentation Rules
+
+When broker adapter code changes, additional documentation must be updated beyond the standard rules above.
+
+### Trigger → Action Matrix
+
+| Trigger (Code Change) | Documentation Actions |
+|----------------------|----------------------|
+| **New broker adapter created** | Update [comparison-matrix.md](../.claude/skills/broker-shared/comparison-matrix.md) Implementation Status table, [feature-registry.yaml](../../docs/feature-registry.yaml) broker-abstraction patterns, [CLAUDE.md](../../CLAUDE.md) Supported Brokers table |
+| **Adapter status change** (planned→complete) | Update comparison-matrix.md section 11, CLAUDE.md Implementation Status, [IMPLEMENTATION-CHECKLIST.md](../../docs/IMPLEMENTATION-CHECKLIST.md) Progress Tracking table |
+| **Ticker/WebSocket change** | Update [ADR-003](../../docs/decisions/003-multi-broker-ticker-architecture.md) status if applicable, IMPLEMENTATION-CHECKLIST.md Phase 4 tasks |
+| **Symbol converter change** | Verify the relevant broker expert skill's Symbol Format section matches (e.g., `/smartapi-expert`, `/kite-expert`) |
+| **Rate limiter change** | Update comparison-matrix.md section 3 (Rate Limits) + relevant broker expert skill's Rate Limits section |
+| **New broker expert skill created** | Update comparison-matrix.md skill callout, CLAUDE.md skills table, [DEVELOPER-QUICK-REFERENCE.md](../../docs/DEVELOPER-QUICK-REFERENCE.md) broker skills references |
+
+### Cross-Reference Consistency Checklist
+
+On ANY broker adapter change, verify these 5 docs are consistent:
+
+- [ ] `CLAUDE.md` — Implementation Status, Supported Brokers table
+- [ ] `docs/IMPLEMENTATION-CHECKLIST.md` — Progress Tracking table
+- [ ] `.claude/skills/broker-shared/comparison-matrix.md` — Section 11 (Implementation Status)
+- [ ] `docs/feature-registry.yaml` — broker-abstraction shared_files
+- [ ] `docs/DEVELOPER-QUICK-REFERENCE.md` — Multi-Broker System section
+
+### Broker Adapter Auto-Detection Example
+
+When a new file like `backend/app/services/brokers/market_data/upstox_adapter.py` is created:
+
+```
+1. auto_detect_patterns matches: "backend/app/services/brokers/**_adapter.py" → broker-abstraction
+2. Also matches: "backend/app/services/brokers/market_data/*.py" → broker-abstraction
+3. Actions triggered:
+   → Update feature-registry.yaml (add to broker-abstraction files)
+   → Update comparison-matrix.md section 11 (Upstox: Planned → Complete)
+   → Update CLAUDE.md Supported Brokers table
+   → Update IMPLEMENTATION-CHECKLIST.md Phase 5 tasks
+   → Alert: "New broker adapter detected. Run cross-reference checklist."
+```
+
 ## CHANGELOG Entry Format
 
 Use the Keep a Changelog format:
@@ -687,3 +727,10 @@ Before finishing doc updates:
 - [ ] If orphans found: Alerted user with categorized list
 - [ ] If orphans found: Suggested `/docs-maintainer cleanup` command
 - [ ] If no orphans: Confirmed project structure is clean
+
+**Broker-Specific (only for broker adapter changes):**
+- [ ] comparison-matrix.md Implementation Status (section 11) matches actual adapter status
+- [ ] CLAUDE.md Supported Brokers table reflects current implementation
+- [ ] IMPLEMENTATION-CHECKLIST.md Progress Tracking table is accurate
+- [ ] Relevant broker expert skill's Implementation Status table is current
+- [ ] feature-registry.yaml broker-abstraction paths include new adapter files

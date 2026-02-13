@@ -255,6 +255,20 @@ quote = await adapter.get_quote(["NIFTY2522725000CE"])  # Returns UnifiedQuote
 
 See [error-codes.md](./references/error-codes.md) for complete error catalog.
 
+## Related Skills
+
+For cross-broker work, consult these complementary skills:
+
+| Skill | When to Use |
+|-------|-------------|
+| `/smartapi-expert` | Reference implementation — SmartAPI adapter is the model for new market data adapters |
+| `/kite-expert` | Order execution reference — Kite adapter is the model for new order adapters |
+| `/dhan-expert` | Compare unique WS features — Dhan has 200-depth, Upstox has Greeks via WS |
+| `/auto-verify` | After any Upstox adapter change — run verification immediately |
+| `/docs-maintainer` | After adapter changes — update feature registry, comparison matrix, CHANGELOG |
+
+**Cross-Broker Comparison:** See [comparison-matrix.md](../broker-shared/comparison-matrix.md) for pricing, rate limits, WebSocket capabilities, and symbol format differences across all 6 brokers.
+
 ## References
 
 - [Authentication Flow](./references/auth-flow.md) - OAuth 2.0 flow + extended token

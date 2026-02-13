@@ -1,185 +1,124 @@
 # Implementation Checklist
 
-**Last Updated:** 2026-01-14
+**Last Updated:** 2026-02-13
 
 This checklist tracks remaining implementation tasks with links to relevant documentation.
 
 ---
 
-## 🎯 Current Focus: Complete Broker Abstraction
+## 🎯 Current Focus: Multi-Broker Ticker Architecture (ADR-003)
 
-**Reference:** [Broker Abstraction Architecture](architecture/broker-abstraction.md) | [ADR-002](decisions/002-broker-abstraction.md)
+**Reference:** [Broker Abstraction Architecture](architecture/broker-abstraction.md) | [ADR-002](decisions/002-broker-abstraction.md) | [ADR-003: Multi-Broker Ticker](decisions/003-multi-broker-ticker-architecture.md)
 
-### Phase 2: Market Data Abstraction
+### Phase 2: Market Data Abstraction ✅ COMPLETE
 
 **Goal:** Abstract SmartAPI and Kite market data services behind a unified interface.
 
-**Status:** Not started
+**Status:** ✅ Complete (Jan 2026)
 
-#### Tasks
-
-- [ ] **Create MarketDataBrokerAdapter interface**
-  - File: `backend/app/services/brokers/market_data/base.py`
-  - Define abstract methods:
-    - `get_live_quote(symbol)` → `UnifiedQuote`
-    - `get_historical_data(symbol, from_date, to_date, interval)` → List[OHLC]
-    - `subscribe_ticks(symbols, callback)` → None
-    - `unsubscribe_ticks(symbols)` → None
-    - `search_instruments(query)` → List[Instrument]
-  - **Docs:** [Broker Abstraction - Market Data](architecture/broker-abstraction.md#market-data-abstraction)
-
-- [ ] **Create SmartAPIMarketDataAdapter**
-  - File: `backend/app/services/brokers/market_data/smartapi_adapter.py`
-  - Wrap existing SmartAPI services:
-    - `SmartAPIMarketData` → `get_live_quote()`
-    - `SmartAPIHistorical` → `get_historical_data()`
-    - `SmartAPITickerService` → `subscribe_ticks()`, `unsubscribe_ticks()`
-    - `SmartAPIInstruments` → `search_instruments()`
-  - **Code Reference:**
-    - `backend/app/services/smartapi_market_data.py`
-    - `backend/app/services/smartapi_historical.py`
-    - `backend/app/services/smartapi_ticker.py`
-    - `backend/app/services/smartapi_instruments.py`
-
-- [ ] **Create KiteMarketDataAdapter**
-  - File: `backend/app/services/brokers/market_data/kite_adapter.py`
-  - Implement interface using Kite Connect API
-  - **Code Reference:** `backend/app/services/kite_ticker.py` (for WebSocket patterns)
-
-- [ ] **Create market data factory**
-  - File: `backend/app/services/brokers/market_data/factory.py`
-  - Function: `get_market_data_adapter(broker_type: BrokerType, credentials) → MarketDataBrokerAdapter`
-  - Registry pattern similar to order broker factory
-  - **Code Reference:** `backend/app/services/brokers/factory.py`
-
-- [ ] **Update module exports**
-  - File: `backend/app/services/brokers/market_data/__init__.py`
-  - Export interface, factory, and adapters
-
-**Estimated effort:** 2-3 days
+**Delivered:**
+- `MarketDataBrokerAdapter` interface (`backend/app/services/brokers/market_data/market_data_base.py`)
+- `SmartAPIMarketDataAdapter` implementation (`backend/app/services/brokers/market_data/smartapi_adapter.py`)
+- `get_market_data_adapter()` factory (`backend/app/services/brokers/market_data/factory.py`)
+- `TickerServiceBase` interface (`backend/app/services/brokers/market_data/ticker_base.py`)
+- `TokenManager` for cross-broker token/symbol mapping (`token_manager.py`)
+- `RateLimiter` for per-broker rate limiting (`rate_limiter.py`)
+- `SymbolConverter` for canonical ↔ broker symbols (`symbol_converter.py`)
+- `broker_instrument_tokens` database table for token mapping
+- Unified exceptions (`exceptions.py`)
 
 ---
 
-### Phase 3: Order Execution Completion
+### Phase 3: Route Refactoring & Order Execution ✅ COMPLETE
 
-**Goal:** Refactor API routes to use broker factory instead of direct broker calls.
+**Goal:** Refactor all API routes to use broker factories instead of direct broker calls.
 
-**Status:** Partially complete (adapters exist but routes don't use them)
+**Status:** ✅ Complete (Jan 2026)
 
-#### Tasks
+**Delivered:**
+- All routes refactored: `optionchain.py`, `ofo.py`, `orders.py`, `strategy_wizard.py`, `websocket.py`
+- `KiteMarketDataAdapter` implemented (`backend/app/services/brokers/market_data/kite_adapter.py`)
+- Routes use `get_broker_adapter()` and `get_market_data_adapter()` factories
+- No more direct `KiteConnect` or `SmartAPI` imports in route files
 
-- [ ] **Refactor `auth.py` routes**
-  - File: `backend/app/api/routes/auth.py`
-  - Replace 7 instances of direct `KiteConnect` instantiation
-  - Use `get_broker_adapter(BrokerType.KITE, credentials)`
-  - **Lines:** Throughout file (search for `KiteConnect(`)
-  - **Docs:** [Broker Abstraction - Implementation Note](architecture/broker-abstraction.md#-implementation-note)
-
-- [ ] **Refactor `orders.py` routes**
-  - File: `backend/app/api/routes/orders.py`
-  - Replace `KiteOrderService` with `get_broker_adapter()`
-  - Update to use `UnifiedOrder` model
-  - **Docs:** [Broker Abstraction - Unified Models](architecture/broker-abstraction.md#unified-data-models)
-
-- [ ] **Refactor `positions.py` routes**
-  - File: `backend/app/api/routes/positions.py`
-  - Replace `KiteOrderService` with broker adapter
-  - Update to use `UnifiedPosition` model
-
-- [ ] **Refactor `ofo.py` routes**
-  - File: `backend/app/api/routes/ofo.py`
-  - Replace `KiteOrderService` and direct `SmartAPIMarketData`
-  - Use both order broker adapter + market data adapter (once Phase 2 complete)
-
-- [ ] **Refactor `optionchain.py` routes**
-  - File: `backend/app/api/routes/optionchain.py`
-  - Replace direct `KiteConnect` and `SmartAPIMarketData`
-  - Use market data adapter for quotes
-
-- [ ] **Refactor `strategy_wizard.py` routes**
-  - File: `backend/app/api/routes/strategy_wizard.py`
-  - Replace direct `KiteConnect` for LTP calls
-  - Use market data adapter
-
-- [ ] **Update OrderExecutor service**
-  - File: `backend/app/services/order_executor.py` (if exists)
-  - Accept `BrokerAdapter` instead of `KiteConnect`
-
-- [ ] **Create AngelAdapter for order execution**
-  - File: `backend/app/services/brokers/angel_adapter.py`
-  - Implement `BrokerAdapter` interface for Angel One
-  - Use SmartAPI for order placement
-  - **Docs:** [Broker Abstraction - Adding a Broker](architecture/broker-abstraction.md#adding-a-new-broker-future-state)
-
-**Estimated effort:** 3-4 days
+**Deferred to Phase 5:**
+- `AngelAdapter` for Angel One order execution (moved from Phase 3)
 
 ---
 
-### Phase 4: Ticker Service Abstraction
+### Phase 4: Multi-Broker Ticker Architecture 🟡 PROPOSED (ADR-003)
 
-**Goal:** Unified WebSocket ticker interface.
+**Goal:** Unified multi-tenant WebSocket ticker system supporting concurrent broker connections.
 
-**Status:** Not started
+**Status:** Proposed — Design documented in [ADR-003](decisions/003-multi-broker-ticker-architecture.md)
+
+**Design Documents:**
+- [ADR-003: Multi-Broker Ticker Architecture](decisions/003-multi-broker-ticker-architecture.md) — Decision rationale and architecture
+- [Implementation Guide](architecture/multi-broker-ticker-implementation.md) — Step-by-step implementation plan
+- [API Reference](api/multi-broker-ticker-api.md) — Complete API documentation
+- [Architecture Comparison](architecture/websocket-ticker-architectures-comparison.md) — Evaluated alternatives
+
+**Skill Guidance:** Use `/smartapi-expert` or `/kite-expert` for broker-specific WebSocket protocol details. See [Comparison Matrix](../.claude/skills/broker-shared/comparison-matrix.md) section 4 for WebSocket capability comparison.
 
 #### Tasks
 
-- [ ] **Create TickerService interface**
-  - File: `backend/app/services/brokers/ticker/base.py`
-  - Abstract methods:
-    - `connect()` → None
-    - `disconnect()` → None
-    - `subscribe(tokens, mode, callback)` → None
-    - `unsubscribe(tokens)` → None
-  - **Docs:** [WebSocket Architecture](architecture/websocket.md)
+- [ ] **Remove dead WebSocket stubs from `MarketDataBrokerAdapter`**
+  - Stubs moved to `MultiTenantTickerService` per ADR-003
+  - File: `backend/app/services/brokers/market_data/market_data_base.py`
 
-- [ ] **Update KiteTickerService to implement interface**
-  - File: `backend/app/services/kite_ticker.py`
-  - Inherit from `TickerService`
-  - Keep singleton pattern
+- [ ] **Implement `MultiTenantTickerService`**
+  - Per ADR-003 architecture (single service managing multiple broker ticker connections)
+  - File: `backend/app/services/brokers/market_data/multi_tenant_ticker.py`
 
-- [ ] **Update SmartAPITickerService to implement interface**
-  - File: `backend/app/services/smartapi_ticker.py`
-  - Inherit from `TickerService`
-  - Keep singleton pattern
+- [ ] **Migrate `SmartAPITickerService` to implement `TickerServiceBase`**
+  - File: `backend/app/services/legacy/smartapi_ticker.py`
+  - Must implement interface from `ticker_base.py`
+
+- [ ] **Migrate `KiteTickerService` to implement `TickerServiceBase`**
+  - File: `backend/app/services/legacy/kite_ticker.py`
+  - Must implement interface from `ticker_base.py`
 
 - [ ] **Create ticker factory/registry**
-  - File: `backend/app/services/brokers/ticker/factory.py`
-  - Function: `get_ticker_service(broker_type: BrokerType) → TickerService`
-  - Singleton management per broker type
+  - File: `backend/app/services/brokers/market_data/ticker_factory.py`
+  - Function: `get_ticker_service(broker_type) → TickerServiceBase`
 
-- [ ] **Update WebSocket routes**
+- [ ] **Update WebSocket route to use ticker factory**
   - File: `backend/app/api/routes/websocket.py`
-  - Use ticker factory instead of direct imports
+  - Use factory instead of direct imports
 
-**Estimated effort:** 2-3 days
+- [ ] **Implement subscription routing in `MultiTenantTickerService`**
+  - Route subscriptions to correct broker ticker based on token mapping
+  - Use `TokenManager` for broker resolution
+
+- [ ] **Add health monitoring and auto-reconnect**
+  - Per-broker connection health tracking
+  - Automatic reconnection with exponential backoff
+
+**Estimated effort:** 4-5 days
 
 ---
 
-### Phase 5: User Configuration
+### Phase 5: User Configuration & New Broker Adapters
 
-**Goal:** Allow users to select their preferred brokers.
+**Goal:** User-facing broker selection and additional broker adapters.
 
 **Status:** Not started
 
+**Skill Guidance:** Use broker expert skills (`/smartapi-expert`, `/kite-expert`, `/upstox-expert`, `/dhan-expert`, `/fyers-expert`, `/paytm-expert`) for API-specific guidance when implementing adapters. See [Comparison Matrix](../.claude/skills/broker-shared/comparison-matrix.md) for cross-broker feature comparison.
+
 #### Tasks
 
-- [ ] **Add broker columns to users table**
-  - Migration: `alembic revision --autogenerate -m "add broker preferences to users"`
-  - Columns:
-    - `market_data_broker` (String, default: "smartapi")
-    - `order_execution_broker` (String, default: "kite")
-  - **Docs:** [Database Architecture](architecture/database.md) | [CLAUDE.md - Adding Models](../CLAUDE.md#adding-new-database-models)
-
-- [ ] **Create broker credentials tables**
-  - Already exists for SmartAPI: `smartapi_credentials`
-  - Create for others as needed
-  - Encrypt sensitive fields using `app.utils.encryption`
-  - **Docs:** [CLAUDE.md - Encryption](../CLAUDE.md#encryption-for-credentials)
+- [ ] **Create `AngelAdapter` for order execution** (moved from Phase 3)
+  - File: `backend/app/services/brokers/angel_adapter.py`
+  - Implement `BrokerAdapter` interface for Angel One orders
+  - Use SmartAPI SDK for order placement
+  - **Docs:** [Broker Abstraction - Adding a Broker](architecture/broker-abstraction.md#adding-a-new-broker-future-state)
+  - **Skill:** `/smartapi-expert` for SmartAPI order endpoints and error codes
 
 - [ ] **Create frontend broker settings UI**
   - File: `frontend/src/components/settings/BrokerSettings.vue`
   - Dropdowns for market data broker + order broker
-  - Credential management forms
+  - Credential management forms per broker
   - Test connection buttons
 
 - [ ] **Add broker selection API endpoints**
@@ -187,7 +126,15 @@ This checklist tracks remaining implementation tasks with links to relevant docu
   - `PATCH /api/user/broker-preferences`
   - `GET /api/user/broker-preferences`
 
-**Estimated effort:** 2-3 days
+- [ ] **Create `UpstoxMarketDataAdapter`** (next broker)
+  - File: `backend/app/services/brokers/market_data/upstox_adapter.py`
+  - **Skill:** `/upstox-expert` for Protobuf WebSocket, extended token, instrument_key format
+
+- [ ] **Create `UpstoxAdapter` for order execution**
+  - File: `backend/app/services/brokers/upstox_adapter.py`
+  - **Skill:** `/upstox-expert` for order endpoints and error handling
+
+**Estimated effort:** 3-4 days per broker adapter
 
 ---
 
@@ -211,13 +158,11 @@ This checklist tracks remaining implementation tasks with links to relevant docu
 
 - [ ] **Generate OpenAPI spec**
   - File: `docs/api/openapi.yaml`
-  - Command: `python -c "from app.main import app; import json; print(json.dumps(app.openapi()))" > docs/api/openapi.json`
   - **Status:** Currently just placeholder
 
 - [ ] **Update feature docs after broker refactor**
-  - Use `docs-maintainer` skill after completing Phase 3
+  - Use `docs-maintainer` skill after completing Phase 4
   - Update feature-registry.yaml
-  - **Docs:** [docs/README.md - Feature Registry](README.md#feature-registry)
 
 ### AI Module Enhancements
 
@@ -233,22 +178,20 @@ This checklist tracks remaining implementation tasks with links to relevant docu
 | Phase | Tasks Total | Completed | Status |
 |-------|-------------|-----------|--------|
 | **Phase 1: SmartAPI Services** | - | - | ✅ Complete |
-| **Phase 2: Market Data Abstraction** | 5 | 0 | 🔴 Not Started |
-| **Phase 3: Order Execution** | 9 | 0 | 🟡 Partial (adapters exist) |
-| **Phase 4: Ticker Abstraction** | 5 | 0 | 🔴 Not Started |
-| **Phase 5: User Configuration** | 4 | 0 | 🔴 Not Started |
+| **Phase 2: Market Data Abstraction** | 9 | 9 | ✅ Complete |
+| **Phase 3: Route Refactoring** | 7 | 7 | ✅ Complete |
+| **Phase 4: Ticker Architecture** | 8 | 0 | 🟡 Proposed (ADR-003) |
+| **Phase 5: User Config & New Adapters** | 5 | 0 | 🔴 Not Started |
 
 ---
 
 ## 🎯 Suggested Implementation Order
 
-1. **Phase 2** (Market Data Abstraction) - Foundation for all market data access
-2. **Phase 3** (Refactor Routes) - Use the new abstractions in production code
-3. **Phase 4** (Ticker Abstraction) - Complete WebSocket abstraction
-4. **Phase 5** (User Config) - Enable user broker selection
-5. **Testing & Docs** - Comprehensive tests and documentation updates
+1. **Phase 4** (Multi-Broker Ticker) - Implement ADR-003 architecture
+2. **Phase 5** (User Config + Adapters) - Enable broker selection, add Upstox
+3. **Testing & Docs** - Comprehensive tests and documentation updates
 
-**Total estimated effort:** 12-15 days of focused development
+**Total estimated effort:** 10-14 days of focused development
 
 ---
 
@@ -257,11 +200,17 @@ This checklist tracks remaining implementation tasks with links to relevant docu
 | Topic | Link |
 |-------|------|
 | **Multi-Broker Architecture** | [Broker Abstraction](architecture/broker-abstraction.md) |
-| **Decision Rationale** | [ADR-002](decisions/002-broker-abstraction.md) |
+| **Decision Rationale (Broker)** | [ADR-002](decisions/002-broker-abstraction.md) |
+| **Ticker Architecture** | [ADR-003: Multi-Broker Ticker](decisions/003-multi-broker-ticker-architecture.md) |
+| **Ticker Implementation Guide** | [Implementation Guide](architecture/multi-broker-ticker-implementation.md) |
+| **Ticker API Reference** | [API Reference](api/multi-broker-ticker-api.md) |
+| **Architecture Comparison** | [Ticker Architectures Comparison](architecture/websocket-ticker-architectures-comparison.md) |
 | **Developer Guide** | [Developer Quick Reference](DEVELOPER-QUICK-REFERENCE.md) |
 | **Important Patterns** | [CLAUDE.md - Patterns](../CLAUDE.md#important-patterns) |
 | **Common Pitfalls** | [CLAUDE.md - Pitfalls](../CLAUDE.md#common-pitfalls) |
 | **Testing Rules** | [Testing Guide](testing/README.md) |
+| **Broker Expert Skills** | `/smartapi-expert`, `/kite-expert`, `/upstox-expert`, `/dhan-expert`, `/fyers-expert`, `/paytm-expert` |
+| **Cross-Broker Comparison** | [Comparison Matrix](../.claude/skills/broker-shared/comparison-matrix.md) |
 
 ---
 

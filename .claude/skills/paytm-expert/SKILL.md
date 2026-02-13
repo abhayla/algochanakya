@@ -223,6 +223,22 @@ Paytm returns all prices in RUPEES. No paise conversion needed.
 
 See [error-codes.md](./references/error-codes.md) for complete error catalog.
 
+## Related Skills
+
+For cross-broker work, consult these complementary skills:
+
+| Skill | When to Use |
+|-------|-------------|
+| `/smartapi-expert` | Compare 3-token auth systems — both SmartAPI and Paytm use 3 tokens (jwt/feed/refresh vs access/public/read) |
+| `/kite-expert` | Compare API maturity — Kite is most mature, use as quality benchmark for Paytm adapter |
+| `/fyers-expert` | Both use JSON WebSocket — compare message formats and subscription models |
+| `/auto-verify` | After any Paytm adapter change — run verification immediately |
+| `/docs-maintainer` | After adapter changes — update feature registry, comparison matrix, CHANGELOG |
+
+**Maturity Warning:** Paytm Money API is the least mature of all 6 brokers (sporadic SDK maintenance, limited F&O coverage). Consider implementing after all other brokers.
+
+**Cross-Broker Comparison:** See [comparison-matrix.md](../broker-shared/comparison-matrix.md) for pricing, rate limits, WebSocket capabilities, and symbol format differences across all 6 brokers.
+
 ## References
 
 - [Authentication Flow](./references/auth-flow.md) - 3-token OAuth flow

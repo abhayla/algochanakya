@@ -1,6 +1,6 @@
 # Developer Quick Reference
 
-**Last Updated:** 2026-01-24
+**Last Updated:** 2026-02-13
 
 This guide provides quick access to all architecture documentation organized by development task.
 
@@ -34,6 +34,8 @@ This guide provides quick access to all architecture documentation organized by 
 - Factory pattern for broker instantiation
 - ✅ All routes refactored to use broker factories (Phase 3 complete)
 
+**Broker Expert Skills:** `/smartapi-expert`, `/kite-expert`, `/upstox-expert`, `/dhan-expert`, `/fyers-expert`, `/paytm-expert` — API-specific guidance for each broker. See [Comparison Matrix](../.claude/skills/broker-shared/comparison-matrix.md) for cross-broker differences.
+
 ### Authentication & Security
 
 | Topic | Documentation |
@@ -45,7 +47,7 @@ This guide provides quick access to all architecture documentation organized by 
 
 **Key Files:**
 - `backend/app/utils/dependencies.py` - `get_current_user`, `get_current_broker_connection`
-- `backend/app/services/smartapi_auth.py` - Auto-TOTP authentication
+- `backend/app/services/legacy/smartapi_auth.py` - Auto-TOTP authentication
 - `backend/app/utils/encryption.py` - Credential encryption
 
 ### WebSocket Live Prices
@@ -57,9 +59,12 @@ This guide provides quick access to all architecture documentation organized by 
 | **Message Types** | [WebSocket - Messages](architecture/websocket.md#message-types) |
 
 **Key Files:**
-- `backend/app/services/kite_ticker.py` - Kite WebSocket (singleton)
-- `backend/app/services/smartapi_ticker.py` - SmartAPI WebSocket V2 (singleton)
+- `backend/app/services/legacy/kite_ticker.py` - Kite WebSocket (singleton, legacy)
+- `backend/app/services/legacy/smartapi_ticker.py` - SmartAPI WebSocket V2 (singleton, legacy)
+- `backend/app/services/brokers/market_data/ticker_base.py` - `TickerServiceBase` interface
 - `backend/app/api/routes/websocket.py` - WebSocket endpoint
+
+**Ticker Architecture:** [ADR-003: Multi-Broker Ticker](decisions/003-multi-broker-ticker-architecture.md) | [Implementation Guide](architecture/multi-broker-ticker-implementation.md) | [API Reference](api/multi-broker-ticker-api.md)
 
 **Quick Reference:**
 - Dev: `ws://localhost:8001/ws/ticks?token=<jwt>`
@@ -108,9 +113,9 @@ alembic downgrade -1
 - 37+ E2E test specs
 
 **Key Services:**
-- `backend/app/services/condition_engine.py` - Condition evaluation
-- `backend/app/services/adjustment_engine.py` - 13+ triggers, 8 actions
-- `backend/app/services/kill_switch.py` - Emergency stop
+- `backend/app/services/autopilot/condition_engine.py` - Condition evaluation
+- `backend/app/services/autopilot/adjustment_engine.py` - 13+ triggers, 8 actions
+- `backend/app/services/autopilot/kill_switch.py` - Emergency stop
 
 ### AI Module
 
@@ -252,6 +257,20 @@ from kiteconnect import KiteConnect
 kite = KiteConnect(api_key=...)
 ```
 
+**Market data adapter** (Phase 2 complete — use this for quotes and historical data):
+
+```python
+# ✅ Correct - Market Data
+from app.services.brokers.market_data.factory import get_market_data_adapter
+data_adapter = get_market_data_adapter(user.market_data_broker_type, credentials, db)
+quote = await data_adapter.get_live_quote(symbol)  # Returns UnifiedQuote
+
+# ❌ Wrong
+from app.services.legacy.smartapi_market_data import SmartAPIMarketData
+```
+
+**Skill guidance:** Use `/smartapi-expert` or `/kite-expert` for broker-specific API details when debugging adapter issues.
+
 **Reference:** [CLAUDE.md - Broker Abstraction](../CLAUDE.md#broker-abstraction-critical)
 
 ---
@@ -285,6 +304,7 @@ ws.send(JSON.stringify({action: 'subscribe', tokens: [256265], mode: 'quote'}))
 | Direct broker API used | Use broker adapters from `app.services.brokers/` | [CLAUDE.md - Pitfalls](../CLAUDE.md#common-pitfalls) |
 | Missing data-testid | Add to element with `[screen]-[component]-[element]` format | [CLAUDE.md - Pitfalls](../CLAUDE.md#common-pitfalls) |
 | WebSocket not cleaned up | Close subscriptions in `onUnmounted()` | [CLAUDE.md - Pitfalls](../CLAUDE.md#common-pitfalls) |
+| Broker API errors (auth, rate limit, symbol) | Consult relevant broker expert skill (`/smartapi-expert`, `/kite-expert`, etc.) | [Comparison Matrix](../.claude/skills/broker-shared/comparison-matrix.md) |
 
 ---
 
@@ -314,6 +334,10 @@ ws.send(JSON.stringify({action: 'subscribe', tokens: [256265], mode: 'quote'}))
 ### Decision Records (ADRs)
 - [ADR-001: Tech Stack](decisions/001-tech-stack.md)
 - [ADR-002: Multi-Broker Abstraction](decisions/002-broker-abstraction.md)
+- [ADR-003: Multi-Broker Ticker Architecture](decisions/003-multi-broker-ticker-architecture.md)
+  - [Ticker Implementation Guide](architecture/multi-broker-ticker-implementation.md)
+  - [Ticker API Reference](api/multi-broker-ticker-api.md)
+  - [Architecture Comparison](architecture/websocket-ticker-architectures-comparison.md)
 - [ADR Template](decisions/template.md)
 
 ### Feature Documentation
@@ -338,6 +362,7 @@ ws.send(JSON.stringify({action: 'subscribe', tokens: [256265], mode: 'quote'}))
 3. [Database Schema](architecture/database.md)
 4. [API Reference](api/README.md)
 5. [CLAUDE.md - Important Patterns](../CLAUDE.md#important-patterns)
+6. Broker Expert Skills: `/smartapi-expert`, `/kite-expert`, `/upstox-expert`, `/dhan-expert`, `/fyers-expert`, `/paytm-expert`
 
 ### Frontend Developer
 1. [Architecture Overview](architecture/overview.md)

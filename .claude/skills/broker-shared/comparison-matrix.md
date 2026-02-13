@@ -4,6 +4,14 @@ Comprehensive comparison of all 6 brokers supported by AlgoChanakya.
 
 **Last Updated:** February 2026
 
+> **Broker Expert Skills:** For API-specific guidance (auth flows, error codes, WebSocket protocols, symbol formats), consult the dedicated broker expert skills:
+> - `/smartapi-expert` — Angel One SmartAPI (default market data, auto-TOTP, binary WS, paise pricing)
+> - `/kite-expert` — Zerodha Kite Connect (default orders, OAuth, canonical symbol format)
+> - `/upstox-expert` — Upstox (Protobuf WS, extended token, Option Greeks via WS)
+> - `/dhan-expert` — Dhan (static token auth, 200-level depth, Little Endian binary WS)
+> - `/fyers-expert` — Fyers (dual WS system, JSON format, paper trading, order update stream)
+> - `/paytm-expert` — Paytm Money (3-token OAuth, JSON WS, least mature API)
+
 ---
 
 ## 1. Pricing
@@ -206,6 +214,17 @@ BROKER_LIMITS = {
 | `backend/app/services/brokers/market_data/token_manager.py` | Token mapping |
 | `backend/app/services/brokers/market_data/exceptions.py` | Unified exceptions |
 
+### Broker Expert Skill Quick Reference
+
+| Broker | Expert Skill | Key Gotchas |
+|--------|-------------|-------------|
+| **SmartAPI** | `/smartapi-expert` | Auto-TOTP auth, 1 req/sec rate limit, paise→rupees conversion (WS + historical) |
+| **Kite** | `/kite-expert` | OAuth (no auto-refresh), symbol format IS canonical, auth header: `token api:access` |
+| **Upstox** | `/upstox-expert` | Protobuf WS (not JSON/binary), `instrument_key` format (`EXCH_SEG|token`), descending historical |
+| **Dhan** | `/dhan-expert` | Static token (no OAuth), numeric `security_id`, 100 tokens/conn WS limit |
+| **Fyers** | `/fyers-expert` | Dual WS (data + orders), `appIdHash` auth, exchange-prefixed symbols (`NSE:SYMBOL`) |
+| **Paytm** | `/paytm-expert` | 3-token system, numeric IDs, least mature SDK (`pyPMClient`), limited F&O |
+
 ---
 
 ## 12. Recommendation Matrix
@@ -247,3 +266,15 @@ Total Cost:   ₹0/month
 | 3 | **Dhan** | 200-depth unique feature, static token |
 | 4 | **Fyers** | Dual WS, virtual trading, low conversion complexity |
 | 5 (last) | **Paytm** | Least mature, limited features |
+
+---
+
+## 14. Architecture Documentation
+
+| Document | Description |
+|----------|-------------|
+| [Broker Abstraction Architecture](../../../../docs/architecture/broker-abstraction.md) | Complete multi-broker technical design (dual system: market data + orders) |
+| [ADR-002: Multi-Broker Abstraction](../../../../docs/decisions/002-broker-abstraction.md) | Decision rationale for broker abstraction pattern |
+| [ADR-003: Multi-Broker Ticker](../../../../docs/decisions/003-multi-broker-ticker-architecture.md) | Ticker refactoring architecture (WebSocket unification) |
+| [CLAUDE.md - Multi-Broker Architecture](../../../../CLAUDE.md#core-purpose-multi-broker-architecture) | Project-level broker architecture overview and implementation status |
+| [Implementation Checklist](../../../../docs/IMPLEMENTATION-CHECKLIST.md) | Current phase status and remaining tasks |

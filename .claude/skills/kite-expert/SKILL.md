@@ -265,6 +265,20 @@ quote = await data_adapter.get_quote(["NIFTY2522725000CE"])
 
 See [error-codes.md](./references/error-codes.md) for complete error catalog.
 
+## Related Skills
+
+For cross-broker work, consult these complementary skills:
+
+| Skill | When to Use |
+|-------|-------------|
+| `/smartapi-expert` | Kite's default pair for market data — compare paise handling, auto-TOTP vs OAuth, WS binary formats |
+| `/upstox-expert` | Next adapter to implement — compare Protobuf vs binary WS, extended token vs OAuth |
+| `/trading-constants-manager` | Kite symbol format IS canonical — verify constants match when adding new instruments |
+| `/auto-verify` | After any Kite adapter change — run verification immediately |
+| `/docs-maintainer` | After adapter changes — update feature registry, CHANGELOG, broker abstraction docs |
+
+**Cross-Broker Comparison:** See [comparison-matrix.md](../broker-shared/comparison-matrix.md) for pricing, rate limits, WebSocket capabilities, and symbol format differences across all 6 brokers.
+
 ## References
 
 - [Authentication Flow](./references/auth-flow.md) - OAuth flow with request/response examples

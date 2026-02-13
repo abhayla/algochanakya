@@ -230,6 +230,8 @@ See [Broker Abstraction Architecture](docs/architecture/broker-abstraction.md) f
 **📚 Documentation:**
 - [Broker Abstraction Architecture](docs/architecture/broker-abstraction.md) - Complete technical design
 - [ADR-002: Multi-Broker Abstraction](docs/decisions/002-broker-abstraction.md) - Decision rationale and alternatives
+- [ADR-003: Multi-Broker Ticker Architecture](docs/decisions/003-multi-broker-ticker-architecture.md) - Ticker refactoring design
+  - [Implementation Guide](docs/architecture/multi-broker-ticker-implementation.md) | [API Reference](docs/api/multi-broker-ticker-api.md)
 
 ### Adding a New Broker (Future State)
 
@@ -240,6 +242,8 @@ Once abstraction is complete, adding a broker will require:
 4. Update frontend settings dropdown
 
 **Zero changes** to routes, services, or business logic required.
+
+**Skill guidance:** Use the relevant broker expert skill (`/smartapi-expert`, `/kite-expert`, `/upstox-expert`, `/dhan-expert`, `/fyers-expert`, `/paytm-expert`) for API-specific guidance. See [Comparison Matrix](.claude/skills/broker-shared/comparison-matrix.md) for cross-broker differences.
 
 ---
 
@@ -833,6 +837,7 @@ Dashboard `/dashboard`, Watchlist `/watchlist`, Positions `/positions`, Option C
 4. Check browser console and network tab for frontend issues
 5. Check backend logs for detailed error messages
 6. Use `/health-check` skill for automated codebase health scan
+7. For broker-specific API errors, consult the relevant broker expert skill (`/smartapi-expert`, `/kite-expert`, `/upstox-expert`, `/dhan-expert`, `/fyers-expert`, `/paytm-expert`)
 
 ---
 

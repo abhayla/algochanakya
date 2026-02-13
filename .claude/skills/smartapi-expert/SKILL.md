@@ -310,6 +310,20 @@ token = await token_manager.get_broker_token("NIFTY25APR25000CE", "smartapi")
 
 See [error-codes.md](./references/error-codes.md) for complete error code catalog.
 
+## Related Skills
+
+For cross-broker work, consult these complementary skills:
+
+| Skill | When to Use |
+|-------|-------------|
+| `/kite-expert` | SmartAPI's default pair for order execution — compare auth flows, symbol formats, canonical conversion |
+| `/upstox-expert` | Free data alternative to SmartAPI — compare Protobuf vs binary WS, rate limits (25/s vs 1/s) |
+| `/trading-constants-manager` | When adding SmartAPI instrument tokens or lot sizes to centralized constants |
+| `/auto-verify` | After any SmartAPI adapter change — run verification immediately |
+| `/docs-maintainer` | After adapter changes — update feature registry, CHANGELOG, broker abstraction docs |
+
+**Cross-Broker Comparison:** See [comparison-matrix.md](../broker-shared/comparison-matrix.md) for pricing, rate limits, WebSocket capabilities, and symbol format differences across all 6 brokers.
+
 ## References
 
 - [Authentication Flow](./references/auth-flow.md) - Complete auth sequence with request/response examples

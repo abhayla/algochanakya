@@ -266,6 +266,20 @@ fyers = fyersModel.FyersModel(
 
 See [error-codes.md](./references/error-codes.md) for complete error catalog.
 
+## Related Skills
+
+For cross-broker work, consult these complementary skills:
+
+| Skill | When to Use |
+|-------|-------------|
+| `/upstox-expert` | Both free modern APIs — compare WS approaches (Fyers: JSON dual-WS, Upstox: Protobuf) |
+| `/dhan-expert` | Compare unique features — Fyers has order WS + paper trading, Dhan has 200-depth |
+| `/smartapi-expert` | Fyers symbol format closest to Kite canonical — compare symbol conversion approaches |
+| `/auto-verify` | After any Fyers adapter change — run verification immediately |
+| `/docs-maintainer` | After adapter changes — update feature registry, comparison matrix, CHANGELOG |
+
+**Cross-Broker Comparison:** See [comparison-matrix.md](../broker-shared/comparison-matrix.md) for pricing, rate limits, WebSocket capabilities, and symbol format differences across all 6 brokers.
+
 ## References
 
 - [Authentication Flow](./references/auth-flow.md) - OAuth flow with appIdHash
