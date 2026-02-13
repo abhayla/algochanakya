@@ -612,6 +612,14 @@ Use these skills for faster, consistent results:
 | `claude-chrome-testing` | Browser-based debugging with Playwright MCP | On demand |
 | `save-session` | Save context for later: /save-session [name] | On demand |
 | `start-session` | Resume saved session: /start-session [name] | On demand |
+| `smartapi-expert` | SmartAPI (Angel One) API guidance | On demand |
+| `kite-expert` | Kite Connect (Zerodha) API guidance | On demand |
+| `upstox-expert` | Upstox API guidance | On demand |
+| `dhan-expert` | Dhan API guidance | On demand |
+| `fyers-expert` | Fyers API guidance | On demand |
+| `paytm-expert` | Paytm Money API guidance | On demand |
+
+> **Broker API Experts:** 6 consultative skills for API guidance, code auditing, and cross-broker comparison. Shared comparison matrix at `.claude/skills/broker-shared/comparison-matrix.md`.
 
 ---
 
