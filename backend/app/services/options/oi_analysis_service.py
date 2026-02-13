@@ -12,7 +12,7 @@ import asyncio
 import logging
 
 from app.models import Instrument
-from app.services.market_data import MarketDataService
+from app.services.legacy.market_data import MarketDataService
 
 logger = logging.getLogger(__name__)
 

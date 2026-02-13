@@ -19,7 +19,7 @@ from decimal import Decimal
 from unittest.mock import MagicMock, patch, AsyncMock
 import time
 
-from app.services.market_data import (
+from app.services.legacy.market_data import (
     MarketDataService, MarketQuote, SpotData,
     get_market_data_service, clear_market_data_services
 )

@@ -34,9 +34,9 @@ from app.services.brokers.market_data.exceptions import (
     DataNotAvailableError,
 )
 from app.services.brokers.market_data.token_manager import TokenManagerFactory
-from app.services.smartapi_market_data import SmartAPIMarketData, SmartAPIMarketDataError
-from app.services.smartapi_historical import SmartAPIHistorical, SmartAPIHistoricalError
-from app.services.smartapi_instruments import get_smartapi_instruments
+from app.services.legacy.smartapi_market_data import SmartAPIMarketData, SmartAPIMarketDataError
+from app.services.legacy.smartapi_historical import SmartAPIHistorical, SmartAPIHistoricalError
+from app.services.legacy.smartapi_instruments import get_smartapi_instruments
 from app.config import settings
 
 logger = logging.getLogger(__name__)

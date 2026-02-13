@@ -18,7 +18,7 @@ from kiteconnect import KiteConnect
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.autopilot import AutoPilotStrategy, AutoPilotOrder, AutoPilotLog, AutoPilotOrderBatch
-from app.services.market_data import MarketDataService
+from app.services.legacy.market_data import MarketDataService
 from app.services.strike_finder_service import StrikeFinderService
 from app.services.ai.config_service import AIConfigService
 from app.services.brokers.base import BrokerAdapter

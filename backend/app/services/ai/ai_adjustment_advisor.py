@@ -26,7 +26,7 @@ from app.models.autopilot import (
     AdjustmentTriggerType
 )
 from app.services.options.pnl_calculator import PnLCalculator
-from app.services.market_data import MarketDataService
+from app.services.legacy.market_data import MarketDataService
 from app.services.position_leg_service import PositionLegService
 from app.services.adjustment_engine import AdjustmentCategory, ADJUSTMENT_CATEGORIES
 from app.constants.trading import get_lot_size

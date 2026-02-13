@@ -40,7 +40,7 @@ from app.models.autopilot import (
     AutoPilotStrategy, AutoPilotUserSettings, AutoPilotLog,
     AutoPilotConditionEval, ExecutionMode
 )
-from app.services.market_data import MarketDataService, get_market_data_service
+from app.services.legacy.market_data import MarketDataService, get_market_data_service
 from app.services.condition_engine import ConditionEngine, get_condition_engine
 from app.services.order_executor import OrderExecutor, get_order_executor
 from app.services.kill_switch import KillSwitchService

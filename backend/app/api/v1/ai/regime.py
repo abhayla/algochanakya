@@ -14,7 +14,7 @@ from app.utils.dependencies import get_current_user, get_current_broker_connecti
 from app.models import User, BrokerConnection
 from app.schemas.ai import RegimeResponse, IndicatorsSnapshotResponse
 from app.services.ai.market_regime import MarketRegimeClassifier
-from app.services.market_data import MarketDataService
+from app.services.legacy.market_data import MarketDataService
 from app.constants.trading import UNDERLYINGS
 
 router = APIRouter()

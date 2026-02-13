@@ -16,7 +16,7 @@ from typing import Dict, List, Optional, Tuple
 from decimal import Decimal
 from dataclasses import dataclass
 
-from app.services.market_data import MarketDataService
+from app.services.legacy.market_data import MarketDataService
 
 logger = logging.getLogger(__name__)
 

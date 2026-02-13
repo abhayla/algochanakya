@@ -26,7 +26,7 @@ from app.models.autopilot import (
 from app.services.position_leg_service import PositionLegService
 from app.services.strike_finder_service import StrikeFinderService
 from app.services.leg_actions_service import LegActionsService
-from app.services.market_data import MarketDataService
+from app.services.legacy.market_data import MarketDataService
 from app.services.options.greeks_calculator import GreeksCalculatorService
 
 logger = logging.getLogger(__name__)

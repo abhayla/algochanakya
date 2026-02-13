@@ -18,7 +18,7 @@ from app.schemas.ai import RegimeResponse, IndicatorsSnapshotResponse
 from app.services.ai.market_regime import MarketRegimeClassifier
 from app.services.ai.strategy_recommender import StrategyRecommender
 from app.services.ai.config_service import AIConfigService
-from app.services.market_data import MarketDataService
+from app.services.legacy.market_data import MarketDataService
 from app.constants.trading import UNDERLYINGS
 
 router = APIRouter()

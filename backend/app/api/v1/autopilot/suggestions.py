@@ -13,7 +13,7 @@ from app.utils.dependencies import get_current_user, get_current_broker_connecti
 from app.models import User, BrokerConnection
 from app.schemas.autopilot import AdjustmentSuggestionResponse
 from app.services.suggestion_engine import SuggestionEngine
-from app.services.market_data import MarketDataService
+from app.services.legacy.market_data import MarketDataService
 
 router = APIRouter()
 

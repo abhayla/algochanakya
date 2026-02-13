@@ -25,7 +25,7 @@ from app.schemas.strategies import (
     ContractType,
     TransactionType,
 )
-from app.services.kite_orders import parse_positions_to_legs
+from app.services.legacy.kite_orders import parse_positions_to_legs
 from app.services.brokers import (
     get_broker_adapter,
     BrokerType,

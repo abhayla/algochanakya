@@ -28,7 +28,7 @@ from app.services.ai.risk_state_engine import RiskStateEngine
 from app.services.ai.extreme_event_handler import ExtremeEventHandler, ExtremeEventSeverity
 from app.services.ai.stress_greeks_engine import StressGreeksEngine
 from app.services.ai.websocket_health_monitor import get_health_monitor, CircuitBreakerState
-from app.services.market_data import MarketDataService
+from app.services.legacy.market_data import MarketDataService
 from app.services.options.greeks_calculator import GreeksCalculatorService
 
 if TYPE_CHECKING:

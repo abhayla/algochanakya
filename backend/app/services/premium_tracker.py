@@ -23,7 +23,7 @@ from app.models.autopilot import (
     OrderStatus,
     OrderPurpose
 )
-from app.services.market_data import MarketDataService
+from app.services.legacy.market_data import MarketDataService
 from app.services.options.greeks_calculator import GreeksCalculator
 import logging
 

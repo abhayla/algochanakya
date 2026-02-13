@@ -16,7 +16,7 @@ from datetime import datetime, date
 
 from app.services.strike_finder_service import StrikeFinderService
 from app.services.condition_engine import ConditionEngine
-from app.services.market_data import MarketDataService
+from app.services.legacy.market_data import MarketDataService
 
 
 # =============================================================================

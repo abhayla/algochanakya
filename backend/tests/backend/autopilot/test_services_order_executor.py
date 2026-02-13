@@ -29,7 +29,7 @@ from app.services.order_executor import (
     OrderExecutor, OrderRequest, OrderResult,
     LOT_SIZES, STRIKE_STEPS, get_order_executor
 )
-from app.services.market_data import MarketDataService, SpotData
+from app.services.legacy.market_data import MarketDataService, SpotData
 
 
 # =============================================================================

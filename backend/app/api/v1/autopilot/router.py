@@ -343,7 +343,7 @@ async def get_spot_price(
     Returns:
         Spot price with change and change percentage
     """
-    from app.services.market_data import MarketDataService
+    from app.services.legacy.market_data import MarketDataService
 
     try:
         market_data = MarketDataService(kite)
@@ -428,7 +428,7 @@ async def preview_strike(
 
         elif mode == "atm_offset":
             # OPTIMIZED: Get spot price directly (fast) instead of fetching entire option chain
-            from app.services.market_data import MarketDataService
+            from app.services.legacy.market_data import MarketDataService
             from app.utils.tradingsymbol import build_tradingsymbol
 
             market_data = MarketDataService(kite)

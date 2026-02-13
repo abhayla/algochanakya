@@ -24,7 +24,7 @@ import redis.asyncio as redis
 
 from app.services.ai.indicators import TechnicalIndicators
 from app.services.ai.historical_data import HistoricalDataService, OHLC
-from app.services.market_data import MarketDataService
+from app.services.legacy.market_data import MarketDataService
 
 logger = logging.getLogger(__name__)
 

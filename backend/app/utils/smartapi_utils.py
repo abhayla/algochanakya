@@ -12,7 +12,7 @@ from sqlalchemy import select
 
 from app.models.smartapi_credentials import SmartAPICredentials
 from app.utils.encryption import decrypt
-from app.services.smartapi_auth import get_smartapi_auth, SmartAPIAuthError
+from app.services.legacy.smartapi_auth import get_smartapi_auth, SmartAPIAuthError
 
 logger = logging.getLogger(__name__)
 

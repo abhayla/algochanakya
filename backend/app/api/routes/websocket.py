@@ -23,9 +23,9 @@ from app.models.user_preferences import MarketDataSource
 from app.utils.jwt import verify_access_token
 from app.utils.encryption import decrypt
 from app.utils.smartapi_utils import get_valid_smartapi_credentials
-from app.services.kite_ticker import kite_ticker_service
-from app.services.smartapi_ticker import smartapi_ticker_service
-from app.services.smartapi_market_data import SmartAPIMarketData
+from app.services.legacy.kite_ticker import kite_ticker_service
+from app.services.legacy.smartapi_ticker import smartapi_ticker_service
+from app.services.legacy.smartapi_market_data import SmartAPIMarketData
 from app.config import settings
 
 # Mapping of Kite index tokens to SmartAPI tokens and names (for initial REST quotes)

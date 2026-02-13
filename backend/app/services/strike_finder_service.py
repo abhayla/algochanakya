@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services.option_chain_service import OptionChainService, OptionChainEntry
 from app.services.options.expected_move_service import ExpectedMoveService
-from app.services.market_data import MarketDataService
+from app.services.legacy.market_data import MarketDataService
 
 logger = logging.getLogger(__name__)
 

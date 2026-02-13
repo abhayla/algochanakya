@@ -734,7 +734,7 @@ def mock_kite():
 @pytest.fixture
 def mock_market_data(mock_kite):
     """Mock MarketDataService."""
-    from app.services.market_data import MarketDataService, SpotData, MarketQuote
+    from app.services.legacy.market_data import MarketDataService, SpotData, MarketQuote
 
     mock = AsyncMock(spec=MarketDataService)
     mock.kite = mock_kite

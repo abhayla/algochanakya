@@ -14,7 +14,7 @@ import redis.asyncio as redis
 from SmartApi import SmartConnect
 
 from app.config import settings
-from app.services.smartapi_instruments import get_smartapi_instruments
+from app.services.legacy.smartapi_instruments import get_smartapi_instruments
 from app.services.brokers.market_data.rate_limiter import broker_rate_limiters
 
 logger = logging.getLogger(__name__)

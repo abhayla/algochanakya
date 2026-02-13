@@ -17,7 +17,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, date, timedelta
 
 from app.services.condition_engine import ConditionEngine
-from app.services.market_data import MarketDataService
+from app.services.legacy.market_data import MarketDataService
 
 
 # =============================================================================

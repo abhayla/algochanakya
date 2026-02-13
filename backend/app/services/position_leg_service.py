@@ -20,7 +20,7 @@ from app.models.autopilot import (
     PositionLegStatus
 )
 from app.services.options.greeks_calculator import GreeksCalculatorService
-from app.services.market_data import MarketDataService
+from app.services.legacy.market_data import MarketDataService
 from app.constants import get_lot_size
 
 logger = logging.getLogger(__name__)

@@ -22,7 +22,7 @@ from app.services.condition_engine import (
     ConditionOperator, ConditionLogic,
     get_condition_engine, clear_condition_engines
 )
-from app.services.market_data import MarketDataService, SpotData
+from app.services.legacy.market_data import MarketDataService, SpotData
 
 
 # =============================================================================

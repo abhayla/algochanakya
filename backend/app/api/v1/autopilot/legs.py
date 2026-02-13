@@ -390,7 +390,7 @@ async def update_all_legs_greeks(
             )
 
         # Get spot price
-        from app.services.market_data import MarketDataService
+        from app.services.legacy.market_data import MarketDataService
         market_data = MarketDataService(kite)
         spot_data = await market_data.get_spot_price(strategy.underlying)
 

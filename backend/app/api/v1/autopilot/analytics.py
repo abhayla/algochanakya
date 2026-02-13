@@ -20,7 +20,7 @@ from app.utils.dependencies import get_current_user, get_current_broker_connecti
 from app.models import User, BrokerConnection
 from app.models.autopilot import AutoPilotStrategy
 from app.services.options.payoff_calculator import PayoffCalculator
-from app.services.market_data import MarketDataService
+from app.services.legacy.market_data import MarketDataService
 from app.services.adjustment_cost_tracker import AdjustmentCostTracker
 from app.schemas.autopilot import AdjustmentCostSummary, AdjustmentCostThresholdCheck
 

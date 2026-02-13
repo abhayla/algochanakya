@@ -177,7 +177,7 @@ class BrokerBenchmark:
         """Benchmark token lookup performance."""
         result = BenchmarkResult("token_lookup", self.broker_type)
 
-        from app.services.smartapi_instruments import get_smartapi_instruments
+        from app.services.legacy.smartapi_instruments import get_smartapi_instruments
         instruments = get_smartapi_instruments()
 
         # Generate test symbols
@@ -226,7 +226,7 @@ class BrokerBenchmark:
 
         try:
             if self.broker_type == "smartapi":
-                from app.services.smartapi_market_data import SmartAPIMarketData
+                from app.services.legacy.smartapi_market_data import SmartAPIMarketData
                 from app.models.smartapi_credentials import SmartAPICredentials
 
                 # Get credentials
@@ -302,7 +302,7 @@ class BrokerBenchmark:
 
         try:
             if self.broker_type == "smartapi":
-                from app.services.smartapi_market_data import SmartAPIMarketData
+                from app.services.legacy.smartapi_market_data import SmartAPIMarketData
                 from app.models.smartapi_credentials import SmartAPICredentials
 
                 creds_result = await db.execute(
@@ -376,7 +376,7 @@ class BrokerBenchmark:
 
         try:
             if self.broker_type == "smartapi":
-                from app.services.smartapi_historical import SmartAPIHistorical
+                from app.services.legacy.smartapi_historical import SmartAPIHistorical
                 from app.models.smartapi_credentials import SmartAPICredentials
                 import redis.asyncio as redis_client
 
@@ -441,7 +441,7 @@ class BrokerBenchmark:
 
         try:
             if self.broker_type == "smartapi":
-                from app.services.smartapi_historical import SmartAPIHistorical
+                from app.services.legacy.smartapi_historical import SmartAPIHistorical
                 from app.models.smartapi_credentials import SmartAPICredentials
 
                 creds_result = await db.execute(

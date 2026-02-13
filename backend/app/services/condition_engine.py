@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from enum import Enum
 import logging
 
-from app.services.market_data import MarketDataService
+from app.services.legacy.market_data import MarketDataService
 
 logger = logging.getLogger(__name__)
 

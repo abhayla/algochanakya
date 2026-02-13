@@ -160,10 +160,10 @@ def get_ticker_service(broker_type: str, credentials) -> TickerService:
         >>> await ticker.subscribe([256265], mode="quote")
     """
     if broker_type == "smartapi":
-        from app.services.smartapi_ticker import SmartAPITickerService
+        from app.services.legacy.smartapi_ticker import SmartAPITickerService
         return SmartAPITickerService(credentials)
     elif broker_type == "kite":
-        from app.services.kite_ticker import KiteTickerService
+        from app.services.legacy.kite_ticker import KiteTickerService
         return KiteTickerService(credentials)
     elif broker_type == "upstox":
         # Future implementation

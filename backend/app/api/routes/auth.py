@@ -15,7 +15,7 @@ from app.schemas import UserResponse, BrokerConnectionResponse
 from app.utils.jwt import create_access_token
 from app.utils.dependencies import get_current_user
 from app.utils.encryption import decrypt
-from app.services.smartapi_auth import get_smartapi_auth, SmartAPIAuthError
+from app.services.legacy.smartapi_auth import get_smartapi_auth, SmartAPIAuthError
 
 logger = logging.getLogger(__name__)
 

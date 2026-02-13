@@ -59,7 +59,7 @@ async def lifespan(app: FastAPI):
     # Downloads 185k instruments (~20-30s) ONCE on startup
     # Eliminates cold-start penalty for first API request
     try:
-        from app.services.smartapi_instruments import get_smartapi_instruments
+        from app.services.legacy.smartapi_instruments import get_smartapi_instruments
         print("[INFO] Pre-warming SmartAPI instrument cache...")
         smartapi_instruments = get_smartapi_instruments()
         count = await smartapi_instruments.download_master()
