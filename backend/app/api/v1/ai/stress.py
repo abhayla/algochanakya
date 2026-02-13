@@ -14,7 +14,7 @@ from app.database import get_db
 from app.utils.dependencies import get_current_user
 from app.models import User
 from app.models.ai import AIUserConfig
-from app.services.greeks_calculator import GreeksCalculatorService
+from app.services.options.greeks_calculator import GreeksCalculatorService
 from app.services.ai.stress_greeks_engine import StressGreeksEngine, StressTestResult
 
 router = APIRouter()

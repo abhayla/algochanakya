@@ -1874,7 +1874,7 @@ def mock_position_sizing_service():
 @pytest.fixture
 def mock_greeks_calculator():
     """Mock GreeksCalculatorService."""
-    from app.services.greeks_calculator import GreeksCalculatorService
+    from app.services.options.greeks_calculator import GreeksCalculatorService
     from app.schemas.autopilot import PositionGreeksResponse, GreeksSnapshot
 
     mock = AsyncMock(spec=GreeksCalculatorService)

@@ -47,9 +47,9 @@ from app.services.kill_switch import KillSwitchService
 from app.services.adjustment_engine import AdjustmentEngine
 from app.services.confirmation_service import ConfirmationService
 from app.services.trailing_stop import TrailingStopService
-from app.services.greeks_calculator import GreeksCalculatorService
+from app.services.options.greeks_calculator import GreeksCalculatorService
 from app.services.position_leg_service import PositionLegService
-from app.services.iv_metrics_service import get_iv_metrics_service
+from app.services.options.iv_metrics_service import get_iv_metrics_service
 from app.services.delta_band_service import get_delta_band_service
 from app.services.ai.config_service import AIConfigService
 from app.services.brokers.base import BrokerAdapter
@@ -1428,7 +1428,7 @@ class StrategyMonitor:
 
             # Phase 5C #6-8: OI Metrics (PCR, Max Pain, OI Change)
             try:
-                from app.services.oi_analysis_service import OIAnalysisService
+                from app.services.options.oi_analysis_service import OIAnalysisService
 
                 oi_service = OIAnalysisService(self.kite, db)
 
@@ -1472,7 +1472,7 @@ class StrategyMonitor:
 
             # Phase 5C #11: Probability OTM
             try:
-                from app.services.greeks_calculator import GreeksCalculatorService
+                from app.services.options.greeks_calculator import GreeksCalculatorService
 
                 greeks_calc = GreeksCalculatorService(db, strategy.user_id)
 

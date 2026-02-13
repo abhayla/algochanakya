@@ -635,7 +635,7 @@ class ConditionEngine:
         if variable == "IV.RANK":
             # Try calling IVMetricsService
             try:
-                from app.services.iv_metrics_service import IVMetricsService
+                from app.services.options.iv_metrics_service import IVMetricsService
                 iv_service = IVMetricsService(self.market_data)
                 iv_rank = await iv_service.get_iv_rank(underlying)
                 return float(iv_rank) if iv_rank is not None else 0.0
@@ -651,7 +651,7 @@ class ConditionEngine:
         if variable == "IV.PERCENTILE":
             # Try calling IVMetricsService
             try:
-                from app.services.iv_metrics_service import IVMetricsService
+                from app.services.options.iv_metrics_service import IVMetricsService
                 iv_service = IVMetricsService(self.market_data)
                 iv_percentile = await iv_service.get_iv_percentile(underlying)
                 return float(iv_percentile) if iv_percentile is not None else 0.0
@@ -670,7 +670,7 @@ class ConditionEngine:
             # Try calling OIAnalysisService if db is available (Phase 5A signature)
             if self.db and self.user_id:
                 try:
-                    from app.services.oi_analysis_service import OIAnalysisService
+                    from app.services.options.oi_analysis_service import OIAnalysisService
                     oi_service = OIAnalysisService(self.market_data.kite if hasattr(self.market_data, 'kite') else None, self.db)
                     pcr = await oi_service.get_pcr(underlying)
                     return float(pcr) if pcr is not None else 0.0
@@ -687,7 +687,7 @@ class ConditionEngine:
             # Try calling OIAnalysisService if db is available
             if self.db and self.user_id:
                 try:
-                    from app.services.oi_analysis_service import OIAnalysisService
+                    from app.services.options.oi_analysis_service import OIAnalysisService
                     oi_service = OIAnalysisService(self.market_data.kite if hasattr(self.market_data, 'kite') else None, self.db)
                     max_pain = await oi_service.get_max_pain(underlying)
                     return float(max_pain) if max_pain is not None else 0.0
@@ -704,7 +704,7 @@ class ConditionEngine:
             # Try calling OIAnalysisService if db is available
             if self.db and self.user_id:
                 try:
-                    from app.services.oi_analysis_service import OIAnalysisService
+                    from app.services.options.oi_analysis_service import OIAnalysisService
                     oi_service = OIAnalysisService(self.market_data.kite if hasattr(self.market_data, 'kite') else None, self.db)
                     oi_change = await oi_service.get_oi_change_pct(underlying)
                     return float(oi_change) if oi_change is not None else 0.0
@@ -732,7 +732,7 @@ class ConditionEngine:
             # Try calling GreeksCalculatorService if strategy has legs
             if strategy and hasattr(strategy, 'legs_config') and strategy.legs_config:
                 try:
-                    from app.services.greeks_calculator import GreeksCalculatorService
+                    from app.services.options.greeks_calculator import GreeksCalculatorService
                     greeks_calc = GreeksCalculatorService(
                         self.market_data.kite if hasattr(self.market_data, 'kite') else None,
                         self.db

@@ -49,7 +49,7 @@ from app.services.confirmation_service import ConfirmationService
 from app.services.adjustment_engine import AdjustmentEngine
 from app.services.trailing_stop import TrailingStopService
 from app.services.position_sizing import PositionSizingService
-from app.services.greeks_calculator import GreeksCalculatorService
+from app.services.options.greeks_calculator import GreeksCalculatorService
 from app.services.strike_finder_service import StrikeFinderService
 from app.utils.dependencies import get_kite_client
 

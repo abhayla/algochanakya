@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, func
 
 from app.models.autopilot import AutoPilotStrategy, AutoPilotPositionLeg
-from app.services.greeks_calculator import GreeksCalculatorService
+from app.services.options.greeks_calculator import GreeksCalculatorService
 
 logger = logging.getLogger(__name__)
 

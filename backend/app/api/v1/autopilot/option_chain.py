@@ -452,7 +452,7 @@ async def get_expected_move_range(
         Dict with spot, expected_move, upper_bound, lower_bound
     """
     try:
-        from app.services.expected_move_service import ExpectedMoveService
+        from app.services.options.expected_move_service import ExpectedMoveService
 
         service = ExpectedMoveService(kite, db)
         expiry_str = expiry.strftime("%Y-%m-%d")

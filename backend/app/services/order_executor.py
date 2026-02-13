@@ -152,7 +152,7 @@ class OrderExecutor:
                     time_to_expiry = (expiry - date.today()).days / 365.0
                     if time_to_expiry > 0:
                         # Import here to avoid circular dependency
-                        from app.services.pnl_calculator import PnLCalculator
+                        from app.services.options.pnl_calculator import PnLCalculator
 
                         # Use a default IV for now (ideally fetch from option chain cache)
                         iv = 0.20
@@ -992,7 +992,7 @@ class OrderExecutor:
         }
         """
         try:
-            from app.services.greeks_calculator import GreeksCalculatorService
+            from app.services.options.greeks_calculator import GreeksCalculatorService
 
             greeks_calc = GreeksCalculatorService(db, strategy.user_id)
 

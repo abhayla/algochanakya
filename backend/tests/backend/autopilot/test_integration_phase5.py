@@ -290,7 +290,7 @@ class TestIntegrationPhase5:
         await db_session.commit()
 
         # Generate payoff
-        from app.services.payoff_calculator import PayoffCalculator
+        from app.services.options.payoff_calculator import PayoffCalculator
         calculator = PayoffCalculator(db_session)
 
         result = await calculator.calculate_payoff(

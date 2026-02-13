@@ -18,7 +18,7 @@ import math
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.services.greeks_calculator import (
+from app.services.options.greeks_calculator import (
     GreeksCalculatorService,
     get_greeks_calculator_service,
     TRADING_DAYS_PER_YEAR,

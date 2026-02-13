@@ -10,7 +10,7 @@ from unittest.mock import MagicMock, patch
 from datetime import date, timedelta
 from decimal import Decimal
 
-from app.services.payoff_calculator import PayoffCalculator, PayoffMetrics
+from app.services.options.payoff_calculator import PayoffCalculator, PayoffMetrics
 from app.models.autopilot import PositionLegStatus
 
 

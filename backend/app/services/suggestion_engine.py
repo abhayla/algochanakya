@@ -33,7 +33,7 @@ from app.models.autopilot import (
 )
 from app.services.market_data import MarketDataService
 from app.services.position_leg_service import PositionLegService
-from app.services.gamma_risk_service import get_gamma_risk_service
+from app.services.options.gamma_risk_service import get_gamma_risk_service
 from app.services.dte_zone_service import get_dte_zone_service
 
 logger = logging.getLogger(__name__)

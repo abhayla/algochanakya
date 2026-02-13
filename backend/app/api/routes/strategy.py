@@ -26,7 +26,7 @@ from app.schemas.strategies import (
     PnLCalculateResponse,
     ShareStrategyResponse,
 )
-from app.services.pnl_calculator import pnl_calculator, generate_spot_range, PnLCalculator
+from app.services.options.pnl_calculator import pnl_calculator, generate_spot_range, PnLCalculator
 from app.utils.dependencies import get_current_user
 
 router = APIRouter()

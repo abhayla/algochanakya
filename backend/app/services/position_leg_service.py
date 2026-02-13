@@ -19,7 +19,7 @@ from app.models.autopilot import (
     AutoPilotStrategy,
     PositionLegStatus
 )
-from app.services.greeks_calculator import GreeksCalculatorService
+from app.services.options.greeks_calculator import GreeksCalculatorService
 from app.services.market_data import MarketDataService
 from app.constants import get_lot_size
 

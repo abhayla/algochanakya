@@ -29,7 +29,7 @@ from app.services.ai.extreme_event_handler import ExtremeEventHandler, ExtremeEv
 from app.services.ai.stress_greeks_engine import StressGreeksEngine
 from app.services.ai.websocket_health_monitor import get_health_monitor, CircuitBreakerState
 from app.services.market_data import MarketDataService
-from app.services.greeks_calculator import GreeksCalculatorService
+from app.services.options.greeks_calculator import GreeksCalculatorService
 
 if TYPE_CHECKING:
     from app.schemas.ai import RegimeResponse

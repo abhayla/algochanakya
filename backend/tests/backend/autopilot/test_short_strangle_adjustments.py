@@ -19,7 +19,7 @@ from app.services.strike_finder_service import StrikeFinderService
 from app.services.break_trade_service import BreakTradeService
 from app.services.leg_actions_service import LegActionsService
 from app.services.suggestion_engine import SuggestionEngine, DTEZone
-from app.services.greeks_calculator import GreeksCalculatorService
+from app.services.options.greeks_calculator import GreeksCalculatorService
 from app.models.autopilot import (
     AutoPilotPositionLeg,
     PositionLegStatus,

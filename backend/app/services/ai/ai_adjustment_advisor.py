@@ -25,7 +25,7 @@ from app.models.autopilot import (
     AdjustmentActionType,
     AdjustmentTriggerType
 )
-from app.services.pnl_calculator import PnLCalculator
+from app.services.options.pnl_calculator import PnLCalculator
 from app.services.market_data import MarketDataService
 from app.services.position_leg_service import PositionLegService
 from app.services.adjustment_engine import AdjustmentCategory, ADJUSTMENT_CATEGORIES
@@ -298,7 +298,7 @@ class AIAdjustmentAdvisor:
         max_loss = Decimal('0')
 
         # Calculate new Greeks using GreeksCalculatorService
-        from app.services.greeks_calculator import GreeksCalculatorService
+        from app.services.options.greeks_calculator import GreeksCalculatorService
 
         greeks_calculator = GreeksCalculatorService(self.db, strategy.user_id)
 

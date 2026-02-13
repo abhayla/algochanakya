@@ -18,7 +18,7 @@ from app.models.autopilot import (
     AutoPilotPositionLeg,
     PositionLegStatus
 )
-from app.services.greeks_calculator import GreeksCalculatorService
+from app.services.options.greeks_calculator import GreeksCalculatorService
 
 logger = logging.getLogger(__name__)
 

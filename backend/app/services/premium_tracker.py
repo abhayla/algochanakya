@@ -24,7 +24,7 @@ from app.models.autopilot import (
     OrderPurpose
 )
 from app.services.market_data import MarketDataService
-from app.services.greeks_calculator import GreeksCalculator
+from app.services.options.greeks_calculator import GreeksCalculator
 import logging
 
 logger = logging.getLogger(__name__)

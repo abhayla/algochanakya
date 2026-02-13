@@ -48,7 +48,7 @@ from kiteconnect import KiteConnect
 
 from app.models.autopilot import AutoPilotStrategy, AutoPilotPositionLeg
 from app.services.market_data import MarketDataService
-from app.services.greeks_calculator import GreeksCalculatorService
+from app.services.options.greeks_calculator import GreeksCalculatorService
 from app.services.strike_finder_service import StrikeFinderService
 
 logger = logging.getLogger(__name__)

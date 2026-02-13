@@ -11,7 +11,7 @@ from typing import Dict, List, Optional, Tuple, Any
 from itertools import combinations, product
 
 from app.constants import get_lot_size, get_strike_step
-from app.services.pnl_calculator import PnLCalculator, generate_spot_range
+from app.services.options.pnl_calculator import PnLCalculator, generate_spot_range
 
 
 class OFOCalculator:
