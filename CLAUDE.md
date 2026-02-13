@@ -615,6 +615,119 @@ Use these skills for faster, consistent results:
 
 ---
 
+## Autonomous Testing Workflow
+
+**AlgoChanakya has a fully autonomous testing system** with slash commands, hooks, sub-agents, and self-learning capabilities. This system enforces test-driven development, prevents broken commits, and continuously improves fix strategies.
+
+### Slash Commands (Orchestration)
+
+Commands orchestrate skills and agents to execute complex workflows:
+
+| Command | Usage | Skills Called | Agents Called |
+|---------|-------|---------------|---------------|
+| `/implement` | 7-step mandatory workflow for features | auto-verify, e2e-test-generator, vitest-generator, fix-loop, post-fix-pipeline, docs-maintainer | code-reviewer, debugger, git-manager |
+| `/fix-loop` | Iterative fix cycle with thinking escalation | test-fixer | code-reviewer, debugger |
+| `/post-fix-pipeline` | Final verification + commit | fix-loop (on failure), docs-maintainer | tester, git-manager |
+| `/run-tests` | Multi-layer test runner (E2E, backend, frontend) | fix-loop (on failure), post-fix-pipeline (if fixes), reflect | - |
+| `/fix-issue` | Fix GitHub issue with full workflow | implement, fix-loop, post-fix-pipeline | planner-researcher (complex), all from /implement |
+| `/reflect` | Learning + self-modification (4 modes) | - | - |
+
+**Invoke commands via Skill tool:**
+```
+Skill("implement")
+Skill("fix-loop")
+Skill("reflect", args="session")
+```
+
+### Sub-Agents (Specialized Tasks)
+
+Agents are invoked by commands for specific tasks:
+
+| Agent | Model | Purpose | Invoked By |
+|-------|-------|---------|------------|
+| `tester` | sonnet | Run/analyze all 3 test layers, detect flaky tests, report coverage | /post-fix-pipeline, /run-tests |
+| `code-reviewer` | inherit | Quality gate - validates broker abstraction, trading constants, folder structure, security | /fix-loop (every fix) |
+| `debugger` | sonnet | Root cause analysis with ThinkHard/UltraThink escalation | /fix-loop (attempt 2+) |
+| `git-manager` | haiku | Safe commits with conventional format, secret scanning, protected files | /post-fix-pipeline |
+| `planner-researcher` | opus | Design implementation plans for complex features, architecture decisions | /implement (complex), user ad-hoc |
+
+**Agents are read-only** (except git-manager for git operations).
+
+### Hook Enforcement
+
+**PreToolUse hooks BLOCK:**
+- Write/Edit test files before Step 1 (requirements) complete
+- Write/Edit code files before Step 2 (tests) complete
+- `git commit` before all 7 steps complete AND post-fix-pipeline invoked
+- `git commit` if tests failed but fix-loop never invoked
+- `git commit` if fixes applied but post-fix-pipeline never invoked
+
+**PostToolUse hooks RECORD:**
+- Test results (pass/fail counts, layers, targets)
+- Skill invocations (success/failure, duration)
+- Independently re-run tests to verify claims (blocks false positives)
+- Auto-resize screenshots > 1800px
+- Scan for unfixed auto-fix patterns from knowledge.db
+- Route skill outcomes to learning systems
+
+**Hook scripts:** `.claude/hooks/*.py` (9 Python scripts)
+
+### Workflow State
+
+Hooks maintain workflow state in `.claude/workflow-state.json`:
+- **Session tracking:** sessionId, activeCommand, lastActivity
+- **Step completion:** 7 steps (requirements, tests, implement, runTests, fixLoop, screenshots, verify)
+- **Skill invocations:** fixLoopInvoked, fixLoopCount, fixLoopSucceeded, postFixPipelineInvoked
+- **Evidence:** testRuns with timestamps, commands, results, independent verification
+
+Workflow state enables commit gates: hooks check state to enforce that:
+1. All 7 steps completed before commit
+2. fix-loop invoked if tests ever failed
+3. post-fix-pipeline invoked before commit
+
+### Hybrid Learning System
+
+**Two complementary learning stores:**
+
+1. **knowledge.db (SQLite)** - Authoritative, structured learning:
+   - 6 tables: error_patterns, fix_strategies, fix_attempts, file_risk_scores, synthesized_rules, session_metrics
+   - 11 seeded strategies with success rates (time-decayed)
+   - Strategy ranking: Recent outcomes weighted 2x more than old
+   - Synthesis: Auto-generates rules when patterns reach ≥70% confidence with ≥5 evidence instances
+   - Queried by: /fix-loop (pre-check), /reflect (synthesis)
+
+2. **failure-index.json** - Fast JSON overlay for hooks:
+   - Per-skill failure tracking with occurrences, workarounds, thresholds
+   - Escalation: Flags patterns with 5+ failures for manual review
+   - Auto-fix eligibility: Patterns with ≥70% success rate
+   - Queried by: Hooks (fast lookups), /implement (pre-execution)
+
+**/reflect command** reconciles both stores:
+- **session mode** (default): Capture outcomes, update knowledge.db, synthesize rules (safe, no file mods)
+- **deep mode**: Analyze gaps + modify commands/hooks with safety protocol (git stash, validation, revert on fail)
+- **meta mode**: High-level convergence analysis, pattern detection across modifications
+- **test-run mode**: Dry-run of deep mode (propose but don't apply)
+
+### Autonomous Features Summary
+
+✅ **Zero manual intervention** - Hooks enforce workflow automatically
+✅ **Test-driven** - Cannot write code before tests (enforced by hooks)
+✅ **Self-verifying** - Independent test re-runs catch false positives
+✅ **Self-learning** - Strategies improve via knowledge.db with time decay
+✅ **Self-modifying** - /reflect deep mode can update hooks/commands (with safety)
+✅ **Quality gates** - code-reviewer validates every fix before applying
+✅ **Safe commits** - Secret scanning, protected files, conventional format
+✅ **Escalation** - 5+ failures trigger manual review prompt
+
+**Key files:**
+- Commands: `.claude/commands/*.md` (6 files)
+- Hooks: `.claude/hooks/*.py` (9 files)
+- Agents: `.claude/agents/*.md` (5 files)
+- Learning: `.claude/learning/knowledge.db`, `.claude/logs/learning/failure-index.json`
+- State: `.claude/workflow-state.json`, `.claude/logs/workflow-sessions.log`
+
+---
+
 ## Key URLs
 
 Dashboard `/dashboard`, Watchlist `/watchlist`, Positions `/positions`, Option Chain `/optionchain`, Strategy `/strategy`, Strategy Library `/strategies`, AutoPilot `/autopilot`, AI `/ai`, OFO `/ofo`, Settings `/settings`
