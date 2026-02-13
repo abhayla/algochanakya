@@ -28,7 +28,7 @@ from app.models.autopilot import (
     AutoPilotUserSettings,
     PositionLegStatus,
     SuggestionType,
-    SuggestionUrgency,
+    SuggestionUrgency,  # Corrected - learning engine test complete
     SuggestionStatus
 )
 from app.services.legacy.market_data import MarketDataService

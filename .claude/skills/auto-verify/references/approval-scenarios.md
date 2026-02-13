@@ -43,26 +43,39 @@
 > This could affect: [list of affected areas]
 > Should I proceed with this change?"
 
-## Scenario 5: Stopping After 5 Attempts
+## Scenario 5: Hit Stuck Condition (Learning Engine)
 
-**When:** 5 fix attempts haven't resolved the issue
+**When:** Any of these stuck conditions are met:
+- Same fingerprinted error appears 3x with different strategies all failing
+- All strategies exhausted (all scores < 0.1)
+- 20 total attempts in session (safety valve)
+- Fix requires modifying files outside current feature scope
+- Completely unknown error type
 
 **Ask:**
-> "I've attempted 5 fixes but the issue persists.
+> "I'm stuck on this error. Here's what I know:
 >
-> What I've tried:
-> 1. [Approach 1] - Result: [outcome]
-> 2. [Approach 2] - Result: [outcome]
-> 3. [Approach 3] - Result: [outcome]
-> 4. [Approach 4] - Result: [outcome]
-> 5. [Approach 5] - Result: [outcome]
+> **Error:** {error_type} - {error_message_summary}
+> **Fingerprint:** {fingerprint} (seen {occurrence_count} times in knowledge base)
+> **File:** {file_path}
 >
-> Options:
-> 1. Continue with a different strategy
-> 2. Investigate the root cause together
-> 3. Skip this fix for now
+> **Knowledge Base Context:**
+> - Total patterns: {total_patterns}
+> - This error pattern: {known/unknown}
+> - Best available strategy: {strategy_name} (score: {score})
+> - Threshold for trying: 0.3
 >
-> What would you like to do?"
+> **Strategies attempted:**
+> 1. [{score}] {strategy_name} - {outcome}
+> 2. [{score}] {strategy_name} - {outcome}
+> ...
+>
+> **Stuck Condition:** {specific_condition_met}
+>
+> Would you like me to:
+> 1. Try a different heuristic approach (describe what)
+> 2. Record this as a new learned pattern
+> 3. Skip and move to other verification tasks"
 
 ## Scenario 6: Using Workarounds
 

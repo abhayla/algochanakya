@@ -33,9 +33,13 @@ logs/
 # Process files
 *.pid
 
-# Claude Code (allow .claude/skills/ to be committed for team sharing)
+# Claude Code (allow .claude/skills/ and .claude/learning/ to be committed for team sharing)
 .claude/*
 !.claude/skills/
+!.claude/learning/
+# But ignore the SQLite database and Python cache
+.claude/learning/knowledge.db
+.claude/learning/__pycache__/
 
 # Database
 *.db

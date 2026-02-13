@@ -512,6 +512,34 @@ from app.services.brokers.market_data.rate_limiter import RateLimiter
 - `frontend/src/services/api.js` - HTTP interceptor (lines 27-35)
 - `frontend/src/stores/auth.js` - Auth state management
 
+### Learning Engine (Autonomous Fix Loop)
+
+The learning engine at `.claude/learning/knowledge.db` records every error and fix attempt, ranks strategies by success rate with time decay, and auto-synthesizes rules when patterns reach ≥70% confidence with ≥5 evidence instances.
+
+**Three Core Loops:**
+- **Pre-check:** Before fixing, query knowledge.db for ranked strategies
+- **Post-record:** After every fix attempt, record outcome and update scores
+- **Feedback:** On session start, check git for reverts that invalidate past fixes
+
+**Stuck Conditions (Stop and ask user):**
+- Same error 3x with different strategies failing
+- All strategies exhausted (scores < 0.1)
+- 20 total attempts in session
+- Fix requires modifying files outside feature scope
+- Error type completely unknown
+
+**Commands:**
+```bash
+/learning-engine status          # Show knowledge DB stats
+/learning-engine query {type}    # Show strategies for error type
+/learning-engine risk-report     # Top 10 error-prone files
+/learning-engine synthesize      # Force rule synthesis check
+```
+
+**Integration:** Automatically integrated with `auto-verify` (Step 2c, Step 8) and `test-fixer` (Step 0, post-fix recording). Runs on session start (feedback loop) and end (synthesis check).
+
+**Storage:** SQLite database at `.claude/learning/knowledge.db` with 6 tables: error_patterns, fix_strategies, fix_attempts, file_risk_scores, synthesized_rules, session_metrics.
+
 ---
 
 ## Documentation
@@ -537,6 +565,8 @@ Use these skills for faster, consistent results:
 |-------|-------|------------|
 | `auto-verify` | After ANY code change | **YES** |
 | `docs-maintainer` | After code changes | **YES** |
+| `learning-engine` | Autonomous fix loop with knowledge base | **YES** (integrated with auto-verify/test-fixer) |
+| `health-check` | Proactive codebase health scan (7 steps) | On demand + session start |
 | `test-fixer` | Diagnose failing tests | On demand |
 | `e2e-test-generator` | Generate Playwright tests | On demand |
 | `vitest-generator` | Generate Vitest unit tests | On demand |
