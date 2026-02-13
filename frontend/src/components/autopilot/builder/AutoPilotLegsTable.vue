@@ -10,7 +10,7 @@ import { useWatchlistStore } from '@/stores/watchlist'
 import api from '@/services/api'
 import AutoPilotLegRow from './AutoPilotLegRow.vue'
 import StrikeLadder from './StrikeLadder.vue'
-import '@/assets/css/strategy-table.css'
+import '@/assets/styles/strategy-table.css'
 
 const store = useAutopilotStore()
 const watchlistStore = useWatchlistStore()

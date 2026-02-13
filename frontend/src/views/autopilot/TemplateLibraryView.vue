@@ -534,7 +534,7 @@ import { useAutopilotStore } from '@/stores/autopilot'
 import { useRouter } from 'vue-router'
 import KiteLayout from '@/components/layout/KiteLayout.vue'
 import PayoffChart from '@/components/strategy/PayoffChart.vue'
-import '@/assets/css/strategy-table.css'
+import '@/assets/styles/strategy-table.css'
 
 const store = useAutopilotStore()
 const router = useRouter()

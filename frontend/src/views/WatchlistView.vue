@@ -202,7 +202,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useWatchlistStore } from '../stores/watchlist'
 import KiteLayout from '../components/layout/KiteLayout.vue'
-import { fetchWatchlistPrices } from '@/composables/usePriceFallback'
+import { fetchWatchlistPrices } from '@/services/priceService'
 
 const store = useWatchlistStore()
 

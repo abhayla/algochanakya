@@ -6,7 +6,7 @@
 import { defineStore } from 'pinia'
 import api from '@/services/api'
 import { getLotSize } from '@/constants/trading'
-import { fetchLegLTP as fetchLegLTPFromAPI } from '@/composables/usePriceFallback'
+import { fetchLegLTP as fetchLegLTPFromAPI } from '@/services/priceService'
 
 export const useAutopilotStore = defineStore('autopilot', {
   state: () => ({

@@ -637,7 +637,7 @@ import ShareStrategyModal from '../components/strategy/ShareStrategyModal.vue'
 import BasketOrderModal from '../components/strategy/BasketOrderModal.vue'
 import PayoffChart from '../components/strategy/PayoffChart.vue'
 import PnLCell from '../components/strategy/PnLCell.vue'
-import '@/assets/css/strategy-table.css'
+import '@/assets/styles/strategy-table.css'
 
 const route = useRoute()
 const strategyStore = useStrategyStore()

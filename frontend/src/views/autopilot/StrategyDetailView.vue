@@ -24,7 +24,7 @@ import ActivityTimeline from '@/components/autopilot/dashboard/ActivityTimeline.
 import StraddlePremiumChart from '@/components/autopilot/monitoring/StraddlePremiumChart.vue'
 import ThetaDecayChart from '@/components/autopilot/monitoring/ThetaDecayChart.vue'
 import OrdersTab from '@/components/autopilot/orders/OrdersTab.vue'
-import '@/assets/css/strategy-table.css'
+import '@/assets/styles/strategy-table.css'
 
 const router = useRouter()
 const route = useRoute()

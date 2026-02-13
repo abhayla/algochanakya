@@ -43,7 +43,7 @@
 <script setup>
 import { computed, onMounted } from 'vue'
 import { useWatchlistStore } from '../../stores/watchlist'
-import { fetchIndexPrices } from '@/composables/usePriceFallback'
+import { fetchIndexPrices } from '@/services/priceService'
 
 const store = useWatchlistStore()
 

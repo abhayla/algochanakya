@@ -8,7 +8,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAutopilotStore } from '@/stores/autopilot'
 import KiteLayout from '@/components/layout/KiteLayout.vue'
-import '@/assets/css/strategy-table.css'
+import '@/assets/styles/strategy-table.css'
 
 const router = useRouter()
 const store = useAutopilotStore()

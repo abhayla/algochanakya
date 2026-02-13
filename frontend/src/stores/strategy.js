@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import api from '../services/api'
-import { fetchLegLTP as fetchLegLTPFromAPI } from '@/composables/usePriceFallback'
+import { fetchLegLTP as fetchLegLTPFromAPI } from '@/services/priceService'
 import { getLotSize, getIndexToken, getIndexSymbol } from '@/constants/trading'
 import { useWatchlistStore } from '@/stores/watchlist'
 

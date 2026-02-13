@@ -105,7 +105,7 @@ import { ref, computed, onMounted } from 'vue'
 import { usePositionLegs } from '@/composables/autopilot/usePositionLegs'
 import LegCard from './LegCard.vue'
 import LegActionModals from './LegActionModals.vue'
-import BreakTradeWizard from './BreakTradeWizard.vue'
+import BreakTradeWizard from './LegBreakTradeWizard.vue'
 
 const props = defineProps({
   strategyId: {

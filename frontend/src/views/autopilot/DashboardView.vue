@@ -16,7 +16,7 @@ import EnhancedStrategyCard from '@/components/autopilot/dashboard/EnhancedStrat
 import RiskOverviewPanel from '@/components/autopilot/dashboard/RiskOverviewPanel.vue'
 import ActivityTimeline from '@/components/autopilot/dashboard/ActivityTimeline.vue'
 import AIStatusCard from '@/components/autopilot/dashboard/AIStatusCard.vue'
-import '@/assets/css/strategy-table.css'
+import '@/assets/styles/strategy-table.css'
 
 const router = useRouter()
 const store = useAutopilotStore()

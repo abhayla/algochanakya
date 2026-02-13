@@ -6,7 +6,7 @@
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useAutopilotStore } from '@/stores/autopilot'
-import { startPollingFallback, stopPollingFallback } from '@/composables/usePriceFallback'
+import { startPollingFallback, stopPollingFallback } from '@/services/priceService'
 import api from '@/services/api'
 
 const WS_BASE_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8000'

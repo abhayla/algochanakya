@@ -19,7 +19,7 @@ import AdjustmentRuleBuilder from '@/components/autopilot/builder/AdjustmentRule
 import ConversionModal from '@/components/autopilot/adjustments/ConversionModal.vue'
 import RollWizard from '@/components/autopilot/adjustments/RollWizard.vue'
 import KiteLayout from '@/components/layout/KiteLayout.vue'
-import '@/assets/css/strategy-table.css'
+import '@/assets/styles/strategy-table.css'
 
 const router = useRouter()
 const route = useRoute()

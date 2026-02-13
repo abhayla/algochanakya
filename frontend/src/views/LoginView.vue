@@ -156,7 +156,7 @@ const scrollToLogin = () => {
               data-testid="login-zerodha-button"
             >
               <!-- Kite Logo -->
-              <img src="../assets/kite-logo.png" alt="Kite" style="height: 24px; width: auto;" class="flex-shrink-0" />
+              <img src="../assets/logos/kite-logo.png" alt="Kite" style="height: 24px; width: auto;" class="flex-shrink-0" />
               <span v-if="!authStore.zerodhaLoading">Login with Zerodha</span>
               <span v-else class="flex items-center">
                 <svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-gray-500" width="20" height="20" fill="none" viewBox="0 0 24 24">
@@ -189,7 +189,7 @@ const scrollToLogin = () => {
               data-testid="login-angelone-button"
             >
               <!-- Angel One Logo -->
-              <img src="../assets/angelone-logo.png" alt="Angel One" style="height: 24px; width: auto;" class="flex-shrink-0" />
+              <img src="../assets/logos/angelone-logo.png" alt="Angel One" style="height: 24px; width: auto;" class="flex-shrink-0" />
               <span v-if="!authStore.angelOneLoading">Angel One</span>
               <span v-else class="flex items-center">
                 <svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-gray-500" width="20" height="20" fill="none" viewBox="0 0 24 24">
