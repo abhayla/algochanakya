@@ -67,7 +67,7 @@ auto_detect_patterns:
     feature: strategy-builder
   - pattern: "backend/app/models/strategies.py"
     feature: strategy-builder
-  - pattern: "backend/app/services/pnl_calculator.py"
+  - pattern: "backend/app/services/options/pnl_calculator.py"
     feature: strategy-builder
   - pattern: "frontend/src/views/StrategyBuilderView.vue"
     feature: strategy-builder
@@ -93,11 +93,11 @@ auto_detect_patterns:
     feature: autopilot
   - pattern: "backend/app/models/autopilot.py"
     feature: autopilot
-  - pattern: "backend/app/services/market_data.py"
+  - pattern: "backend/app/services/legacy/market_data.py"
     feature: autopilot
-  - pattern: "backend/app/services/condition_engine.py"
+  - pattern: "backend/app/services/autopilot/condition_engine.py"
     feature: autopilot
-  - pattern: "backend/app/services/strategy_monitor.py"
+  - pattern: "backend/app/services/autopilot/strategy_monitor.py"
     feature: autopilot
   - pattern: "backend/app/services/order_executor.py"
     feature: autopilot
@@ -105,7 +105,7 @@ auto_detect_patterns:
     feature: autopilot
   - pattern: "backend/app/services/suggestion_engine.py"
     feature: autopilot
-  - pattern: "backend/app/services/greeks_calculator.py"
+  - pattern: "backend/app/services/options/greeks_calculator.py"
     feature: autopilot
   - pattern: "backend/app/websocket/manager.py"
     feature: autopilot
@@ -286,7 +286,7 @@ features:
       - "backend/app/api/routes/strategy.py"
       - "backend/app/api/routes/orders.py"
       - "backend/app/models/strategies.py"
-      - "backend/app/services/pnl_calculator.py"
+      - "backend/app/services/options/pnl_calculator.py"
       - "backend/app/services/kite_ticker.py"
     frontend_files:
       - "frontend/src/views/StrategyBuilderView.vue"
@@ -334,12 +334,12 @@ features:
       - "backend/app/api/v1/autopilot/option_chain.py"
       - "backend/app/models/autopilot.py"
       - "backend/app/services/market_data.py"
-      - "backend/app/services/condition_engine.py"
+      - "backend/app/services/autopilot/condition_engine.py"
       - "backend/app/services/strategy_monitor.py"
       - "backend/app/services/order_executor.py"
       - "backend/app/services/adjustment_engine.py"
       - "backend/app/services/suggestion_engine.py"
-      - "backend/app/services/greeks_calculator.py"
+      - "backend/app/services/options/greeks_calculator.py"
       - "backend/app/websocket/manager.py"
     frontend_files:
       - "frontend/src/views/autopilot/DashboardView.vue"
