@@ -10,7 +10,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, date, timedelta
 from decimal import Decimal
 
-from app.services.suggestion_engine import SuggestionEngine, DTEZone
+from app.services.autopilot.suggestion_engine import SuggestionEngine, DTEZone
 from app.models.autopilot import (
     AutoPilotStrategy,
     AutoPilotPositionLeg,

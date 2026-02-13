@@ -21,7 +21,7 @@ from app.models import User, BrokerConnection
 from app.models.autopilot import AutoPilotStrategy
 from app.services.options.payoff_calculator import PayoffCalculator
 from app.services.legacy.market_data import MarketDataService
-from app.services.adjustment_cost_tracker import AdjustmentCostTracker
+from app.services.autopilot.adjustment_cost_tracker import AdjustmentCostTracker
 from app.schemas.autopilot import AdjustmentCostSummary, AdjustmentCostThresholdCheck
 
 router = APIRouter()

@@ -36,11 +36,11 @@ from app.models.autopilot import (
 )
 from app.models.users import User
 
-from app.services.kill_switch import KillSwitchService
-from app.services.confirmation_service import ConfirmationService
-from app.services.adjustment_engine import AdjustmentEngine
-from app.services.trailing_stop import TrailingStopService
-from app.services.position_sizing import PositionSizingService
+from app.services.autopilot.kill_switch import KillSwitchService
+from app.services.autopilot.confirmation_service import ConfirmationService
+from app.services.autopilot.adjustment_engine import AdjustmentEngine
+from app.services.autopilot.trailing_stop import TrailingStopService
+from app.services.autopilot.position_sizing import PositionSizingService
 from app.services.options.greeks_calculator import GreeksCalculatorService
 from app.schemas.autopilot import PositionSizingRequest
 

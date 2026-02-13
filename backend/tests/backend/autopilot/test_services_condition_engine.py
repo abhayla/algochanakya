@@ -17,7 +17,7 @@ from decimal import Decimal
 from unittest.mock import MagicMock, AsyncMock, patch
 from freezegun import freeze_time
 
-from app.services.condition_engine import (
+from app.services.autopilot.condition_engine import (
     ConditionEngine, ConditionResult, EvaluationResult,
     ConditionOperator, ConditionLogic,
     get_condition_engine, clear_condition_engines

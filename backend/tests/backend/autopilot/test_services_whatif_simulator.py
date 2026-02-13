@@ -10,7 +10,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import date, timedelta
 from decimal import Decimal
 
-from app.services.whatif_simulator import WhatIfSimulator
+from app.services.autopilot.whatif_simulator import WhatIfSimulator
 from app.models.autopilot import PositionLegStatus
 
 

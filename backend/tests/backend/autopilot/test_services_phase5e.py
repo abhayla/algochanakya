@@ -12,8 +12,8 @@ from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, date, timedelta
 
-from app.services.adjustment_engine import AdjustmentEngine
-from app.services.strategy_monitor import StrategyMonitor
+from app.services.autopilot.adjustment_engine import AdjustmentEngine
+from app.services.autopilot.strategy_monitor import StrategyMonitor
 
 
 # =============================================================================

@@ -9,7 +9,7 @@ import pytest_asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 from decimal import Decimal
 
-from app.services.strike_finder_service import StrikeFinderService
+from app.services.autopilot.strike_finder_service import StrikeFinderService
 from .conftest import get_mock_option_chain_response
 
 

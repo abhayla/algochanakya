@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services.ai.historical_data import HistoricalDataService
 from app.services.ai.market_regime import MarketRegimeClassifier
-from app.services.condition_engine import ConditionEngine
+from app.services.autopilot.condition_engine import ConditionEngine
 from app.constants.trading import get_lot_size
 
 logger = logging.getLogger(__name__)

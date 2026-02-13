@@ -18,7 +18,7 @@ from uuid import uuid4
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from app.services.kill_switch import KillSwitchService, get_kill_switch_service
+from app.services.autopilot.kill_switch import KillSwitchService, get_kill_switch_service
 from app.models.autopilot import (
     AutoPilotStrategy,
     AutoPilotUserSettings,

@@ -14,8 +14,8 @@ from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, date
 
-from app.services.strike_finder_service import StrikeFinderService
-from app.services.condition_engine import ConditionEngine
+from app.services.autopilot.strike_finder_service import StrikeFinderService
+from app.services.autopilot.condition_engine import ConditionEngine
 from app.services.legacy.market_data import MarketDataService
 
 

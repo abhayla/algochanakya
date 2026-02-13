@@ -12,7 +12,7 @@ from app.database import get_db
 from app.utils.dependencies import get_current_user, get_current_broker_connection
 from app.models import User, BrokerConnection
 from app.schemas.autopilot import AdjustmentSuggestionResponse
-from app.services.suggestion_engine import SuggestionEngine
+from app.services.autopilot.suggestion_engine import SuggestionEngine
 from app.services.legacy.market_data import MarketDataService
 
 router = APIRouter()
@@ -194,8 +194,8 @@ async def execute_suggestion(
     """
     try:
         from app.models.autopilot import AutoPilotAdjustmentSuggestion, SuggestionType
-        from app.services.leg_actions_service import LegActionsService
-        from app.services.break_trade_service import BreakTradeService
+        from app.services.autopilot.leg_actions_service import LegActionsService
+        from app.services.autopilot.break_trade_service import BreakTradeService
         from sqlalchemy import select
 
         # Get suggestion

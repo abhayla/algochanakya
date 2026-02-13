@@ -12,7 +12,7 @@ from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, date, timedelta
 
-from app.services.adjustment_engine import AdjustmentEngine
+from app.services.autopilot.adjustment_engine import AdjustmentEngine
 
 
 # =============================================================================

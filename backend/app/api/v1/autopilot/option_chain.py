@@ -24,7 +24,7 @@ from app.schemas.autopilot import (
     StrikeFindResponse
 )
 from app.services.option_chain_service import OptionChainService
-from app.services.strike_finder_service import StrikeFinderService
+from app.services.autopilot.strike_finder_service import StrikeFinderService
 
 router = APIRouter()
 

@@ -19,10 +19,10 @@ from app.schemas.autopilot import (
     BreakTradeRequest,
     BreakTradeResponse
 )
-from app.services.position_leg_service import PositionLegService
-from app.services.leg_actions_service import LegActionsService
-from app.services.break_trade_service import BreakTradeService
-from app.services.delta_rebalance_service import DeltaRebalanceService
+from app.services.autopilot.position_leg_service import PositionLegService
+from app.services.autopilot.leg_actions_service import LegActionsService
+from app.services.autopilot.break_trade_service import BreakTradeService
+from app.services.autopilot.delta_rebalance_service import DeltaRebalanceService
 
 router = APIRouter()
 
@@ -568,7 +568,7 @@ async def rebalance_delta(
         previous_delta = assessment['current_delta']
 
         # Execute the action via adjustment engine
-        from app.services.adjustment_engine import AdjustmentEngine
+        from app.services.autopilot.adjustment_engine import AdjustmentEngine
         adj_engine = AdjustmentEngine(kite, db, str(user.id))
 
         execution_result = None
@@ -587,7 +587,7 @@ async def rebalance_delta(
 
         elif action_type == "shift_leg":
             # Execute shift leg action
-            from app.services.leg_actions_service import LegActionsService
+            from app.services.autopilot.leg_actions_service import LegActionsService
             leg_service = LegActionsService(kite, db, str(user.id))
 
             direction = selected_action['direction']
@@ -606,7 +606,7 @@ async def rebalance_delta(
 
         elif action_type == "close_leg":
             # Execute close leg action
-            from app.services.leg_actions_service import LegActionsService
+            from app.services.autopilot.leg_actions_service import LegActionsService
             leg_service = LegActionsService(kite, db, str(user.id))
 
             execution_result = await leg_service.exit_leg(

@@ -8,7 +8,7 @@ import pytest
 from unittest.mock import AsyncMock, patch
 from decimal import Decimal
 
-from app.services.break_trade_service import BreakTradeService
+from app.services.autopilot.break_trade_service import BreakTradeService
 from app.models.autopilot import PositionLegStatus
 
 

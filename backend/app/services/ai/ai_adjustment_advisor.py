@@ -27,8 +27,8 @@ from app.models.autopilot import (
 )
 from app.services.options.pnl_calculator import PnLCalculator
 from app.services.legacy.market_data import MarketDataService
-from app.services.position_leg_service import PositionLegService
-from app.services.adjustment_engine import AdjustmentCategory, ADJUSTMENT_CATEGORIES
+from app.services.autopilot.position_leg_service import PositionLegService
+from app.services.autopilot.adjustment_engine import AdjustmentCategory, ADJUSTMENT_CATEGORIES
 from app.constants.trading import get_lot_size
 
 logger = logging.getLogger(__name__)

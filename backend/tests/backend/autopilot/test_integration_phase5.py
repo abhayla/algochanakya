@@ -24,7 +24,7 @@ class TestIntegrationPhase5:
         strategy, losing_leg = test_break_trade_scenario
 
         # Step 1: Detect losing leg
-        from app.services.position_leg_service import PositionLegService
+        from app.services.autopilot.position_leg_service import PositionLegService
         mock_kite = MagicMock()
         leg_service = PositionLegService(mock_kite, db_session)
 
@@ -33,7 +33,7 @@ class TestIntegrationPhase5:
         await db_session.commit()
 
         # Step 2: Generate suggestion
-        from app.services.suggestion_engine import SuggestionEngine
+        from app.services.autopilot.suggestion_engine import SuggestionEngine
         mock_market_data = MagicMock()
         mock_market_data.get_spot_price = AsyncMock(return_value=Decimal("25300.00"))
         mock_market_data.get_vix = AsyncMock(return_value=Decimal("15.00"))
@@ -46,7 +46,7 @@ class TestIntegrationPhase5:
         assert len(break_suggestions) > 0
 
         # Step 3: Execute break trade
-        from app.services.break_trade_service import BreakTradeService
+        from app.services.autopilot.break_trade_service import BreakTradeService
         break_service = BreakTradeService(mock_kite, db_session)
 
         with patch.object(break_service, 'strike_finder') as mock_finder:
@@ -77,7 +77,7 @@ class TestIntegrationPhase5:
         await db_session.commit()
 
         # Step 2: Simulate shift
-        from app.services.whatif_simulator import WhatIfSimulator
+        from app.services.autopilot.whatif_simulator import WhatIfSimulator
         mock_kite = MagicMock()
         mock_market_data = MagicMock()
         mock_market_data.get_spot_price = AsyncMock(return_value=Decimal("25000.00"))
@@ -100,7 +100,7 @@ class TestIntegrationPhase5:
                 assert "impact" in simulation
 
         # Step 3: Execute shift
-        from app.services.leg_actions_service import LegActionsService
+        from app.services.autopilot.leg_actions_service import LegActionsService
         leg_actions = LegActionsService(mock_kite, db_session)
 
         with patch.object(leg_actions, 'order_executor') as mock_executor:
@@ -124,7 +124,7 @@ class TestIntegrationPhase5:
         assert dte <= 7
 
         # Step 2: Simulate roll
-        from app.services.whatif_simulator import WhatIfSimulator
+        from app.services.autopilot.whatif_simulator import WhatIfSimulator
         mock_kite = MagicMock()
         mock_market_data = MagicMock()
         mock_market_data.get_spot_price = AsyncMock(return_value=Decimal("25000.00"))
@@ -142,7 +142,7 @@ class TestIntegrationPhase5:
         assert "roll_cost" in simulation
 
         # Step 3: Execute roll
-        from app.services.leg_actions_service import LegActionsService
+        from app.services.autopilot.leg_actions_service import LegActionsService
         leg_actions = LegActionsService(mock_kite, db_session)
 
         with patch.object(leg_actions, 'order_executor') as mock_executor:
@@ -166,7 +166,7 @@ class TestIntegrationPhase5:
         await db_session.commit()
 
         # Step 1: Generate suggestions
-        from app.services.suggestion_engine import SuggestionEngine
+        from app.services.autopilot.suggestion_engine import SuggestionEngine
         mock_kite = MagicMock()
         mock_market_data = MagicMock()
         mock_market_data.get_spot_price = AsyncMock(return_value=Decimal("25000.00"))
@@ -183,7 +183,7 @@ class TestIntegrationPhase5:
         suggestion = shift_suggestions[0]
         action_params = suggestion.action_params or {}
 
-        from app.services.leg_actions_service import LegActionsService
+        from app.services.autopilot.leg_actions_service import LegActionsService
         leg_actions = LegActionsService(mock_kite, db_session)
 
         with patch.object(leg_actions, 'order_executor') as mock_executor:
@@ -202,7 +202,7 @@ class TestIntegrationPhase5:
         await db_session.commit()
 
         # Step 1: Run what-if simulation
-        from app.services.whatif_simulator import WhatIfSimulator
+        from app.services.autopilot.whatif_simulator import WhatIfSimulator
         mock_kite = MagicMock()
         mock_market_data = MagicMock()
         mock_market_data.get_spot_price = AsyncMock(return_value=Decimal("25000.00"))
@@ -225,7 +225,7 @@ class TestIntegrationPhase5:
             # Step 2: If approved, execute
             if impact.get("delta_change", 0) < -0.1:
                 # Would execute the adjustment
-                from app.services.leg_actions_service import LegActionsService
+                from app.services.autopilot.leg_actions_service import LegActionsService
                 leg_actions = LegActionsService(mock_kite, db_session)
 
                 with patch.object(leg_actions, 'order_executor') as mock_executor:
@@ -255,7 +255,7 @@ class TestIntegrationPhase5:
 
         # Step 2: Generate adjustment suggestion
         if alert_triggered:
-            from app.services.suggestion_engine import SuggestionEngine
+            from app.services.autopilot.suggestion_engine import SuggestionEngine
             mock_kite = MagicMock()
             mock_market_data = MagicMock()
             mock_market_data.get_spot_price = AsyncMock(return_value=Decimal("25000.00"))
@@ -322,7 +322,7 @@ class TestIntegrationPhase5:
         mock_market_data.get_spot_price = AsyncMock(return_value=Decimal("25000.00"))
         mock_market_data.get_vix = AsyncMock(return_value=Decimal("15.00"))
 
-        from app.services.suggestion_engine import SuggestionEngine
+        from app.services.autopilot.suggestion_engine import SuggestionEngine
         suggestion_engine = SuggestionEngine(mock_kite, db_session, mock_market_data)
 
         # Early DTE should have looser thresholds
@@ -350,7 +350,7 @@ class TestIntegrationPhase5:
             leg.status = PositionLegStatus.OPEN
         await db_session.commit()
 
-        from app.services.leg_actions_service import LegActionsService
+        from app.services.autopilot.leg_actions_service import LegActionsService
         mock_kite = MagicMock()
         leg_actions = LegActionsService(mock_kite, db_session)
 

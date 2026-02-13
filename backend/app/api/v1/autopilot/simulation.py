@@ -13,7 +13,7 @@ from kiteconnect import KiteConnect
 from app.database import get_db
 from app.utils.dependencies import get_current_user, get_current_broker_connection
 from app.models import User, BrokerConnection
-from app.services.whatif_simulator import WhatIfSimulator
+from app.services.autopilot.whatif_simulator import WhatIfSimulator
 from app.services.legacy.market_data import MarketDataService
 
 router = APIRouter()

@@ -16,7 +16,7 @@ from typing import Dict, Any, List
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.services.position_sizing import (
+from app.services.autopilot.position_sizing import (
     PositionSizingService,
     get_position_sizing_service,
     LOT_SIZES,

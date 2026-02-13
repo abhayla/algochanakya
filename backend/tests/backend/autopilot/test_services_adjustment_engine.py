@@ -19,7 +19,7 @@ from unittest.mock import AsyncMock, MagicMock
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from app.services.adjustment_engine import AdjustmentEngine, get_adjustment_engine
+from app.services.autopilot.adjustment_engine import AdjustmentEngine, get_adjustment_engine
 from app.models.autopilot import (
     AutoPilotStrategy,
     AutoPilotAdjustmentLog,

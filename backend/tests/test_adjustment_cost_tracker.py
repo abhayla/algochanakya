@@ -14,7 +14,7 @@ from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.autopilot import AutoPilotStrategy, AutoPilotOrder
-from app.services.adjustment_cost_tracker import AdjustmentCostTracker, AdjustmentCostSummary
+from app.services.autopilot.adjustment_cost_tracker import AdjustmentCostTracker, AdjustmentCostSummary
 
 
 @pytest.fixture

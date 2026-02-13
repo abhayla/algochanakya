@@ -62,7 +62,7 @@ from app.models.autopilot import (
 )
 from app.services.options.theta_curve_service import get_theta_curve_service
 from app.services.options.gamma_risk_service import get_gamma_risk_service
-from app.services.dte_zone_service import get_dte_zone_service
+from app.services.autopilot.dte_zone_service import get_dte_zone_service
 
 logger = logging.getLogger(__name__)
 

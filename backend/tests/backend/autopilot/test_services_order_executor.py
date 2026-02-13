@@ -25,7 +25,7 @@ from sqlalchemy.pool import StaticPool
 from app.database import Base
 from app.models.users import User
 from app.models.autopilot import AutoPilotStrategy, AutoPilotOrder, AutoPilotLog
-from app.services.order_executor import (
+from app.services.autopilot.order_executor import (
     OrderExecutor, OrderRequest, OrderResult,
     LOT_SIZES, STRIKE_STEPS, get_order_executor
 )

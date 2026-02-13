@@ -44,13 +44,13 @@ from app.schemas.autopilot import (
     # Phase 1 Redesign schemas
     StrikeMode, StrikePreviewRequest, StrikePreviewResponse, ExpectedMove
 )
-from app.services.kill_switch import KillSwitchService
-from app.services.confirmation_service import ConfirmationService
-from app.services.adjustment_engine import AdjustmentEngine
-from app.services.trailing_stop import TrailingStopService
-from app.services.position_sizing import PositionSizingService
+from app.services.autopilot.kill_switch import KillSwitchService
+from app.services.autopilot.confirmation_service import ConfirmationService
+from app.services.autopilot.adjustment_engine import AdjustmentEngine
+from app.services.autopilot.trailing_stop import TrailingStopService
+from app.services.autopilot.position_sizing import PositionSizingService
 from app.services.options.greeks_calculator import GreeksCalculatorService
-from app.services.strike_finder_service import StrikeFinderService
+from app.services.autopilot.strike_finder_service import StrikeFinderService
 from app.utils.dependencies import get_kite_client
 
 # Phase 5 routers
@@ -1645,7 +1645,7 @@ async def list_templates(
     current_user: User = Depends(get_current_user)
 ):
     """List strategy templates with filters."""
-    from app.services.template_service import TemplateService
+    from app.services.autopilot.template_service import TemplateService
     from app.schemas.autopilot import TemplateListItem
 
     result = await TemplateService.list_templates(
@@ -1681,7 +1681,7 @@ async def get_template_categories(
     current_user: User = Depends(get_current_user)
 ):
     """Get template categories with counts."""
-    from app.services.template_service import TemplateService
+    from app.services.autopilot.template_service import TemplateService
 
     categories = await TemplateService.get_categories(db, current_user.id)
 
@@ -1698,7 +1698,7 @@ async def get_popular_templates(
     current_user: User = Depends(get_current_user)
 ):
     """Get most popular templates."""
-    from app.services.template_service import TemplateService
+    from app.services.autopilot.template_service import TemplateService
 
     templates = await TemplateService.get_popular_templates(db, limit)
 
@@ -1715,7 +1715,7 @@ async def get_template(
     current_user: User = Depends(get_current_user)
 ):
     """Get template details."""
-    from app.services.template_service import TemplateService
+    from app.services.autopilot.template_service import TemplateService
     from app.schemas.autopilot import TemplateResponse
 
     template = await TemplateService.get_template(db, template_id, current_user.id)
@@ -1736,7 +1736,7 @@ async def create_template(
     current_user: User = Depends(get_current_user)
 ):
     """Create a new template from strategy."""
-    from app.services.template_service import TemplateService
+    from app.services.autopilot.template_service import TemplateService
     from app.schemas.autopilot import TemplateCreateRequest, TemplateResponse
 
     template_request = TemplateCreateRequest(**request)
@@ -1762,7 +1762,7 @@ async def update_template(
     current_user: User = Depends(get_current_user)
 ):
     """Update a template."""
-    from app.services.template_service import TemplateService
+    from app.services.autopilot.template_service import TemplateService
     from app.schemas.autopilot import TemplateUpdateRequest, TemplateResponse
 
     template_request = TemplateUpdateRequest(**request)
@@ -1791,7 +1791,7 @@ async def delete_template(
     current_user: User = Depends(get_current_user)
 ):
     """Delete a user-created template."""
-    from app.services.template_service import TemplateService
+    from app.services.autopilot.template_service import TemplateService
 
     success = await TemplateService.delete_template(db, template_id, current_user.id)
 
@@ -1807,7 +1807,7 @@ async def deploy_template(
     current_user: User = Depends(get_current_user)
 ):
     """Deploy a template as a new strategy."""
-    from app.services.template_service import TemplateService
+    from app.services.autopilot.template_service import TemplateService
     from app.schemas.autopilot import TemplateDeployRequest
 
     deploy_request = TemplateDeployRequest(**request)
@@ -1837,7 +1837,7 @@ async def rate_template(
     current_user: User = Depends(get_current_user)
 ):
     """Rate a template."""
-    from app.services.template_service import TemplateService
+    from app.services.autopilot.template_service import TemplateService
     from app.schemas.autopilot import TemplateRatingRequest, TemplateRatingResponse
 
     rating_request = TemplateRatingRequest(**request)
@@ -1879,7 +1879,7 @@ async def list_trades(
     current_user: User = Depends(get_current_user)
 ):
     """List trade journal entries with filters."""
-    from app.services.trade_journal import TradeJournalService
+    from app.services.autopilot.trade_journal import TradeJournalService
     from app.schemas.autopilot import TradeJournalListItem
 
     tags_list = tags.split(",") if tags else None
@@ -1922,7 +1922,7 @@ async def get_journal_stats(
     current_user: User = Depends(get_current_user)
 ):
     """Get trade journal statistics."""
-    from app.services.trade_journal import TradeJournalService
+    from app.services.autopilot.trade_journal import TradeJournalService
 
     stats = await TradeJournalService.get_journal_stats(
         db=db,
@@ -1948,7 +1948,7 @@ async def export_trades(
     current_user: User = Depends(get_current_user)
 ):
     """Export trade journal to CSV."""
-    from app.services.trade_journal import TradeJournalService
+    from app.services.autopilot.trade_journal import TradeJournalService
     from app.schemas.autopilot import TradeJournalExportRequest, ReportFormat
 
     export_request = TradeJournalExportRequest(
@@ -1978,7 +1978,7 @@ async def get_trade(
     current_user: User = Depends(get_current_user)
 ):
     """Get trade journal entry details."""
-    from app.services.trade_journal import TradeJournalService
+    from app.services.autopilot.trade_journal import TradeJournalService
     from app.schemas.autopilot import TradeJournalResponse
 
     trade = await TradeJournalService.get_trade(db, trade_id, current_user.id)
@@ -2000,7 +2000,7 @@ async def update_trade(
     current_user: User = Depends(get_current_user)
 ):
     """Update trade journal entry (notes/tags)."""
-    from app.services.trade_journal import TradeJournalService
+    from app.services.autopilot.trade_journal import TradeJournalService
     from app.schemas.autopilot import TradeJournalUpdateRequest, TradeJournalResponse
 
     update_request = TradeJournalUpdateRequest(**request)
@@ -2034,7 +2034,7 @@ async def get_performance_analytics(
     current_user: User = Depends(get_current_user)
 ):
     """Get performance analytics for the specified period."""
-    from app.services.analytics import AnalyticsService
+    from app.services.autopilot.analytics import AnalyticsService
 
     analytics = await AnalyticsService.get_performance(
         db=db,
@@ -2057,7 +2057,7 @@ async def get_daily_pnl(
     current_user: User = Depends(get_current_user)
 ):
     """Get daily P&L data for charts."""
-    from app.services.analytics import AnalyticsService
+    from app.services.autopilot.analytics import AnalyticsService
 
     daily_pnl = await AnalyticsService.get_daily_pnl(
         db=db,
@@ -2079,7 +2079,7 @@ async def get_analytics_by_strategy(
     current_user: User = Depends(get_current_user)
 ):
     """Get performance breakdown by strategy."""
-    from app.services.analytics import AnalyticsService
+    from app.services.autopilot.analytics import AnalyticsService
 
     by_strategy = await AnalyticsService.get_by_strategy(
         db=db,
@@ -2100,7 +2100,7 @@ async def get_analytics_by_weekday(
     current_user: User = Depends(get_current_user)
 ):
     """Get performance breakdown by weekday."""
-    from app.services.analytics import AnalyticsService
+    from app.services.autopilot.analytics import AnalyticsService
 
     by_weekday = await AnalyticsService.get_by_weekday(
         db=db,
@@ -2121,7 +2121,7 @@ async def get_drawdown_analysis(
     current_user: User = Depends(get_current_user)
 ):
     """Get drawdown analysis."""
-    from app.services.analytics import AnalyticsService
+    from app.services.autopilot.analytics import AnalyticsService
 
     drawdown = await AnalyticsService.get_drawdown(
         db=db,
@@ -2148,7 +2148,7 @@ async def list_reports(
     current_user: User = Depends(get_current_user)
 ):
     """List generated reports."""
-    from app.services.reports import ReportService
+    from app.services.autopilot.reports import ReportService
     from app.schemas.autopilot import ReportListItem
 
     result = await ReportService.list_reports(
@@ -2181,7 +2181,7 @@ async def generate_report(
     current_user: User = Depends(get_current_user)
 ):
     """Generate a new report."""
-    from app.services.reports import ReportService
+    from app.services.autopilot.reports import ReportService
     from app.schemas.autopilot import ReportGenerateRequest, ReportResponse
 
     report_request = ReportGenerateRequest(**request)
@@ -2206,7 +2206,7 @@ async def get_report(
     current_user: User = Depends(get_current_user)
 ):
     """Get report details."""
-    from app.services.reports import ReportService
+    from app.services.autopilot.reports import ReportService
     from app.schemas.autopilot import ReportResponse
 
     report = await ReportService.get_report(db, report_id, current_user.id)
@@ -2227,7 +2227,7 @@ async def download_report(
     current_user: User = Depends(get_current_user)
 ):
     """Download a generated report file."""
-    from app.services.reports import ReportService
+    from app.services.autopilot.reports import ReportService
     from fastapi.responses import FileResponse
 
     report = await ReportService.get_report(db, report_id, current_user.id)
@@ -2252,7 +2252,7 @@ async def delete_report(
     current_user: User = Depends(get_current_user)
 ):
     """Delete a report."""
-    from app.services.reports import ReportService
+    from app.services.autopilot.reports import ReportService
 
     success = await ReportService.delete_report(db, report_id, current_user.id)
 
@@ -2267,7 +2267,7 @@ async def get_tax_summary(
     current_user: User = Depends(get_current_user)
 ):
     """Get tax summary for a financial year (e.g., '2024-25')."""
-    from app.services.reports import ReportService
+    from app.services.autopilot.reports import ReportService
 
     # Validate format
     if not financial_year or len(financial_year) != 7 or financial_year[4] != '-':
@@ -2298,7 +2298,7 @@ async def list_backtests(
     current_user: User = Depends(get_current_user)
 ):
     """List backtests."""
-    from app.services.backtest import BacktestService
+    from app.services.autopilot.backtest import BacktestService
     from app.schemas.autopilot import BacktestListItem
 
     result = await BacktestService.list_backtests(
@@ -2331,7 +2331,7 @@ async def create_backtest(
     current_user: User = Depends(get_current_user)
 ):
     """Create and start a new backtest."""
-    from app.services.backtest import BacktestService
+    from app.services.autopilot.backtest import BacktestService
     from app.schemas.autopilot import BacktestCreateRequest, BacktestResponse
 
     backtest_request = BacktestCreateRequest(**request)
@@ -2356,7 +2356,7 @@ async def get_backtest(
     current_user: User = Depends(get_current_user)
 ):
     """Get backtest details and results."""
-    from app.services.backtest import BacktestService
+    from app.services.autopilot.backtest import BacktestService
     from app.schemas.autopilot import BacktestResponse
 
     backtest = await BacktestService.get_backtest(db, backtest_id, current_user.id)
@@ -2377,7 +2377,7 @@ async def cancel_backtest(
     current_user: User = Depends(get_current_user)
 ):
     """Cancel a running backtest."""
-    from app.services.backtest import BacktestService
+    from app.services.autopilot.backtest import BacktestService
 
     success = await BacktestService.cancel_backtest(db, backtest_id, current_user.id)
 
@@ -2398,7 +2398,7 @@ async def delete_backtest(
     current_user: User = Depends(get_current_user)
 ):
     """Delete a backtest."""
-    from app.services.backtest import BacktestService
+    from app.services.autopilot.backtest import BacktestService
 
     success = await BacktestService.delete_backtest(db, backtest_id, current_user.id)
 
@@ -2615,7 +2615,7 @@ async def preview_strategy_conversion(
     - Strangle → Iron Fly
     - Strangle → Ratio Spread
     """
-    from app.services.strategy_converter import StrategyConverterService, StrategyType
+    from app.services.autopilot.strategy_converter import StrategyConverterService, StrategyType
     from app.services.broker_integration import get_kite_client
 
     target_type = request.get("target_type")
@@ -2656,7 +2656,7 @@ async def execute_strategy_conversion(
     2. Open new legs as required
     3. Update strategy configuration
     """
-    from app.services.strategy_converter import StrategyConverterService, StrategyType
+    from app.services.autopilot.strategy_converter import StrategyConverterService, StrategyType
     from app.services.broker_integration import get_kite_client
 
     target_type = request.get("target_type")
@@ -2714,7 +2714,7 @@ async def get_current_premium(
     Returns:
         PremiumSnapshotResponse with current premiums for all legs
     """
-    from app.services.premium_tracker import PremiumTracker
+    from app.services.autopilot.premium_tracker import PremiumTracker
 
     # Verify strategy belongs to user
     result = await db.execute(
@@ -2778,7 +2778,7 @@ async def get_premium_history(
     Returns:
         List of PremiumSnapshot ordered by timestamp
     """
-    from app.services.premium_tracker import PremiumTracker
+    from app.services.autopilot.premium_tracker import PremiumTracker
     from app.schemas.autopilot import PremiumHistoryResponse, PremiumSnapshotResponse, LegPremiumData
 
     # Verify strategy belongs to user
@@ -2832,7 +2832,7 @@ async def get_decay_curve(
     Returns:
         DecayCurveResponse with decay analysis
     """
-    from app.services.premium_tracker import PremiumTracker
+    from app.services.autopilot.premium_tracker import PremiumTracker
     from app.schemas.autopilot import DecayCurveResponse
 
     # Verify strategy belongs to user
@@ -2893,7 +2893,7 @@ async def get_straddle_premium(
     Returns:
         StraddlePremiumResponse with CE, PE, and total premium
     """
-    from app.services.premium_tracker import PremiumTracker
+    from app.services.autopilot.premium_tracker import PremiumTracker
     from app.schemas.autopilot import StraddlePremiumResponse
 
     tracker = PremiumTracker(db)

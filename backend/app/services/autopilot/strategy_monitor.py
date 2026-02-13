@@ -41,16 +41,16 @@ from app.models.autopilot import (
     AutoPilotConditionEval, ExecutionMode
 )
 from app.services.legacy.market_data import MarketDataService, get_market_data_service
-from app.services.condition_engine import ConditionEngine, get_condition_engine
-from app.services.order_executor import OrderExecutor, get_order_executor
-from app.services.kill_switch import KillSwitchService
-from app.services.adjustment_engine import AdjustmentEngine
-from app.services.confirmation_service import ConfirmationService
-from app.services.trailing_stop import TrailingStopService
+from app.services.autopilot.condition_engine import ConditionEngine, get_condition_engine
+from app.services.autopilot.order_executor import OrderExecutor, get_order_executor
+from app.services.autopilot.kill_switch import KillSwitchService
+from app.services.autopilot.adjustment_engine import AdjustmentEngine
+from app.services.autopilot.confirmation_service import ConfirmationService
+from app.services.autopilot.trailing_stop import TrailingStopService
 from app.services.options.greeks_calculator import GreeksCalculatorService
-from app.services.position_leg_service import PositionLegService
+from app.services.autopilot.position_leg_service import PositionLegService
 from app.services.options.iv_metrics_service import get_iv_metrics_service
-from app.services.delta_band_service import get_delta_band_service
+from app.services.autopilot.delta_band_service import get_delta_band_service
 from app.services.ai.config_service import AIConfigService
 from app.services.brokers.base import BrokerAdapter
 from app.websocket.manager import get_ws_manager

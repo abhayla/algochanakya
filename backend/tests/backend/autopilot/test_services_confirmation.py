@@ -18,7 +18,7 @@ from unittest.mock import AsyncMock, MagicMock
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from app.services.confirmation_service import ConfirmationService, get_confirmation_service
+from app.services.autopilot.confirmation_service import ConfirmationService, get_confirmation_service
 from app.models.autopilot import (
     AutoPilotStrategy,
     AutoPilotPendingConfirmation,

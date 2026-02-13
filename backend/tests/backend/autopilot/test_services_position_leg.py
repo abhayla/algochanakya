@@ -10,7 +10,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, date, timedelta
 from decimal import Decimal
 
-from app.services.position_leg_service import PositionLegService
+from app.services.autopilot.position_leg_service import PositionLegService
 from app.models.autopilot import PositionLegStatus
 
 

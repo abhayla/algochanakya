@@ -73,7 +73,7 @@ async def lifespan(app: FastAPI):
     # To start monitor globally with a service account:
     #
     # from kiteconnect import KiteConnect
-    # from app.services.strategy_monitor import get_strategy_monitor
+    # from app.services.autopilot.strategy_monitor import get_strategy_monitor
     # kite = KiteConnect(api_key=settings.KITE_API_KEY)
     # kite.set_access_token(service_account_token)
     # monitor = await get_strategy_monitor(kite)
@@ -90,7 +90,7 @@ async def lifespan(app: FastAPI):
     yield
 
     # Shutdown
-    from app.services.strategy_monitor import stop_strategy_monitor
+    from app.services.autopilot.strategy_monitor import stop_strategy_monitor
     await stop_strategy_monitor()
 
     # Stop health monitor

@@ -875,7 +875,7 @@ def mock_ws_manager():
 @pytest.fixture
 def mock_condition_engine(mock_market_data):
     """Mock ConditionEngine."""
-    from app.services.condition_engine import ConditionEngine, EvaluationResult, ConditionResult
+    from app.services.autopilot.condition_engine import ConditionEngine, EvaluationResult, ConditionResult
 
     mock = AsyncMock(spec=ConditionEngine)
 
@@ -908,7 +908,7 @@ def mock_condition_engine(mock_market_data):
 @pytest.fixture
 def mock_order_executor(mock_kite, mock_market_data):
     """Mock OrderExecutor."""
-    from app.services.order_executor import OrderExecutor, OrderResult
+    from app.services.autopilot.order_executor import OrderExecutor, OrderResult
 
     mock = AsyncMock(spec=OrderExecutor)
 
@@ -1696,7 +1696,7 @@ def test_position_sizing_request() -> Dict[str, Any]:
 @pytest.fixture
 def mock_kill_switch_service():
     """Mock KillSwitchService."""
-    from app.services.kill_switch import KillSwitchService
+    from app.services.autopilot.kill_switch import KillSwitchService
     from app.schemas.autopilot import KillSwitchStatus, KillSwitchTriggerResponse
 
     mock = AsyncMock(spec=KillSwitchService)
@@ -1739,7 +1739,7 @@ def mock_kill_switch_service():
 @pytest.fixture
 def mock_adjustment_engine():
     """Mock AdjustmentEngine."""
-    from app.services.adjustment_engine import AdjustmentEngine
+    from app.services.autopilot.adjustment_engine import AdjustmentEngine
 
     mock = AsyncMock(spec=AdjustmentEngine)
 
@@ -1763,7 +1763,7 @@ def mock_adjustment_engine():
 @pytest.fixture
 def mock_confirmation_service():
     """Mock ConfirmationService."""
-    from app.services.confirmation_service import ConfirmationService
+    from app.services.autopilot.confirmation_service import ConfirmationService
     from app.schemas.autopilot import ConfirmationActionResponse
 
     mock = AsyncMock(spec=ConfirmationService)
@@ -1806,7 +1806,7 @@ def mock_confirmation_service():
 @pytest.fixture
 def mock_trailing_stop_service():
     """Mock TrailingStopService."""
-    from app.services.trailing_stop import TrailingStopService
+    from app.services.autopilot.trailing_stop import TrailingStopService
     from app.schemas.autopilot import TrailingStopStatus
 
     mock = AsyncMock(spec=TrailingStopService)
@@ -1840,7 +1840,7 @@ def mock_trailing_stop_service():
 @pytest.fixture
 def mock_position_sizing_service():
     """Mock PositionSizingService."""
-    from app.services.position_sizing import PositionSizingService
+    from app.services.autopilot.position_sizing import PositionSizingService
     from app.schemas.autopilot import PositionSizingResponse
 
     mock = AsyncMock(spec=PositionSizingService)

@@ -20,8 +20,8 @@ from app.models.autopilot import (
     PositionLegStatus
 )
 from app.services.legacy.market_data import MarketDataService
-from app.services.position_leg_service import PositionLegService
-from app.services.strike_finder_service import StrikeFinderService
+from app.services.autopilot.position_leg_service import PositionLegService
+from app.services.autopilot.strike_finder_service import StrikeFinderService
 from app.services.options.greeks_calculator import GreeksCalculatorService
 
 logger = logging.getLogger(__name__)

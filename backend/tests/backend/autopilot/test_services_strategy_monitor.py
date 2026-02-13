@@ -19,12 +19,12 @@ from unittest.mock import MagicMock, AsyncMock, patch
 from uuid import uuid4
 from freezegun import freeze_time
 
-from app.services.strategy_monitor import (
+from app.services.autopilot.strategy_monitor import (
     StrategyMonitor, get_strategy_monitor, stop_strategy_monitor
 )
 from app.services.legacy.market_data import MarketDataService, SpotData
-from app.services.condition_engine import ConditionEngine, EvaluationResult, ConditionResult
-from app.services.order_executor import OrderExecutor, OrderResult
+from app.services.autopilot.condition_engine import ConditionEngine, EvaluationResult, ConditionResult
+from app.services.autopilot.order_executor import OrderExecutor, OrderResult
 from app.models.autopilot import AutoPilotStrategy, AutoPilotUserSettings
 
 

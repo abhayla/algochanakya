@@ -16,7 +16,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.services.trailing_stop import TrailingStopService, get_trailing_stop_service
+from app.services.autopilot.trailing_stop import TrailingStopService, get_trailing_stop_service
 from app.models.autopilot import (
     AutoPilotStrategy,
     AutoPilotUserSettings,

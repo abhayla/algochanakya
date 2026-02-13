@@ -15,7 +15,7 @@ import logging
 from app.database import get_db
 from app.models import User, BrokerConnection
 from app.services.brokers.market_data import get_user_market_data_adapter
-from app.services.strike_finder_service import StrikeFinderService
+from app.services.autopilot.strike_finder_service import StrikeFinderService
 from app.utils.dependencies import get_current_user, get_current_broker_connection
 from app.schemas.autopilot import (
     StrikeFindByDeltaRequest,
