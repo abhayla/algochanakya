@@ -335,6 +335,32 @@ npm run generate:test              # Generate new test from template
 
 ## Important Patterns
 
+### Folder Structure Rules (ENFORCED by hooks)
+
+**Backend Services Organization** (`backend/app/services/`):
+- **Allowed at root:** ONLY `__init__.py`, `instruments.py`, `ofo_calculator.py`, `option_chain_service.py`
+- **All other services MUST be in subdirectories:**
+  - `autopilot/` - AutoPilot services (26 files): kill_switch, condition_engine, order_executor, strategy_monitor, adjustment_engine, etc.
+  - `options/` - Options calculation services (8 files): greeks_calculator, pnl_calculator, payoff_calculator, iv_metrics_service, theta_curve_service, gamma_risk_service, expected_move_service, oi_analysis_service
+  - `legacy/` - Legacy broker services (8 files, to be deprecated): smartapi_auth, smartapi_ticker, smartapi_market_data, smartapi_historical, smartapi_instruments, kite_orders, kite_ticker, market_data
+  - `ai/` - AI services: market_regime, risk_state_engine, strategy_recommender, deployment_executor, etc.
+  - `brokers/` - Broker adapters: base, factory, kite_adapter, market_data/
+
+**Frontend Organization**:
+- **CSS files:** MUST be in `frontend/src/assets/styles/` (NOT `assets/css/`)
+- **Image files:** MUST be in `frontend/src/assets/logos/` (NOT `assets/` root)
+- **API code:** MUST be in `frontend/src/services/` (NOT `composables/` unless it's a Vue composable)
+
+**Test Organization**:
+- **E2E tests:** MUST be in `tests/e2e/specs/{screen}/` subdirectories (NOT `tests/e2e/specs/` root)
+- **Manual scripts:** MUST be in `tests/e2e/scripts/` (NOT `tests/e2e/` root)
+- **Backend tests:** MUST be in `tests/backend/{module}/` (NOT `backend/` root)
+
+**Enforcement:**
+- Git pre-commit hook (`.git/hooks/pre-commit`) blocks commits violating rules
+- See `.claude/recommended-hooks.json` for Claude Code PostToolUse hook configuration
+- CI/CD pipelines validate folder structure before deployment
+
 ### Broker Abstraction (CRITICAL)
 
 **NEVER directly use broker-specific APIs (KiteConnect, SmartAPI client).** Always use broker adapters and factories:
@@ -420,11 +446,15 @@ const { LOT_SIZES, STRIKE_STEPS, loadTradingConstants } = useTradingConstants()
 
 ### Environment Variables
 
-**Backend (`backend/.env`):** `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET`, `KITE_API_KEY`, `KITE_API_SECRET`, `ANTHROPIC_API_KEY` (for AI), `ANGEL_API_KEY` (for SmartAPI market data)
+**Setup:** Copy `.env.example` files to `.env` and update with actual values:
+- `backend/.env.example` → `backend/.env`
+- `frontend/.env.example` → `frontend/.env`
+
+**Backend (`backend/.env`):** `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET`, `JWT_ALGORITHM`, `JWT_EXPIRY_HOURS`, `KITE_API_KEY`, `KITE_API_SECRET`, `KITE_REDIRECT_URL`, `ANTHROPIC_API_KEY` (for AI), `ANGEL_API_KEY` (for SmartAPI market data), `FRONTEND_URL`
 
 **Frontend (`frontend/.env`):** `VITE_API_BASE_URL=http://localhost:8001` (dev port), `VITE_WS_URL=ws://localhost:8001` (optional, defaults to API URL)
 
-**Frontend Local Override (`frontend/.env.local`):** Overrides `.env` for local development. **CRITICAL:** Must point to `http://localhost:8001` for dev backend. Common mistake: pointing to wrong port (8005, 8000). This file is git-ignored.
+**Frontend Local Override (`frontend/.env.local`):** Overrides `.env` for local development. **CRITICAL:** Must point to `http://localhost:8001` for dev backend. Common mistake: pointing to wrong port (8005, 8000). This file is git-ignored. **Note:** `.env.example` shows port 8000 (production default) - manually change to 8001 for development.
 
 **Production Build:** Create `frontend/.env.production` with `VITE_API_BASE_URL=https://algochanakya.com` before `npm run build` - without this, API calls default to localhost!
 
@@ -519,7 +549,7 @@ Dashboard `/dashboard`, Watchlist `/watchlist`, Positions `/positions`, Option C
 
 ~186 test files (123 E2E spec files + 63 backend pytest files). See [docs/testing/README.md](docs/testing/README.md) for complete documentation.
 
-**Config:** 180s timeout, 1 worker (sequential), auth state reused via `./tests/config/.auth-state.json`. Auth token stored in `./tests/config/.auth-token`. Projects: `setup` (SmartAPI auto-login), `chromium` (main), `isolated` (fresh context). **SmartAPI auto-TOTP** - no manual TOTP entry required.
+**Config:** 30s default timeout (playwright.config.js), 2 parallel workers for stability, auth state reused via `./tests/config/.auth-state.json`. Auth token stored in `./tests/config/.auth-token`. Projects: `setup` (SmartAPI auto-login), `chromium` (main), `isolated` (fresh context). **SmartAPI auto-TOTP** - no manual TOTP entry required. **Note:** Some legacy tests use longer timeouts (180s-600s) specified in npm scripts.
 
 ### E2E Test Rules (CRITICAL)
 
@@ -528,6 +558,7 @@ Dashboard `/dashboard`, Watchlist `/watchlist`, Positions `/positions`, Option C
 - **Use `authenticatedPage` fixture** for authenticated tests
 - **Extend `BasePage.js`** for Page Objects with `this.url` property
 - **data-testid convention:** `[screen]-[component]-[element]` (e.g., `positions-exit-modal`)
+- **Headless mode:** `playwright.config.js` sets `headless: false` by default for better debugging. Use `--headed` flag is not needed in npm scripts.
 
 ### Test Categories
 
@@ -540,6 +571,9 @@ Dashboard `/dashboard`, Watchlist `/watchlist`, Positions `/positions`, Option C
 ---
 
 ## Common Pitfalls
+
+### Git & File System
+- **File path encoding issues** - If `git status` shows files with escaped characters (e.g., `\357\200\272`), this indicates UTF-8 encoding issues in Windows paths with colons. Use `git status --porcelain` for cleaner output or investigate file system encoding.
 
 ### Backend
 - **Direct broker API usage** - NEVER import `KiteConnect` or `SmartAPI` directly. Use broker adapters from `app.services.brokers/` and market data adapters from `app.services.brokers.market_data/`
