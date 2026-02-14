@@ -70,9 +70,13 @@ My understanding:
 ```python
 if is_complex_issue(issue):
     plan = Task(
-        subagent_type="planner-researcher",
+        subagent_type="general-purpose",
         model="opus",
-        prompt=f"""
+        prompt=f"""You are a Planner-Researcher Agent for AlgoChanakya.
+        Follow the instructions in .claude/agents/planner-researcher.md.
+
+        Read .claude/agents/planner-researcher.md first, then:
+
         Design implementation plan for GitHub issue #{issue_number}:
 
         Title: {title}

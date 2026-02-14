@@ -20,49 +20,9 @@ from hook_utils import (
     parse_hook_input,
     log_event,
     record_skill_invocation,
+    detect_skill_outcome,
     exit_with_code
 )
-
-
-def detect_skill_outcome(output: str) -> bool:
-    """
-    Detect if skill invocation succeeded based on output patterns.
-
-    Args:
-        output: Tool output string
-
-    Returns:
-        True if skill succeeded, False if failed
-    """
-    # Success indicators
-    success_patterns = [
-        r'\bRESOLVED\b',
-        r'\bPASSED\b',
-        r'\bSUCCESS\b',
-        r'✅',
-        r'All tests passed',
-        r'Verification complete'
-    ]
-
-    # Failure indicators
-    failure_patterns = [
-        r'\bFAILED\b',
-        r'\bERROR\b',
-        r'❌',
-        r'Tests failed',
-        r'Verification failed'
-    ]
-
-    has_success = any(re.search(pattern, output, re.IGNORECASE) for pattern in success_patterns)
-    has_failure = any(re.search(pattern, output, re.IGNORECASE) for pattern in failure_patterns)
-
-    # If both or neither, default to success (optimistic)
-    if has_success and not has_failure:
-        return True
-    elif has_failure and not has_success:
-        return False
-    else:
-        return True  # Assume success if ambiguous
 
 
 def main():
@@ -81,8 +41,9 @@ def main():
         skill_name = tool_input.get('skill', 'unknown')
         skill_args = tool_input.get('args', '')
 
-        # Detect outcome
-        succeeded = detect_skill_outcome(tool_output) if tool_output else None
+        # Detect outcome (using unified function from hook_utils)
+        outcome_data = detect_skill_outcome(tool_output) if tool_output else {}
+        succeeded = outcome_data.get('succeeded')
 
         # Record skill invocation
         record_skill_invocation(skill_name, succeeded)

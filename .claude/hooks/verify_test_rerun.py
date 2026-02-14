@@ -16,10 +16,12 @@ Exit codes:
 """
 
 import sys
+import os
 import re
 import subprocess
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta
+import json
 
 # Add hooks directory to path
 sys.path.insert(0, str(Path(__file__).parent))
@@ -33,6 +35,10 @@ from hook_utils import (
     exit_with_code,
     PROJECT_ROOT
 )
+
+# Cooldown cache file
+VERIFICATION_CACHE_FILE = PROJECT_ROOT / ".claude" / "logs" / "test-verification-cache.json"
+COOLDOWN_MINUTES = 5
 
 
 def is_targeted_test(command: str) -> bool:
@@ -101,8 +107,59 @@ def rerun_test(command: str, layer: str, timeout: int = 300) -> tuple:
         return (False, None, f"Error running test: {str(e)}")
 
 
+def check_cooldown(test_identifier: str) -> bool:
+    """
+    Check if test was verified recently (within cooldown period).
+
+    Args:
+        test_identifier: Unique identifier for the test
+
+    Returns:
+        True if test was verified recently (skip re-run)
+    """
+    if not VERIFICATION_CACHE_FILE.exists():
+        return False
+
+    try:
+        with open(VERIFICATION_CACHE_FILE, 'r') as f:
+            cache = json.load(f)
+
+        if test_identifier in cache:
+            last_verified = datetime.fromisoformat(cache[test_identifier])
+            if datetime.now() - last_verified < timedelta(minutes=COOLDOWN_MINUTES):
+                return True
+
+    except (json.JSONDecodeError, KeyError, ValueError):
+        pass
+
+    return False
+
+
+def update_cooldown(test_identifier: str):
+    """Update cooldown cache with latest verification timestamp."""
+    try:
+        VERIFICATION_CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
+
+        cache = {}
+        if VERIFICATION_CACHE_FILE.exists():
+            with open(VERIFICATION_CACHE_FILE, 'r') as f:
+                cache = json.load(f)
+
+        cache[test_identifier] = datetime.now().isoformat()
+
+        with open(VERIFICATION_CACHE_FILE, 'w') as f:
+            json.dump(cache, f, indent=2)
+
+    except Exception:
+        pass  # Non-critical
+
+
 def main():
     """Main hook entry point."""
+    # Check if test rerun is disabled via environment variable
+    if os.environ.get('SKIP_TEST_RERUN') == '1':
+        exit_with_code(0)
+
     hook_data = parse_hook_input()
     if not hook_data:
         exit_with_code(0)
@@ -123,6 +180,12 @@ def main():
 
     # Check if it's a targeted test (skip full suites)
     if not is_targeted_test(command):
+        exit_with_code(0)
+
+    # Check cooldown (don't re-run if verified recently)
+    test_identifier = command
+    if check_cooldown(test_identifier):
+        print(f"\n⏭️  Skipping re-verification (verified within last {COOLDOWN_MINUTES} min)\n", file=sys.stderr)
         exit_with_code(0)
 
     # Detect test layer and claimed result
@@ -181,7 +244,8 @@ def main():
         exit_with_code(1, message)
 
     else:
-        # Results consistent
+        # Results consistent - update cooldown
+        update_cooldown(test_identifier)
         print(f"\n✅ Test verification passed: {claimed_result.upper()} result confirmed\n", file=sys.stderr)
         exit_with_code(0)
 

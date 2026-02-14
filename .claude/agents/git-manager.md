@@ -287,9 +287,13 @@ git commit --no-gpg-sign     # NEVER (skips GPG signing if configured)
 
 ```python
 Task(
-    subagent_type="git-manager",
+    subagent_type="general-purpose",
     model="haiku",
-    prompt=f"""
+    prompt=f"""You are a Git-Manager Agent for AlgoChanakya.
+    Follow the instructions in .claude/agents/git-manager.md.
+
+    Read .claude/agents/git-manager.md first, then:
+
     Create a git commit for the following changes:
 
     Changed files:

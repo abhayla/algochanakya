@@ -660,6 +660,42 @@ def seed_strategies():
         conn.close()
 
 
+def get_synthesized_rules(auto_fix_eligible: bool = False, error_type: str = None) -> List[Dict]:
+    """
+    Query synthesized rules, optionally filtered by auto_fix_eligible or error_type.
+
+    Args:
+        auto_fix_eligible: If True, only return rules with auto_fix_eligible=true
+        error_type: If provided, filter by error_type
+
+    Returns:
+        List of synthesized rule dicts with all fields
+    """
+    conn = get_connection()
+    try:
+        query = "SELECT * FROM synthesized_rules WHERE superseded_by IS NULL"
+        params = []
+
+        if error_type:
+            query += " AND error_type = ?"
+            params.append(error_type)
+
+        query += " ORDER BY confidence DESC"
+
+        cursor = conn.execute(query, params)
+        rules = []
+
+        for row in cursor.fetchall():
+            rule = dict(row)
+            # Add 'description' alias for 'rule_name' for backward compatibility
+            rule['description'] = rule['rule_name']
+            rules.append(rule)
+
+        return rules
+    finally:
+        conn.close()
+
+
 def get_stats() -> Dict:
     """Get overall knowledge base statistics."""
     conn = get_connection()

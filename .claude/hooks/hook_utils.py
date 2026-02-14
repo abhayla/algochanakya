@@ -41,11 +41,20 @@ def parse_hook_input() -> Optional[Dict[str, Any]]:
     try:
         input_data = sys.stdin.read().strip()
         if not input_data:
+            # Log empty input for debugging
+            print("[DEBUG] Hook received empty stdin", file=sys.stderr)
             return None
-        return json.loads(input_data)
-    except json.JSONDecodeError:
+
+        parsed = json.loads(input_data)
+        return parsed
+    except json.JSONDecodeError as e:
+        # Log JSON parse failures for debugging
+        print(f"[DEBUG] Hook failed to parse JSON: {e}", file=sys.stderr)
+        print(f"[DEBUG] Raw input (first 200 chars): {input_data[:200]}", file=sys.stderr)
         return None
-    except Exception:
+    except Exception as e:
+        # Log unexpected errors for debugging
+        print(f"[DEBUG] Hook parse_hook_input error: {e}", file=sys.stderr)
         return None
 
 
@@ -88,7 +97,7 @@ def read_workflow_state() -> Optional[Dict[str, Any]]:
 
 def write_workflow_state(state: Dict[str, Any]) -> bool:
     """
-    Write workflow state to JSON file with atomic write (via temp file + rename).
+    Write workflow state to JSON file with atomic write (via temp file + os.replace).
 
     Returns True on success, False on failure.
     """
@@ -101,10 +110,8 @@ def write_workflow_state(state: Dict[str, Any]) -> bool:
         with open(temp_file, 'w', encoding='utf-8') as f:
             json.dump(state, f, indent=2)
 
-        # Atomic rename (Windows-compatible)
-        if WORKFLOW_STATE_FILE.exists():
-            WORKFLOW_STATE_FILE.unlink()
-        temp_file.rename(WORKFLOW_STATE_FILE)
+        # Atomic replace (Windows and Unix compatible)
+        os.replace(str(temp_file), str(WORKFLOW_STATE_FILE))
 
         return True
     except Exception:
@@ -160,7 +167,7 @@ def init_workflow_state(command_name: str) -> Dict[str, Any]:
             "step6_screenshots": {
                 "completed": False
             },
-            "step7_verify": {
+            "step7_postFixPipeline": {
                 "completed": False
             }
         },
@@ -197,7 +204,7 @@ def is_test_command(cmd: str) -> bool:
     test_patterns = [
         r'\bpytest\b',
         r'\bnpx\s+playwright\s+test\b',
-        r'\bplaywri,ght\s+test\b',
+        r'\bplaywright\s+test\b',
         r'\bnpm\s+(run\s+)?test\b',
         r'\bvitest\b',
         r'\bpython\s+-m\s+pytest\b'
@@ -222,6 +229,12 @@ def detect_test_layer(cmd: str) -> str:
         return 'backend'
     elif re.search(r'\bvitest\b', cmd, re.IGNORECASE):
         return 'frontend'
+    elif re.search(r'\bnpm\s+run\s+test:(run|coverage)\b', cmd):
+        # npm run test:run or npm run test:coverage - Vitest frontend tests
+        return 'frontend'
+    elif re.search(r'\bnpm\s+(run\s+)?test\b', cmd):
+        # npm test (without :run) runs Playwright E2E
+        return 'e2e'
     else:
         return 'unknown'
 
@@ -423,6 +436,94 @@ def record_skill_invocation(skill_name: str, succeeded: Optional[bool] = None) -
     # Update workflow state
     state['lastActivity'] = datetime.now().isoformat()
     write_workflow_state(state)
+
+
+# ============================================================================
+# Skill Outcome Detection
+# ============================================================================
+
+def detect_skill_outcome(output: str) -> dict:
+    """
+    Parse skill output to determine outcome (unified version used by all hooks).
+
+    Args:
+        output: Skill output string
+
+    Returns:
+        Dict with outcome, error_type, component, workaround_used, succeeded (bool)
+    """
+    outcome_data = {
+        'outcome': 'UNKNOWN',
+        'error_type': None,
+        'component': None,
+        'workaround_used': None,
+        'succeeded': None
+    }
+
+    # Outcome detection patterns
+    if re.search(r'\b(RESOLVED|SUCCESS|PASSED)\b', output, re.IGNORECASE):
+        outcome_data['outcome'] = 'RESOLVED'
+        outcome_data['succeeded'] = True
+    elif re.search(r'\b(FAILED|ERROR|UNRESOLVED)\b', output, re.IGNORECASE):
+        outcome_data['outcome'] = 'FAILED'
+        outcome_data['succeeded'] = False
+    else:
+        # Ambiguous - try to detect from context
+        if '✅' in output or 'All tests passed' in output or 'Verification complete' in output:
+            outcome_data['outcome'] = 'RESOLVED'
+            outcome_data['succeeded'] = True
+        elif '❌' in output or 'Tests failed' in output or 'Verification failed' in output:
+            outcome_data['outcome'] = 'FAILED'
+            outcome_data['succeeded'] = False
+        else:
+            # Default to success if truly ambiguous
+            outcome_data['succeeded'] = True
+
+    # Error type detection
+    error_patterns = {
+        'selector_not_found': r'(Timeout waiting for locator|selector not found|element not found)',
+        'timeout': r'(Timeout|timed out|exceeded)',
+        'assertion_error': r'(AssertionError|assert.*failed|expected.*got)',
+        'import_error': r'(ModuleNotFoundError|ImportError|cannot import)',
+        'database_error': r'(relation.*does not exist|database.*error|connection refused)',
+        'api_error': r'(401|403|404|500|API.*error)',
+        'broker_error': r'(Incorrect api_key|broker.*error|order.*rejected)',
+    }
+
+    for error_type, pattern in error_patterns.items():
+        if re.search(pattern, output, re.IGNORECASE):
+            outcome_data['error_type'] = error_type
+            break
+
+    # Component detection (from file paths or error messages)
+    component_patterns = [
+        r'(positions|autopilot|optionchain|strategy|watchlist|dashboard)',
+        r'tests/e2e/specs/(\w+)/',
+        r'backend/app/api/routes/(\w+)\.py',
+        r'frontend/src/components/(\w+)/'
+    ]
+
+    for pattern in component_patterns:
+        match = re.search(pattern, output)
+        if match:
+            outcome_data['component'] = match.group(1)
+            break
+
+    # Workaround detection
+    workaround_patterns = {
+        'update_testid': r'(Update|Change|Fix) data-testid',
+        'increase_timeout': r'(Increase|Extend|Raise) timeout',
+        'fix_import': r'(Fix|Update|Correct) import',
+        'add_wait': r'(Add|Insert) (wait|waitFor)',
+        'fix_broker_adapter': r'(Fix|Update) (broker adapter|adapter pattern)',
+    }
+
+    for workaround, pattern in workaround_patterns.items():
+        if re.search(pattern, output, re.IGNORECASE):
+            outcome_data['workaround_used'] = workaround
+            break
+
+    return outcome_data
 
 
 # ============================================================================

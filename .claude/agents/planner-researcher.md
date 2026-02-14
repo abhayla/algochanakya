@@ -489,9 +489,13 @@ Upstox adapter will follow the same pattern (zero changes to routes or business 
 
 ```python
 agent_result = Task(
-    subagent_type="planner-researcher",
+    subagent_type="general-purpose",
     model="opus",
-    prompt="""
+    prompt="""You are a Planner-Researcher Agent for AlgoChanakya.
+    Follow the instructions in .claude/agents/planner-researcher.md.
+
+    Read .claude/agents/planner-researcher.md first, then:
+
     Design implementation plan for adding Upstox broker support.
 
     Context:

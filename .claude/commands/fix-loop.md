@@ -128,7 +128,14 @@ FAIL src/components/positions/ExitPositionModal.spec.js > ExitPositionModal > sh
 
 3. **Fallback to debugger agent:**
    ```
-   Task(subagent_type="debugger", prompt="Analyze this test failure: [error details]")
+   Task(
+       subagent_type="general-purpose",
+       prompt="""You are a Debugger Agent for AlgoChanakya.
+       Follow the instructions in .claude/agents/debugger.md.
+
+       Read .claude/agents/debugger.md first, then:
+       Analyze this test failure: [error details]"""
+   )
    ```
 
 ---
@@ -146,9 +153,13 @@ elif iteration <= 3:
     # Launch debugger agent with ThinkHard
     thinking_mode = "thinkhard"
     agent_result = Task(
-        subagent_type="debugger",
+        subagent_type="general-purpose",
         model="sonnet",
-        prompt=f"""
+        prompt=f"""You are a Debugger Agent for AlgoChanakya.
+        Follow the instructions in .claude/agents/debugger.md.
+
+        Read .claude/agents/debugger.md first, then:
+
         Analyze this test failure with increased depth (ThinkHard mode):
 
         Failing test: {test_name}
@@ -169,9 +180,13 @@ else:  # iteration >= 4
     # Launch debugger agent with UltraThink (maximum depth)
     thinking_mode = "ultrathink"
     agent_result = Task(
-        subagent_type="debugger",
+        subagent_type="general-purpose",
         model="sonnet",
-        prompt=f"""
+        prompt=f"""You are a Debugger Agent for AlgoChanakya.
+        Follow the instructions in .claude/agents/debugger.md.
+
+        Read .claude/agents/debugger.md first, then:
+
         MAXIMUM DEPTH ANALYSIS (UltraThink mode):
 
         We have attempted {iteration - 1} fixes without success.
@@ -239,9 +254,13 @@ Based on selected strategy and thinking analysis, generate the fix:
 
 ```
 agent_result = Task(
-    subagent_type="code-reviewer",
+    subagent_type="general-purpose",
     model="inherit",
-    prompt=f"""
+    prompt=f"""You are a Code-Reviewer Agent for AlgoChanakya.
+    Follow the instructions in .claude/agents/code-reviewer.md.
+
+    Read .claude/agents/code-reviewer.md first, then:
+
     Review this fix for AlgoChanakya codebase compliance:
 
     File: {file_path}
@@ -580,7 +599,7 @@ Skill("fix-loop")
 
 ## Implementation Notes
 
-**This is a skill file (`.claude/skills/fix-loop/SKILL.md`) that gets invoked as:**
+**This is a command file (`.claude/commands/fix-loop.md`) that gets invoked as:**
 ```
 Skill("fix-loop")
 ```

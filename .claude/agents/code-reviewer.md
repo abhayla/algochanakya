@@ -252,9 +252,13 @@ def test_something():
 
 ```python
 Task(
-    subagent_type="code-reviewer",
+    subagent_type="general-purpose",
     model="inherit",
-    prompt=f"""
+    prompt=f"""You are a Code-Reviewer Agent for AlgoChanakya.
+    Follow the instructions in .claude/agents/code-reviewer.md.
+
+    Read .claude/agents/code-reviewer.md first, then:
+
     Review this fix for AlgoChanakya codebase compliance:
 
     File: {file_path}

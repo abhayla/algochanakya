@@ -280,9 +280,13 @@ All frontend tests passed ✅
 
 ```python
 agent_result = Task(
-    subagent_type="tester",
+    subagent_type="general-purpose",
     model="sonnet",
-    prompt="""
+    prompt="""You are a Tester Agent for AlgoChanakya.
+    Follow the instructions in .claude/agents/tester.md.
+
+    Read .claude/agents/tester.md first, then:
+
     Analyze backend test suite failures:
 
     Failures: 5
@@ -302,9 +306,13 @@ agent_result = Task(
 
 ```python
 agent_result = Task(
-    subagent_type="tester",
+    subagent_type="general-purpose",
     model="sonnet",
-    prompt="""
+    prompt="""You are a Tester Agent for AlgoChanakya.
+    Follow the instructions in .claude/agents/tester.md.
+
+    Read .claude/agents/tester.md first, then:
+
     Run full test suite and provide comprehensive report:
 
     Layers: E2E, Backend, Frontend

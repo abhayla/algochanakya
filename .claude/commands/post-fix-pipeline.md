@@ -162,9 +162,13 @@ if result != 'pass':
 
     # Launch tester agent for analysis
     agent_result = Task(
-        subagent_type="tester",
+        subagent_type="general-purpose",
         model="sonnet",
-        prompt=f"""
+        prompt=f"""You are a Tester Agent for AlgoChanakya.
+        Follow the instructions in .claude/agents/tester.md.
+
+        Read .claude/agents/tester.md first, then:
+
         Analyze backend test suite failures:
 
         Failures: {failed}
@@ -249,9 +253,13 @@ Skill("docs-maintainer")
 
 ```python
 agent_result = Task(
-    subagent_type="git-manager",
+    subagent_type="general-purpose",
     model="haiku",
-    prompt=f"""
+    prompt=f"""You are a Git-Manager Agent for AlgoChanakya.
+    Follow the instructions in .claude/agents/git-manager.md.
+
+    Read .claude/agents/git-manager.md first, then:
+
     Create a git commit for the following changes:
 
     Changed files:

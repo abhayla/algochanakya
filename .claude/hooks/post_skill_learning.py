@@ -25,85 +25,10 @@ from hook_utils import (
     parse_hook_input,
     update_failure_index,
     log_event,
+    detect_skill_outcome,
     exit_with_code,
     LEARNING_LOG_DIR
 )
-
-
-def detect_skill_outcome(output: str) -> dict:
-    """
-    Parse skill output to determine outcome.
-
-    Args:
-        output: Skill output string
-
-    Returns:
-        Dict with outcome, error_type, component, workaround
-    """
-    outcome_data = {
-        'outcome': 'UNKNOWN',
-        'error_type': None,
-        'component': None,
-        'workaround_used': None
-    }
-
-    # Outcome detection patterns
-    if re.search(r'\b(RESOLVED|SUCCESS|PASSED)\b', output, re.IGNORECASE):
-        outcome_data['outcome'] = 'RESOLVED'
-    elif re.search(r'\b(FAILED|ERROR|UNRESOLVED)\b', output, re.IGNORECASE):
-        outcome_data['outcome'] = 'FAILED'
-    else:
-        # Ambiguous - try to detect from context
-        if '✅' in output or 'All tests passed' in output:
-            outcome_data['outcome'] = 'RESOLVED'
-        elif '❌' in output or 'Tests failed' in output:
-            outcome_data['outcome'] = 'FAILED'
-
-    # Error type detection
-    error_patterns = {
-        'selector_not_found': r'(Timeout waiting for locator|selector not found|element not found)',
-        'timeout': r'(Timeout|timed out|exceeded)',
-        'assertion_error': r'(AssertionError|assert.*failed|expected.*got)',
-        'import_error': r'(ModuleNotFoundError|ImportError|cannot import)',
-        'database_error': r'(relation.*does not exist|database.*error|connection refused)',
-        'api_error': r'(401|403|404|500|API.*error)',
-        'broker_error': r'(Incorrect api_key|broker.*error|order.*rejected)',
-    }
-
-    for error_type, pattern in error_patterns.items():
-        if re.search(pattern, output, re.IGNORECASE):
-            outcome_data['error_type'] = error_type
-            break
-
-    # Component detection (from file paths or error messages)
-    component_patterns = [
-        r'(positions|autopilot|optionchain|strategy|watchlist|dashboard)',
-        r'tests/e2e/specs/(\w+)/',
-        r'backend/app/api/routes/(\w+)\.py',
-        r'frontend/src/components/(\w+)/'
-    ]
-
-    for pattern in component_patterns:
-        match = re.search(pattern, output)
-        if match:
-            outcome_data['component'] = match.group(1)
-            break
-
-    # Workaround detection
-    workaround_patterns = {
-        'update_testid': r'(Update|Change|Fix) data-testid',
-        'increase_timeout': r'(Increase|Extend|Raise) timeout',
-        'fix_import': r'(Fix|Update|Correct) import',
-        'add_wait': r'(Add|Insert) (wait|waitFor)',
-        'fix_broker_adapter': r'(Fix|Update) (broker adapter|adapter pattern)',
-    }
-
-    for workaround, pattern in workaround_patterns.items():
-        if re.search(pattern, output, re.IGNORECASE):
-            outcome_data['workaround_used'] = workaround
-            break
-
-    return outcome_data
 
 
 def route_to_knowledge_db(skill_name: str, outcome_data: dict, output: str):
@@ -130,10 +55,8 @@ def route_to_knowledge_db(skill_name: str, outcome_data: dict, output: str):
             # Record error pattern
             error_id = record_error(
                 error_type=outcome_data['error_type'],
-                component=outcome_data['component'] or 'unknown',
-                file_path='',  # Not available in hook
-                error_message=output[:500],  # First 500 chars
-                stack_trace=None
+                message=output[:500],  # First 500 chars
+                file_path=outcome_data.get('component', '')  # Component as file_path placeholder
             )
 
             # Get applicable strategies
@@ -149,10 +72,8 @@ def route_to_knowledge_db(skill_name: str, outcome_data: dict, output: str):
                         fix_description=f"Skill {skill_name} attempted but failed"
                     )
 
-                    update_strategy_score(
-                        strategy_id=strategy['id'],
-                        outcome='failure'
-                    )
+                    # Update strategy score (recalculates from database)
+                    update_strategy_score(strategy_id=strategy['id'])
 
     except Exception as e:
         # Non-critical, don't fail hook
