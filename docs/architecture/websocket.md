@@ -1,213 +1,284 @@
-# WebSocket Live Prices
+# WebSocket Live Prices Architecture
 
-AlgoChanakya streams live market prices via WebSocket, connecting to Zerodha's Kite WebSocket for real-time tick data.
+**Status:** ⚠️ **REDESIGN PROPOSED** - See [TICKER-DESIGN-SPEC.md](../decisions/TICKER-DESIGN-SPEC.md)
+
+AlgoChanakya streams live market data via WebSocket, using a **broker-agnostic architecture** that routes ticks from any supported broker (SmartAPI, Kite, Upstox, Dhan, Fyers, Paytm) to connected users.
+
+**Related**: [ADR-003 v2](../decisions/003-multi-broker-ticker-architecture.md) | [TICKER-DESIGN-SPEC.md](../decisions/TICKER-DESIGN-SPEC.md) | [API Reference](../api/multi-broker-ticker-api.md) | [Implementation Guide](./multi-broker-ticker-implementation.md)
+
+**Note:** This document describes the current proposal. A refined design is documented in TICKER-DESIGN-SPEC.md with key improvements: 5 components (not 6), credentials integrated into TickerPool, and websocket.py reduced to ~90 lines.
+
+---
 
 ## Architecture
 
 ```
-┌────────────────┐    ┌────────────────┐    ┌────────────────┐
-│    Browser     │    │    Backend     │    │  Kite WebSocket│
-│   (Vue App)    │    │   (FastAPI)    │    │   (Zerodha)    │
-└───────┬────────┘    └───────┬────────┘    └───────┬────────┘
-        │                     │                     │
-        │ ws://localhost:8000 │                     │
-        │  /ws/ticks?token=   │                     │
-        │─────────────────────>                     │
-        │                     │                     │
-        │                     │ Validate JWT        │
-        │                     │ Get Kite token      │
-        │                     │                     │
-        │                     │ Connect (singleton) │
-        │                     │─────────────────────>
-        │                     │                     │
-        │ {"action":"subscribe"                     │
-        │  "tokens":[256265]} │                     │
-        │─────────────────────>                     │
-        │                     │                     │
-        │                     │ Subscribe to tokens │
-        │                     │─────────────────────>
-        │                     │                     │
-        │                     │    Tick data        │
-        │                     │<─────────────────────
-        │                     │                     │
-        │  {"type":"ticks",   │                     │
-        │   "data":[...]}     │                     │
-        │<─────────────────────                     │
-        │                     │                     │
+┌────────────────┐    ┌──────────────────────┐    ┌─────────────────────┐
+│    Browser      │    │     Backend           │    │   Broker WebSocket  │
+│   (Vue App)     │    │    (FastAPI)          │    │  (SmartAPI / Kite)  │
+└───────┬─────────┘    └──────────┬────────────┘    └──────────┬──────────┘
+        │                        │                             │
+        │ ws://localhost:8001    │                             │
+        │  /ws/ticks?token=jwt   │                             │
+        │───────────────────────>│                             │
+        │                        │                             │
+        │                        │ 1. Authenticate JWT         │
+        │                        │ 2. Lookup user preference   │
+        │                        │ 3. TickerRouter.register()  │
+        │                        │                             │
+        │ {"type":"connected",   │                             │
+        │  "source":"smartapi"}  │                             │
+        │<───────────────────────│                             │
+        │                        │                             │
+        │ {"action":"subscribe", │                             │
+        │  "tokens":[256265]}    │                             │
+        │───────────────────────>│                             │
+        │                        │ TickerRouter.subscribe()    │
+        │                        │ → TickerPool (ref count)    │
+        │                        │ → SmartAPIAdapter.subscribe │
+        │                        │─────────────────────────────>
+        │                        │                             │
+        │                        │         Tick data           │
+        │                        │<─────────────────────────────
+        │                        │ Adapter._normalize_tick()   │
+        │                        │ → TickerPool._on_tick()     │
+        │                        │ → TickerRouter.dispatch()   │
+        │                        │                             │
+        │  {"type":"ticks",      │                             │
+        │   "data":[...]}        │                             │
+        │<───────────────────────│                             │
 ```
+
+---
 
 ## Connection Flow
 
-1. **Frontend connects** to `ws://localhost:8000/ws/ticks?token=<jwt>`
-2. **Backend authenticates** JWT and retrieves user's Kite access token
-3. **KiteTickerService** connects to Kite WebSocket (singleton - one connection for all users)
-4. **Client subscribes** with message: `{"action": "subscribe", "tokens": [256265], "mode": "quote"}`
-5. **Service broadcasts** relevant ticks to subscribed clients
+1. **Frontend opens** WebSocket: `ws://localhost:8001/ws/ticks?token=<jwt>`
+2. **Backend authenticates** JWT, looks up user's `market_data_source` preference from `UserPreferences`
+3. **TickerRouter** registers user with their preferred broker type (default: `smartapi`)
+4. **User sends subscribe**: `{"action": "subscribe", "tokens": [256265], "mode": "quote"}`
+5. **TickerRouter** → **TickerPool** adds subscriptions (ref-counted — if token already subscribed by another user, no duplicate broker subscription)
+6. **TickerPool** ensures adapter exists and is connected (using system credentials from `SystemCredentialManager`)
+7. **Adapter** translates canonical tokens to broker format and subscribes on broker WebSocket
+8. **Ticks flow**: Broker WS → Adapter (normalize paise→rupees, broker_token→canonical) → TickerPool → TickerRouter → fan out to all subscribed user WebSockets
 
-## KiteTickerService
+---
 
-Singleton service managing the Kite WebSocket connection.
-
-### Features
-
-| Feature | Description |
-|---------|-------------|
-| **Singleton** | Single connection shared by all users |
-| **Thread-safe** | Uses `asyncio.run_coroutine_threadsafe` for async broadcast |
-| **Per-user subscriptions** | Only sends ticks user subscribed to |
-| **Auto-reconnect** | Reconnects automatically on disconnect |
-| **Tick caching** | Caches latest ticks for immediate delivery |
-
-### Implementation
-
-```python
-# app/services/kite_ticker.py
-
-class KiteTickerService:
-    _instance = None
-
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-        return cls._instance
-
-    async def connect(self, access_token: str):
-        """Connect to Kite WebSocket"""
-        ...
-
-    async def subscribe(self, client_id: str, tokens: list, mode: str):
-        """Subscribe client to instrument tokens"""
-        ...
-
-    async def broadcast_tick(self, tick: dict):
-        """Broadcast tick to subscribed clients"""
-        ...
-```
-
-## Message Types
+## Message Protocol
 
 ### Client → Server
 
 ```javascript
-// Subscribe to instruments
-{
-  "action": "subscribe",
-  "tokens": [256265, 260105],
-  "mode": "quote"  // or "full", "ltp"
-}
+// Subscribe to instruments (canonical Kite tokens)
+{"action": "subscribe", "tokens": [256265, 260105], "mode": "quote"}
 
 // Unsubscribe
-{
-  "action": "unsubscribe",
-  "tokens": [256265]
-}
+{"action": "unsubscribe", "tokens": [256265]}
 
 // Keepalive
-{
-  "action": "ping"
-}
+{"action": "ping"}
 ```
 
 ### Server → Client
 
 ```javascript
 // Connection confirmed
-{
-  "type": "connected",
-  "message": "WebSocket connected"
-}
+{"type": "connected", "source": "smartapi"}
 
 // Subscription confirmed
-{
-  "type": "subscribed",
-  "tokens": [256265, 260105]
-}
+{"type": "subscribed", "tokens": [256265, 260105], "mode": "quote", "source": "smartapi"}
 
-// Live tick data
+// Live tick data (prices in rupees)
 {
   "type": "ticks",
-  "data": [
-    {
-      "token": 256265,
-      "ltp": 24500.50,
-      "change": 125.30,
-      "change_percent": 0.51,
-      "volume": 1234567,
-      "oi": 9876543,
-      "bid": 24499.50,
-      "ask": 24501.00,
-      "timestamp": "2024-12-07T10:30:00"
-    }
-  ]
+  "data": [{
+    "token": 256265,
+    "ltp": 24500.50,
+    "change": -45.25,
+    "change_percent": -0.18,
+    "volume": 15000000,
+    "oi": 0,
+    "ohlc": {"open": 24550.0, "high": 24575.25, "low": 24480.0, "close": 24545.75}
+  }]
 }
+
+// Data source changed (failover)
+{"type": "failover", "from": "smartapi", "to": "kite", "message": "Switched to Kite (SmartAPI recovering)"}
+
+// Unsubscription confirmed
+{"type": "unsubscribed", "tokens": [256265]}
 
 // Keepalive response
-{
-  "type": "pong"
-}
+{"type": "pong"}
 
 // Error
-{
-  "type": "error",
-  "message": "Invalid token format"
-}
+{"type": "error", "message": "Invalid token format"}
 ```
 
-## Index Tokens
-
-| Index | Token | Symbol |
-|-------|-------|--------|
-| NIFTY 50 | `256265` | NSE:NIFTY 50 |
-| NIFTY BANK | `260105` | NSE:NIFTY BANK |
-| FINNIFTY | `257801` | NSE:NIFTY FIN SERVICE |
+---
 
 ## Subscription Modes
 
-| Mode | Data Included |
-|------|---------------|
-| `ltp` | Last traded price only |
-| `quote` | LTP + OHLC + volume + bid/ask |
-| `full` | Quote + market depth |
+| Mode | Data Included | Availability |
+|------|---------------|-------------|
+| `ltp` | Last traded price only | All brokers |
+| `quote` | LTP + OHLC + volume + OI + change | All brokers (default) |
+| `full` / `snap` | Quote + market depth | SmartAPI (snap), Kite (full), varies by broker |
 
-## Frontend Usage
+---
+
+## Index Tokens
+
+All tokens use **canonical Kite format** (integer):
+
+| Index | Token | Notes |
+|-------|-------|-------|
+| NIFTY 50 | `256265` | SmartAPI: translated to `99926000` internally |
+| NIFTY BANK | `260105` | SmartAPI: translated to `99926009` internally |
+| FINNIFTY | `257801` | SmartAPI: translated to `99926037` internally |
+| SENSEX | `265` | SmartAPI: translated to `99919000` (BSE exchange) |
+
+Adapters handle all token translation internally. Frontend always uses canonical tokens.
+
+---
+
+## Failover Behavior
+
+From the user's perspective:
+1. **Connection stays open** — no WebSocket reconnect needed
+2. **Data source changes** — ticks now come from secondary broker
+3. **Frontend notified** — receives `{"type": "failover", "from": "smartapi", "to": "kite"}` message
+4. **Brief gap possible** — up to 2 seconds during switchover (make-before-break overlap)
+5. **Automatic failback** — when primary recovers (health > 70 for 60s), switches back
+
+Failover is transparent. No user action required.
+
+---
+
+## Connection URLs
+
+| Environment | URL |
+|-------------|-----|
+| **Development** | `ws://localhost:8001/ws/ticks?token=<jwt>` |
+| **Production** | `wss://algochanakya.com/ws/ticks?token=<jwt>` |
+
+**Note**: Production uses `wss://` (TLS via Nginx/Cloudflare). Dev uses `ws://`.
+
+---
+
+## Debugging
+
+### Browser Console
 
 ```javascript
-// stores/watchlist.js
+// Connect to dev backend
+const ws = new WebSocket('ws://localhost:8001/ws/ticks?token=YOUR_JWT')
+ws.onmessage = (e) => console.log(JSON.parse(e.data))
 
-const ws = new WebSocket(`ws://localhost:8000/ws/ticks?token=${token}`)
+// Subscribe to NIFTY
+ws.send(JSON.stringify({action: 'subscribe', tokens: [256265], mode: 'quote'}))
 
-ws.onopen = () => {
-  ws.send(JSON.stringify({
-    action: 'subscribe',
-    tokens: [256265, 260105],
-    mode: 'quote'
-  }))
-}
-
-ws.onmessage = (event) => {
-  const data = JSON.parse(event.data)
-  if (data.type === 'ticks') {
-    updatePrices(data.data)
-  }
-}
+// Check connection state
+console.log('readyState:', ws.readyState)  // 0=CONNECTING, 1=OPEN, 2=CLOSING, 3=CLOSED
 ```
 
-## Error Handling
+### Health Endpoint
 
-| Error | Cause | Resolution |
-|-------|-------|------------|
-| `Invalid JWT` | Expired/invalid token | Re-authenticate |
-| `No broker connection` | User not logged in | Redirect to login |
-| `Kite disconnected` | Network issue | Auto-reconnect |
-| `Invalid token` | Wrong instrument token | Check token format |
+```bash
+curl http://localhost:8001/api/ticker/health
+```
+
+Returns adapter health scores, connected users, failover status. See [API Reference Section 14](../api/multi-broker-ticker-api.md#14-health-api-endpoint).
+
+### Common Issues
+
+| Issue | Cause | Solution |
+|-------|-------|---------|
+| No ticks after subscribe | Adapter not connected | Check health endpoint. Verify system credentials in `.env`. |
+| `{"type":"error"}` on subscribe | Invalid token format | Tokens must be integers (canonical Kite format). |
+| Connection drops immediately | JWT expired | Re-authenticate via `/login`. |
+| Wrong prices (100x too high) | Adapter not normalizing paise→rupees | Check adapter's `_normalize_tick()` divides by 100. |
+| Ticks stop after a while | SmartAPI token expired (8h lifetime) | SystemCredentialManager auto-refreshes. Check logs. |
+
+---
+
+## Frontend Integration
+
+### Vue Store Pattern
+
+```javascript
+// stores/watchlist.js (example)
+import { ref, onUnmounted } from 'vue'
+
+const ws = ref(null)
+const ticks = ref({})
+
+function connect(jwtToken) {
+  ws.value = new WebSocket(`ws://localhost:8001/ws/ticks?token=${jwtToken}`)
+
+  ws.value.onmessage = (event) => {
+    const data = JSON.parse(event.data)
+
+    switch (data.type) {
+      case 'ticks':
+        data.data.forEach(tick => {
+          ticks.value[tick.token] = tick
+        })
+        break
+      case 'connected':
+        console.log(`[WS] Connected to ${data.source}`)
+        break
+      case 'failover':
+        console.log(`[WS] Failover: ${data.from} → ${data.to}`)
+        break
+    }
+  }
+
+  ws.value.onclose = () => {
+    // Auto-reconnect after 3 seconds
+    setTimeout(() => connect(jwtToken), 3000)
+  }
+}
+
+function subscribe(tokens, mode = 'quote') {
+  if (ws.value?.readyState === WebSocket.OPEN) {
+    ws.value.send(JSON.stringify({ action: 'subscribe', tokens, mode }))
+  }
+}
+
+function unsubscribe(tokens) {
+  if (ws.value?.readyState === WebSocket.OPEN) {
+    ws.value.send(JSON.stringify({ action: 'unsubscribe', tokens }))
+  }
+}
+
+// CRITICAL: Clean up in onUnmounted
+onUnmounted(() => {
+  if (ws.value) {
+    ws.value.close()
+    ws.value = null
+  }
+})
+```
+
+---
 
 ## Implementation Files
 
 | File | Purpose |
 |------|---------|
-| `backend/app/services/kite_ticker.py` | KiteTickerService singleton |
-| `backend/app/api/routes/websocket.py` | WebSocket endpoint |
-| `frontend/src/stores/watchlist.js` | WebSocket client logic |
+| `backend/app/api/routes/websocket.py` | WebSocket endpoint (~90 lines, broker-agnostic) |
+| `backend/app/services/brokers/market_data/ticker/router.py` | TickerRouter (user fan-out) |
+| `backend/app/services/brokers/market_data/ticker/pool.py` | TickerPool (adapter lifecycle) |
+| `backend/app/services/brokers/market_data/ticker/adapter_base.py` | TickerAdapter ABC |
+| `backend/app/services/brokers/market_data/ticker/adapters/smartapi.py` | SmartAPI adapter |
+| `backend/app/services/brokers/market_data/ticker/adapters/kite.py` | Kite adapter |
+| `backend/app/services/brokers/market_data/ticker/health.py` | HealthMonitor |
+| `backend/app/services/brokers/market_data/ticker/failover.py` | FailoverController |
+| `backend/app/services/brokers/market_data/ticker/credential_manager.py` | System credentials |
+| `frontend/src/stores/watchlist.js` | Frontend WebSocket client |
+
+---
 
 ## LTP Fallback
 
@@ -218,11 +289,12 @@ GET /api/orders/ltp?instruments=NFO:NIFTY24DEC24500CE,NFO:NIFTY24DEC24500PE
 Authorization: Bearer <token>
 ```
 
+---
+
 ## Related Documentation
 
-- [Overview](overview.md) - System architecture
-- [Broker Abstraction](broker-abstraction.md) - Multi-broker market data design
-- [Authentication](authentication.md) - JWT tokens
-- [Database Schema](database.md) - Instrument and watchlist tables
-
-**See also:** [CLAUDE.md - WebSocket](../../CLAUDE.md#architecture-overview) for production URLs and index tokens
+- [ADR-003 v2: Multi-Broker Ticker Architecture](../decisions/003-multi-broker-ticker-architecture.md) — Architecture rationale
+- [Multi-Broker Ticker API Reference](../api/multi-broker-ticker-api.md) — Full interface specs
+- [Implementation Guide](./multi-broker-ticker-implementation.md) — Step-by-step build guide
+- [Broker Abstraction Architecture](./broker-abstraction.md) — Market data + order execution design
+- [Authentication Architecture](./authentication.md) — JWT tokens and broker OAuth

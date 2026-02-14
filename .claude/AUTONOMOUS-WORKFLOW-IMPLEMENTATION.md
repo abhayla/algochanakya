@@ -1,8 +1,25 @@
 # Autonomous Testing Workflow - Implementation Complete
 
 **Implementation Date:** February 13, 2026
-**Status:** ⚠️  Implemented - Awaiting Testing (25 new files, 2 modified files)
-**Latest Update:** February 14, 2026 - Full system audit completed, 18 gaps fixed
+**Status:** ⚠️  **REDESIGN PROPOSED** - See [WORKFLOW-DESIGN-SPEC.md](WORKFLOW-DESIGN-SPEC.md)
+**Latest Update:** February 14, 2026 - Redesign documentation phase
+**Original Status:** Implemented - Awaiting Testing (25 new files, 2 modified files)
+
+---
+
+## 🔄 Redesign Proposal (Feb 14, 2026)
+
+A comprehensive redesign has been proposed to improve the current 9-hook implementation:
+
+**Key improvements:**
+- **Hooks:** 9 → 4 (56% reduction)
+- **Max Bash timeout:** 395s → 110s (72% reduction)
+- **Command docs:** ~3,100 → ~1,200 lines (61% reduction)
+- **Agent docs:** ~1,640 → ~1,140 lines (30% reduction)
+
+**See:** [WORKFLOW-DESIGN-SPEC.md](WORKFLOW-DESIGN-SPEC.md) for complete redesign specification.
+
+**Current implementation below documents the existing system (to be replaced).**
 
 ---
 

@@ -8,7 +8,24 @@ Add this condition to Passing criteria - take screenshot after each testing, ana
 If any issue or error found then fix it and retest it. Do this in loop until the issue is fixed and test passes. 
 
 
-Do not proceed until you have 100% confidence of what I want. Ask me questions until you reach that confidence. Ask one question at a time. Tell me the number of questions you are going to ask. After each response and before asking next question, check the related codebase and docs. For each question, always give your recommendation. Your recommendation should be based on best practices and standards.
+Do not proceed until you have 100% confidence of what I want. Ask me questions until you reach that confidence. Ask one question at a time. Tell me the approximate number of questions you are going to ask. After each response and before asking next question, check the related codebase and docs. For each question, always give your recommendation. Your recommendation should be based on best practices and standards.
+
+***
+## Approach
+
+Do not proceed until you have 100% confidence of what I want. Ask me questions until you reach that confidence. Tell me the approximate number of questions you are going to ask.
+
+For each question:
+- State your recommendation based on best practices
+- Show evidence from the codebase supporting your analysis
+
+After each response, before the next question:
+- Check industry standards for Claude Code workflow automation
+- Cross-reference with the existing codebase and docs
+
+Run through your final plan with me section by section for approval before implementing.
+
+***
 
 test all 8 implementation phases completed (using playwright and Claude Chrome) and fix any issues found then retest. Do this in loop until all issues are fixed and all test pass 
 
@@ -138,3 +155,233 @@ If market is closed and/or before next 15 min calculation, all the last calculat
 
 
 https://medevel.com/19-os-flutter-projects-samples/
+
+
+Refactor to use MarketDataBrokerAdapter for consistency with the rest of the codebase. The WebSocket route should:
+  1. Use get_market_data_adapter() to get the appropriate adapter
+  2. The adapter should handle token translation internally
+  3. The websocket.py should remain broker-agnostic
+
+
+
+Singleton ticker services are a specific architectural pattern used in AlgoChanakya for managing     WebSocket connections efficiently. Let me break this down:                                                         
+                                                                                                                       What is a Singleton?                                                                                                                                                                                                                      A singleton is a design pattern where only one instance of a class exists throughout the entire application          lifecycle. Everyone shares that single instance.                                                                   
+
+  Why Singleton for WebSocket Ticker Services?
+
+  WebSocket connections are expensive and persistent:
+  - They take time to establish
+  - They maintain a continuous connection to the broker (SmartAPI/Kite)
+  - Creating one per user would be wasteful and hit broker API limits
+
+  Solution: Create one shared WebSocket connection that all users subscribe through.
+
+  The Two Singleton Ticker Services
+
+  From the codebase:
+
+  1. SmartAPI Ticker Service
+
+  # backend/app/services/legacy/smartapi_ticker.py (line 492)
+  smartapi_ticker_service = SmartAPITickerService()  # Global singleton
+
+  2. Kite Ticker Service
+
+  # backend/app/services/legacy/kite_ticker.py (similar pattern)
+  kite_ticker_service = KiteTickerService()  # Global singleton
+
+  How It Works
+
+  Architecture:
+                  ┌─────────────────────────┐
+                  │  SmartAPI/Kite Broker   │
+                  │   (WebSocket Server)    │
+                  └───────────┬─────────────┘
+                              │
+                      One WebSocket Connection
+                              │
+                  ┌───────────▼─────────────┐
+                  │  Singleton Ticker       │
+                  │  (smartapi_ticker_      │
+                  │   service)              │
+                  └───────────┬─────────────┘
+                              │
+              ┌───────────────┼───────────────┐
+              │               │               │
+       ┌──────▼──────┐ ┌─────▼──────┐ ┌─────▼──────┐
+       │  User 1 WS  │ │  User 2 WS │ │  User 3 WS │
+       │  Client     │ │  Client    │ │  Client    │
+       └─────────────┘ └────────────┘ └────────────┘
+
+
+before asking questions, you understand the frammework being used for this App.                                    
+  Multibroker infra is being setup for two purpose
+1. Any user can login to App and view live market data, OHLC from any available broker API like AngelOne SmartAPI, Zerodha Kite, Dhan API etc where logged in user won't have to provide his own broker login details. Here pp  
+   App owner's API (free or paid) for these brokers will beused.                                                      
+2. Any user can login to App using their own broker credentials where he will see the market data from App     
+  Owner's API from any available broker but to place order, logged in User's broker API for that logged in user      
+  will be used. To make this happen, you need to capture logged in user's refresh token and other needed details     
+   to allow him to place orders
+
+  My Updated Understanding
+                                                                                                                     
+  ┌─────────────────────────────────────────────────────┐
+  │  TIER 1: Market Data (APP OWNER's APIs)             │
+  │                                                      │
+  │  App owner has accounts with AngelOne, Zerodha, etc.│
+  │  ONE shared connection per broker → serves ALL users │
+  │  Users see live ticks, OHLC without their own creds │
+  │  Cost: App owner pays (SmartAPI=FREE, Kite=₹500/mo) │
+  └─────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────┐
+  │  TIER 2: Order Execution (USER's OWN Broker)        │
+  │                                                      │
+  │  User logs in with THEIR OWN broker credentials     │
+  │  App captures refresh_token for persistent access   │
+  │  Orders placed via USER's broker API                │
+  │  Market data still from Tier 1 (app owner's APIs)   │
+  └─────────────────────────────────────────────────────┘
+
+
+  Documentation Created
+                                                                                                                       1. Architecture Decision Record (ADR-003) ✅                                                                       
+
+  File: docs/decisions/003-multi-broker-ticker-architecture.md
+
+  Contains:
+  - Context & problem statement (hardcoded singletons blocking multi-broker support)
+  - Detailed architecture decision (Multiton pattern + adapter wrappers)
+  - Core components: MultiTenantTickerService, NormalizedTick, TickerServiceManager, SystemBrokerSession
+  - 3-phase implementation plan (Core Infrastructure → Market Data Adapters → Order Execution)
+  - Consequences (positive: 72% route reduction, negative: migration complexity)
+  - Risks & mitigations (threading model, token mapping, credentials)
+  - Alternatives considered & rejected
+  - Rollback plan
+
+  2. Implementation Guide ✅
+
+  File: docs/architecture/multi-broker-ticker-implementation.md
+
+  Contains:
+  - Phase 1 (Core Infrastructure): 8 detailed steps with code samples
+    - Add missing BrokerType enum values
+    - System broker credentials in .env
+    - system_broker_sessions database table
+    - MultiTenantTickerService interface
+    - TickerServiceManager multiton
+    - System auth service
+    - Health monitor extension
+  - Phase 2 (Market Data Adapters): 8 steps
+    - Complete SmartAPITickerAdapter implementation
+    - Complete KiteTickerAdapter implementation
+    - 4 stub adapters (Upstox, Dhan, Fyers, Paytm)
+    - WebSocket route refactor (534→150 lines)
+    - Deprecation warnings for legacy singletons
+  - Phase 3 (Order Execution): Summary of order broker expansion
+  - Verification checklists for each phase
+  - Troubleshooting guide (5 common issues + fixes)
+  - Rollback procedures for each phase
+
+  3. API Reference ✅
+
+  File: docs/api/multi-broker-ticker-api.md
+
+  Contains:
+  - Complete MultiTenantTickerService interface documentation
+    - All methods with signatures, parameters, return types
+    - Usage examples for each method
+  - NormalizedTick dataclass with field descriptions
+  - TickerServiceManager API
+    - All class methods documented
+    - Registry pattern explanation
+  - System Auth Service functions
+  - Full adapter implementations:
+    - SmartAPITickerAdapter (complete 400+ line implementation)
+    - KiteTickerAdapter (complete 300+ line implementation)
+    - Stub adapter template
+  - Health monitoring API (MultiProviderHealthMonitor)
+  - Database model (SystemBrokerSession)
+  - Refactored WebSocket route (~150 lines)
+  - Migration summary (15 new files, 7 modified, 3 deprecated)
+
+  4. Updated Existing Docs ✅
+
+  Updated: docs/architecture/broker-abstraction.md
+  - Added "Ticker Service Abstraction" section with ADR-003 reference
+  - Linked to implementation guide and API reference
+  - Marked status as "📋 Planned"
+
+  Updated: CLAUDE.md
+  - Added multi-broker ticker documentation to PRIMARY DOCS section
+  - Links to ADR-003, implementation guide, and API reference
+
+  ---
+  Documentation Structure
+
+  docs/
+  ├── decisions/
+  │   ├── 001-tech-stack.md
+  │   ├── 002-broker-abstraction.md
+  │   └── 003-multi-broker-ticker-architecture.md    ← NEW (ADR)
+  ├── architecture/
+  │   ├── broker-abstraction.md                      ← UPDATED
+  │   ├── multi-broker-ticker-implementation.md      ← NEW (Guide)
+  │   └── websocket.md
+  ├── api/
+  │   ├── multi-broker-ticker-api.md                 ← NEW (API Ref)
+  │   ├── openapi.yaml
+  │   └── README.md
+  └── CLAUDE.md
+
+
+    All 9 Tasks Complete - 6 Broker API Expert Skills Delivered                                                                                                                                                                                                                                       
+  Summary                                                                                                                                         
+  
+  ┌─────┬─────────────────────────────────────┬────────┐
+  │  #  │                Task                 │ Status │
+  ├─────┼─────────────────────────────────────┼────────┤
+  │ 1   │ SmartAPI Expert (SKILL.md + 5 refs) │ Done   │
+  ├─────┼─────────────────────────────────────┼────────┤
+  │ 2   │ Kite Expert (SKILL.md + 5 refs)     │ Done   │
+  ├─────┼─────────────────────────────────────┼────────┤
+  │ 3   │ Comparison Matrix (13 tables)       │ Done   │
+  ├─────┼─────────────────────────────────────┼────────┤
+  │ 4   │ Upstox Expert (SKILL.md + 5 refs)   │ Done   │
+  ├─────┼─────────────────────────────────────┼────────┤
+  │ 5   │ Dhan Expert (SKILL.md + 5 refs)     │ Done   │
+  ├─────┼─────────────────────────────────────┼────────┤
+  │ 6   │ Fyers Expert (SKILL.md + 5 refs)    │ Done   │
+  ├─────┼─────────────────────────────────────┼────────┤
+  │ 7   │ Paytm Expert (SKILL.md + 5 refs)    │ Done   │
+  ├─────┼─────────────────────────────────────┼────────┤
+  │ 8   │ CLAUDE.md updated (6 entries)       │ Done   │
+  ├─────┼─────────────────────────────────────┼────────┤
+  │ 9   │ Verification (all 37 files)         │ Done   │
+  └─────┴─────────────────────────────────────┴────────┘
+
+  Verification Results
+
+  - 37/37 files exist in correct paths
+  - 6/6 SKILL.md files have valid YAML frontmatter (name + description)
+  - 6/6 skill entries added to CLAUDE.md (lines 615-620)
+  - 11/11 codebase cross-reference paths verified (all broker adapter files exist)
+  - Quality spot-check passed on agent-written reference files (Dhan, Fyers, Paytm)
+  - All 6 skills visible in Claude Code skill system
+
+ │     Architecture      │ Multi-Broker │ Scalability │ Testability │ Maintainability │ Complexity │ Resource Efficiency │
+  ├───────────────────────┼──────────────┼─────────────┼─────────────┼─────────────────┼────────────┼─────────────────────┤
+  │ Single Global         │ ❌           │ Low         │ Medium      │ High            │ Low        │ High                │
+  ├───────────────────────┼──────────────┼─────────────┼─────────────┼─────────────────┼────────────┼─────────────────────┤
+  │ Per-User              │ ✅           │ Very Low    │ High        │ High            │ Low        │ Very Low            │
+  ├───────────────────────┼──────────────┼─────────────┼─────────────┼─────────────────┼────────────┼─────────────────────┤
+  │ Broker Pool           │ Partial      │ Medium      │ Medium      │ Low             │ High       │ Medium              │
+  ├───────────────────────┼──────────────┼─────────────┼─────────────┼─────────────────┼────────────┼─────────────────────┤
+  │ Message Queue         │ ✅           │ Very High   │ High        │ Medium          │ Very High  │ High                │
+  ├───────────────────────┼──────────────┼─────────────┼─────────────┼─────────────────┼────────────┼─────────────────────┤
+  │ Hierarchical (Chosen) │ ✅           │ High        │ Very High   │ Very High       │ Medium     │ Very High           │
+  ├───────────────────────┼──────────────┼─────────────┼─────────────┼─────────────────┼────────────┼─────────────────────┤
+  │ Proxy Pattern         │ ✅           │ Medium      │ Low         │ Low             │ Low        │ High                │
+  ├───────────────────────┼──────────────┼─────────────┼─────────────┼─────────────────┼────────────┼─────────────────────┤
+  │ Actor Model           │ ✅           │ Very High   │ Medium      │ Medium          │ Very High  │ High                │
+  └───────────────────────┴──────────────┴─────────────┴─────────────┴─────────────────┴────────────┴─────────────────────┘

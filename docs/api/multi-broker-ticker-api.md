@@ -1,8 +1,13 @@
 # Multi-Broker Ticker API Reference
 
 **Version**: 2.0.0
-**Status**: Proposed (ADR-003 v2)
-**Related**: [ADR-003 v2](../decisions/003-multi-broker-ticker-architecture.md) | [Implementation Guide](../architecture/multi-broker-ticker-implementation.md) | [WebSocket Architecture](../architecture/websocket.md)
+**Status**: ⚠️ **REDESIGN PROPOSED** - See [TICKER-DESIGN-SPEC.md](../decisions/TICKER-DESIGN-SPEC.md)
+**Related**: [ADR-003 v2](../decisions/003-multi-broker-ticker-architecture.md) | [TICKER-DESIGN-SPEC.md](../decisions/TICKER-DESIGN-SPEC.md) | [Implementation Guide](../architecture/multi-broker-ticker-implementation.md) | [WebSocket Architecture](../architecture/websocket.md)
+
+**Note:** This API reference describes the original ADR-003 v2 interfaces. The redesign proposes:
+- `NormalizedTick` uses `Decimal` for prices (not `float`)
+- Credentials managed in `TickerPool` (no separate `SystemCredentialManager`)
+- Updated health score formula (latency 30%, tick_rate 30%, errors 20%, staleness 20%)
 
 ---
 

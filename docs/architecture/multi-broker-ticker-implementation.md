@@ -1,10 +1,12 @@
 # Multi-Broker Ticker Implementation Guide
 
-**Status**: Ready for Implementation (ADR-003 v2)
+**Status**: ⚠️ **REDESIGN PROPOSED** - See [TICKER-DESIGN-SPEC.md](../decisions/TICKER-DESIGN-SPEC.md)
 
-**Related**: [ADR-003 v2](../decisions/003-multi-broker-ticker-architecture.md) | [API Reference](../api/multi-broker-ticker-api.md) | [WebSocket Architecture](./websocket.md)
+**Related**: [ADR-003 v2](../decisions/003-multi-broker-ticker-architecture.md) | [TICKER-DESIGN-SPEC.md](../decisions/TICKER-DESIGN-SPEC.md) | [API Reference](../api/multi-broker-ticker-api.md) | [WebSocket Architecture](./websocket.md)
 
 **Goal**: Replace hardcoded ticker singletons with a 5-component broker-agnostic architecture: TickerAdapter + TickerPool + TickerRouter + HealthMonitor + FailoverController
+
+**Note:** This guide describes the original ADR-003 v2 implementation approach. A refined design with improved credential management and component consolidation is documented in TICKER-DESIGN-SPEC.md.
 
 ---
 

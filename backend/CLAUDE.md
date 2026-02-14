@@ -28,7 +28,7 @@ pytest tests/test_file.py::test_function -v  # Single test function
 **Key Modules:**
 - **Broker Abstraction** - Dual system: Market data brokers (SmartAPI, planned: Kite/Upstox) + Order execution brokers (Kite implemented, planned: Angel/Upstox). Factory pattern with unified data models (`UnifiedOrder`, `UnifiedPosition`, `UnifiedQuote`). See [Multi-Broker Architecture](../CLAUDE.md#core-purpose-multi-broker-architecture).
 - **Authentication** - SmartAPI with auto-TOTP (default) or Zerodha OAuth. JWT stored in localStorage + Redis. Use `get_current_user` / `get_current_broker_connection` dependencies. SmartAPI credentials stored encrypted in `smartapi_credentials` table.
-- **WebSocket Live Prices** - Dev: `ws://localhost:8001/ws/ticks?token=<jwt>` | Prod: `wss://algochanakya.com/ws/ticks?token=<jwt>`. SmartAPI ticker (default) and KiteTickerService (both singleton). Index tokens: NIFTY=256265, BANKNIFTY=260105, FINNIFTY=257801, SENSEX=265
+- **WebSocket Live Prices** - Dev: `ws://localhost:8001/ws/ticks?token=<jwt>` | Prod: `wss://algochanakya.com/ws/ticks?token=<jwt>`. New 5-component ticker architecture (ADR-003 v2): TickerAdapter (per-broker WS) + TickerPool (lifecycle/ref-counting) + TickerRouter (user fan-out) + HealthMonitor + FailoverController. Legacy singletons (`SmartAPITickerService`, `KiteTickerService`) being replaced. Index tokens: NIFTY=256265, BANKNIFTY=260105, FINNIFTY=257801, SENSEX=265. See [WebSocket Architecture](../docs/architecture/websocket.md)
 - **Option Chain** - IV via Newton-Raphson, Greeks via Black-Scholes. Max Pain, PCR calculated.
 - **Strategy Builder** - P/L modes: "At Expiry" (intrinsic) and "Current" (Black-Scholes via scipy)
 - **AutoPilot** - Automated execution with conditions, adjustments, kill switch. 16 database tables. See [docs/autopilot/](../docs/autopilot/)
@@ -54,9 +54,20 @@ pytest tests/test_file.py::test_function -v  # Single test function
 - `app/services/brokers/market_data/symbol_converter.py` - Canonical <-> broker symbols
 - `app/services/brokers/market_data/exceptions.py` - Market data errors
 
-**Legacy Market Data Services (to be replaced by adapters):**
-- `app/services/legacy/smartapi_ticker.py` - SmartAPI WebSocket V2 (default)
-- `app/services/legacy/kite_ticker.py` - Kite WebSocket (singleton, legacy)
+**Ticker System (Phase 4 — ADR-003 v2, to be implemented):**
+- `app/services/brokers/market_data/ticker/adapter_base.py` - `TickerAdapter` ABC
+- `app/services/brokers/market_data/ticker/pool.py` - `TickerPool` (adapter lifecycle, ref-counted subscriptions)
+- `app/services/brokers/market_data/ticker/router.py` - `TickerRouter` (user fan-out, dispatch)
+- `app/services/brokers/market_data/ticker/health.py` - `HealthMonitor` (5s heartbeat, scoring)
+- `app/services/brokers/market_data/ticker/failover.py` - `FailoverController` (make-before-break)
+- `app/services/brokers/market_data/ticker/credential_manager.py` - `SystemCredentialManager`
+- `app/services/brokers/market_data/ticker/adapters/smartapi.py` - SmartAPI ticker adapter
+- `app/services/brokers/market_data/ticker/adapters/kite.py` - Kite ticker adapter
+- `app/services/brokers/market_data/ticker/adapters/` - Upstox, Dhan, Fyers, Paytm stubs
+
+**Legacy Market Data Services (to be replaced by ticker adapters):**
+- `app/services/legacy/smartapi_ticker.py` - SmartAPI WebSocket V2 (default, deprecated by Phase 4)
+- `app/services/legacy/kite_ticker.py` - Kite WebSocket (singleton, deprecated by Phase 4)
 - `app/services/legacy/smartapi_historical.py` - Historical OHLCV data
 
 **AutoPilot Services (26 files):**
@@ -139,11 +150,17 @@ See `app/services/brokers/base.py` and `app/services/brokers/market_data/market_
 - `KiteMarketDataAdapter` implemented for Kite market data
 - Routes updated: `optionchain.py`, `ofo.py`, `orders.py`, `strategy_wizard.py`, `websocket.py`
 
-**Phase 4-5 To Be Implemented:**
-- Remove dead WebSocket stubs from `MarketDataBrokerAdapter` (moved to `MultiTenantTickerService`)
-- Create `AngelAdapter` for Angel One order execution
-- Complete user settings UI for broker selection (market data + order execution)
-- Migrate legacy ticker services to implement `TickerServiceBase` interface
+**Phase 4: Ticker/WebSocket Refactoring (ADR-003 v2) — PLANNED:**
+- New 5-component architecture replacing legacy singletons
+- Core: `ticker/adapter_base.py`, `ticker/pool.py`, `ticker/router.py`, `ticker/health.py`, `ticker/failover.py`
+- Adapters: `ticker/adapters/smartapi.py`, `ticker/adapters/kite.py` + 4 stubs (Upstox, Dhan, Fyers, Paytm)
+- System credentials: `ticker/credential_manager.py` + `models/system_broker_credentials.py`
+- Refactor `websocket.py` from 495 lines → ~90 lines (broker-agnostic)
+- See [Implementation Guide](../docs/architecture/multi-broker-ticker-implementation.md) | [API Reference](../docs/api/multi-broker-ticker-api.md)
+
+**Phase 5-6 To Be Implemented:**
+- Phase 5: Additional broker adapters (Upstox, Dhan, Fyers, Paytm) for market data + ticker
+- Phase 6: `AngelAdapter` for order execution, order stubs for remaining brokers, frontend broker selection UI
 
 ### Adding a New Broker (Future State)
 

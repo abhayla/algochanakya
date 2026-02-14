@@ -3,7 +3,7 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 **Last Updated:** February 2026
-**Primary Implementation Status:** Phase 3 Complete (Multi-broker abstraction for market data + order execution)
+**Primary Implementation Status:** Phase 3 Complete (Multi-broker abstraction for market data + order execution). Phase 4 (ADR-003 v2: 5-component ticker architecture) fully designed and documented — ready for implementation.
 
 ## Documentation Structure
 
@@ -228,11 +228,15 @@ AlgoChanakya is an options trading platform (similar to Sensibull) with FastAPI 
 
 ## Documentation
 
+**🔄 REDESIGN PROPOSALS (Feb 14, 2026):**
+- **[Workflow Redesign Spec](.claude/WORKFLOW-DESIGN-SPEC.md)** - 9→4 hooks, 395s→110s timeout, 3,100→1,200 lines
+- **[Ticker Redesign Spec](docs/decisions/TICKER-DESIGN-SPEC.md)** - 6→5 components, 495→90 line websocket.py, credentials in TickerPool
+
 **PRIMARY DOCS FOR IMPLEMENTATION:**
 1. **[Developer Quick Reference](docs/DEVELOPER-QUICK-REFERENCE.md)** - All docs organized by task (use this first!)
 2. **[Implementation Checklist](docs/IMPLEMENTATION-CHECKLIST.md)** - Current implementation tasks with docs links
 3. **[Broker Abstraction Architecture](docs/architecture/broker-abstraction.md)** - Primary architecture (multi-broker)
-4. **[Multi-Broker Ticker Architecture](docs/decisions/003-multi-broker-ticker-architecture.md)** - ADR for ticker refactoring (Proposed)
+4. **[Multi-Broker Ticker Architecture (ADR-003 v2)](docs/decisions/003-multi-broker-ticker-architecture.md)** - 5-component ticker architecture (⚠️ Redesign proposed, see TICKER-DESIGN-SPEC.md)
    - [Implementation Guide](docs/architecture/multi-broker-ticker-implementation.md) | [API Reference](docs/api/multi-broker-ticker-api.md)
 
 **Stale Docs Warning:** `docs/IMPLEMENTATION-CHECKLIST.md` may be outdated. CLAUDE.md contains the authoritative implementation status.
@@ -275,9 +279,11 @@ Use these skills for faster, consistent results:
 
 ## Autonomous Testing Workflow
 
+**⚠️ REDESIGN PROPOSED:** See [WORKFLOW-DESIGN-SPEC.md](.claude/WORKFLOW-DESIGN-SPEC.md) for improved architecture (9→4 hooks, 72% timeout reduction)
+
 AlgoChanakya has a fully autonomous testing system with slash commands, hooks, sub-agents, and self-learning capabilities. This system enforces test-driven development, prevents broken commits, and continuously improves fix strategies.
 
-**Full documentation:** [.claude/AUTONOMOUS-WORKFLOW-IMPLEMENTATION.md](.claude/AUTONOMOUS-WORKFLOW-IMPLEMENTATION.md)
+**Full documentation:** [.claude/AUTONOMOUS-WORKFLOW-IMPLEMENTATION.md](.claude/AUTONOMOUS-WORKFLOW-IMPLEMENTATION.md) (current system) | [WORKFLOW-DESIGN-SPEC.md](.claude/WORKFLOW-DESIGN-SPEC.md) (proposed redesign)
 
 **Key commands:** `/implement` (7-step workflow), `/fix-loop` (iterative fix cycle), `/post-fix-pipeline` (verification + commit), `/run-tests` (multi-layer runner), `/reflect` (learning + self-modification)
 
