@@ -15,6 +15,12 @@ env:
   DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/algochanakya_test
   REDIS_URL: redis://localhost:6379
   SECRET_KEY: test-secret-key-for-ci
+  JWT_SECRET: test-jwt-secret-for-ci
+  KITE_API_KEY: test-kite-api-key
+  KITE_API_SECRET: test-kite-api-secret
+  KITE_REDIRECT_URL: http://localhost:8001/api/auth/zerodha/callback
+  FRONTEND_URL: http://localhost:3000
+  ANTHROPIC_API_KEY: test-anthropic-api-key
 
 jobs:
   test:
