@@ -49,6 +49,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Validate folder structure
+        run: |
+          python .github/scripts/validate-structure.py
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:

@@ -11,6 +11,28 @@ description: Resume a saved session. Usage: /start-session [name] or /start-sess
 - User invokes /start-session (loads most recent)
 - User invokes /start-session --list (shows available sessions)
 
+## Automatic Session Loading
+
+**Auto-Load on Startup:** The `load_session_context.py` hook automatically loads key context from the most recent session file when you start Claude Code. This includes:
+- "Where I Left Off" section
+- "Resume Prompt" section
+
+**Manual `/start-session` vs Auto-Load:**
+- **Auto-load:** Shows brief context (500 chars) on startup - non-intrusive reminder
+- **Manual start:** Full context restoration with file reads, doc links, todo recreation
+
+**When to use manual `/start-session`:**
+- Need full context restoration (not just reminder)
+- Want to select specific session (not latest)
+- Need to read working files mentioned in session
+- Want to restore todo list state
+- Need to review linked documentation
+
+**Auto-load is sufficient for:**
+- Quick reminder of last session
+- Continuity between closely-spaced sessions
+- Checking what was in progress
+
 ## Workflow
 
 ### Step 1: Find Session

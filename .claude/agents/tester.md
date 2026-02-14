@@ -7,6 +7,25 @@
 
 ---
 
+## Persistent Memory
+
+**Memory File:** `.claude/agents/memory/tester.md`
+
+**Before starting test execution:**
+- Read `.claude/agents/memory/tester.md`
+- Review "Flaky Tests" to identify problematic specs
+- Check "Timeout Policies" for appropriate timeout values
+- Review "Test Data Management" for proper fixture usage
+
+**After completing test run:**
+- Add to "Flaky Tests" if test failures are intermittent
+- Document new "Timeout Policies" if custom values used
+- Track "Execution Time Trends" if tests are slowing down
+- Note "Coverage Gaps" if new areas lack tests
+- Append date to "Last Updated"
+
+---
+
 ## Capabilities
 
 ### 1. Run All Test Layers

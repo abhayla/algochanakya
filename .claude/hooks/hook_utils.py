@@ -19,6 +19,7 @@ WORKFLOW_STATE_FILE = PROJECT_ROOT / ".claude" / "workflow-state.json"
 FAILURE_INDEX_FILE = PROJECT_ROOT / ".claude" / "logs" / "learning" / "failure-index.json"
 WORKFLOW_LOG_FILE = PROJECT_ROOT / ".claude" / "logs" / "workflow-sessions.log"
 LEARNING_LOG_DIR = PROJECT_ROOT / ".claude" / "logs" / "learning"
+AGENT_MEMORY_DIR = PROJECT_ROOT / ".claude" / "agents" / "memory"
 
 
 # ============================================================================
@@ -626,3 +627,98 @@ def update_failure_index(skill: str, issue_type: str, outcome: str,
 
     except Exception:
         pass  # Non-critical
+
+
+# ============================================================================
+# Agent Memory Management
+# ============================================================================
+
+def read_agent_memory(agent_name: str) -> str:
+    """
+    Read agent's persistent memory file.
+
+    Args:
+        agent_name: Agent name (e.g., 'debugger', 'code-reviewer', 'tester')
+
+    Returns:
+        Memory file content as string, or empty string if file doesn't exist
+    """
+    memory_file = AGENT_MEMORY_DIR / f"{agent_name}.md"
+
+    if not memory_file.exists():
+        return ""
+
+    try:
+        with open(memory_file, 'r', encoding='utf-8') as f:
+            return f.read()
+    except Exception:
+        return ""
+
+
+def append_agent_memory(agent_name: str, section: str, entry: str) -> bool:
+    """
+    Append entry to agent's memory file under specified section.
+
+    Args:
+        agent_name: Agent name (e.g., 'debugger', 'code-reviewer')
+        section: Section name (e.g., 'Root Causes by Category', 'Flaky Tests')
+        entry: Entry to append (markdown formatted)
+
+    Returns:
+        True on success, False on failure
+    """
+    memory_file = AGENT_MEMORY_DIR / f"{agent_name}.md"
+
+    if not memory_file.exists():
+        return False
+
+    try:
+        # Read current content
+        with open(memory_file, 'r', encoding='utf-8') as f:
+            content = f.read()
+
+        # Find section header (## Section Name)
+        section_pattern = f"## {section}"
+        if section_pattern not in content:
+            return False
+
+        # Append entry after section header
+        # Split at section, then find next ## or end of file
+        parts = content.split(section_pattern)
+        if len(parts) != 2:
+            return False
+
+        before_section = parts[0]
+        after_section_header = parts[1]
+
+        # Find next section or end
+        next_section_match = re.search(r'\n## ', after_section_header)
+        if next_section_match:
+            # Insert before next section
+            insert_pos = next_section_match.start()
+            section_content = after_section_header[:insert_pos]
+            remaining = after_section_header[insert_pos:]
+
+            new_content = (
+                before_section +
+                section_pattern +
+                section_content +
+                f"\n{entry}\n" +
+                remaining
+            )
+        else:
+            # Append at end of section
+            new_content = (
+                before_section +
+                section_pattern +
+                after_section_header +
+                f"\n{entry}\n"
+            )
+
+        # Write back
+        with open(memory_file, 'w', encoding='utf-8') as f:
+            f.write(new_content)
+
+        return True
+    except Exception:
+        return False

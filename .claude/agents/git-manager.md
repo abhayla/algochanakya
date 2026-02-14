@@ -7,6 +7,25 @@
 
 ---
 
+## Persistent Memory
+
+**Memory File:** `.claude/agents/memory/git-manager.md`
+
+**Before starting git operations:**
+- Read `.claude/agents/memory/git-manager.md`
+- Check "Commit Patterns" to match existing commit message style
+- Review "Co-Committed Files" to ensure related files are included
+- Check "Protected File Decisions" to avoid accidental commits
+
+**After completing commit:**
+- Document commit message pattern if new type/scope used
+- Add to "Co-Committed Files" if files frequently change together
+- Note any "Accidental Includes" that were caught
+- Update "Scope Usage" if new scope introduced
+- Append date to "Last Updated"
+
+---
+
 ## Responsibilities
 
 ### 1. Conventional Commits Format

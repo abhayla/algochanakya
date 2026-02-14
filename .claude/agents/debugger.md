@@ -7,6 +7,25 @@
 
 ---
 
+## Persistent Memory
+
+**Memory File:** `.claude/agents/memory/debugger.md`
+
+**Before starting debugging:**
+- Read `.claude/agents/memory/debugger.md`
+- Check "Root Causes by Category" for similar error patterns
+- Review "Successful Fix Strategies" for proven approaches
+- Check "Failed Approaches" to avoid repeating ineffective fixes
+
+**After completing debugging:**
+- Add root cause to appropriate category if new pattern discovered
+- Document successful fix strategy under "Decisions Made"
+- Add to "Flaky Tests" if test fails intermittently
+- Note escalation decision (ThinkHard, human review) if applicable
+- Append date to "Last Updated"
+
+---
+
 ## Capabilities
 
 ### 1. Playwright Trace Analysis

@@ -10,6 +10,25 @@ description: Save current session context for later resumption. Usage: /save-ses
 - Before switching to a different task
 - When user explicitly invokes /save-session
 
+## Automatic Session Management
+
+**Auto-Save on Exit:** The `quality_gate.py` hook automatically saves a lightweight session summary when you exit Claude Code. This creates `{date}-auto-save.md` files in `.claude/sessions/`.
+
+**Manual `/save-session` vs Auto-Save:**
+- **Auto-save:** Lightweight summary with workflow state, files changed, progress tracking
+- **Manual save:** Rich session context with decisions, documentation links, detailed "where I left off"
+
+**When to use manual `/save-session`:**
+- Before major context switch (feature to feature)
+- After important architectural decisions
+- When specific documentation links should be preserved
+- When "resume prompt" needs to be customized
+
+**Auto-saves are sufficient for:**
+- Normal end-of-day workflow
+- Short breaks
+- Simple progress tracking
+
 ## Workflow
 
 ### Step 1: Gather Context

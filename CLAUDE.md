@@ -45,10 +45,6 @@ Production runs on the same machine. NEVER:
 
 If the backend at localhost:8000 is the production instance, start the dev backend separately or ask the user how to proceed.
 
-### 0.1. Protected Files - DO NOT MODIFY
-
-The `notes` file in the project root is a personal file. **NEVER read, modify, or commit changes to this file.**
-
 ### 1. Auto-Verification After Code Changes
 
 After making ANY code change (bug fix, feature, refactor), IMMEDIATELY invoke `auto-verify`:

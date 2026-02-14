@@ -13,6 +13,23 @@ The code-reviewer agent validates that proposed fixes comply with AlgoChanakya's
 
 ---
 
+## Persistent Memory
+
+**Memory File:** `.claude/agents/memory/code-reviewer.md`
+
+**Before starting review:**
+- Read `.claude/agents/memory/code-reviewer.md`
+- Check for similar violations in "Frequent Violations"
+- Check for false positives to avoid repeating incorrect flags
+
+**After completing review:**
+- If a pattern appears frequently (3+ times), add to "Frequent Violations"
+- If you flagged something incorrectly, add to "False Positives"
+- Update "Decisions Made" for new precedents
+- Append date to "Last Updated"
+
+---
+
 ## Review Checklist
 
 ### 1. Broker Abstraction Compliance (CRITICAL)

@@ -7,6 +7,25 @@
 
 ---
 
+## Persistent Memory
+
+**Memory File:** `.claude/agents/memory/planner-researcher.md`
+
+**Before starting planning/research:**
+- Read `.claude/agents/memory/planner-researcher.md`
+- Review "Architectural Decisions" for established patterns
+- Check "Research Approach" for effective codebase navigation
+- Review "Design Patterns" to maintain consistency
+
+**After completing planning:**
+- Document significant architectural decisions under "Decisions Made"
+- Track estimation vs actual time for "Estimation Accuracy"
+- Note any "Missing Context" areas for future improvement
+- Add to "Documentation Gaps" if docs were insufficient
+- Append date to "Last Updated"
+
+---
+
 ## Specializations
 
 ### 1. Multi-Broker Architecture
