@@ -1,0 +1,64 @@
+name: Hook-CI Parity
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  validate-hooks:
+    runs-on: ubuntu-latest
+    name: Validate Hook Enforcement Rules
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch full history for git diff
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Validate folder structure
+        id: folder-structure
+        run: |
+          echo "::group::Folder Structure Validation"
+          python .github/scripts/validate-structure.py
+          echo "::endgroup::"
+        continue-on-error: false
+
+      - name: Validate cross-layer imports
+        id: cross-imports
+        run: |
+          echo "::group::Cross-Layer Import Validation"
+          python .github/scripts/validate-cross-imports.py
+          echo "::endgroup::"
+        continue-on-error: false
+
+      - name: Summary Report
+        if: always()
+        run: |
+          echo "## Hook Parity Validation Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ steps.folder-structure.outcome }}" == "success" ]; then
+            echo "✅ **Folder Structure:** Passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Folder Structure:** Failed" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${{ steps.cross-imports.outcome }}" == "success" ]; then
+            echo "✅ **Cross-Layer Imports:** Passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Cross-Layer Imports:** Failed" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "These validations mirror the local PreToolUse hooks:" >> $GITHUB_STEP_SUMMARY
+          echo "- \`guard_folder_structure.py\`" >> $GITHUB_STEP_SUMMARY
+          echo "- \`guard_cross_feature_imports.py\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "See [\`.claude/rules.md\`](.claude/rules.md) for enforcement rules." >> $GITHUB_STEP_SUMMARY

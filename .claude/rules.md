@@ -11,13 +11,14 @@ This document consolidates all critical architectural rules from CLAUDE.md, back
 ## Table of Contents
 
 1. [Folder Structure Rules](#folder-structure-rules)
-2. [Broker Abstraction Rules](#broker-abstraction-rules)
-3. [Trading Constants Rules](#trading-constants-rules)
-4. [Protected Files](#protected-files)
-5. [Security Rules](#security-rules)
-6. [Testing Rules](#testing-rules)
-7. [Database Patterns](#database-patterns)
-8. [Naming Conventions](#naming-conventions)
+2. [Cross-Layer Import Rules](#cross-layer-import-rules)
+3. [Broker Abstraction Rules](#broker-abstraction-rules)
+4. [Trading Constants Rules](#trading-constants-rules)
+5. [Protected Files](#protected-files)
+6. [Security Rules](#security-rules)
+7. [Testing Rules](#testing-rules)
+8. [Database Patterns](#database-patterns)
+9. [Naming Conventions](#naming-conventions)
 
 ---
 
@@ -111,6 +112,87 @@ tests/backend/test_autopilot.py          # BLOCKED: No subdirectory
 tests/e2e/specs/dashboard/positions-display.spec.js
 tests/backend/autopilot/test_strategy_engine.py
 ```
+
+---
+
+## Cross-Layer Import Rules
+
+**Enforcement:** PreToolUse hooks (`guard_cross_feature_imports.py`) + CI (`validate-cross-imports.py`)
+
+### Rule 1: Backend Cannot Import from Frontend
+
+**NEVER import frontend code from backend Python files.**
+
+❌ **Violations:**
+```python
+# BLOCKED: Backend importing from frontend
+from frontend.src.services import api
+from frontend.components import MyComponent
+import frontend.utils
+```
+
+✅ **Correct:**
+```python
+# Backend should only import from:
+from app.models import User
+from app.services.brokers import get_broker_adapter
+from app.utils.encryption import encrypt_field
+import asyncio
+import re
+```
+
+**Why:** Backend is a separate layer that runs on the server. It cannot access frontend code (which runs in the browser). Use API endpoints for communication.
+
+### Rule 2: Frontend Cannot Import from Backend
+
+**NEVER import backend code from frontend JavaScript/Vue files.**
+
+❌ **Violations:**
+```javascript
+// BLOCKED: Frontend importing from backend
+import { get_broker_adapter } from 'backend/app/services/brokers/factory'
+import { User } from 'app.models'
+from '../backend/app/services/autopilot/strategy_engine'
+```
+
+✅ **Correct:**
+```javascript
+// Frontend should use API calls instead:
+import api from '@/services/api'
+import { positionsApi } from '@/services/positionsApi'
+
+// Fetch data via API
+const positions = await positionsApi.getAll()
+```
+
+**Why:** Frontend runs in the browser and cannot directly access backend Python code. All backend communication MUST go through API endpoints.
+
+### Rule 3: Tests Can Import from Both Layers
+
+**Test files are exempt** from cross-layer import restrictions.
+
+✅ **Allowed in tests:**
+```javascript
+// E2E tests can import from both layers
+import { test, expect } from '../../config/auth.fixture.js'
+import { authenticatedPage } from '@/test/fixtures'
+```
+
+```python
+# Backend tests can import from app modules
+from app.models import User, Position
+from app.services.brokers.factory import get_broker_adapter
+```
+
+**Why:** Tests need to access both layers to verify integration and functionality.
+
+### Enforcement in CI
+
+**CI workflows validate cross-layer imports:**
+- `.github/workflows/hook-parity.yml` - Standalone hook parity checks
+- `.github/workflows/backend-tests.yml` - Includes cross-import validation step
+
+**Script:** `.github/scripts/validate-cross-imports.py` mirrors the local hook logic.
 
 ---
 
@@ -534,6 +616,7 @@ export function usePositions() {
 | Rule Category | Enforced By | Severity | Blocking |
 |--------------|-------------|----------|----------|
 | Folder structure | `guard_folder_structure.py` hook | High | Yes (PreToolUse) |
+| Cross-layer imports | `guard_cross_feature_imports.py` hook | High | Yes (PreToolUse) |
 | Protected files | `protect_sensitive_files.py` hook | Critical | Yes (PreToolUse) |
 | Broker abstraction | `code-reviewer` agent | Critical | Yes (review gate) |
 | Trading constants | `code-reviewer` agent + skill | Critical | Yes (review gate) |

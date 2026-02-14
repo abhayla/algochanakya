@@ -15,6 +15,13 @@ import sys
 import subprocess
 from pathlib import Path
 
+# Fix Windows encoding for emoji support
+if sys.platform == "win32":
+    import io
+
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8")
+
 # Backend services allowed at root
 ALLOWED_BACKEND_ROOT_SERVICES = [
     "__init__.py",

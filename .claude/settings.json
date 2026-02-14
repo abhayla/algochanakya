@@ -42,6 +42,11 @@
           },
           {
             "type": "command",
+            "command": "python .claude/hooks/guard_cross_feature_imports.py",
+            "timeout": 5
+          },
+          {
+            "type": "command",
             "command": "python .claude/hooks/validate_workflow_step.py",
             "timeout": 10
           }
@@ -53,6 +58,11 @@
           {
             "type": "command",
             "command": "python .claude/hooks/protect_sensitive_files.py",
+            "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "python .claude/hooks/guard_cross_feature_imports.py",
             "timeout": 5
           },
           {
@@ -141,6 +151,11 @@
             "type": "command",
             "command": "python .claude/hooks/log_workflow.py",
             "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "python .claude/hooks/schema_parity_reminder.py",
+            "timeout": 10
           },
           {
             "type": "command",

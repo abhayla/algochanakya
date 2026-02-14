@@ -53,6 +53,10 @@ jobs:
         run: |
           python .github/scripts/validate-structure.py
 
+      - name: Validate cross-layer imports
+        run: |
+          python .github/scripts/validate-cross-imports.py
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
