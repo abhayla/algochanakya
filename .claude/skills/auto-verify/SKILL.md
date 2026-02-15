@@ -1537,117 +1537,218 @@ Alternatives: {other_options}
 Approve? [Y/n]
 ```
 
-## Attempt Tracking
+## Attempt Tracking & Iteration Display
 
-Track attempts in your responses:
-```
-[Attempt 1/5] Running tests for positions feature...
-[Attempt 2/5] Previous fix didn't work. Trying alternative approach...
-```
+**Cross-reference:** See **Step 7d: Iteration Tracking** for backend implementation.
 
-After 5 failed attempts, STOP and ask:
-> "I've attempted 5 fixes but the issue persists. Here's what I've tried:
-> 1. [First approach]
-> 2. [Second approach]
-> ...
-> Would you like me to continue with a different strategy, or would you prefer to investigate manually?"
+### Display Format
 
-## Troubleshooting
-
-### Stuck Conditions (Escalation Decision Tree)
-
-**Cross-reference:** See **Step 6: Decision Point** for iteration-based stuck conditions.
-
-**STOP and ask user when:**
-
-| Condition | Iteration | Trigger | Action |
-|-----------|-----------|---------|--------|
-| 🔄 **Same error 3x** | 3+ | Same fingerprint, 3 different strategies failed | Escalate to `fix-loop` with VeryDeep thinking |
-| 🎯 **All strategies exhausted** | Any | All KB strategies score <0.1 | Ask user: try heuristic or record new pattern? |
-| 🛑 **Max iterations** | 5+ | Safety valve | Hard stop, show all attempts, ask for direction |
-| 📂 **Fix scope exceeds feature** | Any | Need to modify files outside current feature | Ask approval for cross-feature changes |
-| ❓ **Unknown error** | 1 | No matching error_type in KB | Create strategy, proceed with iteration 1 |
-| ❓ **Unknown error** | 3+ | Still no KB match after 3 tries | Escalate to fix-loop OR ask user |
-| 🔥 **Breaking change detected** | Any | Regression tests fail after fix | Revert fix, escalate with broader context |
-| ⏱️ **Session timeout** | Any | 20 total attempts in session | Archive session, ask user to review |
-
-**Escalation paths:**
+**Show iteration progress in all responses:**
 
 ```
-Light issues (iteration 1-2):
-  → Auto-fix (Step 7g patterns)
-  → Simple Edit tool fixes
+[Iteration 1/5 | Priority 0] Running smart affected tests...
+Tests: ✅ Pass | Screenshots: ✅ OK | Status: SUCCESS
 
-Medium issues (iteration 3-4):
-  → fix-loop with Deep thinking
-  → browser-testing for UI debugging
+[Iteration 2/5 | Priority 0] Previous fix incomplete. Retrying...
+Tests: ❌ Fail (Element not found) | Strategy: KB #42 (score: 0.7)
 
-Critical issues (iteration 5+ OR unknown errors):
-  → fix-loop with VeryDeep/UltraThink
-  → User intervention
+[Iteration 3/5 | fix-loop Deep] Escalated to fix-loop...
+Hypothesis: Modal CSS z-index conflict
+Fix Applied: Increased z-index from 10 to 1000
+Tests: ✅ Pass | Regression Check: ⏳ Running...
 
-Cross-feature impact:
-  → STOP immediately
-  → Ask user approval
-  → Consider architectural refactor
+[Iteration 4/5 | Regression Check] Testing adjacent features...
+Watchlist: ✅ Pass | Dashboard: ✅ Pass | Status: SUCCESS ✨
 ```
 
-### Stuck Message Template
+**Format components:**
+- **Iteration count:** Current/Max (aligned with Step 6 decision table)
+- **Test priority:** Which priority level running (0, 1, 2, 3)
+- **Status icons:** ✅❌⏳🔧🌐 (pass/fail/running/fixing/debugging)
+- **Strategy info:** KB strategy ID + score (if used)
+- **Escalation note:** When fix-loop or browser-testing invoked
 
-**Enhanced with KB context and next steps:**
+### Iteration Lifecycle
+
+**Complete iteration example:**
 
 ````
-🛑 Auto-verify is stuck. Need your guidance.
+🔄 Auto-verify Iteration Lifecycle
 
-**Error Summary:**
-- Type: {error_type}
-- Message: {truncated_message}
-- File: {file_path}:{line_number}
-- Fingerprint: {hash} (seen {count} times in KB)
+[Iteration 1/5 | Priority 0 | Step 3]
+Running: npm test tests/e2e/specs/positions/exit-modal.spec.js
+Result: ❌ FAIL - Timeout waiting for data-testid="positions-exit-modal"
+Duration: 45s
 
-**Knowledge Base Status:**
-- Total error patterns: {total_patterns}
-- This pattern: {known|unknown}
-- Available strategies: {strategy_count}
-- Best strategy score: {top_score}
+[Step 5: Error Parsing]
+Type: Element not found
+Fingerprint: e3b0c442...
+Parsed: Missing data-testid attribute
 
-**What I've Tried:** (Iteration {current}/{max})
-1. [{score}] {strategy_name} → {outcome} ({reason})
-2. [{score}] {strategy_name} → {outcome} ({reason})
-...
+[Step 2c: KB Query]
+Found 2 strategies:
+1. [0.8] Add data-testid to component
+2. [0.6] Check component rendering condition
 
-**Stuck Condition:** {condition_name}
-- Trigger: {why_stopped}
-- Recommendation: {suggested_path}
+[Step 7a: Applying Strategy #1]
+File: frontend/src/views/Positions.vue:145
+Change: Added data-testid="positions-exit-modal"
+
+[Iteration 2/5 | Priority 0 | Step 3]
+Running: Same test (re-run after fix)
+Result: ✅ PASS
+Duration: 32s
+
+[Step 4: Screenshot Analysis]
+AI Analysis: ✅ Modal visible, correctly positioned
+
+[Step 8c: Regression Check]
+Testing: watchlist, dashboard (share WebSocket)
+Results: ✅ Both pass
+
+[Step 8a: Record to KB]
+learning-engine: ✅ Recorded (attempt_id: 1247)
+Strategy #1 score: 0.8 → 0.9 (success boost)
+
+✨ SUCCESS in 2 iterations
+````
+
+### Stop Conditions
+
+**Hard stops (aligned with Step 6):**
+
+| Condition | Iteration | Message |
+|-----------|-----------|---------|
+| **Max iterations** | 5 | Show full summary, ask for direction |
+| **Same error 3x** | 3+ | Escalate to fix-loop automatically |
+| **All strategies fail** | Any | Ask user: try heuristic or record new? |
+| **Cross-feature impact** | Any | Ask approval before proceeding |
+
+**Stop message template:**
+
+```
+🛑 Reached iteration limit (5/5)
+
+**Summary of all attempts:**
+
+Iteration 1: [Priority 0] Element not found
+  → Fix: Added data-testid
+  → Result: ❌ Still failing (different error)
+
+Iteration 2: [Priority 0] Component not rendering
+  → Fix: Fixed conditional logic
+  → Result: ❌ Modal appears but crashes
+
+Iteration 3: [fix-loop Deep] WebSocket timing issue
+  → Fix: Added wait for WebSocket ready
+  → Result: ❌ Timeout increased to 10s
+
+Iteration 4: [fix-loop VeryDeep] State management race condition
+  → Fix: Used nextTick() before modal open
+  → Result: ⚠️ Pass but flaky (2/3 runs)
+
+Iteration 5: [browser-testing] Manual inspection
+  → Finding: Vue reactivity timing with Pinia
+  → Current: Investigating root cause
+
+**Stuck Condition:** Max iterations reached
+**Best result:** Iteration 4 (flaky pass)
 
 **Options:**
-1. ✅ **Try different approach** - {describe_heuristic}
-2. 📝 **Record as new pattern** - Add to KB for future
-3. 🔧 **Escalate to fix-loop** - Deep thinking mode
-4. 🌐 **Use browser-testing** - Manual UI inspection
-5. ⏭️ **Skip for now** - Move to other verification tasks
-6. 🔍 **Show me the code** - I'll fix it manually
+1. 🔧 Continue with fix-loop (VeryDeep → UltraThink)
+2. 🌐 Deep browser debugging session
+3. 📝 Document as known issue, skip for now
+4. 🔍 Show me the code - I'll investigate manually
 
-Which option? (1-6 or describe custom approach)
-````
+Which option? (Or describe custom approach)
+```
 
-### Common Issues
+### Integration Points
 
-**Updated with MCP tools:**
-
-| Problem | Cause | Fix |
-|---------|-------|-----|
-| Can't find test file | Not in feature-registry.yaml | Add mapping OR run full feature suite |
-| Screenshots not working | MCP Playwright not initialized | Check `mcp__playwright__browser_take_screenshot` available |
-| Browser debugging fails | MCP connection issue | Restart Claude Code, reconnect MCP |
-| Knowledge base empty | Never initialized | Run `Skill(skill="reflect", args="--mode session")` |
-| Strategy scores all low | Need more learning data | Continue using auto-verify, scores improve over time |
-| Synthesis not triggering | Criteria not met | Need ≥70% success, ≥5 evidence, ≥3 occurrences |
-
----
+**Attempt tracking coordinates with:**
+- **Step 3:** Displays current priority level
+- **Step 6:** Decision table uses iteration count
+- **Step 7d:** Backend iteration state management
+- **Step 8a:** Records iteration count to knowledge.db
+- **fix-loop:** Inherits iteration count, continues tracking
 
 ## References
 
-- `references/workflow-checklist.md` - Quick checklist version
-- `references/screenshot-analysis-guide.md` - How to analyze screenshots
-- `references/approval-scenarios.md` - Detailed approval scenarios
+### Internal Documentation
+
+**Workflow References:**
+- `references/workflow-checklist.md` - Quick 8-step checklist
+- `references/screenshot-analysis-guide.md` - AI-powered screenshot analysis guide
+- `references/approval-scenarios.md` - When to ask user approval (11 scenarios)
+
+**Helper Scripts:**
+- `helpers/query-knowledge.sh` - Query knowledge.db for similar errors
+- `helpers/record-to-kb.sh` - Manual KB recording (fallback)
+
+**Knowledge Base:**
+- `.claude/learning/knowledge.db` - SQLite database with fix strategies
+- `.claude/learning/schema.sql` - Database schema reference
+
+### Integrated Skills
+
+**Primary integrations:**
+- `learning-engine` - KB recording, synthesis, strategy management
+- `fix-loop` - Iterative fixing with 6-level thinking escalation
+- `browser-testing` - Manual UI debugging for complex issues
+- `reflect` - Session learning and rule synthesis
+
+**Supporting skills:**
+- `test-fixer` - Diagnose specific test failures
+- `run-tests` - Multi-layer test execution
+- `docs-maintainer` - Auto-update docs after fixes
+
+### External Documentation
+
+**Project documentation:**
+- [Automation Workflows Guide](../../../docs/guides/AUTOMATION_WORKFLOWS.md) - Complete automation system
+- [Testing Guide](../../../docs/testing/README.md) - E2E test architecture
+- [Feature Registry](../../../docs/feature-registry.yaml) - File-to-feature mapping
+
+**Architectural Decision Records:**
+- [ADR-003: Ticker Architecture](../../../docs/decisions/003-multi-broker-ticker-architecture.md)
+- [Broker Abstraction](../../../docs/architecture/broker-abstraction.md)
+
+### Quick Command Reference
+
+**Common workflows:**
+```bash
+# Run auto-verify (after code changes)
+Skill(skill="auto-verify")
+
+# Query knowledge base
+.claude/skills/auto-verify/helpers/query-knowledge.sh \
+  --error-type "Element not found" \
+  --limit 5
+
+# Record to knowledge base
+Skill(skill="learning-engine", args="--outcome success --error-type '...'")
+
+# Check synthesis eligibility
+Skill(skill="reflect", args="--mode session")
+
+# Escalate to fix-loop
+Skill(skill="fix-loop", args="--thinking-level Deep")
+
+# Manual browser debugging
+Skill(skill="browser-testing", args="Debug /positions screen")
+```
+
+### MCP Playwright Tools Reference
+
+**Browser navigation:**
+- `mcp__playwright__browser_navigate` - Navigate to URL
+- `mcp__playwright__browser_snapshot` - Capture accessibility snapshot
+
+**Debugging:**
+- `mcp__playwright__browser_console_messages` - Get console errors
+- `mcp__playwright__browser_evaluate` - Run custom JavaScript
+- `mcp__playwright__browser_network_requests` - Check API calls
+
+**Visual verification:**
+- `mcp__playwright__browser_take_screenshot` - Capture screenshots
+- `mcp__playwright__browser_click` - Interact with elements
