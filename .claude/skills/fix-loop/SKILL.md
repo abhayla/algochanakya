@@ -1,17 +1,17 @@
 ---
 name: fix-loop
-description: Iterative fix cycle with thinking escalation (Normal to ThinkHard to UltraThink), code review gates, and knowledge.db integration. Diagnoses and fixes test failures using ranked strategies. Use when tests fail during implement Step 5, or standalone for any bug fix.
+description: Iterative fix cycle with 6-level gradual thinking escalation (Normal → Basic → Moderate → Deep → VeryDeep → UltraThink), code review gates, and knowledge.db integration. Diagnoses and fixes test failures using ranked strategies. Use when tests fail during implement Step 5, or standalone for any bug fix.
 metadata:
   author: AlgoChanakya
-  version: "1.0"
+  version: "2.0"
   category: workflow
 ---
 
 # fix-loop - Iterative Fix Cycle
 
-**Purpose:** Central fix engine with thinking escalation, code review gates, and knowledge.db integration.
+**Purpose:** Central fix engine with 6-level gradual thinking escalation, code review gates, and knowledge.db integration.
 
-**When to use:** Automatically invoked by `/implement` Step 5 when tests fail. Can be invoked standalone for any bug fix.
+**When to use:** Automatically invoked by implement Step 5 when tests fail. Can be invoked standalone for any bug fix.
 
 **Integration:** Reads strategies from `knowledge.db`, records every attempt, updates strategy scores.
 
@@ -20,7 +20,7 @@ metadata:
 ## Overview
 
 The fix-loop implements a sophisticated fix strategy with:
-- **Thinking escalation:** Normal → ThinkHard → UltraThink based on attempt number
+- **Thinking escalation:** 6 gradual levels (Normal → Basic → Moderate → Deep → VeryDeep → UltraThink), 2 cycles per level
 - **Code review gate:** Every fix validated by code-reviewer agent
 - **Knowledge integration:** Pre-check strategies, post-record outcomes
 - **Prohibited actions:** Cannot skip tests, weaken assertions, or delete tests
@@ -55,25 +55,28 @@ The fix-loop implements a sophisticated fix strategy with:
    # Format: [{"id": 1, "description": "...", "code_snippet": "...", "success_rate": 0.85}, ...]
    ```
 
-3. **Set thinking depth based on iteration:**
-   - **Iteration 1:** Normal analysis (default Claude thinking)
-   - **Iterations 2-3:** Launch debugger agent with "thinkhard" mode
-   - **Iterations 4+:** Launch debugger agent with "ultrathink" mode (maximum depth)
+3. **Set thinking depth based on iteration (6 gradual levels):**
+   - **Level 1 - Normal** (Iterations 1-2): Standard analysis, direct error interpretation
+   - **Level 2 - Basic** (Iterations 3-4): Basic root cause, file context, common patterns
+   - **Level 3 - Moderate** (Iterations 5-6): Cross-file dependencies, component interactions
+   - **Level 4 - Deep** (Iterations 7-8): Timing, async, architecture, broker abstraction
+   - **Level 5 - VeryDeep** (Iterations 9-10): Previous attempts analysis, anti-patterns, alternatives
+   - **Level 6 - UltraThink** (Iterations 11-12): Maximum depth, test validity, fundamental assumptions
 
 ---
 
 ### Main Loop
 
 **Budget limits:**
-- **Max iterations:** 10 (total fix attempts for this command invocation)
+- **Max iterations:** 12 (total fix attempts for this command invocation, 2 cycles per thinking level)
 - **Max attempts per issue:** 3 (before moving to next strategy)
 - **Max cascade depth:** 2 (fixes can trigger new failures, but only 2 levels deep)
 
 ```
-FOR iteration = 1 TO 10:
+FOR iteration = 1 TO 12:
     1. Identify failing tests
     2. Select fix strategy
-    3. Apply thinking escalation
+    3. Apply thinking escalation (6 gradual levels)
     4. Generate fix
     5. Run code review gate
     6. Apply fix
@@ -154,49 +157,93 @@ FAIL src/components/positions/ExitPositionModal.spec.js > ExitPositionModal > sh
 ```python
 iteration = state['steps']['step5_fixLoop']['iterations']
 
-if iteration == 1:
-    # Normal analysis (default)
+# Level 1: Normal (Iterations 1-2)
+if iteration <= 2:
     thinking_mode = "normal"
+    # Direct fix attempt without debugger agent
 
-elif iteration <= 3:
-    # Launch debugger agent with ThinkHard
-    thinking_mode = "thinkhard"
+# Level 2: Basic (Iterations 3-4)
+elif iteration <= 4:
+    thinking_mode = "basic"
     agent_result = Task(
         subagent_type="general-purpose",
         model="sonnet",
         prompt=f"""You are a Debugger Agent for AlgoChanakya.
         Follow the instructions in .claude/agents/debugger.md.
 
-        Read .claude/agents/debugger.md first, then:
-
-        Analyze this test failure with increased depth (ThinkHard mode):
+        LEVEL 2 - BASIC ROOT CAUSE ANALYSIS:
 
         Failing test: {test_name}
         Error: {error_message}
         Stack trace: {stack_trace}
 
-        Component: {component_name}
-        Recent changes: {recent_file_changes}
-
         Provide:
-        1. Root cause analysis
-        2. Recommended fix strategy
-        3. Potential side effects
+        1. Error type classification
+        2. File/component context check
+        3. Common fix pattern recommendation
         """
     )
 
-else:  # iteration >= 4
-    # Launch debugger agent with UltraThink (maximum depth)
-    thinking_mode = "ultrathink"
+# Level 3: Moderate (Iterations 5-6)
+elif iteration <= 6:
+    thinking_mode = "moderate"
     agent_result = Task(
         subagent_type="general-purpose",
         model="sonnet",
         prompt=f"""You are a Debugger Agent for AlgoChanakya.
         Follow the instructions in .claude/agents/debugger.md.
 
-        Read .claude/agents/debugger.md first, then:
+        LEVEL 3 - MODERATE CROSS-FILE ANALYSIS:
 
-        MAXIMUM DEPTH ANALYSIS (UltraThink mode):
+        Failing test: {test_name}
+        Error: {error_message}
+        Stack trace: {stack_trace}
+        Component: {component_name}
+
+        Provide:
+        1. Import chain analysis
+        2. Function call hierarchy
+        3. State propagation paths
+        4. API contract validation
+        """
+    )
+
+# Level 4: Deep (Iterations 7-8)
+elif iteration <= 8:
+    thinking_mode = "deep"
+    agent_result = Task(
+        subagent_type="general-purpose",
+        model="sonnet",
+        prompt=f"""You are a Debugger Agent for AlgoChanakya.
+        Follow the instructions in .claude/agents/debugger.md.
+
+        LEVEL 4 - DEEP SYSTEM-LEVEL ANALYSIS:
+
+        Failing test: {test_name}
+        Error: {error_message}
+        Stack trace: {stack_trace}
+        Component: {component_name}
+        Recent changes: {recent_file_changes}
+
+        Provide:
+        1. Race condition analysis
+        2. Event propagation timing
+        3. Async/await flow validation
+        4. Broker abstraction compliance check
+        5. Database transaction handling
+        """
+    )
+
+# Level 5: VeryDeep (Iterations 9-10)
+elif iteration <= 10:
+    thinking_mode = "verydeep"
+    agent_result = Task(
+        subagent_type="general-purpose",
+        model="sonnet",
+        prompt=f"""You are a Debugger Agent for AlgoChanakya.
+        Follow the instructions in .claude/agents/debugger.md.
+
+        LEVEL 5 - VERY DEEP HISTORICAL PATTERN ANALYSIS:
 
         We have attempted {iteration - 1} fixes without success.
 
@@ -205,13 +252,44 @@ else:  # iteration >= 4
         Stack trace: {stack_trace}
 
         Previous fix attempts:
-        {format_previous_attempts()}  # [PLANNED - pseudocode]
+        {format_previous_attempts()}
 
         Provide:
-        1. Deep root cause analysis (consider timing, race conditions, state management, event propagation)
-        2. Analysis of why previous fixes failed
-        3. Alternative approach
-        4. Verification strategy
+        1. Analysis of why previous 8 fixes failed
+        2. Similar past errors from knowledge.db
+        3. Anti-pattern detection
+        4. Alternative architectural approaches
+        5. Test logic validity review
+        """
+    )
+
+# Level 6: UltraThink (Iterations 11-12)
+else:  # iteration >= 11
+    thinking_mode = "ultrathink"
+    agent_result = Task(
+        subagent_type="general-purpose",
+        model="sonnet",
+        prompt=f"""You are a Debugger Agent for AlgoChanakya.
+        Follow the instructions in .claude/agents/debugger.md.
+
+        LEVEL 6 - ULTRATHINK MAXIMUM DEPTH + META-REASONING:
+
+        CRITICAL: We have attempted {iteration - 1} fixes without success.
+
+        Failing test: {test_name}
+        Error: {error_message}
+        Stack trace: {stack_trace}
+
+        Previous fix attempts:
+        {format_previous_attempts()}
+
+        Provide:
+        1. Question test correctness (is the test itself wrong?)
+        2. Challenge requirement interpretation
+        3. Explore complete redesign options
+        4. Consider external factors (infrastructure, timing, environment)
+        5. Full system state reconstruction
+        6. Meta-analysis: Are we solving the right problem?
         """
     )
 ```
@@ -391,11 +469,11 @@ record_attempt(
 
 **CONTINUE (next iteration):**
 - Some tests still failing
-- Budget not exhausted (iteration < 10)
+- Budget not exhausted (iteration < 12)
 - Increment iteration counter
 
 **FAIL (exit with code 1):**
-- Max iterations reached (10)
+- Max iterations reached (12)
 - OR: Same error 3x with different strategies
 - OR: All strategies exhausted (scores < 0.1)
 - Update workflow state:
@@ -460,7 +538,7 @@ Fixes can trigger new failures (cascade). Handle up to depth 2:
 cascade_depth = 0
 MAX_CASCADE_DEPTH = 2
 
-while has_failures and iteration < 10:
+while has_failures and iteration < 12:
     fix_result = apply_fix()
 
     if fix_result.new_failures and fix_result.new_failures != previous_failures:
@@ -480,7 +558,7 @@ while has_failures and iteration < 10:
 **Stop and ask user if:**
 1. Same error 3x with different strategies failing
 2. All strategies exhausted (scores < 0.1)
-3. 10 total attempts reached
+3. 12 total attempts reached (all 6 thinking levels exhausted)
 4. Fix requires modifying files outside feature scope
 5. Error type completely unknown (no strategies, no heuristics)
 
@@ -488,7 +566,7 @@ while has_failures and iteration < 10:
 ```
 AskUserQuestion(
     questions=[{
-        "question": "Fix loop is stuck after 10 attempts. How should we proceed?",
+        "question": "Fix loop is stuck after 12 attempts (all 6 thinking levels exhausted). How should we proceed?",
         "header": "Stuck",
         "multiSelect": False,
         "options": [
@@ -528,13 +606,14 @@ All tests now passing.
 
 **On failure:**
 ```
-❌ Fix loop failed after 10 iterations.
+❌ Fix loop failed after 12 iterations (all 6 thinking levels exhausted).
 
 Remaining failures:
   - tests/e2e/specs/positions/positions.happy.spec.js:45 - Timeout waiting for selector
   - backend/tests/autopilot/test_kill_switch.py::test_emergency_exit - AssertionError
 
 Last strategy attempted: "Update data-testid" (success rate: 0.45)
+Thinking level reached: Level 6 (UltraThink)
 
 User intervention required.
 ```
