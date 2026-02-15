@@ -438,7 +438,7 @@ AlgoChanakya is an options trading platform (similar to Sensibull) for Indian ma
 
 **Workflow Orchestration:**
 - `implement` - 7-step implementation workflow (TDD enforced)
-- `fix-loop` - Iterative fix cycle with thinking escalation
+- `fix-loop` - Iterative fix cycle with 6-level thinking escalation + AI-powered iteration memory 🧠
 - `run-tests` - Multi-layer test runner with auto-fix
 - `reflect` - Learning + self-modification (4 modes)
 - `post-fix-pipeline` - Verification + commit with hard blocks
