@@ -45,7 +45,7 @@
           </label>
 
           <!-- Refresh Button -->
-          <button @click="store.fetchPositions()" class="refresh-btn" :disabled="store.isLoading">
+          <button @click="store.fetchPositions()" class="refresh-btn" :disabled="store.isLoading" data-testid="positions-refresh-btn">
             <span v-if="store.isLoading" class="spinner"></span>
             {{ store.isLoading ? '' : 'Refresh' }}
           </button>
