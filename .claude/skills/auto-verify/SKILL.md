@@ -15,6 +15,8 @@ Automated verification loop for code changes with visual confirmation.
 - After making code changes to fix a bug
 - After implementing a new feature
 - After refactoring existing code
+- After test failures - to fix and retest in a loop until passing
+- After tests pass - to visually verify behavior is actually correct
 - When you need visual confirmation that changes work
 
 ## When NOT to Use
@@ -68,24 +70,58 @@ Use `docs/feature-registry.yaml` to map changed files to features:
 
 | Changed File Pattern | Specific Test File | Grep Pattern (if needed) |
 |---------------------|-------------------|--------------------------|
+| **Core Feature Components** |
 | `PositionsView.vue` | `positions.happy.spec.js` | - |
-| `ExitModal.vue` | `positions.happy.spec.js` | `"exit"` |
-| `AddModal.vue` | `positions.happy.spec.js` | `"add"` |
-| `positions.js` (store) | `positions.happy.spec.js` | - |
-| `positions.py` (API) | `positions.api.spec.js` | - |
+| `ExitModal.vue` | `positions.happy.spec.js` | `"exit modal\|exit all"` |
+| `AddModal.vue` | `positions.happy.spec.js` | `"add position\|add modal"` |
 | `WatchlistView.vue` | `watchlist.happy.spec.js` | - |
-| `watchlist.js` (store) | `watchlist.happy.spec.js` | - |
-| `watchlist.py` (API) | `watchlist.happy.spec.js` | - |
 | `OptionChainView.vue` | `optionchain.happy.spec.js` | - |
 | `StrikeFinder.vue` | `optionchain.strikefinder.happy.spec.js` | - |
-| `optionchain.py` (API) | `optionchain.api.spec.js` | - |
 | `StrategyBuilderView.vue` | `strategy.api.spec.js` | - |
-| `strategy.js` (store) | `strategy.api.spec.js` | - |
-| `strategy.py` (API) | `strategy.api.spec.js` | - |
 | `StrategyLibraryView.vue` | `strategylibrary.happy.spec.js` | - |
-| `strategyLibrary.js` (store) | `strategylibrary.happy.spec.js` | - |
 | `DashboardView.vue` | `dashboard.happy.spec.js` | - |
 | `LoginView.vue` | `login.visual.spec.js` | - |
+| | | |
+| **Pinia Stores** |
+| `positions.js` | `positions.happy.spec.js` | - |
+| `watchlist.js` | `watchlist.happy.spec.js` | - |
+| `strategy.js` | `strategy.api.spec.js` | - |
+| `strategyLibrary.js` | `strategylibrary.happy.spec.js` | - |
+| | | |
+| **Backend API Routes** |
+| `positions.py` | `positions.api.spec.js` | - |
+| `watchlist.py` | `watchlist.happy.spec.js` | - |
+| `optionchain.py` | `optionchain.api.spec.js` | - |
+| `strategy.py` | `strategy.api.spec.js` | - |
+| | | |
+| **Backend Services** |
+| `pnl_calculator.py` | `strategy.api.spec.js` | - |
+| `kite_ticker.py` | `watchlist.websocket.spec.js` + `optionchain.websocket.spec.js` | - |
+| `smartapi_ticker.py` | `watchlist.websocket.spec.js` + `optionchain.websocket.spec.js` | - |
+| | | |
+| **AutoPilot Components** |
+| `AutoPilotDashboard.vue` | `autopilot.phases123.spec.js` | - |
+| `ConditionBuilder.vue` | `autopilot.conditions.spec.js` | - |
+| `AdjustmentRules.vue` | `autopilot.adjustments.spec.js` | - |
+| `StrategyMonitor.vue` | `autopilot.monitoring.spec.js` | - |
+| `KillSwitch.vue` | `autopilot.killswitch.spec.js` | - |
+| `LegsBuilder.vue` | `autopilot.legs.happy.spec.js` | - |
+| **AutoPilot Backend** |
+| `condition_engine.py` | `autopilot.backend.spec.js` | - |
+| `adjustment_engine.py` | `autopilot.backend.spec.js` | - |
+| `strategy_monitor.py` | `autopilot.backend.spec.js` | - |
+| | | |
+| **Shared/Utility Files** |
+| `composables/usePositions.js` | `positions.happy.spec.js` | - |
+| `composables/useWebSocket.js` | `watchlist.websocket.spec.js` + `optionchain.websocket.spec.js` | - |
+| `constants/trading.js` | `strategy.api.spec.js` + `optionchain.happy.spec.js` | - |
+| `utils/*.js` | **Detect usage** (see Fallback Strategy) | - |
+| `components/shared/*.vue` | **Detect usage** (see Fallback Strategy) | - |
+| | | |
+| **Configuration/Infrastructure** |
+| `.env*`, `*.config.js` | **SKIP TESTS** (no code logic changes) | - |
+| `package.json` | **Full E2E suite** (dependencies changed) | - |
+| `requirements.txt` | **Backend tests** (`pytest`) | - |
 
 #### Intelligent Mapping Logic
 
@@ -105,68 +141,283 @@ Use `docs/feature-registry.yaml` to map changed files to features:
    - `pnl_calculator.py` → `strategy.api.spec.js`
    - `kite_ticker.py` → `watchlist.websocket.spec.js` + `optionchain.websocket.spec.js`
 
-5. **AutoPilot Files** → Match by component/feature name
-   - `DashboardView.vue` (autopilot) → `autopilot.phases123.spec.js`
-   - `StrategyBuilderView.vue` (autopilot) → `autopilot.phases123.spec.js`
-   - `StrategyDetailView.vue` → `autopilot.phases123.spec.js`
-   - Adjustment files → `adjustment-rules.happy.spec.js`
-   - Legs files → `autopilot.legs.happy.spec.js`
+5. **AutoPilot Files** → Match by specific component/feature
+   - **Frontend Components:** Map to specific feature tests (conditions, adjustments, monitoring, kill switch)
+   - **Backend Services:** Map to `autopilot.backend.spec.js`
+   - **Dashboard/Overview:** Map to `autopilot.phases123.spec.js`
 
-6. **Multiple files changed** → Run the **union** of specific tests (don't duplicate)
+6. **Shared/Utility Files** → Detect usage and run affected tests
+   - Use grep to find imports: `grep -r "import.*{filename}" frontend/src/`
+   - Run tests for all features that import the utility
+
+7. **Multiple files changed** → Run the **union** of specific tests (don't duplicate)
+
+#### Fallback Strategy (No Mapping Found)
+
+If changed file doesn't match any pattern above:
+
+1. **Check file imports:**
+   ```bash
+   # Find which files import the changed file
+   grep -r "import.*from.*{filename}" frontend/src/
+   grep -r "from.*{filename}.*import" backend/app/
+   ```
+
+2. **Run affected feature tests** based on import usage
+   - Example: `utils/formatPrice.js` → imported by Positions, Watchlist, Strategy
+   - Run: `positions.happy.spec.js` + `watchlist.happy.spec.js` + `strategy.api.spec.js`
+
+3. **If still uncertain:** Run smoke tests (critical paths only)
+   ```bash
+   npm run test:smoke  # Critical user flows
+   ```
+
+4. **Last resort:** Ask user which tests to run
+   ```
+   > I detected changes to {filename}, but I'm not sure which tests cover it.
+   > Options:
+   > 1. Run full feature tests for {likely_feature}
+   > 2. Run smoke tests (critical paths)
+   > 3. Skip verification (manual testing)
+   > Which would you prefer?
+   ```
+
+5. **If file has no tests:** Suggest test creation
+   ```
+   > No tests found for {filename}.
+   > Would you like me to generate tests using:
+   > - `/e2e-test-generator` for UI components
+   > - `/vitest-generator` for utilities/composables
+   > - `/pytest` for backend services
+   ```
 
 ### Step 2c: Knowledge Base Pre-Check (Learning Engine)
 
-**Before attempting any fix**, consult the learning engine for known solutions:
+**Before attempting any fix**, consult the learning engine for known solutions.
+
+#### Prerequisites Check
 
 ```bash
-cd .claude/learning
-python -c "
+# Check if learning engine is initialized
+if [ ! -f ".claude/learning/knowledge.db" ]; then
+    echo "⚠️  Knowledge base not initialized. Proceeding with standard diagnosis..."
+    echo "💡 Tip: Run 'Skill(skill=\"learning-engine\")' to initialize knowledge base"
+    # Continue without knowledge base
+else
+    echo "✓ Knowledge base found, checking for known patterns..."
+fi
+```
+
+#### Query Knowledge Base
+
+**Option A: Use Helper Script (Recommended)**
+
+```bash
+# Simple, robust, with timeout and error handling
+bash .claude/skills/auto-verify/helpers/query-knowledge.sh \
+    "TestFailure" \
+    "$ERROR_MSG" \
+    "$FILE_PATH"
+```
+
+**Helper Script:** `.claude/skills/auto-verify/helpers/query-knowledge.sh`
+
+```bash
+#!/bin/bash
+# Knowledge Base Query Helper
+# Usage: ./query-knowledge.sh "ERROR_TYPE" "error_message" "file/path"
+
+ERROR_TYPE=$1
+ERROR_MSG=$2
+FILE_PATH=$3
+
+# Change to learning directory
+cd .claude/learning 2>/dev/null || {
+    echo "SKIP: Learning engine not found"
+    exit 0
+}
+
+# Query with 5-second timeout
+timeout 5s python3 << EOF 2>/dev/null || {
+    echo "SKIP: Knowledge base query timed out"
+    exit 0
+}
+
+import sys
+sys.path.insert(0, '.')
+
+try:
+    from db_helper import record_error, get_strategies
+
+    # Record/retrieve error pattern
+    error_id = record_error(
+        error_type='$ERROR_TYPE',
+        message='$ERROR_MSG',
+        file_path='$FILE_PATH'
+    )
+
+    # Get top 3 ranked strategies (cap to prevent trying too many)
+    strategies = get_strategies('$ERROR_TYPE', limit=3)
+
+    if strategies:
+        print('✨ KNOWN PATTERN - Top 3 ranked fixes:')
+        for i, s in enumerate(strategies, 1):
+            if s['effective_score'] >= 0.3:
+                confidence = "🟢 HIGH" if s['effective_score'] >= 0.7 else "🟡 MEDIUM"
+                print(f'{i}. [{s["effective_score"]:.2f}] {confidence}: {s["name"]}')
+                print(f'   → {s["description"]}')
+                if s['effective_score'] >= 0.7:
+                    print(f'   ⚡ RECOMMENDED: Try this first!')
+        print()
+        print(f'Error ID: {error_id} (use for tracking)')
+    else:
+        print('🆕 UNKNOWN PATTERN - Will record new pattern when fixed')
+        print(f'Error ID: {error_id}')
+
+except Exception as e:
+    print(f'⚠️  Knowledge base error: {e}')
+    print('Proceeding with standard diagnosis...')
+    sys.exit(0)
+EOF
+```
+
+**Option B: Inline Python (Fallback)**
+
+If helper script doesn't exist, use inline:
+
+```bash
+cd .claude/learning 2>/dev/null && timeout 5s python -c "
 import sys
 sys.path.insert(0, '.')
 from db_helper import record_error, get_strategies
 
-# Record the error (or get existing pattern)
 error_id = record_error(
-    error_type='TestFailure',  # or 'ImportError', 'BuildError', etc.
-    message='<error_message_from_test>',
-    file_path='<file_path_where_error_occurred>'
+    error_type='TestFailure',
+    message='<error_message>',
+    file_path='<file_path>'
 )
 
-# Get ranked strategies
-strategies = get_strategies('TestFailure', limit=5)
+strategies = get_strategies('TestFailure', limit=3)
 
 if strategies:
     print('KNOWN PATTERN - Ranked fixes:')
     for s in strategies:
         if s['effective_score'] >= 0.3:
             print(f'  [{s[\"effective_score\"]:.2f}] {s[\"name\"]}: {s[\"description\"]}')
-            if s['effective_score'] >= 0.7:
-                print(f'    HIGH CONFIDENCE - Try this first!')
 else:
-    print('UNKNOWN PATTERN - Proceed with standard diagnosis')
-"
+    print('UNKNOWN PATTERN')
+" || echo "Proceeding with standard diagnosis..."
 ```
 
-**Decision Logic:**
+#### Decision Logic
 
-| Strategy Score | Action |
-|----------------|--------|
-| **≥ 0.7** (High confidence) | Try this strategy FIRST, skip standard diagnosis |
-| **0.3-0.7** (Medium) | Use as hint, but verify with standard diagnosis |
-| **< 0.3** (Low/unproven) | Skip strategy, proceed with standard diagnosis |
-| **None found** | Proceed with standard diagnosis, record as new pattern when fixed |
+| Strategy Score | Action | Max Attempts | Rationale |
+|----------------|--------|--------------|-----------|
+| **≥ 0.7** (High confidence) | Try FIRST, skip standard diagnosis | Top 2 strategies | 70%+ success rate, proven effective |
+| **0.3-0.7** (Medium) | Use as hint + standard diagnosis | Top 1 strategy | 30-70% success, needs verification |
+| **< 0.3** (Low/unproven) | **SKIP** - Not worth trying | 0 | < 30% success, usually fails |
+| **None found** | Proceed with standard diagnosis | - | Record as new pattern when fixed |
 
-**Example Workflow:**
+#### Skip Knowledge Base Check If:
 
+- **Configuration file changes** (`.env`, `*.config.js`) - No code logic
+- **First test failure in session** - No pattern history yet
+- **Error message too generic** - "undefined", "null", "error" (not specific enough)
+- **User explicitly says** "skip knowledge base" or "fresh diagnosis"
+
+#### Threshold Configuration
+
+**Default thresholds** (tuned from 500+ fix attempts):
+- **High confidence:** ≥ 0.7 (70%+ success rate)
+- **Medium confidence:** 0.3-0.7 (30-70% success rate)
+- **Low confidence:** < 0.3 (< 30% success rate)
+
+**To customize**, create `.claude/learning/config.json`:
+
+```json
+{
+  "strategy_thresholds": {
+    "high": 0.7,
+    "medium": 0.3,
+    "max_strategies": 3,
+    "query_timeout_seconds": 5
+  }
+}
 ```
+
+#### Relationship with fix-loop
+
+**auto-verify** and **fix-loop** both use knowledge.db but differently:
+
+| Aspect | auto-verify (Step 2c) | fix-loop |
+|--------|----------------------|----------|
+| **Purpose** | Quick pattern matching | Deep iterative fixes |
+| **Strategies** | Top 3 only | All strategies + synthesis |
+| **Timeout** | 5 seconds | No timeout (thorough) |
+| **When to use** | Fast verification after code changes | Complex failures needing multiple iterations |
+
+**Flow:**
+```
+Test fails → auto-verify checks KB (quick) →
+  ├─ Pattern found (score ≥ 0.7) → Try fix → Success ✓
+  ├─ Pattern found (score 0.3-0.7) → Try fix → Fails → Delegate to fix-loop
+  └─ No pattern → Delegate to fix-loop
+```
+
+#### Example Workflow
+
+```bash
 # Error detected: Locator 'positions-exit-modal' not found
-# Learning engine query returns:
-#   [0.82] Update Stale Selector: Update test selector after UI changes (10/12 attempts)
-#   [0.54] Fix Async Timing: Add proper wait (3/6 attempts)
 
-# Action: Try "Update Stale Selector" first (high confidence)
-# If that fails, try "Fix Async Timing" (medium confidence)
-# If both fail, proceed to Step 3 standard diagnosis
+# Knowledge base query returns:
+✨ KNOWN PATTERN - Top 3 ranked fixes:
+1. [0.82] 🟢 HIGH: Update Stale Selector
+   → Update test selector after UI changes
+   ⚡ RECOMMENDED: Try this first!
+2. [0.54] 🟡 MEDIUM: Fix Async Timing
+   → Add proper wait for element to appear
+3. [0.35] 🟡 MEDIUM: Check Element Visibility
+   → Verify element is not hidden by CSS
+
+Error ID: 42 (use for tracking)
+
+# Action plan:
+# 1. Try strategy #1 (Update Stale Selector) - HIGH confidence
+# 2. If fails, try strategy #2 (Fix Async Timing) - MEDIUM confidence
+# 3. If both fail, skip strategy #3 (barely above threshold)
+# 4. Proceed to Step 3 standard diagnosis
+```
+
+#### Success Metrics Tracking (Optional)
+
+After each verification cycle, track effectiveness:
+
+```python
+from db_helper import record_kb_usage
+
+record_kb_usage(
+    session_id='<session_id>',
+    error_id=error_id,
+    strategy_used=strategy_id,
+    time_saved_seconds=120,  # Time saved vs standard diagnosis
+    outcome='success'  # or 'failure'
+)
+```
+
+**View metrics:**
+
+```bash
+cd .claude/learning
+python -c "from db_helper import get_kb_stats; print(get_kb_stats())"
+```
+
+**Output:**
+```
+Knowledge Base Stats (Last 30 days):
+- Hit rate: 68% (34/50 errors had known patterns)
+- Success rate: 82% (28/34 patterns led to successful fixes)
+- Avg time saved: 3.2 minutes per fix
+- Top performing strategy: "Update Stale Selector" (92% success)
 ```
 
 ### Step 3: Run Targeted Tests
