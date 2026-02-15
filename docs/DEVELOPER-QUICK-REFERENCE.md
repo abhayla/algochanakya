@@ -1,6 +1,6 @@
 # Developer Quick Reference
 
-**Last Updated:** 2026-02-13
+**Last Updated:** 2026-02-15
 
 This guide provides quick access to all architecture documentation organized by development task.
 
@@ -65,7 +65,7 @@ This guide provides quick access to all architecture documentation organized by 
 - Factory pattern for broker instantiation
 - ✅ All routes refactored to use broker factories (Phase 3 complete)
 
-**Broker Expert Skills:** `/smartapi-expert`, `/kite-expert`, `/upstox-expert`, `/dhan-expert`, `/fyers-expert`, `/paytm-expert` — API-specific guidance for each broker. See [Comparison Matrix](../.claude/skills/broker-shared/comparison-matrix.md) for cross-broker differences.
+**Broker Expert Skills:** `smartapi-expert`, `kite-expert`, `upstox-expert`, `dhan-expert`, `fyers-expert`, `paytm-expert` — API-specific guidance for each broker. Invoke with `Skill("broker-name-expert")`. See [Comparison Matrix](../.claude/skills/broker-shared/comparison-matrix.md) for cross-broker differences.
 
 ### Authentication & Security
 

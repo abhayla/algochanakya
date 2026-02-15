@@ -14,8 +14,8 @@ AlgoChanakya has **MORE automation** than CricApp but **ZERO unified documentati
 |----------|--------------|---------|------------------------|
 | **Hooks** | 14 | 11 | +3 hooks |
 | **Agents** | 5 | 14 | -9 agents |
-| **Skills** | 21 | 16 | +5 skills |
-| **Commands** | 6 | 0 | +6 commands |
+| **Skills** | 27 | 16 | +5 skills |
+| **Workflow Skills** | 6 | 0 | +6 commands |
 | **Learning System** | ✅ knowledge.db (6 tables) | ❌ None | Unique |
 | **Unified Guide** | ❌ None | ✅ 1,684 lines | **CRITICAL GAP** |
 
@@ -117,7 +117,7 @@ AlgoChanakya has **MORE automation** than CricApp but **ZERO unified documentati
 #### AlgoChanakya Skills (21)
 
 **Core Workflow (7):**
-- `auto-verify` - Test changes immediately (Step 4 of /implement)
+- `auto-verify` - Test changes immediately (Step 4 of implement workflow)
 - `docs-maintainer` - Update docs after code changes
 - `learning-engine` - Record errors, rank strategies, synthesize rules
 - `health-check` - 7-step codebase scan (stale imports, missing tests, risky files)
@@ -171,12 +171,12 @@ AlgoChanakya has **MORE automation** than CricApp but **ZERO unified documentati
 #### AlgoChanakya Commands (6)
 
 **AlgoChanakya UNIQUE:**
-1. `/implement` - 7-step mandatory workflow (requirements → tests → code → verify → fix → screenshots → commit)
-2. `/fix-loop` - Iterative fix cycle with thinking escalation
-3. `/post-fix-pipeline` - Final verification + docs + commit
-4. `/run-tests` - Multi-layer test runner
-5. `/fix-issue` - Fix GitHub issues
-6. `/reflect` - Learning reflection + self-modification
+1. `Skill("implement")` - 7-step mandatory workflow (requirements → tests → code → verify → fix → screenshots → commit)
+2. `Skill("fix-loop")` - Iterative fix cycle with thinking escalation
+3. `Skill("post-fix-pipeline")` - Final verification + docs + commit
+4. `Skill("run-tests")` - Multi-layer test runner
+5. `Skill("fix-issue")` - Fix GitHub issues
+6. `Skill("reflect")` - Learning reflection + self-modification
 
 **CricApp has ZERO commands** - All automation is hook/agent/skill based.
 
@@ -239,7 +239,7 @@ AlgoChanakya has **MORE automation** than CricApp but **ZERO unified documentati
 | 6 | **Knowledge accumulation patterns** | N/A (no knowledge system) | ❌ No docs | Medium |
 | 7 | **Settings/permissions with rationale** | ✅ Annotated | ❌ Just JSON | Medium |
 | 8 | **Integration patterns** | ✅ Hook+Agent+Skill orchestration | ❌ | High |
-| 9 | **Debugging workflow guide** | ✅ Step-by-step | ❌ Exists in /fix-loop but not as guide | Medium |
+| 9 | **Debugging workflow guide** | ✅ Step-by-step | ❌ Exists in Skill("fix-loop") but not as guide | Medium |
 | 10 | **Session management lifecycle** | ✅ Lifecycle diagram | ❌ | Medium |
 | 11 | **Code generation workflow** | ✅ Documented | ❌ | Low |
 | 12 | **Customization guide** | ✅ How to add hook/agent/skill | ❌ | Medium |
@@ -270,11 +270,11 @@ AlgoChanakya has **MORE automation** than CricApp but **ZERO unified documentati
 |---|---------|-------------|-------|
 | 1 | **Learning system (knowledge.db)** | 6 tables: error_patterns, fix_strategies, fix_attempts, file_risk_scores, synthesized_rules, session_metrics | **HIGH** - Self-improving |
 | 2 | **verify-test-rerun hook** | Independently re-runs tests to prevent false positives | **HIGH** - Anti-cheating |
-| 3 | **Workflow state machine** | 7-step /implement with enforcement hooks | **HIGH** - Prevents incomplete work |
+| 3 | **Workflow state machine** | 7-step Skill("implement") with enforcement hooks | **HIGH** - Prevents incomplete work |
 | 4 | **Evidence artifacts verification** | Requires evidence files before Bash commands | **MEDIUM** - Audit trail |
 | 5 | **6 broker expert skills** | Domain expertise for Indian trading brokers | **HIGH** - Domain-specific |
-| 6 | **/reflect command** | Self-modification + learning reflection | **MEDIUM** - Meta-learning |
-| 7 | **Thinking escalation** | Normal → ThinkHard → UltraThink in /fix-loop | **MEDIUM** - Progressive depth |
+| 6 | **reflect skill** | Self-modification + learning reflection | **MEDIUM** - Meta-learning |
+| 7 | **Thinking escalation** | Normal → ThinkHard → UltraThink in Skill("fix-loop") | **MEDIUM** - Progressive depth |
 
 ---
 

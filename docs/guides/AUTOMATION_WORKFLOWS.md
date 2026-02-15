@@ -51,12 +51,12 @@ ls -l .claude/hooks/*.py
 ### 1.2 Priority Tiers (Start Here!)
 
 **Tier 0: Must Know (Start here)**
-- `/implement` command - 7-step workflow for all code changes
+- `Skill("implement")` command - 7-step workflow for all code changes
 - `auto-verify` skill - Auto-test after code changes
 - Hook enforcement - Understand what's blocked and why
 
 **Tier 1: Daily Use**
-- `/fix-loop` - Fix failing tests iteratively
+- `Skill("fix-loop")` - Fix failing tests iteratively
 - `test-fixer` skill - Diagnose test failures
 - Learning system - How knowledge.db improves over time
 
@@ -74,8 +74,8 @@ ls -l .claude/hooks/*.py
 
 | Scenario | Command/Skill | Priority |
 |----------|---------------|----------|
-| **Implementing a new feature** | `/implement` | Tier 0 |
-| **Fixing a bug** | `/fix-loop` or `/implement` | Tier 0 |
+| **Implementing a new feature** | `Skill("implement")` | Tier 0 |
+| **Fixing a bug** | `Skill("fix-loop")` or `Skill("implement")` | Tier 0 |
 | **Test is failing** | `test-fixer` | Tier 1 |
 | **Code change needs verification** | `auto-verify` | Tier 0 |
 | **Need to update docs** | `docs-maintainer` | Tier 1 |
@@ -170,13 +170,13 @@ ls -l .claude/hooks/*.py
 | **Research/Investigation** | ✅ Read-only analysis | ❌ Skills modify | ❌ Commands orchestrate |
 | **Code Review** | ✅ code-reviewer agent | ❌ | ❌ |
 | **Root Cause Analysis** | ✅ debugger agent | ❌ | ❌ |
-| **Fix Failing Tests** | ❌ | ✅ test-fixer | ✅ /fix-loop (orchestrates) |
+| **Fix Failing Tests** | ❌ | ✅ test-fixer | ✅ Skill("fix-loop") (orchestrates) |
 | **Generate Code** | ❌ | ✅ vue-component-generator | ❌ |
-| **Run Tests** | ❌ | ✅ auto-verify | ✅ /run-tests (multi-layer) |
-| **Full Feature Implementation** | ❌ | ❌ | ✅ /implement (7 steps) |
-| **Update Documentation** | ❌ | ✅ docs-maintainer | ✅ /post-fix-pipeline (includes docs) |
-| **Git Operations** | ✅ git-manager | ❌ | ✅ /post-fix-pipeline (includes commit) |
-| **Learning Reflection** | ❌ | ✅ learning-engine | ✅ /reflect (orchestrates) |
+| **Run Tests** | ❌ | ✅ auto-verify | ✅ run-tests (multi-layer) |
+| **Full Feature Implementation** | ❌ | ❌ | ✅ Skill("implement") (7 steps) |
+| **Update Documentation** | ❌ | ✅ docs-maintainer | ✅ post-fix-pipeline (includes docs) |
+| **Git Operations** | ✅ git-manager | ❌ | ✅ post-fix-pipeline (includes commit) |
+| **Learning Reflection** | ❌ | ✅ learning-engine | ✅ reflect (orchestrates) |
 
 **Key Differences:**
 
@@ -188,7 +188,7 @@ ls -l .claude/hooks/*.py
 
 **File:** `.claude/workflow-state.json`
 
-The `/implement` command uses a 7-step state machine:
+The `Skill("implement")` command uses a 7-step state machine:
 
 ```
 Step 1: Requirements/Clarification
@@ -246,7 +246,7 @@ Step 7: Post-Fix Pipeline
 │   ├── hook_utils.py              # 725 lines - Shared library for all hooks
 │   ├── protect_sensitive_files.py # PreToolUse: Block .env, knowledge.db writes
 │   ├── guard_folder_structure.py  # PreToolUse: Enforce subdirectory rules
-│   ├── validate_workflow_step.py  # PreToolUse: Enforce /implement step order
+│   ├── validate_workflow_step.py  # PreToolUse: Enforce Skill("implement") step order
 │   ├── verify_evidence_artifacts.py # PreToolUse: Require evidence before Bash
 │   ├── post_test_update.py        # PostToolUse: Record test results
 │   ├── verify_test_rerun.py       # PostToolUse: Independent test verification
@@ -259,12 +259,12 @@ Step 7: Post-Fix Pipeline
 │   ├── reinject_after_compaction.py # Session: Re-inject after compression
 │   └── quality_gate.py            # Session: Final commit checks
 ├── commands/
-│   ├── implement.md               # /implement - 7-step workflow
-│   ├── fix-loop.md                # /fix-loop - Iterative fix cycle
-│   ├── post-fix-pipeline.md       # /post-fix-pipeline - Final verification
-│   ├── run-tests.md               # /run-tests - Multi-layer test runner
-│   ├── fix-issue.md               # /fix-issue - GitHub issue fixer
-│   └── reflect.md                 # /reflect - Learning reflection
+│   ├── implement.md               # Skill("implement") - 7-step workflow
+│   ├── fix-loop.md                # Skill("fix-loop") - Iterative fix cycle
+│   ├── post-fix-pipeline.md       # post-fix-pipeline - Final verification
+│   ├── run-tests.md               # run-tests - Multi-layer test runner
+│   ├── fix-issue.md               # fix-issue - GitHub issue fixer
+│   └── reflect.md                 # reflect - Learning reflection
 ├── agents/
 │   ├── code-reviewer.md           # Validate against architectural rules
 │   ├── debugger.md                # Root cause analysis (ThinkHard/UltraThink)
@@ -467,7 +467,7 @@ exit_with_code(0, "✅ Folder structure valid")
 #### 3.2.3 validate_workflow_step.py
 
 **Triggers:** Write, Edit, Bash
-**Purpose:** Enforce /implement step order (prevent code before tests)
+**Purpose:** Enforce Skill("implement") step order (prevent code before tests)
 
 **Pseudocode:**
 ```python
@@ -485,7 +485,7 @@ if is_code_file(file_path) and not is_test_file(file_path):
     # Production code - check Step 2 complete
     if not state['steps']['step2_tests']['completed']:
         exit_with_code(2, """
-❌ BLOCKED: Must write tests first (Step 2 of /implement)
+❌ BLOCKED: Must write tests first (Step 2 of implement workflow)
 
 Current step: Step 1 (Requirements)
 You must:
@@ -510,7 +510,7 @@ if tool_name == 'Bash' and 'git commit' in tool_input.get('command', ''):
 
     # post-fix-pipeline must be invoked
     if not state['skillInvocations']['postFixPipelineInvoked']:
-        exit_with_code(2, "❌ BLOCKED: Must run /post-fix-pipeline before commit")
+        exit_with_code(2, "❌ BLOCKED: Must run post-fix-pipeline before commit")
 
 exit_with_code(0, "✅ Workflow step valid")
 ```
@@ -520,7 +520,7 @@ exit_with_code(0, "✅ Workflow step valid")
 - Step progression tracked in `workflow-state.json`
 
 **Customization:**
-- Modify step definitions in `/implement` command
+- Modify step definitions in `Skill("implement")` command
 - Adjust blocking logic for different workflows
 
 #### 3.2.4 verify_evidence_artifacts.py
@@ -917,7 +917,7 @@ if state_match:
 exit_with_code(0, "✅ Session context loaded")
 ```
 
-**Rationale:** Allows resuming /implement workflow across sessions
+**Rationale:** Allows resuming Skill("implement") workflow across sessions
 
 **Customization:**
 - Add custom context restoration (environment vars, temp files)
@@ -968,7 +968,7 @@ state = read_workflow_state()
 if state:
     all_complete = all(state['steps'][step]['completed'] for step in state['steps'])
     if not all_complete:
-        exit_with_code(2, "❌ BLOCKED: Workflow incomplete - finish all /implement steps")
+        exit_with_code(2, "❌ BLOCKED: Workflow incomplete - finish all Skill("implement") steps")
 
 # Check for TODO/FIXME in staged files
 staged_files = subprocess.run(['git', 'diff', '--cached', '--name-only'], capture_output=True, text=True).stdout.strip().split('\n')
@@ -999,7 +999,7 @@ exit_with_code(0, "✅ Quality gate passed")
 
 Commands are AlgoChanakya's **unique feature** - CricApp has zero commands. Commands orchestrate multiple skills/agents into cohesive workflows.
 
-### 4.1 /implement - 7-Step Mandatory Workflow
+### 4.1 Skill("implement") - 7-Step Mandatory Workflow
 
 **File:** `.claude/skills/implement/SKILL.md`
 **Purpose:** Primary workflow for all feature implementations
@@ -1129,7 +1129,7 @@ Questions:
 
 [User responds...]
 
-Claude: Starting /implement workflow...
+Claude: Starting Skill("implement") workflow...
 
 Step 1: ✅ Requirements understood
 Step 2: Generating E2E test... Skill("e2e-test-generator", args="autopilot kill-switch happy")
@@ -1148,18 +1148,18 @@ Step 7: Skill("post-fix-pipeline")
   ✅ Docs updated
   ✅ Committed: feat(autopilot): add kill switch button
 
-✅ /implement complete!
+✅ Skill("implement") complete!
 ```
 
 ---
 
-### 4.2 /fix-loop - Iterative Fix Cycle
+### 4.2 Skill("fix-loop") - Iterative Fix Cycle
 
 **File:** `.claude/skills/fix-loop/SKILL.md`
 **Purpose:** Fix failing tests with thinking escalation + code review gates
 
 **When to use:**
-- Automatically invoked by `/implement` Step 5 when tests fail
+- Automatically invoked by `Skill("implement")` Step 5 when tests fail
 - Can be invoked standalone for any bug fix
 - When you have failing tests that need systematic debugging
 
@@ -1334,11 +1334,11 @@ User intervention required.
 
 ---
 
-### 4.3 /post-fix-pipeline - Final Verification + Commit
+### 4.3 post-fix-pipeline - Final Verification + Commit
 
 **File:** `.claude/skills/post-fix-pipeline/SKILL.md`
 **Purpose:** Final verification, documentation update, and git commit
-**When to use:** Automatically invoked by `/implement` Step 7 (MANDATORY)
+**When to use:** Automatically invoked by `Skill("implement")` Step 7 (MANDATORY)
 
 **Flow:**
 1. **Gate check:** Skip if no fixes applied
@@ -1353,7 +1353,7 @@ User intervention required.
 
 ---
 
-### 4.4 /run-tests - Multi-Layer Test Runner
+### 4.4 run-tests - Multi-Layer Test Runner
 
 **File:** `.claude/skills/run-tests/SKILL.md`
 **Purpose:** Run E2E, backend, and frontend tests in sequence
@@ -1361,7 +1361,7 @@ User intervention required.
 
 ---
 
-### 4.5 /fix-issue - Fix GitHub Issue
+### 4.5 fix-issue - Fix GitHub Issue
 
 **File:** `.claude/skills/fix-issue/SKILL.md`
 **Purpose:** Fetch GitHub issue, analyze, fix, and link commit to issue
@@ -1369,7 +1369,7 @@ User intervention required.
 
 ---
 
-### 4.6 /reflect - Learning + Self-Modification
+### 4.6 reflect - Learning + Self-Modification
 
 **File:** `.claude/skills/reflect/SKILL.md`
 **Purpose:** Learning reflection and self-modification
@@ -1934,7 +1934,7 @@ validate_workflow_step.py (PreToolUse hook)
   ↓
 Code written
   ↓
-/fix-loop invoked (if tests fail)
+Skill("fix-loop") invoked (if tests fail)
   ↓
 code-reviewer agent launched for every fix
   - Validates broker abstraction compliance
@@ -1979,10 +1979,10 @@ synthesize_rules(min_confidence=0.7, min_evidence=5)
 
 ### 13.3 Command + Skill + Agent Pattern
 
-**Example:** /implement command
+**Example:** Skill("implement") command
 
 ```
-/implement invoked
+Skill("implement") invoked
   ↓
 Step 1: Requirements (Claude direct)
   ↓
@@ -2262,7 +2262,7 @@ AlgoChanakya's automation system is a sophisticated, multi-layered workflow engi
 - **knowledge.db** learning system ranking fix strategies over time
 
 **Key Differentiators:**
-1. Workflow state machine (7-step /implement)
+1. Workflow state machine (7-step implement)
 2. Learning system (self-improving fix strategies)
 3. Thinking escalation (Normal → ThinkHard → UltraThink)
 4. Code review gates (every fix validated)
@@ -2271,7 +2271,7 @@ AlgoChanakya's automation system is a sophisticated, multi-layered workflow engi
 7. Domain expertise (6 broker experts for Indian trading)
 
 **Getting Started:**
-1. Start with `/implement` for any code change
+1. Start with `Skill("implement")` for any code change
 2. Use `auto-verify` after modifications
 3. Let hooks guide you through the workflow
 4. Trust the learning system to improve over time

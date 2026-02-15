@@ -697,7 +697,7 @@ Returns:
 
 ### Problem
 
-Writing good conventional commit messages is time-consuming. Currently, git-manager agent does this during `/post-fix-pipeline`, but developers sometimes want to draft messages separately.
+Writing good conventional commit messages is time-consuming. Currently, git-manager agent does this during `Skill("post-fix-pipeline")`, but developers sometimes want to draft messages separately.
 
 ### Proposal
 
@@ -729,7 +729,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
 ---
 
 To commit: git commit -m "$(cat above message)"
-Or: Continue with /post-fix-pipeline to commit automatically
+Or: Continue with Skill("post-fix-pipeline") to commit automatically
 ```
 
 ---
