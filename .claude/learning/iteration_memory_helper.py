@@ -20,9 +20,20 @@ from datetime import datetime, timezone
 from typing import Dict, List, Optional
 
 
-# File paths
-MEMORY_FILE = Path(".claude/iteration-memory/iteration-memory.json")
-ARCHIVE_DIR = Path(".claude/iteration-memory/session-archives")
+# File paths - resolve from project root
+# Find project root (where .git directory is)
+def _find_project_root():
+    current = Path(__file__).resolve().parent
+    while current != current.parent:
+        if (current / ".git").exists():
+            return current
+        current = current.parent
+    # Fallback: assume we're in .claude/learning
+    return Path(__file__).resolve().parent.parent.parent
+
+PROJECT_ROOT = _find_project_root()
+MEMORY_FILE = PROJECT_ROOT / ".claude/iteration-memory/iteration-memory.json"
+ARCHIVE_DIR = PROJECT_ROOT / ".claude/iteration-memory/session-archives"
 
 
 def init_iteration_memory(error_context: Dict) -> None:
@@ -66,7 +77,7 @@ def init_iteration_memory(error_context: Dict) -> None:
     }
 
     MEMORY_FILE.write_text(json.dumps(memory, indent=2), encoding='utf-8')
-    print(f"✓ Initialized iteration memory: {memory['sessionId']}")
+    print(f"[OK] Initialized iteration memory: {memory['sessionId']}")
 
 
 def read_iteration_memory() -> Optional[Dict]:
@@ -82,7 +93,7 @@ def read_iteration_memory() -> Optional[Dict]:
     try:
         return json.loads(MEMORY_FILE.read_text(encoding='utf-8'))
     except json.JSONDecodeError as e:
-        print(f"⚠️  Memory file corrupted: {e}. Returning None.")
+        print(f"[WARNING]  Memory file corrupted: {e}. Returning None.")
         return None
 
 
@@ -137,7 +148,7 @@ def record_iteration_memory(
     _update_cumulative_summary(memory, agent_summary, hypothesis, outcome["testPassed"])
 
     MEMORY_FILE.write_text(json.dumps(memory, indent=2), encoding='utf-8')
-    print(f"✓ Recorded iteration {iteration} to memory")
+    print(f"[OK] Recorded iteration {iteration} to memory")
 
 
 def _update_cumulative_summary(
@@ -207,7 +218,7 @@ def format_memory_for_agent(memory: Dict, current_iteration: int) -> str:
     rejected_text = ""
     if summary["hypotheses"]["rejected"]:
         rejected_text = "Rejected Hypotheses (DO NOT RETRY):\n"
-        rejected_text += "\n".join(f"  ✗ {h}" for h in summary["hypotheses"]["rejected"][-5:])  # Last 5
+        rejected_text += "\n".join(f"  [FAILED] {h}" for h in summary["hypotheses"]["rejected"][-5:])  # Last 5
     else:
         rejected_text = "Rejected Hypotheses: None yet"
 
@@ -217,7 +228,7 @@ def format_memory_for_agent(memory: Dict, current_iteration: int) -> str:
         recent_iterations = memory["iterations"][-3:]
         recent_text = "Recent Iteration History:\n"
         for it in recent_iterations:
-            status = "✓ PASSED" if it["outcome"]["testPassed"] else "✗ FAILED"
+            status = "[OK] PASSED" if it["outcome"]["testPassed"] else "[FAILED] FAILED"
             recent_text += f"\n  Iteration {it['number']} ({it['thinkingLevel']}): {status}\n"
             recent_text += f"    Tried: {it['agentSummary'].get('whatTried', 'N/A')}\n"
             recent_text += f"    Learned: {it['agentSummary'].get('whatLearned', 'N/A')}\n"
@@ -230,14 +241,14 @@ def format_memory_for_agent(memory: Dict, current_iteration: int) -> str:
 {findings_text}
 
 Current Hypothesis:
-  → {summary['hypotheses']['current']}
+  --> {summary['hypotheses']['current']}
 
 {rejected_text}
 
 {recent_text}
 
 Next Steps Recommended:
-  → {summary['nextSteps']}
+  --> {summary['nextSteps']}
 
 Total Attempts: {len(memory['iterations'])}
 Time Elapsed: {memory['metadata']['timeElapsed']}
@@ -274,7 +285,7 @@ def archive_session_memory(success: bool) -> None:
     """
     memory = read_iteration_memory()
     if not memory:
-        print("⚠️  No memory to archive")
+        print("[WARNING]  No memory to archive")
         return
 
     ARCHIVE_DIR.mkdir(parents=True, exist_ok=True)
@@ -287,12 +298,12 @@ def archive_session_memory(success: bool) -> None:
     archive_file = ARCHIVE_DIR / f"{memory['sessionId']}-{status}.json"
 
     archive_file.write_text(json.dumps(memory, indent=2), encoding='utf-8')
-    print(f"✓ Archived session to: {archive_file.name}")
+    print(f"[OK] Archived session to: {archive_file.name}")
 
     # Clean up current session
     if MEMORY_FILE.exists():
         MEMORY_FILE.unlink()
-        print("✓ Cleared current iteration memory")
+        print("[OK] Cleared current iteration memory")
 
 
 def get_memory_stats() -> Dict:
@@ -321,7 +332,7 @@ def clear_memory() -> None:
     """Clear current iteration memory without archiving (use with caution)."""
     if MEMORY_FILE.exists():
         MEMORY_FILE.unlink()
-        print("✓ Cleared iteration memory")
+        print("[OK] Cleared iteration memory")
     else:
         print("No memory file to clear")
 
