@@ -1082,85 +1082,267 @@ echo "Next step: Proceed to Step 6 (Decision Point)"
 
 ### Step 6: Decision Point
 
-Based on analysis:
+Based on test results + AI screenshot analysis + error parsing:
 
-| Outcome | Action |
-|---------|--------|
-| Tests pass + Screenshots look correct | **SUCCESS** - Proceed to Step 8 (record to knowledge base) |
-| Tests fail | Analyze error, fix code, go to Step 3 |
-| Tests pass but screenshots show issues | Fix code, go to Step 3 |
-| **Hit stuck condition** | **STOP** - Ask user (see Troubleshooting section below) |
+| Outcome | Iteration Count | Action |
+|---------|----------------|--------|
+| ✅ **Tests pass + AI analysis confirms visual correctness** | Any | **SUCCESS** - Proceed to Step 8 (record to KB) |
+| ⚠️ **Tests pass BUT AI flags visual issues** | 1-2 | Investigate discrepancy, fix code, return to Step 3 |
+| ⚠️ **Tests pass BUT AI flags visual issues** | 3+ | **ESCALATE** - Use `browser-testing` for manual inspection |
+| ❌ **Tests fail with known error pattern** (from KB) | 1-2 | Apply top-ranked fix strategy, return to Step 3 |
+| ❌ **Tests fail with unknown error** | 1 | Parse error → query KB → apply fix, return to Step 3 |
+| ❌ **Tests fail with unknown error** | 2-3 | Escalate to `fix-loop` with Deep thinking level |
+| 🔄 **Tests intermittent/flaky** (pass/fail varies) | 1-2 | Run 3 times, use majority result, flag test as flaky |
+| 🔄 **Tests intermittent/flaky** | 3+ | **STOP** - Fix flaky test before continuing |
+| 🛑 **Same error after 3 iterations** | 3+ | **STOP** - Invoke `fix-loop` with iteration memory |
+| 🛑 **Hit approval checkpoint** (see below) | Any | **ASK USER** before proceeding |
 
-### Step 6b: Visual Debugging with Claude Chrome (PRIMARY METHOD)
+**Iteration tracking:**
+- Track attempt count in memory (Step 3 → Step 6 cycle)
+- After iteration 3 with same error: Auto-escalate to `fix-loop` skill
+- After iteration 5: STOP and ask user intervention
 
-**IMPORTANT:** Use Claude Chrome as the PRIMARY tool for visual verification and debugging.
+### Step 6b: Live Visual Debugging (When AI Analysis is Insufficient)
 
-After Playwright tests complete (pass or fail), use Claude Chrome for live debugging:
+**When to use:**
+- AI screenshot analysis flagged issues but unclear root cause
+- Tests fail but error message is ambiguous
+- Need to verify WebSocket real-time behavior
+- Need to reproduce user interaction sequence
 
-1. **Start Chrome session** (if not already started):
-   ```bash
-   claude --chrome
+**Method 1: MCP Playwright Tools (Preferred)**
+
+Use the available MCP Playwright browser tools for live debugging:
+
+1. **Navigate to the screen:**
+   ```javascript
+   mcp__playwright__browser_navigate({ url: "http://localhost:5173/positions" })
    ```
 
-2. **Open the failing screen** using `/open-in-chrome`:
+2. **Capture accessibility snapshot:**
+   ```javascript
+   mcp__playwright__browser_snapshot({ filename: "debug-snapshot.md" })
    ```
-   /open-in-chrome /positions   # Or whichever screen was tested
+   - Better than screenshots for understanding page structure
+   - Shows all interactive elements and their states
+   - Includes aria labels and testids
+
+3. **Check console messages:**
+   ```javascript
+   mcp__playwright__browser_console_messages({ level: "error" })
+   ```
+   - Shows JavaScript errors, WebSocket failures, API errors
+   - Filter by level: error, warning, info, debug
+
+4. **Take screenshot for visual verification:**
+   ```javascript
+   mcp__playwright__browser_take_screenshot({
+     filename: "debug-positions.png",
+     fullPage: true
+   })
    ```
 
-3. **Visual verification workflow**:
+5. **Run custom JavaScript for inspection:**
+   ```javascript
+   mcp__playwright__browser_evaluate({
+     function: "() => { return document.querySelectorAll('[data-testid]').length }"
+   })
    ```
-   1. Navigate to the screen that was tested
-   2. Open DevTools console
-   3. Check for errors (especially WebSocket, API, React errors)
-   4. Verify data-testid elements exist
-   5. Test the user flow manually
-   6. Capture screenshot or GIF of the issue
-   7. Report findings
-   ```
+   - Check how many testid elements exist
+   - Verify store state: `() => window.__PINIA_STATE__`
+   - Check WebSocket connection: `() => window.__WS_CONNECTED__`
 
-4. **Common debugging commands**:
+6. **Check network requests:**
+   ```javascript
+   mcp__playwright__browser_network_requests({
+     includeStatic: false,
+     filename: "network-log.txt"
+   })
    ```
-   "Go to localhost:5173/positions and check console for errors"
-   "Verify that positions-exit-modal element exists"
-   "Click the exit button and see if the modal appears"
-   "Monitor WebSocket messages for 10 seconds"
-   "Take a screenshot of the current state"
-   ```
+   - Shows failed API calls, 404s, 500s
+   - Filters out static assets by default
 
-5. **When to use Chrome vs Playwright**:
+**Method 2: browser-testing Skill (For Complex Debugging)**
 
-   | Scenario | Tool |
-   |----------|------|
-   | Running automated tests | Playwright |
-   | Visual verification of test results | **Claude Chrome** |
-   | Debugging failing tests | **Claude Chrome** |
-   | Checking console errors | **Claude Chrome** |
-   | Verifying data-testid elements | **Claude Chrome** |
-   | Testing WebSocket real-time | **Claude Chrome** |
-   | Recording demo GIFs | **Claude Chrome** |
+When MCP tools aren't enough, invoke the `browser-testing` skill:
 
-6. **Integration with Playwright results**:
-   ```
-   Example workflow:
-   1. Run Playwright test → Test fails at line 45
-   2. Use Chrome to navigate to the tested URL
-   3. Reproduce the failure manually
-   4. Check console for errors
-   5. Inspect DOM state
-   6. Identify root cause
-   7. Fix the code
-   8. Re-run Playwright test to verify
-   9. Use Chrome again to visually confirm
-   ```
+```bash
+Skill(skill="browser-testing", args="Debug /positions screen - exit modal not appearing")
+```
+
+**Comparison:**
+
+| Tool | Use Case | When to Use |
+|------|----------|-------------|
+| **MCP Playwright** | Quick checks, console errors, snapshots | First line of debugging, automated checks |
+| **browser-testing skill** | Complex UI debugging, user flow reproduction | When MCP tools insufficient, need human-like interaction |
+| **Playwright tests** | Automated regression testing | Primary test execution, not for debugging |
+
+**Integration with auto-verify workflow:**
+
+```
+Step 5: AI Analysis → Flags issue with "Exit modal not visible"
+Step 6: Decision → Tests failed, AI flagged modal issue
+Step 6b: Live Debug → Use MCP Playwright tools:
+  1. browser_navigate to /positions
+  2. browser_snapshot to see page structure
+  3. browser_console_messages to check for errors
+  4. browser_evaluate to check if modal exists in DOM
+  5. Find root cause: Modal CSS has display:none !important
+Step 7: Fix → Remove !important from modal CSS
+Step 3: Re-run tests → Pass ✅
+```
 
 ### Step 7: Fix and Iterate
 
-If issues found:
-1. Identify the root cause (using Chrome debugging if needed)
-2. **Check approval requirements** (see below)
-3. Make the fix
-4. Increment attempt counter
-5. Return to Step 3
+**When issues are found in Step 6:**
+
+#### 7a. Diagnose Root Cause
+
+Use the structured error parsing from Step 5:
+
+1. **Extract error type** from parsed results:
+   - Test timeout → Check async operations, WebSocket delays
+   - Element not found → Check data-testid, component rendering
+   - Assertion failure → Check test expectations vs actual behavior
+   - Network error → Check API endpoints, backend status
+
+2. **Query knowledge base** for similar errors:
+   ```bash
+   .claude/skills/auto-verify/helpers/query-knowledge.sh \
+     --error-type "Element not found" \
+     --context "positions-exit-modal" \
+     --limit 3
+   ```
+
+3. **Review top-ranked strategies** (if KB has matches):
+   - Apply highest success-rate strategy first
+   - If fails, try next strategy
+   - If all strategies fail → escalate to fix-loop
+
+#### 7b. Check Approval Requirements
+
+**Ask user approval BEFORE fixing if:**
+- File is protected (`.env`, `package.json`, `alembic/`)
+- Change affects multiple features (shared components, utils)
+- Fix involves database schema changes
+- Iteration count ≥ 3 (prevent thrashing)
+
+**No approval needed (auto-fix) if:**
+- Simple test assertion update (expected value changed)
+- Timeout increase (known flaky test)
+- data-testid attribute addition (new element)
+- Iteration count ≤ 2 AND error is known (from KB)
+
+#### 7c. Apply Fix
+
+**Simple fixes (iteration 1-2):**
+```bash
+# Use Edit tool directly
+Edit(file_path="...", old_string="...", new_string="...")
+```
+
+**Complex fixes (iteration 3+) OR unknown errors:**
+```bash
+# Escalate to fix-loop skill with iteration memory
+Skill(skill="fix-loop", args="--context auto-verify --thinking-level Deep")
+```
+
+**fix-loop integration:**
+- Inherits iteration count from auto-verify
+- Records hypothesis: "Changing X because Y"
+- Uses 6-level thinking escalation (Deep → VeryDeep → UltraThink)
+- All fixes pass through code-reviewer agent
+- Records successful strategy to knowledge.db
+
+#### 7d. Iteration Tracking
+
+**Update iteration state:**
+```bash
+# Increment counter
+iteration_count=$((iteration_count + 1))
+
+# Record attempt
+echo "Iteration $iteration_count: Trying strategy '$strategy_name'" >> .auto-verify-log
+
+# Check stop conditions
+if [ $iteration_count -ge 5 ]; then
+  echo "🛑 STOP: Hit max iterations (5). Manual intervention required."
+  exit 1
+fi
+
+if [ "$error_hash" == "$previous_error_hash" ] && [ $iteration_count -ge 3 ]; then
+  echo "🛑 STOP: Same error after 3 attempts. Escalating to fix-loop."
+  Skill(skill="fix-loop")
+  exit 0
+fi
+```
+
+#### 7e. Return to Step 3
+
+After applying fix:
+1. **Clear test artifacts** (old screenshots, logs)
+2. **Return to Step 3** (Run Targeted Tests)
+3. **Carry forward iteration count** (don't reset to 0)
+4. **Re-run with same priority** (don't drop to Priority 3)
+
+**Example iteration flow:**
+```
+Iteration 1: Priority 0 → Fail (timeout) → Fix (increase timeout) → Priority 0
+Iteration 2: Priority 0 → Fail (element not found) → Query KB → Apply fix → Priority 0
+Iteration 3: Priority 0 → Fail (same element) → Escalate to fix-loop → Deep thinking
+fix-loop: Discovers React re-render issue → Fixes → Returns to auto-verify → Priority 0
+Iteration 4: Priority 0 → Pass ✅ → Step 8 (Record to KB)
+```
+
+#### 7f. Escalation Triggers
+
+Auto-escalate to `fix-loop` when:
+- **Iteration 3+** with same error hash
+- **Unknown error** AND iteration 2+
+- **Known error** but all KB strategies failed
+- **Flaky test** persists after 3 runs
+- **User-requested** manual escalation
+
+**Escalation command:**
+```bash
+Skill(skill="fix-loop", args="--error '$error_message' --context 'auto-verify iteration $iteration_count' --thinking-level Deep")
+```
+
+#### 7g. Automated Diagnosis (NEW)
+
+**When error parsing identifies specific patterns:**
+
+| Error Pattern | Automated Action | Rationale |
+|---------------|------------------|-----------|
+| `Timeout: element not found` | Increase timeout by 5s, re-run | Common flaky test cause |
+| `data-testid="X" not found` | Search codebase for element X, check if renamed | Component refactor |
+| `WebSocket connection failed` | Check backend running, Redis status | Service dependency |
+| `401 Unauthorized` | Check auth.fixture, re-authenticate | Token expiry |
+| `Module not found` | Run `npm install`, check imports | Missing dependency |
+| `Database error` | Run `alembic upgrade head` | Schema out of sync |
+
+**Auto-diagnosis workflow:**
+1. Parse error message (Step 5)
+2. Match against known patterns (table above)
+3. Execute automated action (no approval needed)
+4. If action succeeds → Return to Step 3
+5. If action fails → Continue to manual fix (Step 7a)
+
+**Example:**
+```
+Error: "Timeout: data-testid="positions-exit-modal" not found"
+Auto-diagnosis: Pattern matches "data-testid not found"
+Action: Search for "positions-exit-modal" in codebase
+Result: Found in Positions.vue line 45, but has typo "postions-exit-modal"
+Fix: Correct typo in test file
+Re-run: Pass ✅
+```
+
+**Prevents:**
+- Manual diagnosis of common errors
+- Wasted iterations on known fixes
+- User interruptions for simple issues
 
 
 ### Step 8: Record to Knowledge Base (Learning Engine)
