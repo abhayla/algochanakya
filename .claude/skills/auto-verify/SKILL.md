@@ -422,34 +422,67 @@ Knowledge Base Stats (Last 30 days):
 
 ### Step 3: Run Targeted Tests
 
-Execute tests using this **priority order**:
+Execute tests using this **priority order** (from most efficient to most comprehensive):
+
+#### Priority 0: Smart Affected Tests (MOST EFFICIENT) ⭐ NEW
+
+When Step 2b detected specific tests via import analysis:
+
+```bash
+# Example: utils/formatPrice.js changed
+# Step 2b detected: imported by Positions, Watchlist, Strategy
+
+# Run only the union of affected tests
+npx playwright test \
+  tests/e2e/specs/positions/positions.happy.spec.js \
+  tests/e2e/specs/watchlist/watchlist.happy.spec.js \
+  tests/e2e/specs/strategy/strategy.api.spec.js
+
+# Estimated time: 2-5 minutes (vs 10-15 for full feature)
+```
+
+**When to use:** Changed file is a shared utility/composable with detectable usage (via grep import analysis from Step 2b)
 
 #### Priority 1: Specific Test File (PREFERRED)
+
 ```bash
 npx playwright test tests/e2e/specs/{feature}/{specific}.spec.js
 ```
-Example:
+
+**Example:**
 ```bash
 npx playwright test tests/e2e/specs/positions/positions.happy.spec.js
 ```
 
+**When to use:** Component/view changes with clear 1:1 mapping
+
 #### Priority 2: Specific Test with Grep Pattern
+
 When only part of a test file is relevant:
+
 ```bash
 npx playwright test tests/e2e/specs/{feature}/{specific}.spec.js -g "{pattern}"
 ```
-Example:
+
+**Example:**
 ```bash
 npx playwright test tests/e2e/specs/positions/positions.happy.spec.js -g "exit"
 ```
 
+**When to use:** Modal/sub-component changes (e.g., ExitModal.vue → grep "exit")
+
 #### Priority 3: Multiple Specific Tests
+
 When multiple files changed:
+
 ```bash
 npx playwright test tests/e2e/specs/positions/positions.happy.spec.js tests/e2e/specs/positions/positions.api.spec.js
 ```
 
+**When to use:** Multi-file changes within same feature
+
 #### Priority 4: Full Feature Tests (FALLBACK ONLY)
+
 **Only use when:**
 - Changed file doesn't map to specific tests
 - Shared/infrastructure code changed (affects whole feature)
@@ -459,18 +492,264 @@ npx playwright test tests/e2e/specs/positions/positions.happy.spec.js tests/e2e/
 npm run test:specs:positions
 ```
 
+**When to use:** Last resort when scope is uncertain
+
+---
+
+#### Performance Comparison
+
+| Priority | Scope | Avg Time | Workers | When to Use |
+|----------|-------|----------|---------|-------------|
+| **0** | Affected only (2-5 tests) | 2-5 min | 4 | Shared utility changes |
+| **1** | Single spec file (~10 tests) | 1-3 min | 4 | Component/view changes |
+| **2** | Single spec + grep (~3 tests) | 30s-2 min | 2 | Modal/sub-component changes |
+| **3** | Multiple specs (~20 tests) | 3-8 min | 4 | Multi-file changes |
+| **4** | Full feature (~50-100 tests) | 10-20 min | 4 | Uncertain scope, infrastructure |
+
+**Optimization Tips:**
+- Use `--workers=4` for parallel execution (4x faster on multi-core machines)
+- Use grep patterns (`-g`) to reduce test scope when possible
+- Run Priority 0-2 during development iterations
+- Run Priority 4 before committing to main
+
+---
+
+#### Environment Prerequisites Check (CRITICAL)
+
+**Before running tests, verify services are running:**
+
+```bash
+# Quick health check
+echo "Checking services..."
+
+# Check backend (dev port 8001)
+curl -s http://localhost:8001/api/health > /dev/null && echo "✓ Backend ready (port 8001)" || {
+    echo "❌ Backend not running on port 8001"
+    echo "   Start with: cd backend && venv\\Scripts\\activate && python run.py"
+    exit 1
+}
+
+# Check Redis
+redis-cli ping > /dev/null 2>&1 && echo "✓ Redis ready" || {
+    echo "❌ Redis not running"
+    echo "   Start with: redis-server"
+    exit 1
+}
+
+# Check PostgreSQL
+pg_isready -h localhost -p 5432 > /dev/null 2>&1 && echo "✓ PostgreSQL ready" || {
+    echo "⚠️  PostgreSQL check failed (may be remote VPS - continuing)"
+}
+
+echo ""
+echo "✓ All required services ready, running tests..."
+```
+
+**Auto-start backend (optional):**
+
+```bash
+# Start backend in background if not running
+if ! curl -s http://localhost:8001/api/health > /dev/null 2>&1; then
+    echo "Starting backend on port 8001..."
+    cd backend
+    venv\\Scripts\\activate
+    python run.py > .claude/logs/backend.log 2>&1 &
+    BACKEND_PID=$!
+    echo "Backend PID: $BACKEND_PID"
+
+    # Wait for startup (max 10 seconds)
+    for i in {1..10}; do
+        sleep 1
+        curl -s http://localhost:8001/api/health > /dev/null && break
+    done
+
+    cd ..
+fi
+```
+
+---
+
+#### Execution Options
+
+**Standard (Headless, Fast):**
+```bash
+npx playwright test tests/e2e/specs/positions/positions.happy.spec.js
+```
+
+**With Parallel Workers (4x faster):**
+```bash
+npx playwright test tests/e2e/specs/positions/positions.happy.spec.js --workers=4
+```
+
+**Headed Mode (Visual Debugging):**
+```bash
+# See browser window during test execution
+npx playwright test tests/e2e/specs/positions/positions.happy.spec.js --headed
+```
+
+**With Retries (Handle Flaky Tests):**
+```bash
+# Retry failed tests up to 2 times
+npx playwright test tests/e2e/specs/positions/positions.happy.spec.js --retries=2
+```
+
+**Specific Browser:**
+```bash
+# Test only in Chromium (default)
+npx playwright test tests/e2e/specs/positions/positions.happy.spec.js --project=chromium
+
+# Test in all browsers
+npx playwright test tests/e2e/specs/positions/positions.happy.spec.js --project=chromium --project=firefox --project=webkit
+```
+
+**Debug Mode (Step-through):**
+```bash
+# Opens Playwright Inspector for step-by-step debugging
+npx playwright test tests/e2e/specs/positions/positions.happy.spec.js --debug
+```
+
+**Combination (Recommended for CI):**
+```bash
+# Parallel + retries + specific browser
+npx playwright test tests/e2e/specs/positions/positions.happy.spec.js \
+  --workers=4 \
+  --retries=1 \
+  --project=chromium
+```
+
+---
+
+#### Capture Test Output
+
+**Save output for analysis in Step 5:**
+
+```bash
+# Create logs directory
+mkdir -p .claude/logs
+
+# Capture stdout/stderr
+npx playwright test tests/e2e/specs/positions/positions.happy.spec.js \
+    > .claude/logs/test-output.log 2>&1
+
+# Capture exit code
+TEST_RESULT=$?
+
+if [ $TEST_RESULT -eq 0 ]; then
+    echo "✓ Tests passed"
+    echo "Full output: .claude/logs/test-output.log"
+else
+    echo "❌ Tests failed (exit code: $TEST_RESULT)"
+
+    # Extract error messages
+    grep -E "Error:|Failed:|TimeoutError|Expected|Received" \
+        .claude/logs/test-output.log > .claude/logs/test-errors.log
+
+    echo "Error summary: .claude/logs/test-errors.log"
+    echo ""
+    echo "First error:"
+    head -20 .claude/logs/test-errors.log
+fi
+```
+
+**Test artifacts (screenshots/videos):**
+
+```bash
+# Playwright automatically saves to:
+# - test-results/       (screenshots/traces on failure)
+# - playwright-report/  (HTML report with screenshots)
+
+# List failure screenshots
+echo "Failure screenshots:"
+ls -lh test-results/*/test-failed-*.png 2>/dev/null || echo "  (none)"
+
+# List failure videos (if enabled)
+echo "Failure videos:"
+ls -lh test-results/*/video.webm 2>/dev/null || echo "  (none - enable in playwright.config.js)"
+
+# Open HTML report (if tests failed)
+if [ $TEST_RESULT -ne 0 ]; then
+    echo ""
+    echo "To view detailed HTML report:"
+    echo "  npx playwright show-report"
+fi
+```
+
+---
+
+#### Smart Test Selection Based on Git Changes
+
+**Run tests for recently changed files (last commit):**
+
+```bash
+# Get changed files from last commit
+CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD)
+
+# Map to test files using Step 2b logic
+TESTS=""
+GREP_PATTERN=""
+
+for file in $CHANGED_FILES; do
+    case $file in
+        */PositionsView.vue)
+            TESTS="$TESTS tests/e2e/specs/positions/positions.happy.spec.js"
+            ;;
+        */ExitModal.vue)
+            TESTS="$TESTS tests/e2e/specs/positions/positions.happy.spec.js"
+            GREP_PATTERN="exit modal|exit all"
+            ;;
+        */positions.js)
+            TESTS="$TESTS tests/e2e/specs/positions/positions.happy.spec.js"
+            ;;
+        */positions.py)
+            TESTS="$TESTS tests/e2e/specs/positions/positions.api.spec.js"
+            ;;
+        */WatchlistView.vue|*/watchlist.js|*/watchlist.py)
+            TESTS="$TESTS tests/e2e/specs/watchlist/watchlist.happy.spec.js"
+            ;;
+        */OptionChainView.vue|*/optionchain.py)
+            TESTS="$TESTS tests/e2e/specs/optionchain/optionchain.happy.spec.js"
+            ;;
+        # Config files - skip tests
+        *.env*|*.config.js)
+            echo "Config file changed: $file (skipping tests)"
+            ;;
+    esac
+done
+
+# Run union of tests (remove duplicates)
+if [ -n "$TESTS" ]; then
+    UNIQUE_TESTS=$(echo $TESTS | tr ' ' '\n' | sort -u | tr '\n' ' ')
+    echo "Running tests for changed files:"
+    echo "$UNIQUE_TESTS"
+
+    if [ -n "$GREP_PATTERN" ]; then
+        npx playwright test $UNIQUE_TESTS -g "$GREP_PATTERN"
+    else
+        npx playwright test $UNIQUE_TESTS
+    fi
+else
+    echo "No relevant tests found for changed files"
+    echo "Changed files:"
+    echo "$CHANGED_FILES"
+fi
+```
+
+---
+
 #### Feature Commands Reference (Use as Last Resort)
 
-| Feature | Test Command |
-|---------|--------------|
-| positions | `npm run test:specs:positions` |
-| watchlist | `npm run test:specs:watchlist` |
-| optionchain | `npm run test:specs:optionchain` |
-| strategy-builder | `npm run test:specs:strategy` |
-| strategy-library | `npm run test:specs:strategylibrary` |
-| autopilot | `npm run test:specs:autopilot` |
-| dashboard | `npm run test:specs:dashboard` |
-| login | `npm run test:specs:login` |
+| Feature | Test Command | Avg Tests | Avg Time |
+|---------|--------------|-----------|----------|
+| positions | `npm run test:specs:positions` | ~80 | 12 min |
+| watchlist | `npm run test:specs:watchlist` | ~60 | 10 min |
+| optionchain | `npm run test:specs:optionchain` | ~70 | 15 min |
+| strategy-builder | `npm run test:specs:strategy` | ~50 | 8 min |
+| strategy-library | `npm run test:specs:strategylibrary` | ~40 | 6 min |
+| autopilot | `npm run test:specs:autopilot` | ~100 | 20 min |
+| dashboard | `npm run test:specs:dashboard` | ~30 | 5 min |
+| login | `npm run test:specs:login` | ~20 | 3 min |
+
+**Note:** Times assume `--workers=4` on quad-core machine
 
 ### Step 4: Capture Screenshots
 
