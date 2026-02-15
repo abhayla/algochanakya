@@ -1347,122 +1347,195 @@ Re-run: Pass ✅
 
 ### Step 8: Record to Knowledge Base (Learning Engine)
 
-**After EVERY fix attempt** (success or failure), record to knowledge base:
+**CRITICAL:** Always record outcomes to enable continuous learning.
+
+#### 8a. Automatic Recording (Preferred Method)
+
+**Use `learning-engine` skill** for seamless KB recording:
 
 ```bash
-cd .claude/learning
-python -c "
-import sys
-import subprocess
-sys.path.insert(0, '.')
-from db_helper import record_attempt, update_strategy_score
-
-# Get current git commit hash (first 7 chars)
-try:
-    commit_hash = subprocess.run(
-        ['git', 'rev-parse', 'HEAD'],
-        capture_output=True, text=True
-    ).stdout.strip()[:7]
-except:
-    commit_hash = None
-
-# Record the attempt
-attempt_id = record_attempt(
-    error_pattern_id={error_id},  # From Step 2c
-    strategy_id={strategy_id},    # Or None if no strategy used
-    outcome='success',            # or 'failure'
-    session_id='{session_id}',    # Current Claude session
-    file_path='{file_path}',
-    error_message='{full_error}',
-    fix_description='{what_was_done}',
-    duration_seconds={elapsed_time},
-    git_commit_hash=commit_hash
-)
-
-# Update strategy score if one was used
-if {strategy_id}:
-    update_strategy_score({strategy_id})
-
-print(f'✓ Recorded attempt #{attempt_id} to knowledge base')
-"
+Skill(skill="learning-engine", args="--outcome {success|failure} --error-type '{error_type}' --strategy-used '{strategy_name}' --fix-description '{what_was_done}'")
 ```
 
-**On SUCCESS:**
+**The skill automatically:**
+- Records attempt with all metadata (session_id, git_commit, duration)
+- Updates strategy scores (success +0.1, failure -0.05)
+- Checks for synthesis eligibility (≥70% success, ≥5 evidence)
+- Synthesizes new rules if criteria met
+- Integrates with auto-memory system
 
-1. **Run verification loop** (expand test radius):
+**Benefits:**
+- No inline Python code (cleaner, more maintainable)
+- Automatic error handling and validation
+- Consistent recording format across all skills
+- Triggers synthesis automatically
+
+#### 8b. Manual Recording (Fallback)
+
+**If learning-engine skill unavailable**, use helper script:
+
+```bash
+.claude/skills/auto-verify/helpers/record-to-kb.sh \
+  --outcome "success" \
+  --error-type "Element not found" \
+  --error-message "data-testid='positions-exit-modal' not found" \
+  --strategy-id "$strategy_id" \
+  --fix-description "Added missing data-testid attribute" \
+  --file-path "frontend/src/views/Positions.vue"
+```
+
+**Script handles:**
+- Git commit hash extraction
+- Session ID detection
+- Duration calculation
+- Database connection
+- Error handling
+
+#### 8c. On SUCCESS - Regression Check
+
+**Run expanded test radius** to catch regressions:
+
+1. **Identify adjacent features** (from Step 2b mapping):
    ```bash
-   # Run adjacent feature tests to check for regressions
-   # Example: If fixed positions, also run watchlist tests
-   npx playwright test tests/e2e/specs/watchlist/watchlist.happy.spec.js
+   # Example: Fixed positions → Also test watchlist (shares WebSocket)
+   # Use the feature-to-test mapping
+
+   if [[ "$fixed_feature" == "positions" ]]; then
+     adjacent_tests=("watchlist" "dashboard")  # Share WebSocket, API
+   elif [[ "$fixed_feature" == "option-chain" ]]; then
+     adjacent_tests=("strategy" "ofo")  # Share strike data
+   fi
    ```
 
-2. **If verification passes**, boost strategy score:
-   ```python
-   # Boost score by 0.1 for verified fix
-   from db_helper import get_connection
-   conn = get_connection()
-   conn.execute(
-       "UPDATE fix_strategies SET current_score = MIN(current_score + 0.1, 1.0) WHERE id = ?",
-       ({strategy_id},)
-   )
-   conn.commit()
-   conn.close()
-   ```
-
-3. **Check for synthesis** - If strategy now meets criteria (≥70% success, ≥5 evidence):
+2. **Run adjacent tests** (Priority 2 scope):
    ```bash
-   cd .claude/learning
-   python -c "
-   from db_helper import synthesize_rules
-   new_rules = synthesize_rules(min_confidence=0.7, min_evidence=5)
-   if new_rules:
-       print(f'✨ {len(new_rules)} new rules synthesized!')
-   "
+   for feature in "${adjacent_tests[@]}"; do
+     echo "🔍 Regression check: $feature"
+     npx playwright test "tests/e2e/specs/$feature/*.happy.spec.js"
+   done
    ```
 
-**On FAILURE:**
+3. **If regressions found:**
+   - Record as "partial success" (fixed target, broke adjacent)
+   - Revert fix, escalate to fix-loop with broader context
+   - Update KB: "Strategy X causes regression in Y"
 
-1. **Decrease strategy score** (automatic in `update_strategy_score()`)
-2. **Try next ranked strategy** from Step 2c
-3. **If no more strategies**, check stuck conditions (Step 6)
+4. **If no regressions:**
+   - Boost strategy score by 0.1
+   - Proceed to Step 8d (Synthesis Check)
 
-**On FIRST FIX for unknown pattern:**
+#### 8d. Synthesis Check (Automatic via learning-engine)
 
-1. **Create new strategy** in knowledge base:
-   ```python
-   from db_helper import get_connection
-   import json
-   from datetime import datetime
+**After successful fix**, check if new rules can be synthesized:
 
-   conn = get_connection()
-   conn.execute(
-       """INSERT INTO fix_strategies
-          (name, error_type, description, steps, preconditions, created_at, source)
-          VALUES (?, ?, ?, ?, ?, ?, 'learned')""",
-       (
-           'Fix: {descriptive_name}',
-           '{error_type}',
-           '{what_this_fix_does}',
-           json.dumps(['{step_1}', '{step_2}', ...]),
-           json.dumps({precondition_dict}),
-           datetime.utcnow().isoformat()
-       )
-   )
-   conn.commit()
-   conn.close()
-   print('✓ New strategy recorded for future use')
-   ```
+```bash
+# Automatically triggered by learning-engine skill
+# Manual check:
+Skill(skill="reflect", args="--mode session")
+```
+
+**Synthesis triggers:**
+- Strategy reached ≥70% success rate
+- Strategy has ≥5 evidence (attempts)
+- Error pattern seen ≥3 times
+
+**What gets synthesized:**
+- New architectural rules (e.g., "Always check WebSocket before rendering")
+- Code patterns (e.g., "data-testid must match component name")
+- Test patterns (e.g., "Increase timeout for WebSocket-dependent tests")
+
+**Auto-updated files:**
+- `.claude/memory/{topic}.md` - Persistent memory
+- `.claude/rules.md` - Architectural rules (if pattern is critical)
+- `knowledge.db` - Fix strategies table
+
+#### 8e. On FAILURE - Strategy Downgrade
+
+**Automatically handled by learning-engine:**
+- Decreases strategy score by 0.05
+- If score drops below 0.1 → Mark strategy as "ineffective"
+- If score drops below 0.0 → Archive strategy (don't query in future)
+
+**Next steps:**
+1. Return to Step 2c (Query KB for next-ranked strategy)
+2. If no more strategies → Return to Step 6 (Decision Point)
+3. Check stuck conditions (Step 6 table)
+
+#### 8f. On FIRST FIX (Unknown Pattern)
+
+**When fixing an error pattern NOT in knowledge.db:**
+
+```bash
+# learning-engine skill automatically creates new strategy
+Skill(skill="learning-engine", args="--create-strategy --error-type '{type}' --fix-description '{description}' --steps '[\"step1\", \"step2\"]'")
+```
+
+**New strategy includes:**
+- **Name:** Auto-generated from error type + fix action
+- **Error type:** Extracted from Step 5 parsing
+- **Description:** What this fix does
+- **Steps:** Ordered actions taken to fix
+- **Preconditions:** When this strategy applies (file patterns, error context)
+- **Initial score:** 0.5 (neutral, will adjust based on future outcomes)
+- **Source:** "learned" (vs "manual" or "synthesized")
+
+**Example:**
+```
+Strategy: "Fix: Missing data-testid attribute"
+Error type: "Element not found"
+Description: "Adds data-testid attribute to component for E2E test access"
+Steps: ["1. Find component file", "2. Add data-testid prop", "3. Re-run test"]
+Preconditions: {"file_pattern": "*.vue", "error_contains": "data-testid"}
+Score: 0.5
+```
+
+**Benefit:** Next time same error occurs, this strategy is auto-suggested.
 
 ## Approval Checkpoints
 
+**Cross-reference:** See also **Step 7b: Check Approval Requirements**
+
 **STOP and ask user approval before:**
 
-1. **Using mock/dummy data** instead of real API data
-2. **Making assumptions** about intended behavior
-3. **Modifying test assertions** to match new behavior
-4. **Modifying shared utilities** (helpers, fixtures, POMs)
-5. **Stopping after 5 attempts** - ask for guidance
-6. **Using workarounds** instead of proper fixes
+### File/Code Modifications
+1. ❌ **Protected files** - `.env`, `package.json`, `alembic/`, `knowledge.db`
+2. ❌ **Shared utilities** - Helpers, fixtures, POMs, API clients
+3. ❌ **Database schema** - Alembic migrations, model changes
+4. ❌ **Multi-feature impact** - Changes affecting >1 feature
+
+### Test Modifications
+5. ❌ **Assertion changes** - Modifying test expectations to match new behavior
+   - **Exception:** Simple value updates (price changed, count changed)
+6. ❌ **Mock/dummy data** - Using fake data instead of real API responses
+7. ❌ **Disabling tests** - Skipping or commenting out failing tests
+
+### Workflow Decisions
+8. ❌ **Workarounds** - Patches instead of proper fixes
+9. ❌ **Assumptions** - Guessing intended behavior without confirmation
+10. ❌ **Iteration threshold** - After 3 iterations (prevent thrashing)
+11. ❌ **Max attempts** - After 5 total attempts (safety valve)
+
+### Auto-Approved (No User Confirmation Needed)
+- ✅ **Timeout increases** - For known flaky tests
+- ✅ **data-testid additions** - New elements need test IDs
+- ✅ **Simple value updates** - Test expects 5, now gets 6
+- ✅ **Known KB strategies** - Strategy score ≥0.3 AND iteration ≤2
+- ✅ **Automated diagnosis** - Step 7g common patterns
+
+**Approval format:**
+```
+⚠️ Approval Required: {reason}
+
+Proposed change:
+{file_path}:{line_number}
+- Old: {old_code}
++ New: {new_code}
+
+Impact: {what_this_affects}
+Alternatives: {other_options}
+
+Approve? [Y/n]
+```
 
 ## Attempt Tracking
 
@@ -1481,50 +1554,95 @@ After 5 failed attempts, STOP and ask:
 
 ## Troubleshooting
 
-### Stuck Conditions
+### Stuck Conditions (Escalation Decision Tree)
 
-**STOP and ask user when ANY of these conditions are met:**
+**Cross-reference:** See **Step 6: Decision Point** for iteration-based stuck conditions.
 
-1. **Same fingerprinted error 3x** - Same error pattern with 3 different strategies all failing
-2. **All strategies exhausted** - All known strategies have score < 0.1 (proven ineffective)
-3. **20 total attempts in session** - Safety valve to prevent infinite loops
-4. **Fix scope exceeds feature** - Fix requires modifying files outside current feature
-5. **Completely unknown error** - No matching error_type in knowledge base strategies
+**STOP and ask user when:**
+
+| Condition | Iteration | Trigger | Action |
+|-----------|-----------|---------|--------|
+| 🔄 **Same error 3x** | 3+ | Same fingerprint, 3 different strategies failed | Escalate to `fix-loop` with VeryDeep thinking |
+| 🎯 **All strategies exhausted** | Any | All KB strategies score <0.1 | Ask user: try heuristic or record new pattern? |
+| 🛑 **Max iterations** | 5+ | Safety valve | Hard stop, show all attempts, ask for direction |
+| 📂 **Fix scope exceeds feature** | Any | Need to modify files outside current feature | Ask approval for cross-feature changes |
+| ❓ **Unknown error** | 1 | No matching error_type in KB | Create strategy, proceed with iteration 1 |
+| ❓ **Unknown error** | 3+ | Still no KB match after 3 tries | Escalate to fix-loop OR ask user |
+| 🔥 **Breaking change detected** | Any | Regression tests fail after fix | Revert fix, escalate with broader context |
+| ⏱️ **Session timeout** | Any | 20 total attempts in session | Archive session, ask user to review |
+
+**Escalation paths:**
+
+```
+Light issues (iteration 1-2):
+  → Auto-fix (Step 7g patterns)
+  → Simple Edit tool fixes
+
+Medium issues (iteration 3-4):
+  → fix-loop with Deep thinking
+  → browser-testing for UI debugging
+
+Critical issues (iteration 5+ OR unknown errors):
+  → fix-loop with VeryDeep/UltraThink
+  → User intervention
+
+Cross-feature impact:
+  → STOP immediately
+  → Ask user approval
+  → Consider architectural refactor
+```
 
 ### Stuck Message Template
 
-```
-I'm stuck on this error. Here's what I know:
+**Enhanced with KB context and next steps:**
 
-**Error:** {error_type} - {error_message_summary}
-**Fingerprint:** {fingerprint} (seen {occurrence_count} times in knowledge base)
-**File:** {file_path}
+````
+🛑 Auto-verify is stuck. Need your guidance.
 
-**Knowledge Base Context:**
-- Total patterns: {total_patterns}
-- This error pattern: {known/unknown}
-- Best available strategy: {strategy_name} (score: {score})
-- Threshold for trying: 0.3
+**Error Summary:**
+- Type: {error_type}
+- Message: {truncated_message}
+- File: {file_path}:{line_number}
+- Fingerprint: {hash} (seen {count} times in KB)
 
-**Strategies attempted:**
-1. [{score}] {strategy_name} - {outcome}
-2. [{score}] {strategy_name} - {outcome}
+**Knowledge Base Status:**
+- Total error patterns: {total_patterns}
+- This pattern: {known|unknown}
+- Available strategies: {strategy_count}
+- Best strategy score: {top_score}
+
+**What I've Tried:** (Iteration {current}/{max})
+1. [{score}] {strategy_name} → {outcome} ({reason})
+2. [{score}] {strategy_name} → {outcome} ({reason})
 ...
 
-Would you like me to:
-1. Try a different heuristic approach (describe what)
-2. Record this as a new learned pattern
-3. Skip and move to other verification tasks
-```
+**Stuck Condition:** {condition_name}
+- Trigger: {why_stopped}
+- Recommendation: {suggested_path}
+
+**Options:**
+1. ✅ **Try different approach** - {describe_heuristic}
+2. 📝 **Record as new pattern** - Add to KB for future
+3. 🔧 **Escalate to fix-loop** - Deep thinking mode
+4. 🌐 **Use browser-testing** - Manual UI inspection
+5. ⏭️ **Skip for now** - Move to other verification tasks
+6. 🔍 **Show me the code** - I'll fix it manually
+
+Which option? (1-6 or describe custom approach)
+````
 
 ### Common Issues
 
+**Updated with MCP tools:**
+
 | Problem | Cause | Fix |
 |---------|-------|-----|
-| Can't find test file for changed code | File not mapped in feature-registry.yaml | Add file pattern to registry OR run full feature tests as fallback |
-| Screenshots directory missing | `.claude/logs/evidence/` not created | Create: `mkdir -p .claude/logs/evidence/` |
-| Chrome debugging not working | Chrome extension not connected | Restart with `claude --chrome` |
-| Knowledge base returns no strategies | `knowledge.db` not initialized | Run `/reflect` once to initialize |
+| Can't find test file | Not in feature-registry.yaml | Add mapping OR run full feature suite |
+| Screenshots not working | MCP Playwright not initialized | Check `mcp__playwright__browser_take_screenshot` available |
+| Browser debugging fails | MCP connection issue | Restart Claude Code, reconnect MCP |
+| Knowledge base empty | Never initialized | Run `Skill(skill="reflect", args="--mode session")` |
+| Strategy scores all low | Need more learning data | Continue using auto-verify, scores improve over time |
+| Synthesis not triggering | Criteria not met | Need ≥70% success, ≥5 evidence, ≥3 occurrences |
 
 ---
 
