@@ -753,35 +753,332 @@ fi
 
 ### Step 4: Capture Screenshots
 
-After tests complete (pass or fail), capture screenshots of affected screens:
+**Playwright automatically captures screenshots on test failure** (configured in `playwright.config.js`).
 
-1. Analyze test file to identify which views/modals/states are tested
-2. Run the verification screenshot script:
+#### Locate Test Artifacts from Step 3
 
 ```bash
-node tests/e2e/utils/verification-screenshot.js --feature={feature} --screen={screen}
+# Playwright test artifacts are already saved to:
+# - test-results/       (screenshots, traces, videos on failure)
+# - playwright-report/  (HTML report with embedded screenshots)
+# - .claude/logs/test-output.log  (full test output)
+# - .claude/logs/test-errors.log  (extracted errors)
+
+echo "📁 Locating test artifacts..."
+
+# Find failure screenshots
+FAILURE_SCREENSHOTS=$(find test-results -name "test-failed-*.png" 2>/dev/null)
+
+if [ -n "$FAILURE_SCREENSHOTS" ]; then
+    echo "📸 Failure screenshots found:"
+    ls -lh test-results/*/test-failed-*.png
+
+    # Copy to verification folder for analysis
+    mkdir -p screenshots/verification
+    cp test-results/*/test-failed-*.png screenshots/verification/ 2>/dev/null
+
+    echo ""
+    echo "Copied to: screenshots/verification/"
+else
+    echo "✓ No failure screenshots (tests passed)"
+fi
+
+# Check for videos (if enabled in playwright.config.js)
+FAILURE_VIDEOS=$(find test-results -name "video.webm" 2>/dev/null)
+if [ -n "$FAILURE_VIDEOS" ]; then
+    echo "🎥 Failure videos found:"
+    ls -lh test-results/*/video.webm
+fi
 ```
 
-Screenshot naming convention:
-- `{feature}_{screen}_{state}_{YYYY-MM-DD_HHmmss}.png`
-- Example: `positions_exit-modal_open_2025-12-22_143052.png`
+#### View HTML Report (Recommended)
+
+```bash
+# Open interactive HTML report with screenshots
+npx playwright show-report
+
+# This provides:
+# ✓ Screenshots of each failed step
+# ✓ Test execution timeline
+# ✓ Error stack traces
+# ✓ Network activity (if trace enabled)
+# ✓ Click-through of test steps
+```
+
+#### Capture Additional Screenshots (Optional)
+
+**Only if you need screenshots beyond automatic test failures:**
+
+```bash
+# Option 1: Use browser-testing skill for manual capture
+Skill(skill="browser-testing")
+# Then navigate to the screen and capture screenshots
+
+# Option 2: Use custom script (if exists)
+if [ -f "tests/e2e/utils/verification-screenshot.js" ]; then
+    node tests/e2e/utils/verification-screenshot.js \
+        --feature={feature} \
+        --screen={screen}
+else
+    echo "Custom screenshot script not found (using Playwright's automatic capture)"
+fi
+```
+
+**Screenshot naming convention:**
+- Playwright: `test-failed-{test-name}-{timestamp}.png`
+- Custom script: `{feature}_{screen}_{state}_{YYYY-MM-DD_HHmmss}.png`
+
+---
 
 ### Step 5: Analyze Results
 
-#### 5a. Analyze Test Output
-- Check for passed/failed tests
-- Read error messages for failed tests
-- Identify the root cause
+#### 5a. Analyze Test Output (Automated)
 
-#### 5b. Analyze Screenshots
-Use the Read tool to view screenshots and verify:
+Parse the saved test output from Step 3 for structured error analysis:
 
-1. **Layout correctness** - Elements positioned correctly?
-2. **Content accuracy** - Data displayed correctly?
-3. **State consistency** - UI reflects expected state?
-4. **No visual regressions** - No unintended changes?
+```bash
+ERROR_LOG=".claude/logs/test-errors.log"
+OUTPUT_LOG=".claude/logs/test-output.log"
 
-See `references/screenshot-analysis-guide.md` for detailed checklist.
+if [ -f "$ERROR_LOG" ] && [ -s "$ERROR_LOG" ]; then
+    echo "📋 Analyzing test errors..."
+
+    # Count error types
+    echo ""
+    echo "Error breakdown:"
+    grep -oE "TimeoutError|Error: Locator|AssertionError|NetworkError|Page closed" "$ERROR_LOG" \
+        | sort | uniq -c | sort -rn
+
+    # Extract first error details
+    echo ""
+    echo "First error:"
+    head -5 "$ERROR_LOG"
+
+    # Identify error type
+    FIRST_ERROR=$(head -1 "$ERROR_LOG")
+    ERROR_TYPE=$(echo "$FIRST_ERROR" | grep -oE "TimeoutError|Locator|AssertionError|NetworkError|Page closed" | head -1)
+
+    # Map to standard error type
+    case "$ERROR_TYPE" in
+        "Locator") ERROR_TYPE="LocatorNotFound" ;;
+        "Page closed") ERROR_TYPE="PageClosedError" ;;
+    esac
+
+    # Query knowledge base for this error type
+    if [ -n "$ERROR_TYPE" ]; then
+        echo ""
+        echo "🔍 Checking knowledge base for: $ERROR_TYPE"
+        bash .claude/skills/auto-verify/helpers/query-knowledge.sh \
+            "$ERROR_TYPE" \
+            "$FIRST_ERROR" \
+            "$(grep -m1 'at.*\.spec\.js' "$OUTPUT_LOG" | sed 's/.*(\(.*\))/\1/')"
+    fi
+
+    # Extract failed test names
+    echo ""
+    echo "Failed tests:"
+    grep -oP '\d+\) .*' "$OUTPUT_LOG" | head -5
+
+else
+    echo "✓ No errors found - tests passed"
+fi
+```
+
+**Common Error Patterns:**
+
+| Error Type | Likely Cause | Quick Check | Knowledge Base Query |
+|------------|--------------|-------------|---------------------|
+| `TimeoutError` | Element not appearing, slow API | Network tab, verify data loads | Check for async timing strategies |
+| `Error: Locator '...' not found` | data-testid mismatch, UI changed | Verify element exists with correct testid | Check for selector update strategies |
+| `AssertionError: expected X to be Y` | Wrong data, logic bug | API response, verify calculations | Check for data validation strategies |
+| `NetworkError` | Backend down, CORS issue | Backend running on port 8001? | Check for service availability strategies |
+| `Page closed` | Navigation before assertion | Add waitForLoadState() | Check for page lifecycle strategies |
+
+**Automated diagnosis:**
+
+```bash
+# Suggest likely fix based on error pattern
+if grep -q "TimeoutError" "$ERROR_LOG"; then
+    echo ""
+    echo "💡 Likely fix: Add wait for element or increase timeout"
+    echo "   - Check if element appears after API call"
+    echo "   - Add: await page.waitForSelector('[data-testid=...]')"
+    echo "   - Increase timeout: { timeout: 10000 }"
+fi
+
+if grep -q "Locator.*not found" "$ERROR_LOG"; then
+    echo ""
+    echo "💡 Likely fix: Update data-testid selector"
+    MISSING_TESTID=$(grep -oP "Locator '.*?data-testid=\K[^']*" "$ERROR_LOG" | head -1)
+    echo "   - Missing testid: $MISSING_TESTID"
+    echo "   - Check if element exists in current code"
+    echo "   - Verify spelling and case sensitivity"
+fi
+```
+
+---
+
+#### 5b. Analyze Screenshots (AI-Powered)
+
+**Use Claude's vision capabilities to analyze failure screenshots:**
+
+For each failure screenshot, use the Read tool to load and analyze:
+
+```bash
+# List all failure screenshots
+for screenshot in screenshots/verification/test-failed-*.png; do
+    if [ -f "$screenshot" ]; then
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "🔍 Analyzing: $(basename $screenshot)"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+        # Use Read tool - Claude will analyze the image automatically
+        echo "Reading screenshot: $screenshot"
+
+        # Analysis prompts for Claude:
+        echo ""
+        echo "Analysis questions:"
+        echo "1. What error is visible on the screen?"
+        echo "2. Are there console errors visible in DevTools?"
+        echo "3. Is the layout broken or elements misaligned?"
+        echo "4. What data-testid elements are visible?"
+        echo "5. Does this match the expected state from the test?"
+        echo "6. Are there any 'undefined', 'null', or error messages displayed?"
+        echo "7. What was the likely action that caused this state?"
+        echo ""
+    fi
+done
+```
+
+**Manual Analysis Checklist** (if AI analysis unavailable):
+
+1. **Layout correctness** ✓
+   - [ ] Elements positioned correctly?
+   - [ ] No overlapping elements?
+   - [ ] Responsive design intact?
+   - [ ] Modals/dialogs centered?
+
+2. **Content accuracy** ✓
+   - [ ] Data displayed correctly?
+   - [ ] No "undefined" or "null" values shown?
+   - [ ] Calculations correct (P&L, Greeks, percentages)?
+   - [ ] Dates/times formatted properly?
+
+3. **State consistency** ✓
+   - [ ] UI reflects expected state?
+   - [ ] Modals open/closed correctly?
+   - [ ] Loading states appropriate?
+   - [ ] Active/inactive states correct?
+
+4. **No visual regressions** ✓
+   - [ ] No unintended style changes?
+   - [ ] Colors/fonts consistent?
+   - [ ] Icons/images loading?
+   - [ ] Spacing/padding unchanged?
+
+5. **Error indicators** ✓
+   - [ ] Are error messages displayed?
+   - [ ] Console errors visible (F12)?
+   - [ ] Network failures shown?
+   - [ ] Red/yellow warning indicators?
+
+6. **Data-testid visibility** ✓
+   - [ ] Can you identify elements by their testid?
+   - [ ] Are the elements the test is looking for visible?
+   - [ ] Hidden by CSS (display: none, visibility: hidden)?
+
+**Automated visual regression** (optional):
+
+```bash
+# If using Percy for visual testing
+if command -v percy &> /dev/null; then
+    npx percy snapshot screenshots/verification/*.png
+    echo "Visual diff report: https://percy.io/..."
+fi
+
+# Compare with baseline screenshots
+if [ -d "screenshots/baseline" ]; then
+    echo "Comparing with baseline..."
+    for screenshot in screenshots/verification/*.png; do
+        baseline="screenshots/baseline/$(basename $screenshot)"
+        if [ -f "$baseline" ]; then
+            # Use imagemagick to create diff
+            compare "$baseline" "$screenshot" "screenshots/diff/$(basename $screenshot)" 2>/dev/null
+        fi
+    done
+fi
+```
+
+---
+
+#### 5c. Live Browser Inspection (If Needed)
+
+**For complex failures, use live browser debugging:**
+
+```bash
+# When to use live debugging:
+# - Error message is unclear from screenshots
+# - Need to check browser console
+# - Need to inspect element attributes
+# - Need to test interactions manually
+# - Need to verify WebSocket/network activity
+
+echo "For live debugging, use:"
+echo "  Skill(skill='browser-testing')"
+echo ""
+echo "This allows you to:"
+echo "  1. Navigate to the failing screen"
+echo "  2. Open DevTools and check console"
+echo "  3. Inspect element data-testid attributes"
+echo "  4. Test the failing interaction manually"
+echo "  5. Monitor WebSocket messages"
+echo "  6. Capture live state for comparison"
+```
+
+**When to use each method:**
+
+| Method | Use Case | Speed | Depth |
+|--------|----------|-------|-------|
+| **Screenshot analysis** | Quick visual check, obvious errors | Fast | Surface |
+| **Error log parsing** | Identify error type, query KB | Fast | Medium |
+| **HTML report** | See test timeline, step-by-step | Medium | Medium |
+| **Live browser debugging** | Deep inspection, console errors, network | Slow | Deep |
+
+**Decision tree:**
+
+```
+Error detected →
+  ├─ Obvious from screenshot? → Fix immediately
+  ├─ Error type recognized? → Query KB → Try ranked strategies
+  ├─ Need to check console? → Use browser-testing
+  └─ Completely unclear? → Use browser-testing + knowledge base
+```
+
+---
+
+#### Summary of Analysis
+
+After completing 5a, 5b, and optionally 5c:
+
+```bash
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "📊 Analysis Summary"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "Test Output:"
+echo "  - Error log: .claude/logs/test-errors.log"
+echo "  - Full output: .claude/logs/test-output.log"
+echo ""
+echo "Screenshots:"
+echo "  - Failure screenshots: screenshots/verification/"
+echo "  - HTML report: npx playwright show-report"
+echo ""
+echo "Knowledge Base:"
+echo "  - Error pattern: $ERROR_TYPE"
+echo "  - Recommended strategies: [see above]"
+echo ""
+echo "Next step: Proceed to Step 6 (Decision Point)"
+```
 
 ### Step 6: Decision Point
 
