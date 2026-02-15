@@ -55,7 +55,28 @@ The fix-loop implements a sophisticated fix strategy with:
    # Format: [{"id": 1, "description": "...", "code_snippet": "...", "success_rate": 0.85}, ...]
    ```
 
-3. **Set thinking depth based on iteration (6 gradual levels):**
+3. **Initialize iteration memory (first iteration only):**
+   ```python
+   from iteration_memory_helper import (
+       init_iteration_memory,
+       read_iteration_memory,
+       record_iteration_memory,
+       format_memory_for_agent,
+       archive_session_memory
+   )
+
+   # Initialize on first iteration
+   if current_iteration == 1:
+       error_context = {
+           "testFile": test_file,
+           "testName": test_name,
+           "initialError": error_message,
+           "stackTrace": stack_trace
+       }
+       init_iteration_memory(error_context)
+   ```
+
+4. **Set thinking depth based on iteration (6 gradual levels):**
    - **Level 1 - Normal** (Iterations 1-2): Standard analysis, direct error interpretation
    - **Level 2 - Basic** (Iterations 3-4): Basic root cause, file context, common patterns
    - **Level 3 - Moderate** (Iterations 5-6): Cross-file dependencies, component interactions
@@ -157,6 +178,12 @@ FAIL src/components/positions/ExitPositionModal.spec.js > ExitPositionModal > sh
 ```python
 iteration = state['steps']['step5_fixLoop']['iterations']
 
+# Read iteration memory for context (Level 3+)
+memory = read_iteration_memory()
+memory_context = ""
+if memory and iteration >= 3:
+    memory_context = format_memory_for_agent(memory, iteration)
+
 # Level 1: Normal (Iterations 1-2)
 if iteration <= 2:
     thinking_mode = "normal"
@@ -173,6 +200,9 @@ elif iteration <= 4:
 
         LEVEL 2 - BASIC ROOT CAUSE ANALYSIS:
 
+        {memory_context if iteration >= 3 else "First iterations - no prior context."}
+
+        === CURRENT ITERATION ({iteration}) ===
         Failing test: {test_name}
         Error: {error_message}
         Stack trace: {stack_trace}
@@ -195,6 +225,9 @@ elif iteration <= 6:
 
         LEVEL 3 - MODERATE CROSS-FILE ANALYSIS:
 
+        {memory_context}
+
+        === CURRENT ITERATION ({iteration}) ===
         Failing test: {test_name}
         Error: {error_message}
         Stack trace: {stack_trace}
@@ -219,6 +252,9 @@ elif iteration <= 8:
 
         LEVEL 4 - DEEP SYSTEM-LEVEL ANALYSIS:
 
+        {memory_context}
+
+        === CURRENT ITERATION ({iteration}) ===
         Failing test: {test_name}
         Error: {error_message}
         Stack trace: {stack_trace}
@@ -245,17 +281,15 @@ elif iteration <= 10:
 
         LEVEL 5 - VERY DEEP HISTORICAL PATTERN ANALYSIS:
 
-        We have attempted {iteration - 1} fixes without success.
+        {memory_context}
 
+        === CRITICAL: {iteration - 1} ATTEMPTS HAVE FAILED ===
         Failing test: {test_name}
         Error: {error_message}
         Stack trace: {stack_trace}
 
-        Previous fix attempts:
-        {format_previous_attempts()}
-
         Provide:
-        1. Analysis of why previous 8 fixes failed
+        1. Analysis of why previous fixes failed (see rejected hypotheses above)
         2. Similar past errors from knowledge.db
         3. Anti-pattern detection
         4. Alternative architectural approaches
@@ -274,14 +308,12 @@ else:  # iteration >= 11
 
         LEVEL 6 - ULTRATHINK MAXIMUM DEPTH + META-REASONING:
 
-        CRITICAL: We have attempted {iteration - 1} fixes without success.
+        {memory_context}
 
+        === CRITICAL: {iteration - 1} ATTEMPTS EXHAUSTED - ALL 6 LEVELS TRIED ===
         Failing test: {test_name}
         Error: {error_message}
         Stack trace: {stack_trace}
-
-        Previous fix attempts:
-        {format_previous_attempts()}
 
         Provide:
         1. Question test correctness (is the test itself wrong?)
@@ -456,6 +488,94 @@ record_attempt(
 
 ---
 
+#### 8b. Record Iteration Memory (AI-Powered Summary)
+
+**Launch memory-recorder agent to analyze this iteration:**
+
+```python
+# Get previous understanding
+memory = read_iteration_memory()
+previous_understanding = memory['cumulativeSummary']['understanding'] if memory else 'None - first iteration'
+
+# Launch memory-recorder agent (Haiku for speed/cost)
+memory_summary = Task(
+    subagent_type="general-purpose",
+    model="haiku",
+    prompt=f"""You are a Memory-Recorder Agent for AlgoChanakya fix-loop.
+    Follow the instructions in .claude/iteration-memory/memory-recorder-agent.md.
+
+    Read .claude/iteration-memory/memory-recorder-agent.md first, then:
+
+    Analyze this iteration and provide concise summary.
+
+    Iteration {iteration}:
+    - Thinking Level: {thinking_mode}
+    - Strategy: {strategy['name']}
+    - Hypothesis: {hypothesis}
+    - Action Taken: {fix_description}
+    - Files Modified: {', '.join(files_modified)}
+    - Test Result: {'PASSED' if test_passed else 'FAILED'}
+    - Error After Fix: {error_after if not test_passed else 'N/A'}
+
+    Previous Cumulative Understanding:
+    {previous_understanding}
+
+    Return ONLY valid JSON with these exact fields:
+    {{
+      "whatTried": "...",
+      "whyFailed": "...",
+      "whatLearned": "...",
+      "recommendation": "..."
+    }}
+
+    Be concise, factual, and build on previous understanding.
+    Mark breakthrough insights with "CRITICAL:" prefix.
+    """
+)
+
+# Parse agent response and record to iteration memory
+try:
+    import json
+    agent_summary = json.loads(memory_summary)
+except json.JSONDecodeError:
+    # Fallback if agent returns invalid JSON
+    agent_summary = {
+        "whatTried": fix_description,
+        "whyFailed": "Agent failed to analyze - see error logs",
+        "whatLearned": "Iteration completed",
+        "recommendation": "Continue to next strategy"
+    }
+
+# Record to iteration-memory.json
+record_iteration_memory(
+    iteration=iteration,
+    thinking_level=thinking_mode,
+    strategy={
+        "name": strategy['name'],
+        "source": strategy.get('source', 'unknown'),
+        "successRate": strategy.get('success_rate', None)
+    },
+    hypothesis=hypothesis,
+    action_taken={
+        "filesModified": files_modified,
+        "changeDescription": fix_description,
+        "diff": diff_text if available else "N/A"
+    },
+    outcome={
+        "testPassed": test_passed,
+        "errorAfter": error_after if not test_passed else None,
+        "newInsights": agent_summary.get('whatLearned', '')
+    },
+    agent_summary=agent_summary
+)
+
+print(f"✓ Iteration {iteration} summary recorded to memory")
+```
+
+**Memory grows progressively** - each iteration builds cumulative understanding.
+
+---
+
 #### 9. Check Exit Conditions
 
 **SUCCESS (exit with code 0):**
@@ -466,11 +586,17 @@ record_attempt(
   state['skillInvocations']['fixLoopSucceeded'] = True
   write_workflow_state(state)
   ```
+- Archive iteration memory:
+  ```python
+  archive_session_memory(success=True)
+  print(f"✓ Session archived - {iteration} iterations, all tests passed")
+  ```
 
 **CONTINUE (next iteration):**
 - Some tests still failing
 - Budget not exhausted (iteration < 12)
 - Increment iteration counter
+- Iteration memory persists for next cycle
 
 **FAIL (exit with code 1):**
 - Max iterations reached (12)
@@ -480,6 +606,11 @@ record_attempt(
   ```python
   state['skillInvocations']['fixLoopSucceeded'] = False
   write_workflow_state(state)
+  ```
+- Archive iteration memory:
+  ```python
+  archive_session_memory(success=False)
+  print(f"✗ Session archived - {iteration} iterations, failed to resolve")
   ```
 
 ---
