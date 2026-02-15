@@ -1,0 +1,57 @@
+{
+  "sessionId": "20260215-123045",
+  "activeCommand": "implement",
+  "lastActivity": "2026-02-15T12:30:45.123456",
+  "steps": {
+    "step1_requirements": {
+      "completed": false,
+      "timestamp": null
+    },
+    "step2_tests": {
+      "completed": false,
+      "testFiles": [],
+      "testLayers": []
+    },
+    "step3_implement": {
+      "completed": false,
+      "filesChanged": []
+    },
+    "step4_runTests": {
+      "completed": false,
+      "testLayers": {
+        "e2e": {
+          "passed": null,
+          "failed": null
+        },
+        "backend": {
+          "passed": null,
+          "failed": null
+        },
+        "frontend": {
+          "passed": null,
+          "failed": null
+        }
+      }
+    },
+    "step5_fixLoop": {
+      "completed": false,
+      "iterations": 0
+    },
+    "step6_screenshots": {
+      "completed": false
+    },
+    "step7_postFixPipeline": {
+      "completed": false
+    }
+  },
+  "skillInvocations": {
+    "fixLoopInvoked": false,
+    "fixLoopCount": 0,
+    "fixLoopSucceeded": null,
+    "postFixPipelineInvoked": false
+  },
+  "evidence": {
+    "testRuns": []
+  },
+  "pendingAutoFixes": []
+}

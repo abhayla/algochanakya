@@ -676,6 +676,9 @@ def get_synthesized_rules(auto_fix_eligible: bool = False, error_type: str = Non
         query = "SELECT * FROM synthesized_rules WHERE superseded_by IS NULL"
         params = []
 
+        if auto_fix_eligible:
+            query += " AND auto_fix_eligible = 1"
+
         if error_type:
             query += " AND error_type = ?"
             params.append(error_type)

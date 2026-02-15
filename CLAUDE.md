@@ -3,7 +3,19 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 **AlgoChanakya:** Multi-broker options trading platform (Indian markets)
-**Last Updated:** February 2026
+**Last Updated:** 2026-02-14
+
+## Quick Decision Tree
+
+**What are you working on?**
+- 🔴 **Production debugging?** → STOP! Check [Production vs Development](#0-production-vs-development---never-touch-production)
+- 🔧 **Backend code?** → See [backend/CLAUDE.md](backend/CLAUDE.md)
+- 🎨 **Frontend code?** → See [frontend/CLAUDE.md](frontend/CLAUDE.md)
+- 🧪 **Tests failing?** → Run `Skill(skill="test-fixer")` or see [Testing](#testing)
+- 🐛 **Bug fix?** → Follow [Common Workflows](#common-workflows)
+- ✨ **New feature?** → Read [Critical Behaviors](#critical-mandatory-behaviors) first
+- 📚 **Architecture questions?** → Check [Core Architecture](#core-purpose-multi-broker-architecture) or [docs/README.md](docs/README.md)
+- 🤔 **Not sure?** → Start with [🚨 Critical First Steps](#-critical-first-steps)
 
 ## 🚨 Critical First Steps
 
@@ -19,16 +31,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Quick commands?** → [Developer Quick Reference](docs/DEVELOPER-QUICK-REFERENCE.md)
 - **Current tasks?** → [Implementation Checklist](docs/IMPLEMENTATION-CHECKLIST.md)
 
-## Implementation Status
+## Current Work & Roadmap
 
-✅ **Complete:** Multi-broker abstraction, SmartAPI integration, Auto-TOTP, E2E test suite (189 files)
-🚧 **In Progress:** ADR-003 v2 ticker architecture (designed, implementation ready)
-📋 **Planned:** Additional broker integrations (Upstox, Fyers, Dhan, Paytm)
+See **[docs/ROADMAP.md](docs/ROADMAP.md)** for:
+- 🚧 Active work (Workflow redesign, Ticker architecture v2)
+- ✅ Recently completed (Multi-broker abstraction, SmartAPI integration)
+- 📋 Planned features (Upstox, Fyers, Dhan, Paytm, Backtesting)
+- 🎯 Long-term vision (Multi-timeframe, Social trading, Mobile app)
 
-## 🔄 Ongoing Redesigns (Feb 14, 2026)
-
-- **[Workflow Redesign](.claude/WORKFLOW-DESIGN-SPEC.md)** - 9→4 hooks, 395s→110s timeout, 3,100→1,200 lines
-- **[Ticker Redesign](docs/decisions/TICKER-DESIGN-SPEC.md)** - 6→5 components, 495→90 line websocket.py
+**Quick Status:**
+- ✅ **Complete:** Multi-broker abstraction, SmartAPI integration, Auto-TOTP, E2E test suite (189 files)
+- 🚧 **In Progress:** [Workflow Redesign](.claude/WORKFLOW-DESIGN-SPEC.md), [Ticker Architecture v2](docs/decisions/TICKER-DESIGN-SPEC.md)
+- 📋 **Next:** Upstox integration (Q2 2026), Fyers integration (Q2 2026)
 
 ## Table of Contents
 
@@ -65,6 +79,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Run commands affecting production
 
 **Note:** If backend at localhost:8000 is production, start dev backend on 8001 separately.
+
+#### Production Emergency Response
+
+**If production is down or has critical issues:**
+
+1. ❌ **DO NOT** restart services yourself (`pm2 restart`)
+2. ❌ **DO NOT** modify files in `C:\Apps\algochanakya`
+3. ❌ **DO NOT** run database migrations on production
+4. ❌ **DO NOT** kill processes or clear caches without approval
+5. ✅ **DO** notify user immediately with specific symptoms
+6. ✅ **DO** read-only observe logs: `pm2 logs algochanakya-backend --lines 50`
+7. ✅ **DO** test fixes in dev environment first
+8. ✅ **DO** document the issue and proposed solution
+9. ✅ **DO** wait for explicit user approval before any production action
+
+**Escalation:** For production emergencies, describe the issue and ask user to handle production changes directly.
 
 ### 1. Auto-Verification After Code Changes
 
@@ -118,6 +148,50 @@ alembic revision --autogenerate -m "description" && alembic upgrade head
 
 **Full command reference:** [Developer Quick Reference](docs/DEVELOPER-QUICK-REFERENCE.md#quick-commands) | [backend/CLAUDE.md](backend/CLAUDE.md#development-commands) | [frontend/CLAUDE.md](frontend/CLAUDE.md#development-commands)
 
+---
+
+## Common Workflows
+
+### Adding a New API Endpoint
+
+1. Create route: `backend/app/api/routes/{feature}.py`
+2. Update `backend/app/main.py`: `app.include_router({feature}.router)`
+3. Add E2E test: `tests/e2e/specs/{screen}/{feature}.spec.js`
+4. Run: `Skill(skill="auto-verify")`
+5. Update feature registry: `docs/feature-registry.yaml`
+
+### Fixing a Bug
+
+1. Check current state: `git status && git log --oneline -5`
+2. Fix the code (use Read, Edit, Write tools)
+3. Run: `Skill(skill="auto-verify")`
+4. If tests fail: `Skill(skill="test-fixer")`
+5. Commit only when user approves
+
+### Adding a New Broker
+
+1. Create adapter: `backend/app/services/brokers/{broker}_adapter.py`
+2. Implement `BrokerAdapter` and/or `MarketDataBrokerAdapter` interfaces
+3. Register in factory: `get_broker_adapter()` / `get_market_data_adapter()`
+4. Add credentials model + migration (if needed)
+5. See [Broker Abstraction docs](docs/architecture/broker-abstraction.md)
+
+### Database Schema Change
+
+1. Create/modify model: `backend/app/models/{model}.py`
+2. Import in `backend/app/models/__init__.py`
+3. Import in `backend/alembic/env.py` (CRITICAL - autogenerate won't work without this)
+4. Generate: `alembic revision --autogenerate -m "description"`
+5. Review migration, then: `alembic upgrade head`
+
+### Debugging Production Issues
+
+1. ❌ **DO NOT** restart services or modify `C:\Apps\algochanakya`
+2. ✅ **DO** read-only observe: `pm2 logs algochanakya-backend`
+3. ✅ **DO** check user-reported symptoms
+4. ✅ **DO** test fix in dev (`D:\Abhay\VibeCoding\algochanakya`)
+5. ✅ **DO** notify user before any production changes
+
 ## Development Environment
 
 | Component | Port | URL | Notes |
@@ -156,13 +230,18 @@ alembic revision --autogenerate -m "description" && alembic upgrade head
 - Interface: `BrokerAdapter`
 - Factory: `get_broker_adapter(broker_type, credentials)`
 
-### Supported Brokers
+### Supported Brokers (Updated: 2026-02-14)
 
-| Broker | Market Data | Orders | Status |
-|--------|-------------|--------|--------|
-| **Angel One** (SmartAPI) | ✅ FREE | ✅ FREE | Production |
-| **Zerodha** (Kite) | Rs.500/mo | ✅ FREE | Production |
-| **Upstox/Fyers/Dhan/Paytm** | FREE | FREE | Planned |
+| Broker | Market Data | Orders | Status | Version |
+|--------|-------------|--------|--------|---------|
+| **Angel One** (SmartAPI) | ✅ FREE | ✅ FREE | ✔️ Production | v1.0 (Jan 2026) |
+| **Zerodha** (Kite) | Rs.500/mo | ✅ FREE | ✔️ Production | v1.0 (Dec 2025) |
+| **Upstox** | FREE | FREE | 📋 Planned | Q2 2026 |
+| **Fyers** | FREE | FREE | 📋 Planned | Q2 2026 |
+| **Dhan** | FREE | FREE | 📋 Planned | Q3 2026 |
+| **Paytm Money** | FREE | FREE | 📋 Planned | Q3 2026 |
+
+**Legend:** ✔️ Production Ready | 🚧 In Progress | 📋 Planned | ❌ Deprecated
 
 **Details:** [backend/CLAUDE.md](backend/CLAUDE.md#broker-abstraction-code-examples) | [Broker Abstraction Architecture](docs/architecture/broker-abstraction.md) | [ADR-002](docs/decisions/002-broker-abstraction.md)
 

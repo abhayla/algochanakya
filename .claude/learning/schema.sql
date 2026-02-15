@@ -79,10 +79,12 @@ CREATE TABLE IF NOT EXISTS synthesized_rules (
     confidence REAL NOT NULL,               -- 0.0-1.0
     evidence_count INTEGER NOT NULL,        -- Number of successful fixes backing this
     markdown_content TEXT NOT NULL,          -- Full rule as markdown (for skill injection)
+    auto_fix_eligible INTEGER DEFAULT 0,    -- 1 if rule can be auto-applied (≥70% success, ≥5 evidence)
     created_at TEXT NOT NULL,
     superseded_by INTEGER REFERENCES synthesized_rules(id)
 );
 CREATE INDEX IF NOT EXISTS idx_rule_confidence ON synthesized_rules(confidence DESC);
+CREATE INDEX IF NOT EXISTS idx_rule_auto_fix ON synthesized_rules(auto_fix_eligible);
 
 -- Session metrics: Per-session tracking
 CREATE TABLE IF NOT EXISTS session_metrics (
