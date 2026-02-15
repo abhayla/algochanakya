@@ -1,3 +1,12 @@
+---
+name: fix-loop
+description: Iterative fix cycle with thinking escalation (Normal to ThinkHard to UltraThink), code review gates, and knowledge.db integration. Diagnoses and fixes test failures using ranked strategies. Use when tests fail during /implement Step 5, or standalone for any bug fix.
+metadata:
+  author: AlgoChanakya
+  version: "1.0"
+  category: workflow
+---
+
 # /fix-loop - Iterative Fix Cycle
 
 **Purpose:** Central fix engine with thinking escalation, code review gates, and knowledge.db integration.
@@ -496,42 +505,7 @@ AskUserQuestion(
 
 ## Integration with knowledge.db
 
-**Reading:**
-```python
-from db_helper import get_strategies, get_error_pattern
-
-# Get ranked strategies for error type
-strategies = get_strategies("selector_not_found")
-# Returns: [{"id": 1, "description": "...", "success_rate": 0.85, "code_snippet": "..."}, ...]
-
-# Get error pattern details
-pattern = get_error_pattern(error_type="selector_not_found", component="positions")
-```
-
-**Writing:**
-```python
-from db_helper import record_error, record_attempt, update_strategy_score
-
-# Record new error occurrence
-error_id = record_error(
-    error_type="selector_not_found",
-    component="positions",
-    file_path="tests/e2e/specs/positions/positions.happy.spec.js",
-    error_message="Timeout waiting for locator...",
-    stack_trace=stack_trace
-)
-
-# Record fix attempt
-record_attempt(
-    error_pattern_id=error_id,
-    strategy_id=strategy['id'],
-    outcome='success',  # or 'failure'
-    fix_description="Updated data-testid from 'exit-confirm' to 'positions-exit-confirm'"
-)
-
-# Update strategy score
-update_strategy_score(strategy_id=strategy['id'], outcome='success')
-```
+See [references/knowledge-db-integration.md](references/knowledge-db-integration.md) for detailed database integration patterns.
 
 ---
 
@@ -598,11 +572,6 @@ Skill("fix-loop")
 ---
 
 ## Implementation Notes
-
-**This is a command file (`.claude/commands/fix-loop.md`) that gets invoked as:**
-```
-Skill("fix-loop")
-```
 
 **The skill orchestrates:**
 1. Hook utilities (workflow state, logging)

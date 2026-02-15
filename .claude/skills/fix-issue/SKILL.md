@@ -1,3 +1,12 @@
+---
+name: fix-issue
+description: Fetch, understand, and fix a GitHub issue with full workflow enforcement. Accepts issue number or GitHub URL. Orchestrates implement, fix-loop, and post-fix-pipeline. Creates conventional commit with Fix #NNN reference.
+metadata:
+  author: AlgoChanakya
+  version: "1.0"
+  category: workflow
+---
+
 # /fix-issue - Fix GitHub Issue
 
 **Purpose:** Fetch, understand, and fix a GitHub issue with full workflow enforcement.

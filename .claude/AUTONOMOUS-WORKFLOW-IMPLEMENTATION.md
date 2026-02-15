@@ -48,7 +48,7 @@ AlgoChanakya now has a **fully autonomous testing workflow system** inspired by 
 
 **Total hook code:** ~1,590 lines of Python
 
-#### Commands (6 markdown files - `.claude/commands/`)
+#### Commands (6 markdown files - `.claude/skills/`)
 1. `implement.md` (300 lines) - 7-step mandatory workflow
 2. `fix-loop.md` (610 lines) - Iterative fix cycle with escalation
 3. `post-fix-pipeline.md` (270 lines) - Final verification + commit
@@ -532,7 +532,7 @@ Result: ✅ 1 file modified, auto-fix pattern now active
 - Timeout recommendations: 5-10s for checks, 30s for updates, 300s for test re-runs
 
 ### Command Maintenance
-- Commands are markdown docs in `.claude/commands/`
+- Commands are markdown docs in `.claude/skills/`
 - Invoked via `Skill("command-name")`
 - Can call other skills and launch agents
 - Update as workflow patterns emerge
@@ -580,7 +580,7 @@ Result: ✅ 1 file modified, auto-fix pattern now active
 8. auto_fix_pattern_scan.py (70 lines)
 9. post_skill_learning.py (140 lines)
 
-### Commands (.claude/commands/)
+### Commands (.claude/skills/)
 1. implement.md (300 lines)
 2. fix-loop.md (400 lines)
 3. post-fix-pipeline.md (250 lines)

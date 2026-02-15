@@ -117,7 +117,7 @@
 
 4. **post-fix-pipeline.md:** Self-location factual error (line 502)
    - Said "This is a skill file (.claude/skills/post-fix-pipeline/SKILL.md)"
-   - Should say "This is a command file (.claude/commands/post-fix-pipeline.md)"
+   - Should say "This is a command file (.claude/skills/post-fix-pipeline.md)"
 
 **After Remediation:**
 - ✅ All pseudocode functions annotated with `# [PLANNED - pseudocode]`
@@ -238,8 +238,8 @@
 - ✅ `grep -r "^---" .claude/skills/*/SKILL.md` — 42 matches (21 skills × 2 delimiters)
 - ✅ `grep -r "metadata:" .claude/skills/*/SKILL.md` — 21 matches (all skills)
 - ✅ `grep -r "When NOT to Use" .claude/skills/*/SKILL.md` — 21 matches (all skills)
-- ✅ `grep -r "\[PLANNED" .claude/commands/*.md` — 12 matches (10 functions + 2 runtime refs)
-- ✅ `grep "command file" .claude/commands/post-fix-pipeline.md` — 1 match (corrected)
+- ✅ `grep -r "\[PLANNED" .claude/skills/*.md` — 12 matches (10 functions + 2 runtime refs)
+- ✅ `grep "command file" .claude/skills/post-fix-pipeline.md` — 1 match (corrected)
 - ✅ Manual verification of 3 skill frontmatter: All parse correctly
 
 ### Manual Spot Checks

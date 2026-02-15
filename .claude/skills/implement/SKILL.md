@@ -1,3 +1,12 @@
+---
+name: implement
+description: 7-step mandatory workflow for implementing features, bug fixes, and refactoring. Enforces test-driven development with requirements, test writing, implementation, verification, fix loop, visual verification, and commit pipeline. Use when user says 'implement', 'add feature', 'build', or any task requiring production code changes.
+metadata:
+  author: AlgoChanakya
+  version: "1.0"
+  category: workflow
+---
+
 # /implement - 7-Step Mandatory Workflow
 
 **Purpose:** Primary orchestration command for implementing features with enforced test-driven workflow.
@@ -419,3 +428,30 @@ This command orchestrates these existing skills:
 
 ```
 User: "Add a delete button to the positions screen"
+
+Claude: I understand you want to add a delete button to the positions screen.
+This will affect the PositionsList component and positions API route.
+Expected outcome: Users can delete individual positions with confirmation dialog.
+
+[Step 1 completed]
+
+Now writing E2E test...
+Skill("e2e-test-generator", args="positions delete-button happy")
+
+[Continue through all 7 steps...]
+```
+
+---
+
+## Implementation Notes
+
+**This skill orchestrates:**
+1. Hook utilities (workflow state, logging)
+2. knowledge.db queries (via db_helper.py)
+3. Sub-skills (auto-verify, test generators, fix-loop, post-fix-pipeline)
+4. Test execution (via auto-verify)
+5. File modifications (via Edit/Write)
+
+**Exit codes:**
+- **0:** All 7 steps completed successfully, commit created
+- **1:** Workflow failed (tests not passing, user cancelled, etc.)

@@ -45,14 +45,14 @@ Completed comprehensive audit of the autonomous workflow system built on Februar
    - Removed duplicate `detect_skill_outcome()`, imports from hook_utils (M3)
 
 ### Commands (3 files)
-5. `.claude/commands/fix-loop.md` - **5 fixes**
+5. `.claude/skills/fix-loop.md` - **5 fixes**
    - Fixed 4 Task() invocations to use `general-purpose` (C1)
    - Fixed self-reference path from "skill file" to "command file" (H3)
 
-6. `.claude/commands/post-fix-pipeline.md` - **2 fixes**
+6. `.claude/skills/post-fix-pipeline.md` - **2 fixes**
    - Fixed 2 Task() invocations to use `general-purpose` (C1)
 
-7. `.claude/commands/fix-issue.md` - **1 fix**
+7. `.claude/skills/fix-issue.md` - **1 fix**
    - Fixed 1 Task() invocation to use `general-purpose` (C1)
 
 ### Agents (4 files)
@@ -120,7 +120,7 @@ Completed comprehensive audit of the autonomous workflow system built on Februar
 **H3: Wrong self-reference path in fix-loop.md** (Fixed)
 - **Problem:** Says "skill file (.claude/skills/fix-loop/SKILL.md)" but actual path is commands
 - **Impact:** Minor documentation inaccuracy
-- **Fix:** Changed to "command file (.claude/commands/fix-loop.md)"
+- **Fix:** Changed to "command file (.claude/skills/fix-loop.md)"
 - **File:** fix-loop.md line 602
 
 **H4: Dict field access uses wrong field names** (Fixed via C4)
@@ -235,7 +235,7 @@ $ grep -rn 'playwri,ght' .claude/
 
 # get_synthesized_rules properly defined and imported
 $ grep -rn 'get_synthesized_rules' .claude/
-.claude/commands/reflect.md:235
+.claude/skills/reflect.md:235
 .claude/hooks/auto_fix_pattern_scan.py:36 (import)
 .claude/hooks/auto_fix_pattern_scan.py:38 (usage)
 .claude/learning/db_helper.py:663 (definition)

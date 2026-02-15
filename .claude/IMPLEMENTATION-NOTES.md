@@ -110,10 +110,10 @@ These were described in the research summary and confirmed to exist:
 **Features:** 1% pixel tolerance, 0.2 color threshold, dynamic masking, 4 viewports
 
 ### Commands (3)
-- ✅ `.claude/commands/implement.md` - 7-step mandatory workflow
+- ✅ `.claude/skills/implement.md` - 7-step mandatory workflow
   - Step 6 includes Playwright MCP browser tools for visual verification
-- ✅ `.claude/commands/fix-loop.md` - Iterative fix cycle
-- ✅ `.claude/commands/post-fix-pipeline.md` - Verification + commit
+- ✅ `.claude/skills/fix-loop.md` - Iterative fix cycle
+- ✅ `.claude/skills/post-fix-pipeline.md` - Verification + commit
 
 ### Agents (4)
 - ✅ `.claude/agents/debugger.md` - Fix diagnosis with thinking escalation

@@ -516,7 +516,7 @@ exit_with_code(0, "✅ Workflow step valid")
 ```
 
 **Configuration:**
-- Workflow steps defined in `.claude/commands/implement.md`
+- Workflow steps defined in `.claude/skills/implement/SKILL.md`
 - Step progression tracked in `workflow-state.json`
 
 **Customization:**
@@ -1001,7 +1001,7 @@ Commands are AlgoChanakya's **unique feature** - CricApp has zero commands. Comm
 
 ### 4.1 /implement - 7-Step Mandatory Workflow
 
-**File:** `.claude/commands/implement.md`
+**File:** `.claude/skills/implement/SKILL.md`
 **Purpose:** Primary workflow for all feature implementations
 
 **When to use:**
@@ -1155,7 +1155,7 @@ Step 7: Skill("post-fix-pipeline")
 
 ### 4.2 /fix-loop - Iterative Fix Cycle
 
-**File:** `.claude/commands/fix-loop.md`
+**File:** `.claude/skills/fix-loop/SKILL.md`
 **Purpose:** Fix failing tests with thinking escalation + code review gates
 
 **When to use:**
@@ -1336,7 +1336,7 @@ User intervention required.
 
 ### 4.3 /post-fix-pipeline - Final Verification + Commit
 
-**File:** `.claude/commands/post-fix-pipeline.md`
+**File:** `.claude/skills/post-fix-pipeline/SKILL.md`
 **Purpose:** Final verification, documentation update, and git commit
 **When to use:** Automatically invoked by `/implement` Step 7 (MANDATORY)
 
@@ -1355,7 +1355,7 @@ User intervention required.
 
 ### 4.4 /run-tests - Multi-Layer Test Runner
 
-**File:** `.claude/commands/run-tests.md`
+**File:** `.claude/skills/run-tests/SKILL.md`
 **Purpose:** Run E2E, backend, and frontend tests in sequence
 **Layers:** Playwright (E2E) → pytest (backend) → Vitest (frontend)
 
@@ -1363,7 +1363,7 @@ User intervention required.
 
 ### 4.5 /fix-issue - Fix GitHub Issue
 
-**File:** `.claude/commands/fix-issue.md`
+**File:** `.claude/skills/fix-issue/SKILL.md`
 **Purpose:** Fetch GitHub issue, analyze, fix, and link commit to issue
 **Uses:** `gh` CLI for issue management
 
@@ -1371,7 +1371,7 @@ User intervention required.
 
 ### 4.6 /reflect - Learning + Self-Modification
 
-**File:** `.claude/commands/reflect.md`
+**File:** `.claude/skills/reflect/SKILL.md`
 **Purpose:** Learning reflection and self-modification
 **Modes:**
 - `session` - Read-only reflection, update knowledge.db
@@ -2113,7 +2113,7 @@ Work continues from where it left off
 ### 14.4 How to Add a New Command
 
 **Steps:**
-1. Create command file: `.claude/commands/my-command.md`
+1. Create command file: `.claude/skills/my-skill/SKILL.md`
 2. Document workflow steps, skills called, agents used
 3. Add to CLAUDE.md:
    ```markdown
@@ -2194,12 +2194,12 @@ Work continues from where it left off
 **Hooks subtotal:** ~2,025 lines
 
 #### Commands (6 files)
-- `.claude/commands/implement.md` (~600 lines)
-- `.claude/commands/fix-loop.md` (~620 lines)
-- `.claude/commands/post-fix-pipeline.md` (~250 lines)
-- `.claude/commands/run-tests.md` (~180 lines)
-- `.claude/commands/fix-issue.md` (~150 lines)
-- `.claude/commands/reflect.md` (~200 lines)
+- `.claude/skills/implement/SKILL.md` (~600 lines)
+- `.claude/skills/fix-loop/SKILL.md` (~620 lines)
+- `.claude/skills/post-fix-pipeline/SKILL.md` (~250 lines)
+- `.claude/skills/run-tests/SKILL.md` (~180 lines)
+- `.claude/skills/fix-issue/SKILL.md` (~150 lines)
+- `.claude/skills/reflect/SKILL.md` (~200 lines)
 
 **Commands subtotal:** ~2,000 lines
 
@@ -2279,7 +2279,7 @@ AlgoChanakya's automation system is a sophisticated, multi-layered workflow engi
 **Next Steps:**
 - Read Gap Report: `docs/guides/AUTOMATION-GAP-REPORT.md`
 - Review feature proposals: `docs/guides/AUTOMATION-FEATURE-PROPOSALS.md` (to be created)
-- Explore command definitions in `.claude/commands/`
+- Explore skill definitions in `.claude/skills/*/SKILL.md`
 - Review agent definitions in `.claude/agents/`
 
 ---

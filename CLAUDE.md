@@ -436,12 +436,13 @@ AlgoChanakya is an options trading platform (similar to Sensibull) for Indian ma
 - `vue-component-generator` - Create Vue 3 components/Pinia stores
 - `trading-constants-manager` - Enforce centralized trading constants
 
-**Workflow Commands:**
-- `/implement` - 7-step implementation workflow
-- `/fix-loop` - Iterative fix cycle
-- `/run-tests` - Multi-layer test runner
-- `/reflect` - Learning + self-modification
-- `/post-fix-pipeline` - Verification + commit
+**Workflow Orchestration:**
+- `implement` - 7-step implementation workflow (TDD enforced)
+- `fix-loop` - Iterative fix cycle with thinking escalation
+- `run-tests` - Multi-layer test runner with auto-fix
+- `reflect` - Learning + self-modification (4 modes)
+- `post-fix-pipeline` - Verification + commit with hard blocks
+- `fix-issue` - GitHub issue workflow (fetch, implement, commit)
 
 **Broker API Experts:**
 - `smartapi-expert` - SmartAPI (Angel One) API guidance

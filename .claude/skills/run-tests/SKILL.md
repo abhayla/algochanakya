@@ -1,3 +1,12 @@
+---
+name: run-tests
+description: Multi-layer test runner for E2E (Playwright), backend (pytest), and frontend (Vitest) with auto-fix on failure. Use for test execution, CI/CD validation, or pre-commit verification. Accepts layer and filter arguments.
+metadata:
+  author: AlgoChanakya
+  version: "1.0"
+  category: workflow
+---
+
 # /run-tests - Multi-Layer Test Runner
 
 **Purpose:** Execute tests across all 3 layers (E2E, backend, frontend) with auto-fix on failure.

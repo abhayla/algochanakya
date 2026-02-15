@@ -346,7 +346,7 @@ AlgoChanakya has **MORE automation** than CricApp but **ZERO unified documentati
 - `.claude/learning/schema.sql`: 100 lines (database schema)
 - `.claude/rules.md`: 555 lines (architectural rules)
 - `.claude/hooks/*.py`: 13 hooks × ~50-200 lines each
-- `.claude/commands/*.md`: 6 commands × ~200-600 lines each
+- `.claude/skills/*/SKILL.md`: 6 commands × ~200-600 lines each
 - `.claude/agents/*.md`: 5 agents × ~200-500 lines each
 - `.claude/skills/*/SKILL.md`: 21 skills × ~100-400 lines each
 

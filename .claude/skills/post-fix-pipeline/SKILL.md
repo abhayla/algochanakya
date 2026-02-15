@@ -1,3 +1,12 @@
+---
+name: post-fix-pipeline
+description: Final verification pipeline that runs after fixes are applied. Ensures regression tests pass, full test suite passes, docs are updated, and creates a safe commit. Hard blocks commit if tests fail. Use after fixes are applied, automatically invoked by /implement Step 7, or standalone after any bug fix.
+metadata:
+  author: AlgoChanakya
+  version: "1.0"
+  category: workflow
+---
+
 # /post-fix-pipeline - Verification + Commit
 
 **Purpose:** Final verification pipeline that runs after fixes are applied. Ensures regression tests pass, full test suite passes, docs are updated, and creates a safe commit.
@@ -498,11 +507,6 @@ Skill("post-fix-pipeline")
 ---
 
 ## Implementation Notes
-
-**This is a command file (`.claude/commands/post-fix-pipeline.md`) that gets invoked as:**
-```
-Skill("post-fix-pipeline")
-```
 
 **The skill orchestrates:**
 1. Hook utilities (workflow state, test detection)
