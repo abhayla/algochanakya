@@ -1,6 +1,9 @@
 ---
 name: vue-component-generator
 description: Generate Vue 3 components and Pinia stores following AlgoChanakya conventions. Use when creating Vue components, adding frontend features, or creating new views.
+metadata:
+  author: AlgoChanakya
+  version: "1.0"
 ---
 
 # Vue Component Generator
@@ -14,6 +17,11 @@ Generate Vue 3 components with Pinia stores following AlgoChanakya project patte
 - User needs a new view or page
 - User requests component scaffolding
 - User wants to create a modal, card, or widget
+
+## When NOT to Use
+
+- Modifying existing components (use Read + Edit tools instead)
+- Non-Vue file creation (use Write for plain JS/TS files)
 
 ## Vue 3 + Composition API Patterns
 
@@ -723,6 +731,18 @@ const lotSize = computed(() => getLotSize(underlying.value))
   </button>
 </template>
 ```
+
+---
+
+## Troubleshooting
+
+| Problem | Cause | Fix |
+|---------|-------|-----|
+| Store import error `Cannot find module '@/stores/X'` | File doesn't exist or wrong path | Verify file exists at `src/stores/X.js` with correct export |
+| `storeToRefs()` returns non-reactive values | Used destructuring directly from store | Use `storeToRefs(store)` to maintain reactivity |
+| Missing `data-testid` in generated component | Template missing attributes | Add `data-testid="{screen}-{component}-{element}"` to all interactive elements |
+| Component not rendering | Not imported in parent component | Add `import MyComponent from '@/components/MyComponent.vue'` |
+| Props not updating | Not using `.value` in script setup | Access ref values with `.value` in `<script setup>` |
 
 ---
 

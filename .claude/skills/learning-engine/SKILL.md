@@ -1,6 +1,9 @@
 ---
 name: learning-engine
 description: Autonomous self-recursive learning system that records errors, ranks fix strategies, synthesizes rules, and improves across sessions. Use after test failures, bug fixes, or verification cycles to capture learnings. Integrates with auto-verify and test-fixer. Triggers on fix completions, test outcomes, and session reflections.
+metadata:
+  author: AlgoChanakya
+  version: "1.0"
 ---
 
 # Learning Engine Skill
@@ -8,6 +11,19 @@ description: Autonomous self-recursive learning system that records errors, rank
 **Purpose:** Autonomous self-recursive learning system that remembers errors, ranks fix strategies, and continuously improves across Claude Code sessions.
 
 **Status:** Foundation for auto-verify and test-fixer integration. Enables zero-manual-intervention error resolution over time.
+
+## When to Use
+
+- After test failures or verification cycles to record outcomes
+- After fixing bugs to capture the fix strategy
+- When auto-verify completes (success or failure)
+- During /implement workflow to accumulate session learnings
+- On session reflection (/reflect command)
+
+## When NOT to Use
+
+- For manual debugging without test failures (use regular debugging)
+- When no test failures have occurred (nothing to record)
 
 ---
 
@@ -167,7 +183,7 @@ for revert in reverts:
 
 ---
 
-## Stuck Detection
+## Troubleshooting
 
 Claude should **stop and ask the user** when ANY of these conditions are met:
 

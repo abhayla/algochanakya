@@ -1,7 +1,9 @@
 ---
 name: kite-expert
-description: Kite Connect (Zerodha) API expert. Consult for authentication, endpoints, WebSocket,
-  error codes, rate limits, symbol format, and adapter guidance for AlgoChanakya.
+description: Use when implementing Kite adapter, debugging Kite API errors, understanding Kite symbol format (canonical), or auditing code calling Kite API. Kite Connect (Zerodha) API expert for AlgoChanakya.
+metadata:
+  author: AlgoChanakya
+  version: "1.0"
 ---
 
 # Kite Connect (Zerodha) API Expert
@@ -17,6 +19,13 @@ Zerodha's Kite Connect is used for **order execution** in AlgoChanakya. It provi
 - Comparing Kite capabilities with other brokers
 - Auditing code that calls Kite API for correctness
 - Writing tests that mock Kite API responses
+
+## When NOT to Use
+
+- General broker abstraction questions (read docs/architecture/broker-abstraction.md instead)
+- Cross-broker comparison (use broker-shared/comparison-matrix.md instead)
+- SmartAPI issues (use smartapi-expert)
+- Upstox/Dhan/Fyers/Paytm issues (use their respective expert skills)
 
 ## API Overview
 

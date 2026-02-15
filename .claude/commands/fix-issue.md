@@ -16,10 +16,10 @@
 # Accept issue number or full URL
 # Examples:
 #   /fix-issue 123
-#   /fix-issue https://github.com/user/algochanakya/issues/123
+#   /fix-issue https://github.com/{owner}/{repo}/issues/123
 
-if is_url(ARGUMENTS):
-    issue_number = extract_number_from_url(ARGUMENTS)
+if is_url(ARGUMENTS):  # [PLANNED - pseudocode]
+    issue_number = extract_number_from_url(ARGUMENTS)  # [PLANNED - pseudocode]
 else:
     issue_number = ARGUMENTS
 
@@ -68,7 +68,7 @@ My understanding:
 
 **For complex issues, invoke planner-researcher:**
 ```python
-if is_complex_issue(issue):
+if is_complex_issue(issue):  # [PLANNED - pseudocode]
     plan = Task(
         subagent_type="general-purpose",
         model="opus",
@@ -396,7 +396,7 @@ Next steps:
 /fix-issue 123
 
 # By full URL
-/fix-issue https://github.com/user/algochanakya/issues/123
+/fix-issue https://github.com/{owner}/{repo}/issues/123
 ```
 
 ---

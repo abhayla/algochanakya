@@ -1,7 +1,9 @@
 ---
 name: fyers-expert
-description: Fyers API expert. Consult for authentication, endpoints, WebSocket,
-  error codes, rate limits, symbol format, and adapter guidance for AlgoChanakya.
+description: Use when implementing Fyers adapter, debugging Fyers API errors, understanding Fyers dual WebSocket system, or auditing code calling Fyers API. Fyers API expert for AlgoChanakya.
+metadata:
+  author: AlgoChanakya
+  version: "1.0"
 ---
 
 # Fyers API Expert
@@ -17,6 +19,13 @@ Fyers offers a **FREE** API with a unique **dual WebSocket system** (FyersDataSo
 - Setting up virtual/paper trading mode
 - Comparing Fyers capabilities with other brokers
 - Auditing code that calls Fyers API for correctness
+
+## When NOT to Use
+
+- General broker abstraction questions (read docs/architecture/broker-abstraction.md instead)
+- Cross-broker comparison (use broker-shared/comparison-matrix.md instead)
+- SmartAPI/Kite/Upstox/Dhan issues (use their respective expert skills)
+- Paytm issues (use paytm-expert)
 
 ## API Overview
 

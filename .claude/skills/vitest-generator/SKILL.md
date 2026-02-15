@@ -1,6 +1,9 @@
 ---
 name: vitest-generator
-description: Generate Vitest unit tests for Vue components, Pinia stores, and composables. Use when adding unit tests, test coverage, or writing Vitest tests in AlgoChanakya.
+description: Generate Vitest unit tests for Vue components, Pinia stores, and composables. Do NOT use this for E2E tests (use e2e-test-generator) or fixing failing tests (use test-fixer). Use when adding unit tests, test coverage, or writing Vitest tests in AlgoChanakya.
+metadata:
+  author: AlgoChanakya
+  version: "1.0"
 ---
 
 # Vitest Generator
@@ -15,6 +18,11 @@ Generate Vitest unit tests following AlgoChanakya testing patterns.
 - User wants to test a composable function
 - User requests test coverage
 - User asks to write Vitest tests
+
+## When NOT to Use
+
+- Generating E2E tests (use e2e-test-generator for Playwright tests)
+- Fixing existing failing tests (use test-fixer for that)
 
 ---
 
@@ -828,6 +836,18 @@ npm run test tests/stores/mystore.test.js
 8. **Test Happy & Sad Paths** - Test both success and error cases
 9. **Use Fake Timers** - For time-dependent tests
 10. **Avoid Test Interdependence** - Tests should be independent
+
+---
+
+## Troubleshooting
+
+| Problem | Cause | Fix |
+|---------|-------|-----|
+| `ReferenceError: setActivePinia is not defined` | Missing import | Add `import { setActivePinia, createPinia } from 'pinia'` |
+| Mock not resetting between tests | Missing `vi.clearAllMocks()` | Add `vi.clearAllMocks()` in `beforeEach()` |
+| Test fails with wrong environment | Using wrong test environment | Check `vite.config.js` has `environment: 'happy-dom'` |
+| Store state persists across tests | Pinia not reset | Call `setActivePinia(createPinia())` in `beforeEach()` |
+| API mock not working | Mock defined after import | Define `vi.mock()` BEFORE importing the mocked module |
 
 ---
 

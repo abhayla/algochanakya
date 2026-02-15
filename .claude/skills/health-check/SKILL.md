@@ -1,6 +1,9 @@
 ---
 name: health-check
 description: Proactive codebase health scan. Detects stale imports, missing tests, risky files, and known error patterns. Use manually via /health-check or auto-triggered on session start.
+metadata:
+  author: AlgoChanakya
+  version: "1.0"
 ---
 
 # Health Check Skill
@@ -14,6 +17,11 @@ Proactive codebase health scanning that identifies potential issues before they 
 - After major refactoring or file reorganization
 - Before creating a pull request
 - When investigating recurring test failures
+
+## When NOT to Use
+
+- During active implementation (wait until changes complete)
+- Not a replacement for running tests (use auto-verify or run-tests for that)
 
 ---
 
@@ -447,6 +455,16 @@ Health check uses knowledge.db to provide insights:
 - **Unresolved Patterns** - From `error_patterns` table
 - **Strategy Effectiveness** - From `fix_strategies` table
 - **Synthesis Opportunities** - Runs `synthesize_rules()` check
+
+---
+
+## Troubleshooting
+
+| Problem | Cause | Fix |
+|---------|-------|-----|
+| `knowledge.db not found` | Learning engine never initialized | Run `/reflect` once to create the database |
+| Steps return empty results | Database tables have no data yet | Expected on fresh installs; run tests to populate |
+| `feature-registry.yaml` not found | File deleted or moved | Restore: `git checkout docs/feature-registry.yaml` |
 
 ---
 

@@ -1,6 +1,9 @@
 ---
 name: trading-constants-manager
-description: Enforce centralized trading constants usage. Use when writing code involving lot sizes, strike steps, index tokens, or any trading parameters in AlgoChanakya.
+description: Enforce centralized trading constants usage. Use when writing code with "NIFTY", "BANKNIFTY", hardcoded lot sizes (50, 15, 25), strike steps (50, 100), or index tokens. Triggers on trading calculations, strategy builders, or option chain logic.
+metadata:
+  author: AlgoChanakya
+  version: "1.0"
 ---
 
 # Trading Constants Manager
@@ -14,6 +17,11 @@ Ensure trading constants are NEVER hardcoded. Always import from centralized con
 - User uses index tokens or symbols
 - User writes any trading-related calculation
 - User creates new features involving underlyings (NIFTY, BANKNIFTY, etc.)
+
+## When NOT to Use
+
+- Non-trading code (general utilities, UI layouts)
+- Just querying or reading constants (no code being written)
 
 ## Critical Rule
 
@@ -362,6 +370,17 @@ GET /api/constants/trading
   "index_symbols": { "NIFTY": "NSE:NIFTY 50", ... }
 }
 ```
+
+---
+
+## Troubleshooting
+
+| Problem | Cause | Fix |
+|---------|-------|-----|
+| `ImportError: cannot import get_lot_size` | Wrong import path | Use `from app.constants.trading import get_lot_size` (backend) or `import { getLotSize } from '@/constants/trading'` (frontend) |
+| `KeyError: 'UNKNOWN'` in `getLotSize()` | Invalid underlying passed | Use `isValidUnderlying()` to check before calling, or add underlying to constants |
+| Frontend returns `undefined` for lot size | Constants not loaded yet | Call `await loadTradingConstants()` in `main.js` before mounting app |
+| Hardcoded value still in code | Forgot to refactor | Search codebase for magic numbers: `25`, `15`, `100`, `256265` |
 
 ---
 

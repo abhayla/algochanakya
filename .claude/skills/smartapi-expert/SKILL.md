@@ -2,6 +2,9 @@
 name: smartapi-expert
 description: SmartAPI (Angel One) API expert. Consult for authentication, endpoints, WebSocket,
   error codes, rate limits, symbol format, and adapter guidance for AlgoChanakya.
+metadata:
+  author: AlgoChanakya
+  version: "1.0"
 ---
 
 # SmartAPI (Angel One) API Expert
@@ -17,6 +20,13 @@ Angel One's SmartAPI is the **default market data provider** for AlgoChanakya, o
 - Comparing SmartAPI capabilities with other brokers
 - Auditing code that calls SmartAPI API for correctness
 - Writing tests that mock SmartAPI API responses
+
+## When NOT to Use
+
+- General broker abstraction questions (read docs/architecture/broker-abstraction.md instead)
+- Cross-broker comparison (use broker-shared/comparison-matrix.md instead)
+- Kite Connect issues (use kite-expert)
+- Upstox/Dhan/Fyers/Paytm issues (use their respective expert skills)
 
 ## API Overview
 

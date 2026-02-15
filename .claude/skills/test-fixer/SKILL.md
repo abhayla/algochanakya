@@ -1,6 +1,9 @@
 ---
 name: test-fixer
-description: Diagnose and fix failing E2E and unit tests. Use when tests fail, debugging test issues, or investigating test errors in AlgoChanakya.
+description: Diagnose and fix failing E2E and unit tests. Do NOT use this to generate new tests (use e2e-test-generator or vitest-generator for that). Use when tests fail, debugging test issues, or investigating test errors in AlgoChanakya.
+metadata:
+  author: AlgoChanakya
+  version: "1.0"
 ---
 
 # Test Fixer
@@ -13,6 +16,11 @@ Systematically diagnose and fix failing E2E and unit tests by identifying common
 - User asks to fix broken tests
 - User mentions test failures or errors
 - User wants to investigate why tests are failing
+
+## When NOT to Use
+
+- Generating new tests (use e2e-test-generator or vitest-generator instead)
+- When all tests are passing (no failures to fix)
 
 ## Failure Pattern Detection
 

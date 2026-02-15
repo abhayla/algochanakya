@@ -1,6 +1,9 @@
 ---
 name: debug-log
 description: Structured debug iteration tracking with escalation tiers (Standard, ThinkHard, UltraThink, Human). Use when debugging complex issues, tracking hypothesis iterations, or when fix attempts exceed 3 tries. Triggers on 'debug log', 'track debugging', or repeated fix failures.
+metadata:
+  author: AlgoChanakya
+  version: "1.0"
 ---
 
 # Debug Log
@@ -10,6 +13,11 @@ description: Structured debug iteration tracking with escalation tiers (Standard
 - User invokes /debug-log [issue-name]
 - Tracking hypothesis → fix → result iterations
 - Need escalation strategy (ThinkHard, UltraThink, human review)
+
+## When NOT to Use
+
+- Simple single-attempt fixes (just fix directly)
+- Issues already diagnosed (no need to track iterations)
 
 ## Purpose
 
@@ -94,144 +102,13 @@ Creates/updates structured debug logs at `.claude/logs/debug/{issue-name}.md` wi
 
 ## Debug Log Format
 
-```markdown
-# Debug Log: {issue-name}
+Debug logs follow a structured template with:
+- **Issue Summary:** Description, error message, affected component, severity
+- **Iterations:** Numbered attempts with hypothesis, investigation, fix, result, learning
+- **Escalation Markers:** Tier 1 (Standard) → Tier 2 (ThinkHard) → Tier 3 (UltraThink) → Tier 4 (Human)
+- **Resolution:** Final status, successful fix, root cause, lessons learned
 
-**Created:** {timestamp}
-**Last Updated:** {timestamp}
-**Status:** ACTIVE | RESOLVED | ESCALATED
-**Current Tier:** Tier 1 | Tier 2 | Tier 3 | Tier 4
-
----
-
-## Issue Summary
-
-**Description:**
-{Clear description of the issue being debugged}
-
-**Error Message:**
-```
-{Primary error message or symptom}
-```
-
-**Affected Component:**
-{Screen/module/service affected}
-
-**Severity:**
-- Critical (blocks functionality)
-- High (impacts user experience)
-- Medium (workaround available)
-- Low (minor issue)
-
----
-
-## Iteration 1 (Tier 1: Standard)
-
-**Timestamp:** {timestamp}
-
-**Hypothesis:**
-{What we think is causing the issue}
-
-**Investigation:**
-- {Action 1: Read file X, checked lines Y-Z}
-- {Action 2: Ran test command, observed output}
-- {Action 3: Reviewed error trace}
-
-**Fix Attempted:**
-```{language}
-{Code change or configuration change}
-```
-
-**Result:**
-- ❌ FAILED | ✅ RESOLVED | ⏭️ PARTIAL
-- {Outcome description}
-- {New error or behavior observed}
-
-**Learning:**
-{What this attempt taught us about the issue}
-
----
-
-## Iteration 2 (Tier 1: Standard)
-
-{Same structure as Iteration 1}
-
----
-
-## Iteration 3 (Tier 2: ThinkHard)
-
-**Timestamp:** {timestamp}
-
-**Escalation Reason:**
-Previous attempts did not resolve. Escalating to ThinkHard mode for deeper analysis.
-
-**Hypothesis:**
-{Refined hypothesis based on Iterations 1-2}
-
-**Investigation:**
-- {Deeper investigation steps}
-- {Cross-file analysis}
-- {Edge case checks}
-
-**Fix Attempted:**
-```{language}
-{Code change}
-```
-
-**Result:**
-- ❌ FAILED | ✅ RESOLVED | ⏭️ PARTIAL
-
-**Learning:**
-{What we learned}
-
----
-
-## Iteration 5 (Tier 3: UltraThink)
-
-**Escalation Reason:**
-ThinkHard attempts unsuccessful. Escalating to UltraThink for comprehensive analysis.
-
-{Same structure}
-
----
-
-## Iteration 6+ (Tier 4: Human Review)
-
-**Escalation Reason:**
-Multiple UltraThink attempts unsuccessful. Recommending human developer review.
-
-**Summary for Handoff:**
-- **Attempts:** 6 iterations across 3 tiers
-- **Hypotheses tested:** {list}
-- **Fixes attempted:** {summary}
-- **Current understanding:** {what we know}
-- **Open questions:** {what we don't know}
-
-**Recommended Next Steps:**
-1. {Action 1}
-2. {Action 2}
-
----
-
-## Resolution
-
-**Final Status:** RESOLVED | ESCALATED | ABANDONED
-
-**Successful Fix:**
-```{language}
-{Final working fix}
-```
-
-**Root Cause:**
-{Ultimate cause of the issue}
-
-**Lessons Learned:**
-- {Lesson 1}
-- {Lesson 2}
-
-**Prevention:**
-{How to prevent this issue in future}
-```
+**Complete template with all fields:** See [references/log-format-reference.md](./references/log-format-reference.md)
 
 ---
 
@@ -400,6 +277,23 @@ After each debug session, consider:
 - Did previous iteration learnings inform current hypothesis?
 - Were investigation steps thorough enough for the tier?
 - Should any patterns be added to learning engine?
+
+---
+
+## Troubleshooting
+
+| Problem | Cause | Fix |
+|---------|-------|-----|
+| Debug log file not created | `.claude/logs/debug/` doesn't exist | Create: `mkdir -p .claude/logs/debug/` |
+| Iteration count mismatch | Manually edited log | Renumber iterations sequentially (1, 2, 3...) |
+| Tier not escalating | Forgot to update tier field | Check iteration count: 1-2=Tier 1, 3-4=Tier 2, 5+=Tier 3, 6+=Tier 4 |
+| Can't find old debug log | Log was archived or deleted | Check `.claude/logs/debug/archive/` for resolved logs |
+
+---
+
+## References
+
+- [Log Format Reference](./references/log-format-reference.md) - Complete debug log template with field descriptions
 
 ---
 

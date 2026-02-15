@@ -1,6 +1,9 @@
 ---
 name: auto-verify
 description: Automatically test code changes, capture screenshots, analyze results, and iterate until verified working. Use after making code changes to ensure they work correctly.
+metadata:
+  author: AlgoChanakya
+  version: "1.0"
 ---
 
 # Auto-Verify Skill
@@ -13,6 +16,12 @@ Automated verification loop for code changes with visual confirmation.
 - After implementing a new feature
 - After refactoring existing code
 - When you need visual confirmation that changes work
+
+## When NOT to Use
+
+- Documentation-only changes (no code modified)
+- Comment-only changes (no functional code modified)
+- When user explicitly says "skip verification"
 
 ## Workflow
 
@@ -253,41 +262,7 @@ Based on analysis:
 | Tests pass + Screenshots look correct | **SUCCESS** - Proceed to Step 8 (record to knowledge base) |
 | Tests fail | Analyze error, fix code, go to Step 3 |
 | Tests pass but screenshots show issues | Fix code, go to Step 3 |
-| **Hit stuck condition** (see below) | **STOP** - Ask user with knowledge context |
-
-**Stuck Conditions** (STOP and ask user when ANY are met):
-
-1. **Same fingerprinted error 3x** - Same error pattern with 3 different strategies all failing
-2. **All strategies exhausted** - All known strategies have score < 0.1 (proven ineffective)
-3. **20 total attempts in session** - Safety valve to prevent infinite loops
-4. **Fix scope exceeds feature** - Fix requires modifying files outside current feature
-5. **Completely unknown error** - No matching error_type in knowledge base strategies
-
-**Stuck Message Template:**
-
-```
-I'm stuck on this error. Here's what I know:
-
-**Error:** {error_type} - {error_message_summary}
-**Fingerprint:** {fingerprint} (seen {occurrence_count} times in knowledge base)
-**File:** {file_path}
-
-**Knowledge Base Context:**
-- Total patterns: {total_patterns}
-- This error pattern: {known/unknown}
-- Best available strategy: {strategy_name} (score: {score})
-- Threshold for trying: 0.3
-
-**Strategies attempted:**
-1. [{score}] {strategy_name} - {outcome}
-2. [{score}] {strategy_name} - {outcome}
-...
-
-Would you like me to:
-1. Try a different heuristic approach (describe what)
-2. Record this as a new learned pattern
-3. Skip and move to other verification tasks
-```
+| **Hit stuck condition** | **STOP** - Ask user (see Troubleshooting section below) |
 
 ### Step 6b: Visual Debugging with Claude Chrome (PRIMARY METHOD)
 
@@ -494,6 +469,55 @@ After 5 failed attempts, STOP and ask:
 > 2. [Second approach]
 > ...
 > Would you like me to continue with a different strategy, or would you prefer to investigate manually?"
+
+## Troubleshooting
+
+### Stuck Conditions
+
+**STOP and ask user when ANY of these conditions are met:**
+
+1. **Same fingerprinted error 3x** - Same error pattern with 3 different strategies all failing
+2. **All strategies exhausted** - All known strategies have score < 0.1 (proven ineffective)
+3. **20 total attempts in session** - Safety valve to prevent infinite loops
+4. **Fix scope exceeds feature** - Fix requires modifying files outside current feature
+5. **Completely unknown error** - No matching error_type in knowledge base strategies
+
+### Stuck Message Template
+
+```
+I'm stuck on this error. Here's what I know:
+
+**Error:** {error_type} - {error_message_summary}
+**Fingerprint:** {fingerprint} (seen {occurrence_count} times in knowledge base)
+**File:** {file_path}
+
+**Knowledge Base Context:**
+- Total patterns: {total_patterns}
+- This error pattern: {known/unknown}
+- Best available strategy: {strategy_name} (score: {score})
+- Threshold for trying: 0.3
+
+**Strategies attempted:**
+1. [{score}] {strategy_name} - {outcome}
+2. [{score}] {strategy_name} - {outcome}
+...
+
+Would you like me to:
+1. Try a different heuristic approach (describe what)
+2. Record this as a new learned pattern
+3. Skip and move to other verification tasks
+```
+
+### Common Issues
+
+| Problem | Cause | Fix |
+|---------|-------|-----|
+| Can't find test file for changed code | File not mapped in feature-registry.yaml | Add file pattern to registry OR run full feature tests as fallback |
+| Screenshots directory missing | `.claude/logs/evidence/` not created | Create: `mkdir -p .claude/logs/evidence/` |
+| Chrome debugging not working | Chrome extension not connected | Restart with `claude --chrome` |
+| Knowledge base returns no strategies | `knowledge.db` not initialized | Run `/reflect` once to initialize |
+
+---
 
 ## References
 

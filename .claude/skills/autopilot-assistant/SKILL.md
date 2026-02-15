@@ -1,6 +1,9 @@
 ---
 name: autopilot-assistant
-description: Comprehensive AutoPilot strategy configuration guidance. Use when working with AutoPilot features, strategies, conditions, adjustments, or risk management.
+description: Use when implementing AutoPilot features, creating strategies, configuring conditions/adjustments, debugging AutoPilot services, or auditing AutoPilot database schemas. Triggers on "autopilot", "strategy", "condition", "adjustment", "kill switch", or AutoPilot service file paths.
+metadata:
+  author: AlgoChanakya
+  version: "1.0"
 ---
 
 # AutoPilot Assistant
@@ -15,6 +18,11 @@ Complete guidance for AlgoChanakya's AutoPilot auto-execution system.
 - User needs database schema reference
 - User asks about AutoPilot API endpoints
 - User implements AutoPilot-related features
+
+## When NOT to Use
+
+- Non-AutoPilot features (manual trading, watchlist, positions)
+- General trading questions not specific to AutoPilot automation
 
 ## AutoPilot Overview
 
@@ -317,6 +325,18 @@ Enter at 9:20 AM if NIFTY above 24,000:
   "time_stop": "15:15"
 }
 ```
+
+---
+
+## Troubleshooting
+
+| Problem | Cause | Fix |
+|---------|-------|-----|
+| Strategy stuck in `waiting` | Entry conditions never met | Check condition evaluation logic in `autopilot_condition_eval` table |
+| Kill switch not triggering | WebSocket connection lost or wrong event | Verify WebSocket status, check `[AutoPilot WS]` console logs |
+| Order execution fails | Broker API error or insufficient margin | Check `autopilot_orders` table for error details, verify margin |
+| Positions not tracked | Missing `autopilot_position_legs` entries | Ensure Phase 5+ tables created via Alembic migration |
+| Adjustment rules not firing | Phase 5+ feature not implemented yet | Wait for Phase 5 release or implement manually |
 
 ---
 

@@ -282,7 +282,7 @@ for gap in gaps:
             'file': '.claude/hooks/post_test_update.py',
             'action': 'add_auto_fix_pattern',
             'pattern': gap['error_type'],
-            'code': generate_auto_fix_code(gap)
+            'code': generate_auto_fix_code(gap)  # [PLANNED - pseudocode]
         }
         modifications.append(modification)
 
@@ -292,7 +292,7 @@ for gap in gaps:
             'file': '.claude/hooks/validate_workflow_step.py',
             'action': 'add_validation',
             'issue': gap['issue'],
-            'code': generate_validation_code(gap)
+            'code': generate_validation_code(gap)  # [PLANNED - pseudocode]
         }
         modifications.append(modification)
 
@@ -302,7 +302,7 @@ for gap in gaps:
             'file': f'.claude/commands/{gap["skill"]}.md',
             'action': 'optimize',
             'issue': f"Average duration {gap['avg_duration']:.0f}s",
-            'suggestion': generate_optimization_suggestion(gap)
+            'suggestion': generate_optimization_suggestion(gap)  # [PLANNED - pseudocode]
         }
         modifications.append(modification)
 
@@ -455,7 +455,7 @@ print("✅ Smoke tests passed")
 - **Modifications applied > 5 times in last 30 days**
 
 ```python
-recursion_state_file = Path(".claude/logs/learning/recursion-state.json")
+recursion_state_file = Path(".claude/logs/learning/recursion-state.json")  # [PLANNED - created at runtime by reflect deep mode]
 
 # Load state
 if recursion_state_file.exists():
@@ -489,7 +489,7 @@ with open(recursion_state_file, 'w') as f:
 
 **1. Load modification history:**
 ```python
-modifications_file = Path(".claude/logs/learning/modifications.json")
+modifications_file = Path(".claude/logs/learning/modifications.json")  # [PLANNED - created at runtime by reflect deep mode]
 
 with open(modifications_file) as f:
     history = json.load(f)
@@ -599,8 +599,8 @@ These files may indicate:
 
 ```python
 # Run deep mode analysis
-gaps = analyze_workflow_gaps()
-modifications = propose_modifications(gaps)
+gaps = analyze_workflow_gaps()  # [PLANNED - pseudocode]
+modifications = propose_modifications(gaps)  # [PLANNED - pseudocode]
 
 # Show modifications
 for mod in modifications:

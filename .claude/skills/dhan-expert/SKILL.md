@@ -1,7 +1,9 @@
 ---
 name: dhan-expert
-description: Dhan API expert. Consult for authentication, endpoints, WebSocket,
-  error codes, rate limits, symbol format, and adapter guidance for AlgoChanakya.
+description: Use when implementing Dhan adapter, debugging Dhan API errors, understanding Dhan security_id format, or auditing code calling Dhan API. Dhan API expert for AlgoChanakya.
+metadata:
+  author: AlgoChanakya
+  version: "1.0"
 ---
 
 # Dhan API Expert
@@ -17,6 +19,13 @@ Dhan offers a modern REST API with unique features: **200-level market depth** (
 - Understanding 20-depth and 200-depth market data
 - Comparing Dhan capabilities with other brokers
 - Auditing code that calls Dhan API for correctness
+
+## When NOT to Use
+
+- General broker abstraction questions (read docs/architecture/broker-abstraction.md instead)
+- Cross-broker comparison (use broker-shared/comparison-matrix.md instead)
+- SmartAPI/Kite/Upstox issues (use their respective expert skills)
+- Fyers/Paytm issues (use their respective expert skills)
 
 ## API Overview
 

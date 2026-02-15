@@ -39,7 +39,7 @@ The fix-loop implements a sophisticated fix strategy with:
    from db_helper import get_strategies, record_error
 
    # Get strategies for error type
-   error_type = detect_error_type(test_output)
+   error_type = detect_error_type(test_output)  # [PLANNED - pseudocode]
    strategies = get_strategies(error_type)
 
    # Strategies are ranked by success rate with time decay
@@ -196,7 +196,7 @@ else:  # iteration >= 4
         Stack trace: {stack_trace}
 
         Previous fix attempts:
-        {format_previous_attempts()}
+        {format_previous_attempts()}  # [PLANNED - pseudocode]
 
         Provide:
         1. Deep root cause analysis (consider timing, race conditions, state management, event propagation)

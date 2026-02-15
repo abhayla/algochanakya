@@ -1,7 +1,9 @@
 ---
 name: paytm-expert
-description: Paytm Money API expert. Consult for authentication, endpoints, WebSocket,
-  error codes, rate limits, symbol format, and adapter guidance for AlgoChanakya.
+description: Use when implementing Paytm Money adapter, debugging Paytm API errors, understanding Paytm's 3-token system, or auditing code calling Paytm API. Paytm Money API expert for AlgoChanakya.
+metadata:
+  author: AlgoChanakya
+  version: "1.0"
 ---
 
 # Paytm Money API Expert
@@ -18,6 +20,12 @@ Paytm Money offers a **FREE** trading API with a unique **3 JWT token** system (
 - Working with Paytm WebSocket (public_access_token auth)
 - Comparing Paytm capabilities with other brokers
 - Auditing code that calls Paytm API for correctness
+
+## When NOT to Use
+
+- General broker abstraction questions (read docs/architecture/broker-abstraction.md instead)
+- Cross-broker comparison (use broker-shared/comparison-matrix.md instead)
+- SmartAPI/Kite/Upstox/Dhan/Fyers issues (use their respective expert skills)
 
 ## API Overview
 

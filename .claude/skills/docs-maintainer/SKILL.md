@@ -1,6 +1,9 @@
 ---
 name: docs-maintainer
 description: Automatically maintain project documentation after code changes. Use proactively after any code modification to keep docs in sync.
+metadata:
+  author: AlgoChanakya
+  version: "1.0"
 ---
 
 # Documentation Maintainer
@@ -21,6 +24,12 @@ Automatically maintain all project documentation (feature docs, CHANGELOG, REQUI
 - Adds/modifies tests
 
 **IMPORTANT:** This skill should run **AFTER** code changes are complete, not before. Think of it as a post-commit hook for documentation.
+
+## When NOT to Use
+
+- Before code changes are complete (wait until implementation done)
+- For non-code changes (documentation edits, comments, README updates)
+- When modifying .claude internal files only (skills, commands, agents, hooks)
 
 ## Feature Registry
 
@@ -695,6 +704,16 @@ Writing to: docs/features/my-feature/CHANGELOG.md
 3. Verify folder exists: ls docs/features/my-feature/
 4. Write to: docs/features/my-feature/CHANGELOG.md
 ```
+
+---
+
+## Troubleshooting
+
+| Problem | Cause | Fix |
+|---------|-------|-----|
+| `Feature not found in registry` | New feature not in `feature-registry.yaml` | Add feature entry to registry first |
+| Doc written to wrong path | Path inferred instead of read from registry | Follow Step 3 of Mandatory Validation |
+| Duplicate CHANGELOG entries | Skill re-ran after partial completion | Check for existing `[Unreleased]` entries before appending |
 
 ---
 

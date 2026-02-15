@@ -1,6 +1,9 @@
 ---
 name: save-session
 description: Save current session context for later resumption including active tasks, modified files, and pending work. Use when ending a work session, switching tasks, or before context limits are reached. Triggers on 'save session', 'save progress', or 'pause work'.
+metadata:
+  author: AlgoChanakya
+  version: "1.0"
 ---
 
 # Save Session
@@ -9,6 +12,11 @@ description: Save current session context for later resumption including active 
 - When ending a work session and want to continue later
 - Before switching to a different task
 - When user explicitly invokes /save-session
+
+## When NOT to Use
+
+- At the very start of a session (use start-session to load instead)
+- When no work has been done yet
 
 ## Automatic Session Management
 
@@ -153,6 +161,17 @@ After each /save-session use, append an entry here with:
 | Date | Change | Reason |
 |------|--------|--------|
 | 2026-01-14 | Initial creation | First implementation of session management |
+
+---
+
+## Troubleshooting
+
+| Problem | Cause | Fix |
+|---------|-------|-----|
+| Sessions directory missing | Never created | Create: `mkdir -p .claude/sessions/` |
+| Session name collision | Two sessions with same name | Use unique names or append timestamp |
+| Session file corrupted | Manual edit broke format | Restore from git or recreate session |
+| Context not captured | Skill didn't gather all files | Manually add files to "Working Files" section before saving |
 
 ---
 

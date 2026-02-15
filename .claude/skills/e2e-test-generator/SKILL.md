@@ -1,6 +1,9 @@
 ---
 name: e2e-test-generator
-description: Generate Playwright E2E tests using AlgoChanakya Page Object Model. Use when creating tests, adding test coverage, or writing Playwright specs for screens/features.
+description: Generate Playwright E2E tests using AlgoChanakya Page Object Model. Do NOT use this to fix existing failing tests (use test-fixer for that). Use when creating tests, adding test coverage, or writing Playwright specs for screens/features.
+metadata:
+  author: AlgoChanakya
+  version: "1.0"
 ---
 
 # E2E Test Generator
@@ -13,6 +16,11 @@ Generate complete E2E test suites following AlgoChanakya's Page Object Model pat
 - User requests test coverage or Playwright tests
 - User wants to add happy path, edge case, visual, or API tests
 - User mentions testing a Vue component end-to-end
+
+## When NOT to Use
+
+- Fixing existing failing tests (use test-fixer instead)
+- Generating unit tests (use vitest-generator for Vue/store/composable unit tests)
 
 ## Critical Rules
 
@@ -276,6 +284,17 @@ async verifySuccess() {
 // RIGHT (in test file)
 await expect(myScreenPage.successMsg).toBeVisible();
 ```
+
+## Troubleshooting
+
+| Problem | Cause | Fix |
+|---------|-------|-----|
+| `Target page, context or browser has been closed` | Playwright timeout | Increase timeout in test or `playwright.config.js` |
+| `Locator '[data-testid="X"]' not found` | Missing attribute in Vue component | Add `data-testid="X"` to the template |
+| `Cannot find module '../../fixtures/auth.fixture.js'` | Wrong path | Verify test is in `tests/e2e/specs/{screen}/` subdirectory |
+| AngelOne login timeout | Auto-TOTP takes 20-25s | Use `timeout: 35000` |
+
+---
 
 ## References
 

@@ -1,6 +1,9 @@
 ---
 name: start-session
 description: Resume a previously saved session with full context restoration. Use when starting a new conversation to continue previous work. Triggers on 'resume session', 'continue where I left off', 'load session', or 'start session'.
+metadata:
+  author: AlgoChanakya
+  version: "1.0"
 ---
 
 # Start Session
@@ -10,6 +13,11 @@ description: Resume a previously saved session with full context restoration. Us
 - User invokes /start-session [name]
 - User invokes /start-session (loads most recent)
 - User invokes /start-session --list (shows available sessions)
+
+## When NOT to Use
+
+- Mid-session when already working (context is already loaded)
+- To save session (use save-session instead)
 
 ## Automatic Session Loading
 
@@ -199,7 +207,7 @@ When user runs `/start-session --list`:
 Use `/start-session {name}` to load a specific session, or `/start-session` to load the most recent.
 ```
 
-## Error Handling
+## Troubleshooting
 
 **Session Not Found:**
 ```

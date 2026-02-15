@@ -499,7 +499,7 @@ Skill("post-fix-pipeline")
 
 ## Implementation Notes
 
-**This is a skill file (`.claude/skills/post-fix-pipeline/SKILL.md`) that gets invoked as:**
+**This is a command file (`.claude/commands/post-fix-pipeline.md`) that gets invoked as:**
 ```
 Skill("post-fix-pipeline")
 ```

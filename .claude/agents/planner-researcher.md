@@ -345,6 +345,8 @@ FastAPI Route (/api/v1/upstox/...)
 ```markdown
 # ADR-005: Add Upstox Broker Support
 
+**NOTE:** Illustrative example — ADR-005 does not exist yet
+
 ## Status
 Proposed
 
@@ -401,7 +403,7 @@ Users should be able to:
 
 AlgoChanakya uses the broker abstraction pattern:
 - `BrokerAdapter` interface in `app/services/brokers/base.py`
-- `KiteAdapter` and `AngelAdapter` (planned) as implementations
+- `KiteAdapter` and `AngelAdapter` (production) as implementations
 - Factory pattern in `app/services/brokers/factory.py`
 - Unified data models: `UnifiedOrder`, `UnifiedPosition`, `UnifiedQuote`
 

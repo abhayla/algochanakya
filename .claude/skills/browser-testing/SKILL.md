@@ -1,6 +1,9 @@
 ---
 name: browser-testing
 description: Browser-based testing and debugging using Chrome extension. Use when testing UI screens, verifying visual layout, debugging browser console errors, or running manual verification of AlgoChanakya screens like Dashboard, Watchlist, Option Chain, or Positions.
+metadata:
+  author: AlgoChanakya
+  version: "1.0"
 ---
 
 # Browser Testing Skill
@@ -26,6 +29,11 @@ Users can explicitly request Chrome testing with:
 ```
 /chrome-test
 ```
+
+## When NOT to Use
+
+- Non-visual debugging (backend errors, database issues)
+- When Playwright automated tests are sufficient (only use for manual debugging)
 
 ## Prerequisites
 
@@ -262,6 +270,17 @@ Check if the strategy-add-row-button exists before clicking it
 - **Visible browser required** - No headless mode
 - **Login handling** - Pauses on login pages/CAPTCHAs for manual intervention
 - **Modal blocking** - JavaScript alerts/confirms block automation
+
+---
+
+## Troubleshooting
+
+| Problem | Cause | Fix |
+|---------|-------|-----|
+| Chrome extension not connected | Extension not installed or `--chrome` flag missing | Install extension v1.0.36+, restart with `claude --chrome` |
+| Page shows login after `localStorage.setItem` | Token expired | Get fresh token from `tests/config/.auth-token` |
+| `data-testid` element not found | Component not rendered or wrong testid | Check Vue source for exact `data-testid` value |
+| WebSocket messages not appearing | Backend not running or wrong port | Verify backend on `localhost:8001` |
 
 ---
 

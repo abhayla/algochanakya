@@ -1,6 +1,9 @@
 ---
 name: phase-gate
 description: Verify phase/step completion before proceeding to next workflow stage. Use when running /implement, multi-step features, or any phased workflow to ensure all 6 criteria are met before advancing. Triggers on 'check phase', 'verify step', or 'gate check'.
+metadata:
+  author: AlgoChanakya
+  version: "1.0"
 ---
 
 # Phase Gate Verification
@@ -11,79 +14,27 @@ description: Verify phase/step completion before proceeding to next workflow sta
 - After completing a workflow step to verify completion criteria
 - Before creating a commit to ensure all requirements met
 
+## When NOT to Use
+
+- For standalone bug fixes outside /implement workflow
+- When not using a phased/multi-step workflow
+
 ## Purpose
 
 Verifies that the current workflow phase/step meets completion criteria with 6 standardized checks. Acts as a quality gate to prevent premature progression.
 
 ## Verification Criteria
 
-### 1. Requirements Documented (Step 1)
-**Checks:**
-- Workflow state shows `step1_requirements.completed = true`
-- Evidence of understanding stated (2-3 sentences in conversation)
-- Evidence of codebase research (Grep/Glob/Read tool usage)
-- Evidence of documentation checks (CLAUDE.md, docs/ references)
+The phase gate verifies 6 standardized criteria:
 
-**PASS if:** All 4 checks satisfied
-**FAIL if:** Any check missing
+1. **Requirements Documented** - Understanding stated, codebase researched, docs checked
+2. **Tests Written** - Test files exist, layers identified, TDD followed
+3. **Implementation Done** - Files changed, exist on disk, follow architectural rules
+4. **Tests Pass** - All layers passing, no failures, execution evidence exists
+5. **Fix Loop Resolved** (conditional) - Failures fixed OR no failures occurred
+6. **Evidence Captured** (conditional) - Screenshots for E2E/UI changes
 
----
-
-### 2. Tests Written (Step 2)
-**Checks:**
-- Workflow state shows `step2_tests.completed = true`
-- Test files listed in `step2_tests.testFiles` array
-- Test layers identified in `step2_tests.testLayers` array
-- Test files exist on disk (verify with Glob/Read)
-
-**PASS if:** All 4 checks satisfied
-**FAIL if:** Any check missing
-
----
-
-### 3. Implementation Done (Step 3)
-**Checks:**
-- Workflow state shows `step3_implement.completed = true`
-- Files changed listed in `step3_implement.filesChanged` array
-- Changed files exist on disk (verify with Glob)
-- Code follows architectural rules (.claude/rules.md compliance)
-
-**PASS if:** All 4 checks satisfied
-**FAIL if:** Any check missing
-
----
-
-### 4. Tests Pass (Step 4)
-**Checks:**
-- Workflow state shows `step4_runTests.completed = true`
-- Test layers show passed counts (e2e/backend/frontend)
-- No failed tests in any layer
-- Test execution evidence exists (.claude/logs/ or conversation)
-
-**PASS if:** All 4 checks satisfied
-**FAIL if:** Any failed tests or missing execution evidence
-
----
-
-### 5. Fix Loop Resolved (Step 5 - conditional)
-**Checks:**
-- **If failures occurred:** `step5_fixLoop.completed = true` AND `skillInvocations.fixLoopSucceeded = true`
-- **If no failures:** Step 5 skipped (PASS automatically)
-
-**PASS if:** No failures OR fix loop succeeded
-**FAIL if:** Failures occurred but not resolved
-
----
-
-### 6. Evidence Captured (Step 6)
-**Checks:**
-- Screenshots captured (for E2E changes)
-- Test evidence files exist (.claude/logs/evidence/)
-- Visual verification complete (for UI changes)
-- Evidence referenced in workflow state
-
-**PASS if:** Evidence captured OR not required (backend-only changes)
-**FAIL if:** E2E/UI changes without visual evidence
+**Detailed checks and verification methods:** See [references/verification-criteria.md](./references/verification-criteria.md)
 
 ---
 
@@ -252,6 +203,23 @@ After each invocation, consider:
 - Any false positives/negatives in verification?
 
 Document learnings below for future improvements.
+
+---
+
+## Troubleshooting
+
+| Problem | Cause | Fix |
+|---------|-------|-----|
+| Workflow state file not found | `.claude/workflow-state.json` doesn't exist | No active workflow - only use phase-gate during `/implement` or similar workflows |
+| Criteria always passing | Not reading actual workflow state | Verify reading from `.claude/workflow-state.json`, not assuming values |
+| Evidence check failing for backend | Incorrectly requiring screenshots for non-UI | Check if `filesChanged` contains only backend files (no `.vue` files) |
+| Fix loop check failing | `fixLoopSucceeded` not updated | Ensure `/fix-loop` skill updates workflow state on success |
+
+---
+
+## References
+
+- [Verification Criteria](./references/verification-criteria.md) - Detailed checks, verification methods, common failures
 
 ---
 

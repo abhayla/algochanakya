@@ -1,7 +1,9 @@
 ---
 name: upstox-expert
-description: Upstox API expert. Consult for authentication, endpoints, WebSocket,
-  error codes, rate limits, symbol format, and adapter guidance for AlgoChanakya.
+description: Use when implementing Upstox adapter, debugging Upstox API errors, understanding Upstox instrument_key format, or auditing code calling Upstox API. Upstox API expert for AlgoChanakya.
+metadata:
+  author: AlgoChanakya
+  version: "1.0"
 ---
 
 # Upstox API Expert
@@ -17,6 +19,13 @@ Upstox offers a **FREE** modern API with OAuth 2.0 authentication, Protobuf-base
 - Comparing Upstox capabilities with other brokers
 - Auditing code that calls Upstox API for correctness
 - Writing tests that mock Upstox API responses
+
+## When NOT to Use
+
+- General broker abstraction questions (read docs/architecture/broker-abstraction.md instead)
+- Cross-broker comparison (use broker-shared/comparison-matrix.md instead)
+- SmartAPI/Kite issues (use smartapi-expert or kite-expert)
+- Dhan/Fyers/Paytm issues (use their respective expert skills)
 
 ## API Overview
 
