@@ -55,10 +55,13 @@ See **[docs/ROADMAP.md](docs/ROADMAP.md)** for:
 - 📋 **Next:** Upstox integration (Q2 2026), Fyers integration (Q2 2026)
 
 **Recent Automation Improvements (Feb 2026):**
-- Test verification workflow architecture completed
-- P0 automation proposals implemented (cross-layer guards, schema parity)
-- Comprehensive .claude automation system enhanced
-- See [Automation Workflows Guide](docs/guides/AUTOMATION_WORKFLOWS.md) for details
+- ✅ Iteration memory system for fix-loop (AI-powered hypothesis tracking)
+- ✅ 6-level gradual thinking escalation (Normal → UltraThink)
+- ✅ Learning engine with knowledge.db integration
+- ✅ Test verification workflow architecture
+- ✅ P0 automation proposals (cross-layer guards, schema parity)
+- ✅ Comprehensive .claude automation system (14 hooks, 21 skills, 5 agents)
+- See [Automation Workflows Guide](docs/guides/AUTOMATION_WORKFLOWS.md) for complete documentation
 
 ## Table of Contents
 
@@ -166,6 +169,32 @@ alembic revision --autogenerate -m "description" && alembic upgrade head
 
 ---
 
+## Auto-Memory System
+
+Claude Code maintains persistent memory at `.claude/projects/{project-hash}/memory/` that survives across conversations.
+
+**Key files:**
+- `MEMORY.md` - Always loaded in system prompt (keep concise, <200 lines)
+- Topic files (e.g., `debugging.md`, `patterns.md`) - Detailed notes linked from MEMORY.md
+
+**What to save:**
+- Recurring bug patterns and solutions
+- User preferences (e.g., "always use bun", "never auto-commit")
+- Architecture decisions confirmed across multiple sessions
+- Project-specific gotchas not in CLAUDE.md
+
+**What NOT to save:**
+- Session-specific context (current tasks, in-progress work)
+- Information that might be incomplete
+- Anything that duplicates CLAUDE.md
+- Speculative or unverified conclusions
+
+**Searching past context:**
+1. Search topic files: `Grep pattern="<term>" path=".claude/memory/" glob="*.md"`
+2. Session logs (last resort): `Grep pattern="<term>" path=".claude/" glob="*.jsonl"`
+
+---
+
 ## Common Workflows
 
 ### Adding a New API Endpoint
@@ -207,6 +236,20 @@ alembic revision --autogenerate -m "description" && alembic upgrade head
 3. ✅ **DO** check user-reported symptoms
 4. ✅ **DO** test fix in dev (`D:\Abhay\VibeCoding\algochanakya`)
 5. ✅ **DO** notify user before any production changes
+
+### Saving/Resuming Work Sessions
+
+**When to save:**
+- Ending a work session (use `/save-session` or `Skill(skill="save-session")`)
+- Switching tasks mid-implementation
+- Before context limits are reached (automatic compression happens, but sessions preserve more)
+
+**When to resume:**
+- Starting a new conversation to continue previous work
+- Use `/start-session` or `Skill(skill="start-session")`
+- Sessions include: active tasks, modified files, pending work
+
+**Saved sessions location:** `.claude/sessions/{date}-{description}.md`
 
 ## Development Environment
 
@@ -278,7 +321,10 @@ AlgoChanakya is an options trading platform (similar to Sensibull) for Indian ma
 - **Backend:** FastAPI + async SQLAlchemy + PostgreSQL + Redis
 - **Frontend:** Vue 3 + Vite + Pinia + Tailwind CSS 4
 - **Testing:** Playwright (122 E2E specs) + Vitest + pytest (63 backend tests)
-- **AI/ML:** pandas (required for AI features) + XGBoost + LightGBM
+- **AI/ML:** pandas (required dependency) + XGBoost + LightGBM
+  - **Why pandas is required:** Used by AutoPilot for time-series analysis, regime detection, and risk scoring
+  - **Note:** Even if not using AI features, pandas must be installed for backend to start
+  - See [AI services documentation](docs/autopilot/README.md) for details
 
 **Key Features:**
 - Multi-broker abstraction (swap brokers without code changes)
@@ -341,6 +387,17 @@ AlgoChanakya is an options trading platform (similar to Sensibull) for Indian ma
 ---
 
 ## Important Patterns
+
+### Architectural Rules (CRITICAL)
+
+**All architectural rules are consolidated in** [`.claude/rules.md`](.claude/rules.md):
+- Folder structure rules (enforced by PreToolUse hooks)
+- Cross-layer import rules (backend ↔ frontend isolation)
+- Protected files (production folder, .env, knowledge.db)
+- Security rules (encryption, validation)
+- Complete enforcement summary (which hook/agent enforces what)
+
+This is the **single source of truth** for architectural constraints. When in doubt, check rules.md first.
 
 ### Folder Structure Rules (ENFORCED by hooks)
 
@@ -422,13 +479,22 @@ AlgoChanakya is an options trading platform (similar to Sensibull) for Indian ma
 ## Claude Code Skills
 
 **Proactive (automatically suggested by Claude Code):**
-- `auto-verify` - Runs after ANY code change ⚡
+- `auto-verify` - **Primary verification tool** after ANY code change ⚡
+  - Runs tests, captures screenshots, analyzes results, iterates
+  - Use after: bug fixes, features, refactors (unless docs-only)
 - `docs-maintainer` - Runs after code changes to keep docs in sync 📚
-- `learning-engine` - Records fix patterns automatically 🧠
+- `learning-engine` - Records fix patterns to `knowledge.db` (SQLite) 🧠
+  - Automatically captures error fingerprints and ranked fix strategies
+  - Integrates with `fix-loop` and `auto-verify`
+  - See `.claude/skills/learning-engine/references/` for DB schema
 - `health-check` - Runs on session start + manual invocation (7-step scan) 🏥
 
-**Testing & Debugging (manual invocation):**
-- `test-fixer` - Diagnose test failures
+**Testing & Verification (manual invocation):**
+- `test-fixer` - Diagnose and fix failing tests
+- `browser-testing` - **Manual browser debugging** for UI issues 🌐
+  - Use when: Testing specific UI screens, debugging browser console errors
+  - Not for automated verification (use `auto-verify` instead)
+  - Controlled Chrome extension for visual inspection
 - `e2e-test-generator` - Generate Playwright tests
 - `vitest-generator` - Generate Vitest unit tests
 
@@ -438,9 +504,18 @@ AlgoChanakya is an options trading platform (similar to Sensibull) for Indian ma
 
 **Workflow Orchestration:**
 - `implement` - 7-step implementation workflow (TDD enforced)
-- `fix-loop` - Iterative fix cycle with 6-level thinking escalation + AI-powered iteration memory 🧠
+- `fix-loop` - Iterative fix cycle with:
+  - **6-level gradual thinking escalation** (Normal → Basic → Moderate → Deep → VeryDeep → UltraThink)
+  - **AI-powered iteration memory** - Records hypotheses, outcomes, and patterns across fix attempts
+  - **Code review gates** - All fixes pass through code-reviewer agent
+  - **knowledge.db integration** - Learns from fix patterns
+  - Use when tests fail during implement Step 5, or standalone for any bug fix
 - `run-tests` - Multi-layer test runner with auto-fix
 - `reflect` - Learning + self-modification (4 modes)
+  - **session**: Capture outcomes, update knowledge.db
+  - **deep**: Analyze gaps, modify skills/hooks
+  - **meta**: Convergence analysis
+  - **test-run**: Dry-run deep mode
 - `post-fix-pipeline` - Verification + commit with hard blocks
 - `fix-issue` - GitHub issue workflow (fetch, implement, commit)
 
@@ -457,6 +532,19 @@ AlgoChanakya is an options trading platform (similar to Sensibull) for Indian ma
 **Other:**
 - `autopilot-assistant` - AutoPilot strategy config guidance
 - `save-session` / `start-session` - Save/resume context
+- `keybindings-help` - Customize keyboard shortcuts, rebind keys, add chord bindings
+
+---
+
+## Customization
+
+**Keyboard shortcuts:** Use `Skill(skill="keybindings-help")` or `/keybindings-help` to customize shortcuts, rebind keys, or add chord bindings (edits `~/.claude/keybindings.json`).
+
+**Examples:**
+- Rebind Ctrl+S to a different command
+- Add chord shortcuts (e.g., Ctrl+K, Ctrl+C for comments)
+- Change the submit key binding
+- View all available keybindings
 
 ---
 
@@ -518,6 +606,21 @@ Dashboard `/dashboard`, Watchlist `/watchlist`, Positions `/positions`, Option C
 4. **Code issues?** → Run `Skill(skill="health-check")` for 7-step automated scan
 5. **Wrong data/endpoints?** → Verify `.env` and `.env.local` point to dev (port 8001)
 6. **Database errors?** → Run `alembic upgrade head` or check model imports in `alembic/env.py`
+
+### Debugging Fix Loops
+
+If `fix-loop` is stuck or not converging:
+1. **Check iteration memory:** `.claude/skills/fix-loop/iteration-memory.json`
+   - Review hypothesis history and outcomes
+   - Look for repeated failed attempts with same approach
+2. **Review knowledge.db** for similar past failures:
+   ```bash
+   sqlite3 .claude/learning/knowledge.db "SELECT * FROM fix_strategies ORDER BY success_count DESC LIMIT 10"
+   ```
+3. **Consider manual escalation** to higher thinking level (VeryDeep or UltraThink)
+4. **Check auto-memory** for project-specific patterns: `.claude/memory/debugging.md`
+
+**Protected file note:** `knowledge.db` is hook-managed - never edit manually. Use `learning-engine` skill to query/update.
 
 ### Connection Errors
 
