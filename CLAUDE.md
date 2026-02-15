@@ -3,7 +3,13 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 **AlgoChanakya:** Multi-broker options trading platform (Indian markets)
-**Last Updated:** 2026-02-14
+**Last Updated:** 2026-02-15
+
+## 📋 Specialized Guides
+
+- **Backend:** [backend/CLAUDE.md](backend/CLAUDE.md) - 26 AutoPilot services, broker adapters, AI/ML, pytest markers
+- **Frontend:** [frontend/CLAUDE.md](frontend/CLAUDE.md) - E2E test rules, Vue patterns, data-testid conventions
+- **Root (this file):** Cross-cutting behaviors, production safety, multi-broker architecture
 
 ## Quick Decision Tree
 
@@ -22,7 +28,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 1. **Check current work:** `git status && git log --oneline -5`
 2. **Never touch production:** Work in `D:\Abhay\VibeCoding\algochanakya` ONLY (not `C:\Apps\algochanakya`)
 3. **Auto-verify all changes:** Run `Skill(skill="auto-verify")` after ANY code change
-4. **Check ports:** Dev backend=8001, Dev frontend=5173 (production=8000/3004 - DO NOT TOUCH)
+4. **Check ports:**
+   - Dev backend: **ALWAYS** use 8001 (`backend/.env` PORT=8001)
+   - Dev frontend: 5173 (Vite default)
+   - Production: 8000/3004 (DO NOT TOUCH - in C:\Apps\algochanakya)
+   - **Verify:** `frontend/.env.local` must have `VITE_API_BASE_URL=http://localhost:8001`
 
 ## 📚 Quick Navigation
 
@@ -40,9 +50,15 @@ See **[docs/ROADMAP.md](docs/ROADMAP.md)** for:
 - 🎯 Long-term vision (Multi-timeframe, Social trading, Mobile app)
 
 **Quick Status:**
-- ✅ **Complete:** Multi-broker abstraction, SmartAPI integration, Auto-TOTP, E2E test suite (189 files)
+- ✅ **Complete:** Multi-broker abstraction, SmartAPI integration, Auto-TOTP, E2E test suite (185 files)
 - 🚧 **In Progress:** [Workflow Redesign](.claude/WORKFLOW-DESIGN-SPEC.md), [Ticker Architecture v2](docs/decisions/TICKER-DESIGN-SPEC.md)
 - 📋 **Next:** Upstox integration (Q2 2026), Fyers integration (Q2 2026)
+
+**Recent Automation Improvements (Feb 2026):**
+- Test verification workflow architecture completed
+- P0 automation proposals implemented (cross-layer guards, schema parity)
+- Comprehensive .claude automation system enhanced
+- See [Automation Workflows Guide](docs/guides/AUTOMATION_WORKFLOWS.md) for details
 
 ## Table of Contents
 
@@ -206,6 +222,8 @@ alembic revision --autogenerate -m "description" && alembic upgrade head
 
 **CRITICAL:** Frontend `.env.local` overrides `.env` and must point to dev backend (`http://localhost:8001`), not production (8000)
 
+**Database Servers:** PostgreSQL and Redis hosted on VPS (103.118.16.189). Shared between dev and production - use different database names to isolate environments.
+
 ---
 
 ## Core Purpose: Multi-Broker Architecture
@@ -229,6 +247,9 @@ alembic revision --autogenerate -m "description" && alembic upgrade head
 **2. Order Execution Brokers** - Place orders, manage positions, margins
 - Interface: `BrokerAdapter`
 - Factory: `get_broker_adapter(broker_type, credentials)`
+
+**WebSocket Tickers:** Currently using legacy singleton services (`SmartAPITickerService`, `KiteTickerService`).
+Migration to new 5-component architecture (ADR-003 v2) planned - see [Ticker Design Spec](docs/decisions/TICKER-DESIGN-SPEC.md).
 
 ### Supported Brokers (Updated: 2026-02-14)
 
@@ -256,14 +277,18 @@ AlgoChanakya is an options trading platform (similar to Sensibull) for Indian ma
 **Tech Stack:**
 - **Backend:** FastAPI + async SQLAlchemy + PostgreSQL + Redis
 - **Frontend:** Vue 3 + Vite + Pinia + Tailwind CSS 4
-- **Testing:** Playwright (122 E2E specs) + Vitest + pytest (67 backend tests)
+- **Testing:** Playwright (122 E2E specs) + Vitest + pytest (63 backend tests)
+- **AI/ML:** pandas (required for AI features) + XGBoost + LightGBM
 
 **Key Features:**
 - Multi-broker abstraction (swap brokers without code changes)
 - Auto-TOTP authentication for SmartAPI
-- Real-time WebSocket data feeds
+- Real-time WebSocket data feeds (legacy singletons, migrating to 5-component architecture)
 - AI-powered regime detection and risk analysis
-- AutoPilot automated trading
+- **AutoPilot automated trading**
+  - 26 service files, 16 database tables
+  - Features: Condition engine, order executor, strategy monitor, kill switch, adjustment engine
+  - See [docs/autopilot/](docs/autopilot/) and [backend/CLAUDE.md](backend/CLAUDE.md#autopilot-services-26-files)
 
 **Production:** https://algochanakya.com (Windows Server 2022) - Not production-ready yet
 
@@ -396,14 +421,14 @@ AlgoChanakya is an options trading platform (similar to Sensibull) for Indian ma
 
 ## Claude Code Skills
 
-**Automatic (run after every code change):**
-- `auto-verify` - Test changes immediately ⚡
-- `docs-maintainer` - Keep docs in sync 📚
-- `learning-engine` - Record fix patterns 🧠
+**Proactive (automatically suggested by Claude Code):**
+- `auto-verify` - Runs after ANY code change ⚡
+- `docs-maintainer` - Runs after code changes to keep docs in sync 📚
+- `learning-engine` - Records fix patterns automatically 🧠
+- `health-check` - Runs on session start + manual invocation (7-step scan) 🏥
 
-**Testing & Debugging:**
+**Testing & Debugging (manual invocation):**
 - `test-fixer` - Diagnose test failures
-- `health-check` - Scan for code issues (7 steps, also runs on session start)
 - `e2e-test-generator` - Generate Playwright tests
 - `vitest-generator` - Generate Vitest unit tests
 
@@ -444,7 +469,7 @@ Dashboard `/dashboard`, Watchlist `/watchlist`, Positions `/positions`, Option C
 
 ## Testing
 
-~189 test files (122 E2E spec files + 67 backend pytest files). See [docs/testing/README.md](docs/testing/README.md) for complete documentation.
+~185 test files (122 E2E spec files + 63 backend pytest files). See [docs/testing/README.md](docs/testing/README.md) for complete documentation.
 
 ### E2E Test Rules (CRITICAL)
 
@@ -488,9 +513,10 @@ Dashboard `/dashboard`, Watchlist `/watchlist`, Positions `/positions`, Option C
 
 1. **Services not responding?** → Check if backend/PostgreSQL/Redis are running
 2. **Auth errors (401/403)?** → Re-login or check broker credentials
-3. **Tests failing?** → Check `data-testid`, timeouts, or run `Skill(skill="test-fixer")`
-4. **Wrong data/endpoints?** → Verify `.env` and `.env.local` point to correct ports (dev=8001)
-5. **Database errors?** → Run `alembic upgrade head` or check model imports in `alembic/env.py`
+3. **Tests failing?** → Run `Skill(skill="test-fixer")` or check `data-testid`, timeouts
+4. **Code issues?** → Run `Skill(skill="health-check")` for 7-step automated scan
+5. **Wrong data/endpoints?** → Verify `.env` and `.env.local` point to dev (port 8001)
+6. **Database errors?** → Run `alembic upgrade head` or check model imports in `alembic/env.py`
 
 ### Connection Errors
 

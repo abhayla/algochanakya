@@ -1,6 +1,6 @@
 ---
 name: debug-log
-description: Structured debug iteration tracking with escalation. Usage: /debug-log [issue-name]
+description: Structured debug iteration tracking with escalation tiers (Standard, ThinkHard, UltraThink, Human). Use when debugging complex issues, tracking hypothesis iterations, or when fix attempts exceed 3 tries. Triggers on 'debug log', 'track debugging', or repeated fix failures.
 ---
 
 # Debug Log

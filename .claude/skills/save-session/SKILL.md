@@ -1,6 +1,6 @@
 ---
 name: save-session
-description: Save current session context for later resumption. Usage: /save-session [name]
+description: Save current session context for later resumption including active tasks, modified files, and pending work. Use when ending a work session, switching tasks, or before context limits are reached. Triggers on 'save session', 'save progress', or 'pause work'.
 ---
 
 # Save Session

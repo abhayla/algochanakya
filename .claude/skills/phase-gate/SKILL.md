@@ -1,6 +1,6 @@
 ---
 name: phase-gate
-description: Verify phase/step completion before proceeding. Usage: /phase-gate
+description: Verify phase/step completion before proceeding to next workflow stage. Use when running /implement, multi-step features, or any phased workflow to ensure all 6 criteria are met before advancing. Triggers on 'check phase', 'verify step', or 'gate check'.
 ---
 
 # Phase Gate Verification

@@ -88,7 +88,7 @@ ws.send(JSON.stringify({action: 'subscribe', tokens: [256265], mode: 'quote'}))
 
 ### Test Config
 
-~189 test files (122 E2E spec files + 67 backend pytest files). See [docs/testing/README.md](../docs/testing/README.md) for complete documentation.
+~185 test files (122 E2E spec files + 63 backend pytest files). See [docs/testing/README.md](../docs/testing/README.md) for complete documentation.
 
 **Config:** 30s default timeout (playwright.config.js), 2 parallel workers for stability, auth state reused via `./tests/config/.auth-state.json`. Auth token stored in `./tests/config/.auth-token`. Projects: `setup` (SmartAPI auto-login), `chromium` (main), `isolated` (fresh context). **SmartAPI auto-TOTP** - no manual TOTP entry required. **Note:** Some legacy tests use longer timeouts (180s-600s) specified in npm scripts.
 

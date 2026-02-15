@@ -1,4 +1,9 @@
-# Claude Chrome Testing Skill
+---
+name: browser-testing
+description: Browser-based testing and debugging using Chrome extension. Use when testing UI screens, verifying visual layout, debugging browser console errors, or running manual verification of AlgoChanakya screens like Dashboard, Watchlist, Option Chain, or Positions.
+---
+
+# Browser Testing Skill
 
 **IMPORTANT:** Use this skill for browser-based testing, debugging, and visual verification of the AlgoChanakya application.
 

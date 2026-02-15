@@ -495,7 +495,7 @@ features:
     description: "Browser automation and debugging via Claude Chrome extension"
     docs: "docs/testing/README.md#claude-chrome-integration"
     files:
-      - ".claude/skills/claude-chrome-testing/**"
+      - ".claude/skills/browser-testing/**"
       - ".claude/commands/open-in-chrome.md"
       - "tests/e2e/helpers/chrome.helper.js"
 

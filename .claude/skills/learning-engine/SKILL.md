@@ -1,6 +1,6 @@
 ---
 name: learning-engine
-description: Autonomous self-recursive learning system. Records errors, ranks fix strategies, synthesizes rules, and improves across sessions. Integrates with auto-verify and test-fixer.
+description: Autonomous self-recursive learning system that records errors, ranks fix strategies, synthesizes rules, and improves across sessions. Use after test failures, bug fixes, or verification cycles to capture learnings. Integrates with auto-verify and test-fixer. Triggers on fix completions, test outcomes, and session reflections.
 ---
 
 # Learning Engine Skill

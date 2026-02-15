@@ -15,7 +15,7 @@ Also made minor documentation improvements to CLAUDE.md.
 ## Working Files
 - `frontend/.env.local` (modified) - Fixed WebSocket URL, removed protocol prefix
 - `backend/app/services/brokers/market_data/smartapi_adapter.py` (modified) - Multiple fixes for API key and index symbol handling
-- `CLAUDE.md` (modified) - Added stale docs warning and claude-chrome-testing skill
+- `CLAUDE.md` (modified) - Added stale docs warning and browser-testing skill
 - `docs/DEVELOPER-QUICK-REFERENCE.md` (modified) - Fixed typo in dev path
 - `backend/app/services/smartapi_market_data.py` (read) - Analyzed get_index_quote method
 - `backend/app/services/brokers/market_data/factory.py` (read) - Analyzed adapter creation
@@ -36,7 +36,7 @@ Also made minor documentation improvements to CLAUDE.md.
 
 # CLAUDE.md
 + Added stale docs warning for IMPLEMENTATION-CHECKLIST.md
-+ Added claude-chrome-testing skill to skills table
++ Added browser-testing skill to skills table
 
 # docs/DEVELOPER-QUICK-REFERENCE.md
 - C:\Abhay\VideCoding (typo)

@@ -1474,7 +1474,7 @@ append_agent_memory(agent_name, section="Decisions Made", entry="""
 |-------|---------|-----------------|
 | `autopilot-assistant` | AutoPilot strategy configuration | 5 files |
 | `trading-constants-manager` | Enforce centralized trading constants | 2 files |
-| `claude-chrome-testing` | Browser automation | 4 files |
+| `browser-testing` | Browser automation | 4 files |
 
 ### 6.4 Broker Expert Skills (6)
 

@@ -1,6 +1,6 @@
 ---
 name: start-session
-description: Resume a saved session. Usage: /start-session [name] or /start-session (loads latest)
+description: Resume a previously saved session with full context restoration. Use when starting a new conversation to continue previous work. Triggers on 'resume session', 'continue where I left off', 'load session', or 'start session'.
 ---
 
 # Start Session
