@@ -1,13 +1,13 @@
 ---
 name: post-fix-pipeline
-description: Final verification pipeline that runs after fixes are applied. Ensures regression tests pass, full test suite passes, docs are updated, and creates a safe commit. Hard blocks commit if tests fail. Use after fixes are applied, automatically invoked by /implement Step 7, or standalone after any bug fix.
+description: Final verification pipeline that runs after fixes are applied. Ensures regression tests pass, full test suite passes, docs are updated, and creates a safe commit. Hard blocks commit if tests fail. Use after fixes are applied, automatically invoked by implement Step 7, or standalone after any bug fix.
 metadata:
   author: AlgoChanakya
   version: "1.0"
   category: workflow
 ---
 
-# /post-fix-pipeline - Verification + Commit
+# post-fix-pipeline - Verification + Commit
 
 **Purpose:** Final verification pipeline that runs after fixes are applied. Ensures regression tests pass, full test suite passes, docs are updated, and creates a safe commit.
 
@@ -497,7 +497,7 @@ Cannot commit until all tests pass.
 ## Example Usage
 
 ```
-# Automatically invoked by /implement
+# Automatically invoked by implement
 Step 7: Skill("post-fix-pipeline")
 
 # Standalone invocation after manual fixes

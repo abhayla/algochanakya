@@ -17,8 +17,8 @@ metadata:
 - After test failures or verification cycles to record outcomes
 - After fixing bugs to capture the fix strategy
 - When auto-verify completes (success or failure)
-- During /implement workflow to accumulate session learnings
-- On session reflection (/reflect command)
+- During implement workflow to accumulate session learnings
+- On session reflection (reflect command)
 
 ## When NOT to Use
 

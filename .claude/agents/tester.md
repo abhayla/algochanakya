@@ -221,7 +221,7 @@ Parse test output to identify patterns:
 # Test Run Report
 
 **Timestamp:** 2026-02-13 15:45:23
-**Command:** /run-tests
+**Command:** run-tests
 **Layers:** E2E, Backend, Frontend
 
 ## Summary
@@ -295,7 +295,7 @@ All frontend tests passed ✅
 
 ## Invocation Examples
 
-### From /post-fix-pipeline
+### From post-fix-pipeline
 
 ```python
 agent_result = Task(
@@ -321,7 +321,7 @@ agent_result = Task(
 )
 ```
 
-### From /run-tests
+### From run-tests
 
 ```python
 agent_result = Task(

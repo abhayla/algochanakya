@@ -146,7 +146,7 @@ Layer 5: learning-engine      → Records outcomes, synthesizes rules, feedback 
 
 **Integration:**
 - 14 hooks (post_test_update, verify_test_rerun, post_screenshot_resize, etc.)
-- 6 commands (/implement, /fix-loop, /post-fix-pipeline, /run-tests, /reflect, /fix-issue)
+- 6 commands (/implement, fix-loop, post-fix-pipeline, run-tests, reflect, fix-issue)
 - 21 skills (auto-verify, test-fixer, learning-engine, docs-maintainer, etc.)
 - 5 agents (debugger, code-reviewer, git-manager, tester, planner-researcher)
 

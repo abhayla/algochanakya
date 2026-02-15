@@ -7,7 +7,7 @@ metadata:
   category: workflow
 ---
 
-# /run-tests - Multi-Layer Test Runner
+# run-tests - Multi-Layer Test Runner
 
 **Purpose:** Execute tests across all 3 layers (E2E, backend, frontend) with auto-fix on failure.
 
@@ -21,17 +21,17 @@ metadata:
 
 **Syntax:**
 ```
-/run-tests [layer][:screen|module]
+run-tests [layer][:screen|module]
 ```
 
 **Examples:**
 ```bash
-/run-tests                    # All layers sequentially
-/run-tests e2e                # All E2E tests
-/run-tests e2e:positions      # Positions screen E2E tests only
-/run-tests backend            # All backend tests
-/run-tests backend:autopilot  # Autopilot module tests only
-/run-tests frontend           # All frontend tests
+run-tests                    # All layers sequentially
+run-tests e2e                # All E2E tests
+run-tests e2e:positions      # Positions screen E2E tests only
+run-tests backend            # All backend tests
+run-tests backend:autopilot  # Autopilot module tests only
+run-tests frontend           # All frontend tests
 ```
 
 **Mapping:**
@@ -50,13 +50,13 @@ metadata:
 
 ```
 1. Run backend tests (pytest)
-   → If fail: /fix-loop (budget=1) → retry
+   → If fail: fix-loop (budget=1) → retry
 2. Run frontend tests (vitest)
-   → If fail: /fix-loop (budget=1) → retry
+   → If fail: fix-loop (budget=1) → retry
 3. Run E2E tests (playwright)
-   → If fail: /fix-loop (budget=1) → retry
-4. If any fixes applied: /post-fix-pipeline
-5. /reflect session
+   → If fail: fix-loop (budget=1) → retry
+4. If any fixes applied: post-fix-pipeline
+5. reflect session
 ```
 
 ---
@@ -94,7 +94,7 @@ for screen in screens:
             print(f"❌ {spec} failed")
 
             # Attempt fix (budget=1, single iteration)
-            print(f"🔧 Attempting fix with /fix-loop (budget=1)...")
+            print(f"🔧 Attempting fix with fix-loop (budget=1)...")
             fix_result = Skill("fix-loop")
 
             if "RESOLVED" in fix_result or "PASSED" in fix_result:
@@ -146,7 +146,7 @@ for module in modules:
         print(f"❌ {module} tests failed")
 
         # Attempt fix (budget=1)
-        print(f"🔧 Attempting fix with /fix-loop (budget=1)...")
+        print(f"🔧 Attempting fix with fix-loop (budget=1)...")
         fix_result = Skill("fix-loop")
 
         if "RESOLVED" in fix_result or "PASSED" in fix_result:
@@ -190,7 +190,7 @@ if "failed" in result.lower():
     print("❌ Frontend tests failed")
 
     # Attempt fix (budget=1)
-    print("🔧 Attempting fix with /fix-loop (budget=1)...")
+    print("🔧 Attempting fix with fix-loop (budget=1)...")
     fix_result = Skill("fix-loop")
 
     if "RESOLVED" in fix_result or "PASSED" in fix_result:
@@ -315,8 +315,8 @@ Next steps:
 
 2. Manual investigation recommended (auto-fix exhausted)
 
-3. Use /fix-issue to target specific failures:
-   /fix-issue autopilot.edge.spec.js
+3. Use fix-issue to target specific failures:
+   fix-issue autopilot.edge.spec.js
 ```
 
 ---
@@ -357,7 +357,7 @@ log_event(
 
 ## Budget Limits
 
-**Per-spec fix budget:** 1 iteration (single /fix-loop call)
+**Per-spec fix budget:** 1 iteration (single fix-loop call)
 
 **Rationale:** Prevents spending too much time on single failure. If auto-fix fails, move to next test and aggregate failures for manual review.
 
@@ -384,12 +384,12 @@ log_event(
 /run-tests
 
 # Specific layer
-/run-tests e2e
-/run-tests backend
+run-tests e2e
+run-tests backend
 
 # Specific screen/module
-/run-tests e2e:positions
-/run-tests backend:autopilot
+run-tests e2e:positions
+run-tests backend:autopilot
 ```
 
 ---

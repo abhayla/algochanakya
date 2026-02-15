@@ -1,13 +1,13 @@
 ---
 name: reflect
-description: Learning and self-modification with four modes - session (capture outcomes, update knowledge.db), deep (analyze gaps, modify skills/hooks), meta (convergence analysis), test-run (dry-run deep mode). Use after /implement, /run-tests, or /fix-loop completes.
+description: Learning and self-modification with four modes - session (capture outcomes, update knowledge.db), deep (analyze gaps, modify skills/hooks), meta (convergence analysis), test-run (dry-run deep mode). Use after implement, run-tests, or fix-loop completes.
 metadata:
   author: AlgoChanakya
   version: "1.0"
   category: workflow
 ---
 
-# /reflect - Learning + Self-Modification
+# reflect - Learning + Self-Modification
 
 **Purpose:** Capture outcomes to learning stores, synthesize rules, and optionally modify commands/hooks to improve workflow.
 

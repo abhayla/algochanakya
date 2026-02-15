@@ -262,7 +262,7 @@ $ grep -rn 'get_synthesized_rules' .claude/
    - Invoke `/post-fix-pipeline` → verify full verification
 
 4. **Agent Testing** (if agents work in Claude Code)
-   - During /fix-loop → verify agent launches with correct prompt
+   - During fix-loop → verify agent launches with correct prompt
    - Check agent can read .claude/agents/*.md file
    - Verify agent returns expected analysis
 
@@ -272,7 +272,7 @@ $ grep -rn 'get_synthesized_rules' .claude/
 - Monitor workflow-sessions.log for performance issues
 
 ### Continuous Improvement
-- Run `/reflect session` after each development session
+- Run `reflect session` after each development session
 - Check synthesized_rules table for auto-generated patterns
 - Update fix strategies based on success rates
 

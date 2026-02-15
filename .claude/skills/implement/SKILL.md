@@ -7,7 +7,7 @@ metadata:
   category: workflow
 ---
 
-# /implement - 7-Step Mandatory Workflow
+# implement - 7-Step Mandatory Workflow
 
 **Purpose:** Primary orchestration command for implementing features with enforced test-driven workflow.
 

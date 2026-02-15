@@ -1,6 +1,6 @@
 ---
 name: phase-gate
-description: Verify phase/step completion before proceeding to next workflow stage. Use when running /implement, multi-step features, or any phased workflow to ensure all 6 criteria are met before advancing. Triggers on 'check phase', 'verify step', or 'gate check'.
+description: Verify phase/step completion before proceeding to next workflow stage. Use when running implement, multi-step features, or any phased workflow to ensure all 6 criteria are met before advancing. Triggers on 'check phase', 'verify step', or 'gate check'.
 metadata:
   author: AlgoChanakya
   version: "1.0"
@@ -16,7 +16,7 @@ metadata:
 
 ## When NOT to Use
 
-- For standalone bug fixes outside /implement workflow
+- For standalone bug fixes outside implement workflow
 - When not using a phased/multi-step workflow
 
 ## Purpose
@@ -91,7 +91,7 @@ Output format:
 - Tests failing: 2 E2E tests need fixing
 
 **Required Actions:**
-1. Run /fix-loop to resolve test failures
+1. Run fix-loop to resolve test failures
 2. Re-run /phase-gate after fixes
 
 ---
@@ -113,12 +113,12 @@ Output format:
 **If PASS:**
 - Congratulate on meeting criteria
 - Suggest next step (commit, move to next phase)
-- Remind to invoke /post-fix-pipeline if not done
+- Remind to invoke post-fix-pipeline if not done
 
 **If FAIL:**
 - List blocking issues
 - Provide clear action items
-- Suggest relevant skills (/fix-loop, /run-tests, etc.)
+- Suggest relevant skills (/fix-loop, run-tests, etc.)
 
 ---
 
@@ -135,7 +135,7 @@ All criteria have equal weight (no partial credit). A single FAIL blocks the ent
 Relies on accurate workflow-state.json. If state is corrupted or missing, phase gate cannot verify.
 
 ### Integration Points
-- Used by /post-fix-pipeline before commit
+- Used by post-fix-pipeline before commit
 - Used manually by developers to self-check
 - Can be invoked multiple times (idempotent)
 
@@ -148,7 +148,7 @@ Relies on accurate workflow-state.json. If state is corrupted or missing, phase 
 User: /phase-gate
 
 # Phase Gate Verification
-**Workflow:** /implement
+**Workflow:** implement
 **Session ID:** 20260214-153000
 
 ## Verification Results
@@ -163,7 +163,7 @@ User: /phase-gate
 
 ## Overall Status: ✅ PASS
 
-Ready to commit! Run /post-fix-pipeline to complete workflow.
+Ready to commit! Run post-fix-pipeline to complete workflow.
 ```
 
 ### Scenario 2: Missing Tests
@@ -171,7 +171,7 @@ Ready to commit! Run /post-fix-pipeline to complete workflow.
 User: /phase-gate
 
 # Phase Gate Verification
-**Workflow:** /implement
+**Workflow:** implement
 
 ## Verification Results
 | Criterion | Status | Details |

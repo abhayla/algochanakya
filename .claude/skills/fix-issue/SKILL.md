@@ -7,13 +7,13 @@ metadata:
   category: workflow
 ---
 
-# /fix-issue - Fix GitHub Issue
+# fix-issue - Fix GitHub Issue
 
 **Purpose:** Fetch, understand, and fix a GitHub issue with full workflow enforcement.
 
 **When to use:** User provides GitHub issue number or URL.
 
-**Integration:** Uses `/implement` workflow (7 steps), invokes `/fix-loop` on test failures.
+**Integration:** Uses implement workflow (7 steps), invokes fix-loop on test failures.
 
 ---
 
@@ -24,8 +24,8 @@ metadata:
 ```bash
 # Accept issue number or full URL
 # Examples:
-#   /fix-issue 123
-#   /fix-issue https://github.com/{owner}/{repo}/issues/123
+#   Skill("fix-issue", args="123")
+#   Skill("fix-issue", args="https://github.com/{owner}/{repo}/issues/123")
 
 if is_url(ARGUMENTS):  # [PLANNED - pseudocode]
     issue_number = extract_number_from_url(ARGUMENTS)  # [PLANNED - pseudocode]
@@ -108,7 +108,7 @@ if is_complex_issue(issue):  # [PLANNED - pseudocode]
 
 ### Step 4: Implement
 
-**Invoke /implement workflow:**
+**Invoke implement workflow:**
 ```
 Skill("implement")
 ```

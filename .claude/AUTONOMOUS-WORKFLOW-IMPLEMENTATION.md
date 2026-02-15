@@ -128,19 +128,19 @@ AlgoChanakya now has a **fully autonomous testing workflow system** inspired by 
 ```
 User Request
     ↓
-/implement (7-step workflow)
+implement (7-step workflow)
     ↓
 Step 1: Requirements ← validate_workflow_step.py allows docs
 Step 2: Write Tests ← validate_workflow_step.py blocks code until complete
 Step 3: Implement ← validate_workflow_step.py allows code changes
 Step 4: Run Tests ← post_test_update.py records, verify_test_rerun.py verifies
-Step 5: Fix Loop ← /fix-loop → code-reviewer → debugger (if needed)
+Step 5: Fix Loop ← fix-loop → code-reviewer → debugger (if needed)
 Step 6: Screenshots ← post_screenshot_resize.py auto-resizes
-Step 7: Post-Fix Pipeline ← /post-fix-pipeline → tester → git-manager
+Step 7: Post-Fix Pipeline ← post-fix-pipeline → tester → git-manager
     ↓
 Commit ← verify_evidence_artifacts.py checks gates
     ↓
-/reflect session ← post_skill_learning.py captures outcomes
+reflect session ← post_skill_learning.py captures outcomes
 ```
 
 ### Hook Execution Chain
@@ -157,7 +157,7 @@ validate_workflow_step.py checks step completion
 Bash(git commit) invoked
     ↓
 validate_workflow_step.py checks all 7 steps
-verify_evidence_artifacts.py checks fix-loop/post-fix-pipeline invoked
+verify_evidence_artifacts.py checks fix-looppost-fix-pipeline invoked
     ↓
   If gates fail: EXIT 2 (block)
   If gates pass: EXIT 0 (allow)
@@ -217,7 +217,7 @@ post_skill_learning.py routes to knowledge.db
 
 ### 3. Self-Modification with Safety
 
-**`/reflect deep` mode:**
+**`reflect deep` mode:**
 - Git stash backup before modifications
 - Deny list (NEVER modify: CLAUDE.md, conftest.py, settings.local.json, *.env, notes)
 - Validation after each modification (py_compile for .py, json.load for .json)
@@ -257,7 +257,7 @@ post_skill_learning.py routes to knowledge.db
 - `/implement` calls: auto-verify, e2e-test-generator, vitest-generator, docs-maintainer
 - `/fix-loop` calls: test-fixer (for pattern detection)
 - `/post-fix-pipeline` calls: docs-maintainer
-- All commands call: /reflect (for learning)
+- All commands call: reflect (for learning)
 
 ### Uses Existing knowledge.db
 
@@ -302,7 +302,7 @@ post_skill_learning.py routes to knowledge.db
 ### Phase 2 Verification
 - [ ] Fresh workflow → attempt Write on .py file → verify BLOCKED ("Step 2 not complete")
 - [ ] Attempt git commit with incomplete steps → verify BLOCKED with specific step
-- [ ] After failing tests → attempt commit without /fix-loop → verify BLOCKED
+- [ ] After failing tests → attempt commit without fix-loop → verify BLOCKED
 - [ ] Run single pytest → verify verify_test_rerun.py re-runs and records consistent result
 
 ### Phase 3 Verification
@@ -311,15 +311,15 @@ post_skill_learning.py routes to knowledge.db
 - [ ] Invoke `/post-fix-pipeline` → verify test suite + docs-maintainer + git commit
 
 ### Phase 4 Verification
-- [ ] During /fix-loop → verify debugger agent launches at attempt 2+
-- [ ] During /fix-loop → verify code-reviewer checks broker abstraction
+- [ ] During fix-loop → verify debugger agent launches at attempt 2+
+- [ ] During fix-loop → verify code-reviewer checks broker abstraction
 - [ ] Verify all agent markdown files have correct structure
 
 ### Phase 5 Verification
 - [ ] Run `/run-tests` → verify multi-layer execution with auto-fix
-- [ ] Run `/fix-issue 123` → verify full workflow with GitHub integration
-- [ ] Run `/reflect session` → verify knowledge.db synthesis
-- [ ] Run `/reflect test-run` → verify dry-run shows proposed modifications
+- [ ] Run `fix-issue 123` → verify full workflow with GitHub integration
+- [ ] Run `reflect session` → verify knowledge.db synthesis
+- [ ] Run `reflect test-run` → verify dry-run shows proposed modifications
 
 ### Phase 6 Verification
 - [ ] Read CLAUDE.md → verify autonomous workflow section added
@@ -329,7 +329,7 @@ post_skill_learning.py routes to knowledge.db
 ### Integration Verification
 - [ ] Complete end-to-end `/implement` → verify all hooks fire, evidence present, commit succeeds
 - [ ] Verify all 13 existing skills still work (especially auto-verify, test-fixer, learning-engine)
-- [ ] Run `/reflect deep` with user approval → verify git stash, validation, limits enforced
+- [ ] Run `reflect deep` with user approval → verify git stash, validation, limits enforced
 
 ---
 
@@ -433,10 +433,10 @@ Step 5: Fix Loop (MANDATORY - tests failed)
 Result: ✅ Commit created, new auto-fix rule available
 ```
 
-### Example 3: /reflect Deep Mode
+### Example 3: reflect Deep Mode
 
 ```
-User: "Run /reflect deep to improve workflow"
+User: "Run reflect deep to improve workflow"
 
 → Skill("reflect", args="deep")
 
@@ -497,12 +497,12 @@ Result: ✅ 1 file modified, auto-fix pattern now active
 1. Create intentional failing test
 2. Run `/fix-loop` multiple times
 3. Verify strategy scores update
-4. Run `/reflect session` to trigger synthesis
+4. Run `reflect session` to trigger synthesis
 5. Check if rules synthesize after 5+ attempts
 
 ### Self-Modification Testing
-1. Run `/reflect test-run` to preview
-2. Run `/reflect deep` with user approval
+1. Run `reflect test-run` to preview
+2. Run `reflect deep` with user approval
 3. Verify git stash created
 4. Verify validation catches errors
 5. Verify modifications recorded
@@ -519,7 +519,7 @@ Result: ✅ 1 file modified, auto-fix pattern now active
 ✅ **Windows-compatible** (Python scripts, not bash)
 ✅ **Enforcement active** (hooks will block invalid operations)
 ✅ **Learning integrated** (knowledge.db + failure-index.json)
-✅ **Self-modification ready** (/reflect deep mode with safety)
+✅ **Self-modification ready** (reflect deep mode with safety)
 
 ---
 
@@ -546,8 +546,8 @@ Result: ✅ 1 file modified, auto-fix pattern now active
 ### Learning System Maintenance
 - knowledge.db managed by existing db_helper.py
 - failure-index.json auto-managed by hooks
-- /reflect session mode should run after every workflow
-- /reflect deep mode should be user-triggered (not automatic)
+- reflect session mode should run after every workflow
+- reflect deep mode should be user-triggered (not automatic)
 
 ---
 

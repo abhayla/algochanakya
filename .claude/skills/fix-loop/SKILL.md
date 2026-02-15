@@ -1,13 +1,13 @@
 ---
 name: fix-loop
-description: Iterative fix cycle with thinking escalation (Normal to ThinkHard to UltraThink), code review gates, and knowledge.db integration. Diagnoses and fixes test failures using ranked strategies. Use when tests fail during /implement Step 5, or standalone for any bug fix.
+description: Iterative fix cycle with thinking escalation (Normal to ThinkHard to UltraThink), code review gates, and knowledge.db integration. Diagnoses and fixes test failures using ranked strategies. Use when tests fail during implement Step 5, or standalone for any bug fix.
 metadata:
   author: AlgoChanakya
   version: "1.0"
   category: workflow
 ---
 
-# /fix-loop - Iterative Fix Cycle
+# fix-loop - Iterative Fix Cycle
 
 **Purpose:** Central fix engine with thinking escalation, code review gates, and knowledge.db integration.
 
@@ -562,7 +562,7 @@ User intervention required.
 ## Example Usage
 
 ```
-# Automatically invoked by /implement
+# Automatically invoked by implement
 Step 5: Skill("fix-loop")
 
 # Standalone invocation

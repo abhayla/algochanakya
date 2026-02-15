@@ -506,7 +506,7 @@ Upstox adapter will follow the same pattern (zero changes to routes or business 
 
 ## Invocation Examples
 
-### From /implement
+### From implement
 
 ```python
 agent_result = Task(
