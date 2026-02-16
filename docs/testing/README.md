@@ -5,6 +5,8 @@ A complete, auto-updating test suite for all 8 screens with full coverage (happy
 
 ## Status: ✅ FULLY IMPLEMENTED
 
+**For complete E2E test rules, see [E2E Test Rules](e2e-test-rules.md).**
+
 ## Key Features
 - **Self-Healing Selectors**: All tests use `data-testid` attributes
 - **Visual Regression**: Screenshot comparison with dynamic content masking

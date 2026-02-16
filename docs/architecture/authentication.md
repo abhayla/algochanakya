@@ -193,4 +193,4 @@ Returns current user info.
 
 **See also:**
 - [CLAUDE.md - Authentication](../../CLAUDE.md#authentication-error-handling) for error handling patterns
-- [CLAUDE.md - Encryption](../../CLAUDE.md#encryption-for-credentials) for credential storage
+- [backend/CLAUDE.md - Encryption](../../backend/CLAUDE.md#encryption-for-credentials) for credential storage

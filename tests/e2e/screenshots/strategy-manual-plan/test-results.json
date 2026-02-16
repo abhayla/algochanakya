@@ -1,0 +1,316 @@
+{
+  "phase1": [
+    {
+      "step": "1.1 Add first row",
+      "passed": true,
+      "details": {
+        "legCount": 1,
+        "cmp": "105.20",
+        "cmpValid": true,
+        "cmpVerifiedAgainstAPI": false,
+        "noErrors": true,
+        "summary": true
+      },
+      "timestamp": "2026-01-14T06:54:37.633Z"
+    },
+    {
+      "step": "1.2 Add second row",
+      "passed": true,
+      "details": {
+        "legCount": 2,
+        "leg1_cmp": "105.20",
+        "leg2_cmp": "105.20",
+        "bothCMPValid": true,
+        "noErrors": true,
+        "payoffRendered": true
+      },
+      "timestamp": "2026-01-14T06:54:40.650Z"
+    },
+    {
+      "step": "1.3 Change CE/PE on row 1",
+      "passed": true,
+      "details": {
+        "expectedType": "CE",
+        "actualType": "CE",
+        "cmpBefore": 105.2,
+        "cmpAfter": 145.05,
+        "cmpChanged": true,
+        "cmpValid": true,
+        "noErrors": true
+      },
+      "timestamp": "2026-01-14T06:54:43.153Z"
+    },
+    {
+      "step": "1.4 Change strike on row 1",
+      "passed": true,
+      "details": {
+        "oldStrike": "25750",
+        "newStrike": "23750",
+        "actualStrike": "23750",
+        "cmpBefore": 145.05,
+        "cmpAfter": 2054.65,
+        "cmpChanged": true,
+        "cmpValid": true,
+        "noErrors": true
+      },
+      "timestamp": "2026-01-14T06:54:46.100Z"
+    },
+    {
+      "step": "1.5 Change expiry on row 1",
+      "passed": false,
+      "details": {
+        "oldExpiry": "2026-01-27",
+        "newExpiry": "27 Jan 26",
+        "actualExpiry": "2026-01-27",
+        "cmpBefore": 2054.65,
+        "cmpAfter": 2054.65,
+        "cmpChanged": false,
+        "cmpValid": true,
+        "noErrors": true
+      },
+      "timestamp": "2026-01-14T06:54:49.749Z"
+    },
+    {
+      "step": "1.6 Change CE/PE on row 2",
+      "passed": true,
+      "details": {
+        "expectedType": "CE",
+        "actualType": "CE",
+        "cmpBefore": 105.2,
+        "cmpAfter": 145.05,
+        "cmpChanged": true,
+        "cmpValid": true,
+        "noErrors": true,
+        "payoffRendered": true
+      },
+      "timestamp": "2026-01-14T06:54:52.294Z"
+    },
+    {
+      "step": "1.7 Change strike on row 2",
+      "passed": true,
+      "details": {
+        "oldStrike": "25750",
+        "newStrike": "23750",
+        "actualStrike": "23750",
+        "cmpBefore": 145.05,
+        "cmpAfter": 2054.65,
+        "cmpChanged": true,
+        "cmpValid": true,
+        "noErrors": true
+      },
+      "timestamp": "2026-01-14T06:54:55.417Z"
+    },
+    {
+      "step": "1.8 Change expiry on row 2",
+      "passed": true,
+      "details": {
+        "oldExpiry": "2026-01-27",
+        "newExpiry": "27 Jan 26",
+        "actualExpiry": "2026-01-27",
+        "cmpBefore": 2054.65,
+        "cmpAfter": 2054.65,
+        "cmpChanged": false,
+        "cmpValid": true,
+        "noErrors": true,
+        "payoffRendered": true,
+        "finalSummary": {
+          "maxProfit": "1,02,733",
+          "maxLoss": "-9,767",
+          "breakeven": "25,805",
+          "riskReward": "1:10.52",
+          "spot": "25,772"
+        }
+      },
+      "timestamp": "2026-01-14T06:54:59.576Z"
+    }
+  ],
+  "phase2": [
+    {
+      "step": "2.x Iron Condor",
+      "passed": true,
+      "details": {
+        "expectedLegs": 4,
+        "actualLegs": 4,
+        "legCountCorrect": true,
+        "cmpResults": [
+          {
+            "leg": 1,
+            "valid": true,
+            "value": 45.55,
+            "verified": false,
+            "raw": "45.55"
+          },
+          {
+            "leg": 2,
+            "valid": true,
+            "value": 69.9,
+            "verified": false,
+            "raw": "69.90"
+          },
+          {
+            "leg": 3,
+            "valid": true,
+            "value": 94.65,
+            "verified": false,
+            "raw": "94.65"
+          },
+          {
+            "leg": 4,
+            "valid": true,
+            "value": 58.65,
+            "verified": false,
+            "raw": "58.65"
+          }
+        ],
+        "allCMPsValid": true,
+        "noErrors": true,
+        "errorText": null,
+        "payoffRendered": true,
+        "payoffPaths": 1,
+        "summary": {
+          "maxProfit": "1,509",
+          "maxLoss": "-991",
+          "breakeven": "25,590 - 25,910"
+        },
+        "pnlValid": true,
+        "pnlVerification": {
+          "maxProfitValid": true,
+          "maxLossValid": true,
+          "breakevenValid": true
+        }
+      },
+      "timestamp": "2026-01-14T06:55:30.430Z"
+    },
+    {
+      "step": "2.x Short Straddle",
+      "passed": true,
+      "details": {
+        "expectedLegs": 2,
+        "actualLegs": 2,
+        "legCountCorrect": true,
+        "cmpResults": [
+          {
+            "leg": 1,
+            "valid": true,
+            "value": 146.85,
+            "verified": false,
+            "raw": "146.85"
+          },
+          {
+            "leg": 2,
+            "valid": true,
+            "value": 104.1,
+            "verified": false,
+            "raw": "104.10"
+          }
+        ],
+        "allCMPsValid": true,
+        "noErrors": true,
+        "errorText": null,
+        "payoffRendered": true,
+        "payoffPaths": 1,
+        "summary": {
+          "maxProfit": "6,274",
+          "maxLoss": "24",
+          "breakeven": "-"
+        },
+        "pnlValid": true,
+        "pnlVerification": {
+          "maxProfitValid": true,
+          "maxLossValid": true,
+          "breakevenValid": false
+        }
+      },
+      "timestamp": "2026-01-14T06:55:44.457Z"
+    },
+    {
+      "step": "2.x Bull Call Spread",
+      "passed": true,
+      "details": {
+        "expectedLegs": 2,
+        "actualLegs": 2,
+        "legCountCorrect": true,
+        "cmpResults": [
+          {
+            "leg": 1,
+            "valid": true,
+            "value": 146.85,
+            "verified": false,
+            "raw": "146.85"
+          },
+          {
+            "leg": 2,
+            "valid": true,
+            "value": 94.65,
+            "verified": false,
+            "raw": "94.65"
+          }
+        ],
+        "allCMPsValid": true,
+        "noErrors": true,
+        "errorText": null,
+        "payoffRendered": true,
+        "payoffPaths": 1,
+        "summary": {
+          "maxProfit": "1,195",
+          "maxLoss": "-1,305",
+          "breakeven": "25,802"
+        },
+        "pnlValid": true,
+        "pnlVerification": {
+          "maxProfitValid": true,
+          "maxLossValid": true,
+          "breakevenValid": true
+        }
+      },
+      "timestamp": "2026-01-14T06:55:57.966Z"
+    },
+    {
+      "step": "2.x Bear Put Spread",
+      "passed": true,
+      "details": {
+        "expectedLegs": 2,
+        "actualLegs": 2,
+        "legCountCorrect": true,
+        "cmpResults": [
+          {
+            "leg": 1,
+            "valid": true,
+            "value": 104.1,
+            "verified": false,
+            "raw": "104.10"
+          },
+          {
+            "leg": 2,
+            "valid": true,
+            "value": 69.9,
+            "verified": false,
+            "raw": "69.90"
+          }
+        ],
+        "allCMPsValid": true,
+        "noErrors": true,
+        "errorText": null,
+        "payoffRendered": true,
+        "payoffPaths": 1,
+        "summary": {
+          "maxProfit": "1,645",
+          "maxLoss": "-855",
+          "breakeven": "25,716"
+        },
+        "pnlValid": true,
+        "pnlVerification": {
+          "maxProfitValid": true,
+          "maxLossValid": true,
+          "breakevenValid": true
+        }
+      },
+      "timestamp": "2026-01-14T06:56:14.086Z"
+    }
+  ],
+  "summary": {
+    "passed": 11,
+    "failed": 1,
+    "total": 12
+  }
+}

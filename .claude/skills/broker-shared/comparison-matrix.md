@@ -2,7 +2,7 @@
 
 Comprehensive comparison of all 6 brokers supported by AlgoChanakya.
 
-**Last Updated:** February 2026
+**Last Updated:** February 16, 2026 (verified against latest broker APIs and pricing)
 
 > **Broker Expert Skills:** For API-specific guidance (auth flows, error codes, WebSocket protocols, symbol formats), consult the dedicated broker expert skills:
 > - `/smartapi-expert` — Angel One SmartAPI (default market data, auto-TOTP, binary WS, paise pricing)
@@ -19,13 +19,18 @@ Comprehensive comparison of all 6 brokers supported by AlgoChanakya.
 | Broker | Market Data Cost | Order Execution Cost | Total Monthly Cost | Notes |
 |--------|-----------------|---------------------|-------------------|-------|
 | **SmartAPI** (Angel One) | **FREE** | **FREE** | **₹0** | Default data source |
-| **Kite Connect** (Zerodha) | ₹500/mo | **FREE** | **₹500** | Personal API free |
-| **Upstox** | **FREE** | **FREE** | **₹0** | Extended token free |
-| **Dhan** | **FREE** | **FREE** (25 F&O/mo) | **₹0-499** | ₹499/mo unlimited |
-| **Fyers** | **FREE** | **FREE** | **₹0** | Virtual trading free |
+| **Kite Connect** (Zerodha) | ₹500/mo* | **FREE** | **₹0-500** | *Personal API free (orders only, no data) |
+| **Upstox** | **₹499/mo** | **₹499/mo** | **₹499** | API subscription required |
+| **Dhan** | **FREE**† | **FREE** | **₹0-499** | †25 F&O trades/mo OR ₹499/mo for data |
+| **Fyers** | **FREE** | **FREE** | **₹0** | v3.0.0 supports 5K symbols |
 | **Paytm Money** | **FREE** | **FREE** | **₹0** | Least mature |
 
-**AlgoChanakya Default:** SmartAPI (data) + Kite (orders) = ₹0/month (using personal Kite API)
+**AlgoChanakya Default:** SmartAPI (data) + Kite Personal API (orders) = ₹0/month
+
+**Notes:**
+- **Kite Connect:** ₹500/month includes live market data + historical data (bundled since Feb 2025). Personal API is free but provides order execution only.
+- **Upstox:** Changed from free to ₹499/month subscription model. No longer free.
+- **Dhan:** Two-tier model - Trading APIs free, Data APIs require 25 F&O trades/month OR ₹499/month subscription.
 
 ---
 
@@ -77,7 +82,7 @@ BROKER_LIMITS = {
 
 | Feature | SmartAPI | Kite | Upstox | Dhan | Fyers | Paytm |
 |---------|---------|------|--------|------|-------|-------|
-| **Max Tokens/Conn** | 3000 | 3000 | Plan-dependent | 100 (Ticker) | 200 | 200 |
+| **Max Tokens/Conn** | 3000 | 3000 | Plan-dependent | 100 (Ticker) | **5,000** (v3.0.0) | 200 |
 | **Max Connections** | 3 | 3 | 1 | 5 | 1 | 1 |
 | **Message Format** | Custom binary | Custom binary | **Protobuf** | Little Endian binary | **JSON** | JSON |
 | **Price Unit** | **PAISE** | **PAISE** | RUPEES | RUPEES | RUPEES | RUPEES |
@@ -233,24 +238,27 @@ BROKER_LIMITS = {
 
 | Use Case | Recommended | Reason |
 |----------|-------------|--------|
-| **Free market data** | SmartAPI or Upstox | Both free, SmartAPI has auto-TOTP |
+| **Free market data** | SmartAPI, Fyers, or Paytm | All completely free (Upstox now ₹499/mo) |
 | **Free orders** | Any (all free) | SmartAPI + Kite personal API |
-| **Lowest latency** | Kite or Upstox | Highest rate limits |
+| **Lowest latency** | Kite (3/s) or Upstox (25/s) | Highest rate limits |
 | **Best documentation** | Kite | Most mature API |
 | **Auto-login (no interaction)** | SmartAPI or Dhan | Auto-TOTP / static token |
 | **Deep market depth** | Dhan | 200-level depth (unique) |
-| **Real-time Greeks** | Upstox | Option Greeks via WS |
-| **Paper trading** | Fyers | Built-in virtual trading |
+| **Real-time Greeks** | Upstox | Option Greeks via WS (₹499/mo) |
+| **Highest symbol capacity** | Fyers | 5,000 symbols/conn (v3.0.0) |
 | **Order update stream** | Fyers | Dedicated order WebSocket |
 | **Widest exchange support** | SmartAPI/Kite/Upstox/Dhan/Fyers | All support 6 exchanges |
-| **Multi-client apps** | Upstox | Extended token (1yr, read-only) |
+| **Multi-client apps** | Upstox | Extended token (1yr, read-only, ₹499/mo) |
 
 ### AlgoChanakya Default Setup
 
 ```
 Market Data:  SmartAPI (FREE, auto-TOTP, no daily login)
-Orders:       Kite Connect (FREE personal API, well-documented)
+Orders:       Kite Personal API (FREE, orders only since March 2025)
 Total Cost:   ₹0/month
+
+Note: Kite Personal API provides order execution only (no market data).
+      For Kite market data, need ₹500/month Connect subscription.
 ```
 
 ---

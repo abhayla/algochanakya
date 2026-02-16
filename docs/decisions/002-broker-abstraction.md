@@ -26,7 +26,7 @@ AlgoChanakya needs to support multiple Indian stock brokers to provide users wit
 ### Why Multiple Brokers?
 
 Indian broker APIs vary significantly in:
-- **Pricing**: Zerodha charges ₹500/month for market data API (₹2K before 2025); many others offer free APIs
+- **Pricing**: Zerodha charges ₹500/month for market data API (₹2K before 2025); SmartAPI, Fyers, Paytm offer free APIs; Upstox charges ₹499/month
 - **Data Quality**: Different latency, reliability, and coverage
 - **Features**: Not all brokers support all order types or exchanges
 - **Account Funding**: Users may have accounts with different brokers
@@ -35,14 +35,16 @@ Indian broker APIs vary significantly in:
 
 We will implement a **dual broker abstraction architecture** with two independent systems:
 
-### 1. Market Data Broker System
+### 1. Market Data Broker System (Platform-Default + Optional User Upgrade)
 **Purpose:** Live prices, historical OHLC, WebSocket ticks, instrument data
 
-**Interface:** `MarketDataBrokerAdapter` (to be created)
+**Interface:** `MarketDataBrokerAdapter` (implemented)
 
 **Factory:** `get_market_data_adapter(broker_type, credentials)`
 
-**User Configuration:** Users select their preferred market data provider in settings
+**Architecture:** Platform-level shared credentials serve ALL users by default (zero setup). Users can optionally upgrade to their own broker API for lower latency, encouraged via persistent banner. See [Working Doc](../architecture/Working-Doc-AlgoChanakya-Multi-Broker-Architecture-Platform-Level.md).
+
+**Platform Failover Chain:** SmartAPI (primary, FREE) → Dhan (FREE†) → Fyers (FREE) → Paytm (FREE) → Upstox (₹499/mo) → Kite Connect (₹500/mo, last resort)
 
 ### 2. Order Execution Broker System
 **Purpose:** Placing orders, managing positions, account margins
@@ -51,7 +53,9 @@ We will implement a **dual broker abstraction architecture** with two independen
 
 **Factory:** `get_broker_adapter(broker_type, credentials)` (already exists)
 
-**User Configuration:** Users select their funded broker account for order execution
+**User Configuration:** Users connect any of 6 brokers for order execution (all supported from Phase 1)
+
+**Auth Fallback Chain:** refresh_token → OAuth re-login → API key/secret (last resort)
 
 ### Design Patterns
 
@@ -64,65 +68,25 @@ We will implement a **dual broker abstraction architecture** with two independen
 
 ### Unified Data Models
 
-All broker adapters convert to/from these broker-agnostic models:
+All broker adapters convert to/from: `UnifiedOrder`, `UnifiedPosition`, `UnifiedQuote`, `NormalizedTick`.
 
-```python
-@dataclass
-class UnifiedOrder:
-    order_id: str
-    tradingsymbol: str
-    side: OrderSide  # BUY/SELL
-    order_type: OrderType  # MARKET/LIMIT/SL/SL-M
-    status: OrderStatus  # PENDING/OPEN/COMPLETE/CANCELLED/REJECTED
-    # ... other fields
-
-@dataclass
-class UnifiedPosition:
-    tradingsymbol: str
-    quantity: int
-    average_price: Decimal
-    pnl: Decimal
-    # ... other fields
-
-@dataclass
-class UnifiedQuote:
-    tradingsymbol: str
-    last_price: Decimal
-    ohlc: Dict[str, Decimal]
-    # ... other fields
-
-@dataclass
-class NormalizedTick:
-    """WebSocket tick data — uses float (not Decimal) for hot-path performance."""
-    token: int            # Canonical Kite instrument token
-    ltp: float            # Last traded price (rupees, always)
-    change: float         # Absolute change from previous close
-    change_percent: float # Percentage change
-    volume: int
-    oi: int               # Open interest (0 for indices)
-    ohlc: dict            # {open, high, low, close} — all floats in rupees
-    timestamp: float      # time.time()
-    broker_type: str      # Source broker ("smartapi", "kite", etc.)
-```
-
-> **Note:** The NormalizedTick definition above was the initial design from Phase 1-2.
-> The **authoritative definition** is in [ADR-003 v2](003-multi-broker-ticker-architecture.md)
-> and [API Reference](../api/multi-broker-ticker-api.md) Section 1, which uses:
-> - **Flat OHLC fields** (`open`, `high`, `low`, `close`) instead of nested `ohlc` dict
-> - **`Optional[int]` timestamps** (`last_trade_time`, `exchange_timestamp`) instead of single `float timestamp`
-> - **No `broker_type` field** (broker source tracked at router level, not in tick data)
-> - `to_dict()` method nests OHLC into `{"ohlc": {...}}` for wire format, but the dataclass itself is flat
+**Complete model definitions:** [Broker Abstraction Architecture](../architecture/broker-abstraction.md) | [TICKER-DESIGN-SPEC.md](TICKER-DESIGN-SPEC.md) (for NormalizedTick with Decimal precision)
 
 ### Supported Brokers
 
-| Broker | Market Data | Order Execution | Status |
-|--------|-------------|----------------|--------|
-| **Angel One** (SmartAPI) | ✅ FREE | Planned (Phase 6) | Default for market data |
-| **Zerodha** (Kite Connect) | Available (₹500/mo) | ✅ Implemented | Default for orders |
-| **Upstox** | FREE | Planned | Phase 5 |
-| **Dhan** | FREE (25 trades/mo) | Planned | Phase 5 |
-| **Fyers** | FREE | Planned | Phase 5 |
-| **Paytm Money** | FREE | Planned | Phase 5 |
+**Snapshot at decision time (Feb 2026) — see [broker-abstraction.md](../architecture/broker-abstraction.md) for current status:**
+
+| Broker | Market Data | Orders | Platform Data Role | Order Status |
+|--------|-------------|--------|-------------------|--------------|
+| **Angel One** (SmartAPI) | ✅ FREE | ✅ FREE | #1 Primary | Phase 1 |
+| **Dhan** | ✅ FREE† | ✅ FREE | #2 Fallback | Phase 1 |
+| **Fyers** | ✅ FREE | ✅ FREE | #3 Fallback | Phase 1 |
+| **Paytm Money** | ✅ FREE | ✅ FREE | #4 Fallback | Phase 1 |
+| **Upstox** | ₹499/mo | ₹499/mo | #5 Fallback | Phase 1 |
+| **Zerodha** (Kite Connect) | ₹500/mo* | ✅ FREE | #6 Last Resort | ✔️ Production |
+
+*Kite Personal API is FREE (orders only, no market data). Connect API with data costs ₹500/mo.
+†Dhan Trading API is FREE. Data API requires 25 F&O trades/mo OR ₹499/mo subscription.
 
 **Future Candidates:** Kotak NEO, Samco, Shoonya/Finvasia, Alice Blue, Pocketful, TradeSmart, ICICI Direct Breeze
 
@@ -136,9 +100,9 @@ class NormalizedTick:
    - Faster onboarding of new brokers
 
 2. **Cost Optimization**
-   - Users can use free market data providers (Angel One, Upstox, Fyers)
-   - Execute orders through their funded broker account
-   - Mix-and-match for best pricing (e.g., Angel data + Zerodha orders)
+   - Platform provides free market data to all users (SmartAPI primary, multi-broker failover)
+   - Users connect any of 6 brokers for order execution (most free; Upstox ₹499/mo)
+   - Users can optionally upgrade to own broker API for lower latency (free for SmartAPI, Fyers, Dhan, Paytm; ₹499/mo for Upstox)
 
 3. **Flexibility**
    - Switch brokers via settings without reinstallation
@@ -210,7 +174,7 @@ class NormalizedTick:
 - Cannot optimize costs (use free data + paid orders)
 - Broker with good data but poor execution (or vice versa) limits flexibility
 
-**Why rejected:** Cost optimization is a key user need. Most users want free market data provider while keeping their existing funded broker for orders.
+**Why rejected:** Platform needs separate market data (platform-default, shared) and order execution (per-user). Users can independently choose data source and order broker. Single interface prevents this flexibility.
 
 ### Alternative 2: Hardcoded Broker Support
 
@@ -265,111 +229,67 @@ class NormalizedTick:
 
 ## Implementation Status
 
-### Phase 1: SmartAPI Integration — COMPLETE ✅
-- SmartAPI authentication with auto-TOTP
-- SmartAPI WebSocket ticker (legacy singleton)
-- Historical data fetching via SmartAPI
-- Instrument lookup and `TokenManager`
+**Snapshot at decision time (Jan 2026):** Phases 1-3 complete.
 
-### Phase 2: Market Data Abstraction — COMPLETE ✅
-- `MarketDataBrokerAdapter` interface created (`backend/app/services/brokers/market_data/base.py`)
-- SmartAPI wrapped in `SmartAPIMarketDataAdapter`
-- `KiteMarketDataAdapter` created
-- Routes updated to use `get_market_data_adapter()` factory
-- `SymbolConverter` for canonical ↔ broker-specific symbols
-
-### Phase 3: Order Execution + Route Refactoring — COMPLETE ✅
-- `BrokerAdapter` interface at `backend/app/services/brokers/base.py`
-- `KiteAdapter` fully implemented for order execution
-- Routes refactored to use `get_broker_adapter()` factory
-- Legacy direct `KiteConnect` usage removed from routes
-
-### Phase 4: Ticker/WebSocket Refactoring — PLANNED (ADR-003 v2)
-- New 5-component architecture: TickerAdapter + TickerPool + TickerRouter + HealthMonitor + FailoverController
-- Replaces legacy singletons (`SmartAPITickerService`, `KiteTickerService`)
-- See [ADR-003 v2: Multi-Broker Ticker Architecture](003-multi-broker-ticker-architecture.md)
-- [Implementation Guide](../architecture/multi-broker-ticker-implementation.md) | [API Reference](../api/multi-broker-ticker-api.md)
-
-### Phase 5: Additional Broker Adapters — PLANNED
-- Upstox, Dhan, Fyers, Paytm Money (market data + ticker adapters)
-- ~2 days per broker once Phase 4 infrastructure is in place
-- Prioritize by user demand and API quality
-
-### Phase 6: Order Execution Expansion — PLANNED
-- `AngelAdapter` for Angel One order execution
-- Order adapter stubs for Upstox, Dhan, Fyers, Paytm
-- Migrate remaining `get_kite_client()` usages (~40 locations)
-- Frontend broker selection UI for order execution
+**Current status:** [Broker Abstraction Architecture - Implementation Status](../architecture/broker-abstraction.md) | [backend/CLAUDE.md - Implementation Status](../../backend/CLAUDE.md#current-implementation-status)
 
 ---
 
-## Broker API Comparison Matrix
+## Broker API Technical Details
+
+The following tables document broker API characteristics used during the design decision. For the most current comparison, see [Broker Abstraction Architecture](../architecture/broker-abstraction.md).
+
+### Broker API Comparison Matrix
 
 | Broker | Auth Method | WS Protocol | Price Unit | Symbol Format | Rate Limit | Pricing |
 |--------|------------|-------------|------------|---------------|------------|---------|
 | **SmartAPI** (Angel One) | Auto-TOTP (3 tokens: jwt, refresh, feed) | Custom binary (big-endian) | Paise (÷100) | `NIFTY27FEB2525000CE` | 1 req/sec | FREE |
-| **Kite Connect** (Zerodha) | OAuth 2.0 (access_token) | Custom binary (big-endian) | Paise WS (÷100), Rupees REST | `NIFTY25FEB25000CE` (canonical) | 3 req/sec | FREE personal |
-| **Upstox** | OAuth 2.0 (+1yr extended token) | Protobuf over WebSocket | Rupees | `NSE_FO\|12345` (instrument_key) | 25 req/sec | FREE |
-| **Dhan** | Static access token (no expiry) | Binary (little-endian) | Rupees | Numeric security_id only | 10 req/sec | FREE (25 trades/mo) |
+| **Kite Connect** (Zerodha) | OAuth 2.0 (access_token) | Custom binary (big-endian) | Paise WS (÷100), Rupees REST | `NIFTY25FEB25000CE` (canonical) | 3 req/sec | FREE (Personal) / ₹500/mo (Connect) |
+| **Upstox** | OAuth 2.0 (+1yr extended token) | Protobuf over WebSocket | Rupees | `NSE_FO\|12345` (instrument_key) | 25 req/sec | ₹499/mo |
+| **Dhan** | Static access token (no expiry) | Binary (little-endian) | Rupees | Numeric security_id only | 10 req/sec | FREE† (Trading), ₹499/mo (Data) |
 | **Fyers** | OAuth 2.0 (access_token) | JSON (dual WS: data + orders) | Rupees | `NSE:NIFTY25FEB25000CE` | 10 req/sec | FREE |
 | **Paytm Money** | OAuth 2.0 (3 JWTs: access, read, public) | JSON | Rupees | Numeric security_id + exchange | 10 req/sec | FREE |
 
----
+### Symbol Format Conversion Complexity
 
-## Symbol Format Conversion Complexity
+| Rank | Broker | Method |
+|------|--------|--------|
+| 1 | **Kite** | Identity (canonical = Kite) |
+| 2 | **Fyers** | Prefix strip/add (`NSE:` + tradingsymbol) |
+| 3 | **SmartAPI** | Date format rewrite (`DDMONYY` → `YYMON`) |
+| 4 | **Upstox** | Instrument key lookup (`broker_instrument_tokens` table) |
+| 5 | **Dhan** | Full CSV mapping (numeric security_id) |
+| 6 | **Paytm** | Full CSV mapping (numeric + exchange) |
 
-Ranked from simplest to most complex (all conversions use canonical Kite format as the internal standard):
+**Implementation:** `SymbolConverter` handles all conversions. The `broker_instrument_tokens` database table stores pre-computed mappings populated by `TokenManager`.
 
-| Rank | Broker | Conversion | Example | Method |
-|------|--------|-----------|---------|--------|
-| 1 | **Kite** | Identity (canonical = Kite) | `256265` → `256265` | No conversion needed |
-| 2 | **Fyers** | Prefix strip/add | `256265` → `NSE:NIFTY25FEB25000CE` | Prepend `NSE:` + tradingsymbol |
-| 3 | **SmartAPI** | Date format rewrite | `256265` → `NIFTY27FEB2525000CE` | Reformat date portion (`DDMONYY` → `YYMON`) |
-| 4 | **Upstox** | Instrument key lookup | `256265` → `NSE_FO\|12345` | Lookup in `broker_instrument_tokens` table |
-| 5 | **Dhan** | Full CSV mapping | `256265` → `45678` (numeric security_id) | Full instrument master CSV required |
-| 6 | **Paytm** | Full CSV mapping | `256265` → `12345` (numeric) + exchange | Full instrument master CSV required |
-
-**Implementation:** `SymbolConverter` handles all conversions. The `broker_instrument_tokens` database table stores pre-computed mappings populated by `TokenManager` from each broker's instrument master file.
-
----
-
-## Authentication Flow Comparison
+### Authentication Flow Comparison
 
 | Capability | SmartAPI | Kite | Upstox | Dhan | Fyers | Paytm |
 |-----------|---------|------|--------|------|-------|-------|
-| **Auto-login (no user action)** | ✅ Auto-TOTP | ❌ Requires OAuth | ✅ Extended token (1yr) | ✅ Static token | ✅ Token refresh | ✅ Token refresh |
-| **System credentials supported** | ✅ | ❌ (user OAuth only) | ✅ | ✅ | ✅ | ✅ |
-| **Token lifetime** | ~24h (jwt), 15d (refresh) | ~6h (access_token) | 1 year (extended) | No expiry | ~24h | ~24h |
-| **Auto-refresh possible** | ✅ (via refresh token) | ❌ (manual re-auth) | ✅ (1yr token) | N/A (no expiry) | ✅ | ✅ |
-| **Credentials needed** | API key, client ID, MPIN/TOTP secret | API key, API secret, request_token | API key, API secret, redirect_uri | Client ID, access token | App ID, secret, redirect_uri | API key, secret, request_token |
-| **WS auth method** | jwt + feed_token | access_token | Bearer token in URL | access_token + client_id | `app_id:access_token` | public_access_token |
+| **Auto-login** | ✅ Auto-TOTP | ❌ OAuth | ✅ Extended (1yr) | ✅ Static | ✅ Refresh | ✅ Refresh |
+| **Token lifetime** | ~24h jwt, 15d refresh | ~6h | 1 year | No expiry | ~24h | ~24h |
+| **System credentials** | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ |
 
-**System Credential Strategy:** SmartAPI (auto-TOTP, refresh loop) and Dhan (static token, never expires) are the easiest for system-level credentials. Kite is the notable exception — requires per-user OAuth, so the system falls back to using the first connected user's token for shared ticker data.
+**Platform Credential Strategy:** SmartAPI primary, Dhan/Upstox easiest fallbacks, Kite last resort. See [Working Doc](../architecture/Working-Doc-AlgoChanakya-Multi-Broker-Architecture-Platform-Level.md).
 
----
-
-## WebSocket Protocol Details
+### WebSocket Protocol Details
 
 | Feature | SmartAPI | Kite | Upstox | Dhan | Fyers | Paytm |
 |---------|---------|------|--------|------|-------|-------|
 | **Protocol** | Custom binary | Custom binary | Protobuf | Custom binary | JSON | JSON |
-| **Byte order** | Big-endian | Big-endian | N/A (protobuf) | Little-endian | N/A (JSON) | N/A (JSON) |
-| **Parser needed** | `struct.unpack('>...')` | KiteTicker library | `protobuf` library | `struct.unpack('<...')` | `json.loads()` | `json.loads()` |
-| **Max tokens/conn** | 3000 | 3000 | Unlimited (1 conn) | 100 | 200 | 200 |
-| **Max connections** | 3 | 3 | 1 per access_token | 5 | 1 | 1 |
-| **Threading model** | Daemon thread + asyncio bridge | KiteTicker thread + asyncio bridge | asyncio-native | Daemon thread | asyncio-native | asyncio-native |
-| **Subscription modes** | LTP, Quote, Snap Quote | LTP, Quote, Full | Full only | Ticker (15), Quote (17), Full (21) | LiteMode, FullMode | LTP, OHLCV, Full, Depth |
-| **Heartbeat** | Server-sent (5s) | Client ping (5s) | Server-sent (30s) | Server-sent (30s) | Client ping (30s) | Server-sent |
-| **Reconnect support** | Manual | Auto (built-in) | Manual | Manual | Auto (built-in) | Manual |
-
-**Adapter Threading Pattern:** SmartAPI and Kite use daemon threads with `asyncio.run_coroutine_threadsafe()` to bridge tick callbacks back to the async event loop. Upstox, Fyers, and Paytm are asyncio-native (connect via `websockets` or `aiohttp`). Dhan uses a daemon thread similar to SmartAPI. See [ADR-003 v2 Section 6](003-multi-broker-ticker-architecture.md#6-per-broker-adapter-specifications) for full adapter specs.
+| **Byte order** | Big-endian | Big-endian | N/A | Little-endian | N/A | N/A |
+| **Max tokens/conn** | 3000 | 3000 | Unlimited | 100 | 5,000 | 200 |
+| **Max connections** | 3 | 3 | 1 | 5 | 1 | 1 |
+| **Threading** | Daemon + asyncio bridge | KiteTicker + asyncio bridge | asyncio-native | Daemon | asyncio-native | asyncio-native |
 
 ---
 
 ## Related Decisions
 
 - [ADR-001: Tech Stack Selection](001-tech-stack.md) — FastAPI + Python chosen for async and scipy (relevant for broker API integration)
-- [ADR-003 v2: Multi-Broker Ticker Architecture](003-multi-broker-ticker-architecture.md) — New 5-component ticker/WebSocket architecture (Phase 4)
+- [TICKER-DESIGN-SPEC.md](TICKER-DESIGN-SPEC.md) — Current 5-component ticker/WebSocket architecture (Phase 4, Feb 14, 2026)
+- ~~[ADR-003 v2: Multi-Broker Ticker Architecture](003-multi-broker-ticker-architecture.md)~~ — Superseded by TICKER-DESIGN-SPEC (historical reference)
 
 ## References
 
@@ -382,10 +302,11 @@ Ranked from simplest to most complex (all conversions use canonical Kite format 
 - [Paytm Money API](https://developer.paytmmoney.com/docs/)
 
 ### Architecture Documentation
-- [Broker Abstraction Architecture](../architecture/broker-abstraction.md) — Full market data + order execution design
-- [Multi-Broker Ticker Implementation Guide](../architecture/multi-broker-ticker-implementation.md) — Phase 4 step-by-step build guide
-- [Multi-Broker Ticker API Reference](../api/multi-broker-ticker-api.md) — Full component interface specs
-- [WebSocket Architecture](../architecture/websocket.md) — Live prices WebSocket design
+- [Broker Abstraction Architecture](../architecture/broker-abstraction.md) — Full market data + order execution design (updated Feb 16, 2026)
+- [Multi-Broker Ticker Implementation Guide](../guides/TICKER-IMPLEMENTATION-GUIDE.md) — Phase 4 step-by-step build guide (current, 3,868 lines)
+- [Multi-Broker Ticker API Reference](../api/multi-broker-ticker-api.md) — Full component interface specs (v2.1.0)
+- [Ticker Documentation Index](ticker-documentation-index.md) — Navigation guide for all ticker docs
+- [WebSocket Architecture](../architecture/websocket.md) — Live prices WebSocket design (legacy)
 
 ### Design Patterns
 - [Factory Method Pattern](https://refactoring.guru/design-patterns/factory-method)
@@ -396,6 +317,6 @@ Ranked from simplest to most complex (all conversions use canonical Kite format 
 
 1. **Time to Add Broker** — Target: < 2 days (adapter + testing) once Phase 4 infrastructure is complete
 2. **Code Changes for New Broker** — Target: 0 changes to existing routes/business logic
-3. **User Adoption** — Target: 50% users using different brokers for data vs orders within 6 months
-4. **API Cost Savings** — Target: 70% users switch from Kite (₹500/month) to free data providers
+3. **User Adoption** — Target: 30% users upgrade to own broker API within 6 months (from platform default)
+4. **Platform Cost** — Target: ₹0/month (all free brokers in failover chain, Kite Connect only as absolute last resort)
 5. **Failover Reliability** — Target: < 2s data gap during broker switchover (Phase 4)

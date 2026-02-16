@@ -373,13 +373,16 @@ Additional issues:
 
 **Market data sources (choose one per user):**
 - SmartAPI (Angel One) - FREE
-- Kite (Zerodha) - ₹500/mo
-- Upstox/Dhan/Fyers - FREE (planned)
+- Kite (Zerodha) - ₹500/mo (Connect) / FREE (Personal, orders only)
+- Upstox - ₹499/mo (planned)
+- Dhan - FREE† (planned) †Data API requires 25 F&O trades/mo or ₹499/mo
+- Fyers/Paytm - FREE (planned)
 
 **Order execution brokers (choose one per user):**
 - Kite (Zerodha) - FREE orders
 - Angel (Angel One) - FREE orders (planned)
-- Upstox/Dhan/Fyers - FREE (planned)
+- Upstox - ₹499/mo (planned)
+- Dhan/Fyers/Paytm - FREE (planned)
 
 **Unified data models:**
 - `UnifiedOrder` - Normalized order structure

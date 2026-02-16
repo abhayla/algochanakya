@@ -8,7 +8,7 @@ metadata:
 
 # Upstox API Expert
 
-Upstox offers a **FREE** modern API with OAuth 2.0 authentication, Protobuf-based WebSocket (MarketDataFeedV3), and a well-maintained Python SDK. It's the most popular free alternative to Kite Connect for both market data and order execution. Upstox is a planned broker for AlgoChanakya (adapter not yet implemented). Key differentiator: **extended token** for long-lived read-only access and **Protocol Buffers** for efficient WebSocket messaging.
+Upstox offers a modern API with OAuth 2.0 authentication, Protobuf-based WebSocket (MarketDataFeedV3), and a well-maintained Python SDK. API access costs **₹499/month** (₹499 + GST). It's a popular alternative to Kite Connect for both market data and order execution. Upstox is a planned broker for AlgoChanakya (adapter not yet implemented). Key differentiator: **extended token** for long-lived read-only access and **Protocol Buffers** for efficient WebSocket messaging.
 
 ## When to Use
 
@@ -34,7 +34,7 @@ Upstox offers a **FREE** modern API with OAuth 2.0 authentication, Protobuf-base
 | **Official Docs** | https://upstox.com/developer/api-documentation/ |
 | **API Version** | v2 |
 | **Python SDK** | `upstox-python-sdk` (`pip install upstox-python-sdk`) |
-| **Pricing** | **FREE** (market data + orders) |
+| **Pricing** | **₹499/month** (₹499 + GST) for API access (market data + orders) |
 | **REST Base URL** | `https://api.upstox.com/v2` |
 | **WebSocket URL** | Authorized URL via REST endpoint |
 | **Auth Method** | OAuth 2.0 (authorization_code grant) |
@@ -232,9 +232,11 @@ quote = await adapter.get_quote(["NIFTY2522725000CE"])  # Returns UnifiedQuote
 
 ## Common Gotchas
 
-1. **Protobuf dependency** - WebSocket requires `protobuf` package and compiled .proto schemas. Different from JSON or raw binary used by other brokers.
+1. **₹499/month subscription required** - Unlike SmartAPI (free) or Paytm (free), Upstox charges ₹499 + GST monthly for API access. Not free despite early marketing.
 
-2. **instrument_key format** - Not a simple symbol string. Includes exchange segment and uses `|` separator. Must look up in instrument master.
+2. **Protobuf dependency** - WebSocket requires `protobuf` package and compiled .proto schemas. Different from JSON or raw binary used by other brokers.
+
+3. **instrument_key format** - Not a simple symbol string. Includes exchange segment and uses `|` separator. Must look up in instrument master.
 
 3. **Extended token is read-only** - Cannot place orders with extended token. Need full access_token for trading.
 

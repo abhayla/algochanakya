@@ -1,28 +1,30 @@
 # Multi-Broker Ticker API Reference
 
-**Version**: 2.0.0
-**Status**: ⚠️ **REDESIGN PROPOSED** - See [TICKER-DESIGN-SPEC.md](../decisions/TICKER-DESIGN-SPEC.md)
-**Related**: [ADR-003 v2](../decisions/003-multi-broker-ticker-architecture.md) | [TICKER-DESIGN-SPEC.md](../decisions/TICKER-DESIGN-SPEC.md) | [Implementation Guide](../architecture/multi-broker-ticker-implementation.md) | [WebSocket Architecture](../architecture/websocket.md)
+**Version**: 2.1.0 (Updated for 5-Component Design)
+**Status**: ✅ **CURRENT** - Reflects TICKER-DESIGN-SPEC.md (Feb 14, 2026)
+**Last Updated**: February 16, 2026
+**Related**: [TICKER-DESIGN-SPEC.md](../decisions/TICKER-DESIGN-SPEC.md) | [Implementation Guide](../guides/TICKER-IMPLEMENTATION-GUIDE.md) | [ADR-003 v2 (Original)](../decisions/003-multi-broker-ticker-architecture.md)
 
-**Note:** This API reference describes the original ADR-003 v2 interfaces. The redesign proposes:
-- `NormalizedTick` uses `Decimal` for prices (not `float`)
-- Credentials managed in `TickerPool` (no separate `SystemCredentialManager`)
-- Updated health score formula (latency 30%, tick_rate 30%, errors 20%, staleness 20%)
+**Key Updates from Original ADR-003 v2:**
+- ✅ `NormalizedTick` uses `Decimal` for prices (not `float`) - **eliminates precision errors**
+- ✅ Credentials managed in `TickerPool` (no separate `SystemCredentialManager`) - **5 components, not 6**
+- ✅ Updated health score formula (latency 30%, tick_rate 30%, errors 20%, staleness 20%)
+- ✅ Complete implementation guide available
 
 ---
 
 ## Table of Contents
 
-1. [NormalizedTick](#1-normalizedtick)
+1. [NormalizedTick](#1-normalizedtick) - **Updated: Decimal prices**
 2. [TickerAdapter (Abstract Base)](#2-tickeradapter-abstract-base)
 3. [SmartAPITickerAdapter](#3-smartapiticker-adapter)
 4. [KiteTickerAdapter](#4-kiteticker-adapter)
 5. [Stub Adapter Templates](#5-stub-adapter-templates)
-6. [TickerPool](#6-tickerpool)
+6. [TickerPool](#6-tickerpool) - **Updated: Integrated credentials**
 7. [TickerRouter](#7-tickerrouter)
-8. [HealthMonitor](#8-healthmonitor)
+8. [HealthMonitor](#8-healthmonitor) - **Updated: New formula**
 9. [FailoverController](#9-failovercontroller)
-10. [SystemCredentialManager](#10-systemcredentialmanager)
+10. [~~SystemCredentialManager~~](#10-systemcredentialmanager-removed) - **REMOVED: Merged into TickerPool**
 11. [Refactored websocket.py](#11-refactored-websocketpy)
 12. [WebSocket Message Protocol](#12-websocket-message-protocol)
 13. [Configuration Reference](#13-configuration-reference)
@@ -34,51 +36,70 @@
 
 **Location**: `backend/app/services/brokers/market_data/ticker/models.py`
 
+**Updated**: Now uses `Decimal` for all price fields (changed from `float` in original ADR-003 v2)
+
 Broker-agnostic tick data structure used throughout the ticker pipeline. All adapters normalize their broker-specific tick format into this common model.
 
 ```python
 from dataclasses import dataclass
+from datetime import datetime
+from decimal import Decimal
 from typing import Optional
 
-@dataclass(slots=True)
+@dataclass
 class NormalizedTick:
     """
     Normalized tick data across all brokers.
 
-    Design decisions:
-    - float (not Decimal): Ticks are display-only, not order pricing. Decimal is 10-50x slower.
-    - __slots__: Memory efficiency for thousands of cached ticks.
-    - All tokens in CANONICAL format (Kite integer tokens).
-    - All prices in Rupees (NOT paise). Adapters handle ÷100 conversion.
+    Design decisions (v2.1):
+    - Decimal (not float): Eliminates floating-point precision errors for financial data
+    - All tokens in CANONICAL format (Kite integer tokens)
+    - All prices in RUPEES (NOT paise). Adapters handle ÷100 conversion
+    - IST timezone for timestamp
+    - broker_type field for tracing tick source
     """
-    token: int              # Canonical instrument token (Kite format). E.g., 256265 = NIFTY
-    ltp: float              # Last traded price (₹)
-    change: float           # Absolute change from previous close (₹)
-    change_percent: float   # Percentage change
-    volume: int             # Total volume traded today
-    oi: int                 # Open interest (0 for indices)
-    open: float             # Day open price (₹)
-    high: float             # Day high (₹)
-    low: float              # Day low (₹)
-    close: float            # Previous day close (₹)
-    last_trade_time: Optional[int] = None       # Unix timestamp (seconds)
-    exchange_timestamp: Optional[int] = None    # Exchange server timestamp (seconds)
+    token: int                      # Canonical instrument token (Kite format). E.g., 256265 = NIFTY
+    ltp: Decimal                    # Last traded price in RUPEES (not paise)
+    open: Decimal                   # Day open price in RUPEES
+    high: Decimal                   # Day high in RUPEES
+    low: Decimal                    # Day low in RUPEES
+    close: Decimal                  # Previous close in RUPEES
+    change: Decimal                 # Absolute change: ltp - close
+    change_percent: Decimal         # Percentage change: ((ltp - close) / close) * 100
+    volume: int                     # Total volume traded
+    oi: int                         # Open interest (0 for non-F&O instruments)
+    timestamp: datetime             # Tick timestamp in IST timezone
+    broker_type: str                # Source broker: "smartapi", "kite", "upstox", etc.
+
+    # Optional fields (may not be available from all brokers)
+    bid: Optional[Decimal] = None   # Best bid price
+    ask: Optional[Decimal] = None   # Best ask price
+    bid_qty: Optional[int] = None   # Best bid quantity
+    ask_qty: Optional[int] = None   # Best ask quantity
 
     def to_dict(self) -> dict:
-        """Serialize for WebSocket JSON transmission."""
+        """
+        Convert to JSON-serializable dict for WebSocket transmission.
+
+        Note: Decimal → float conversion for JSON compatibility.
+        """
         return {
             "token": self.token,
-            "ltp": self.ltp,
-            "change": self.change,
-            "change_percent": self.change_percent,
+            "ltp": float(self.ltp),  # Convert Decimal to float for JSON
+            "open": float(self.open),
+            "high": float(self.high),
+            "low": float(self.low),
+            "close": float(self.close),
+            "change": float(self.change),
+            "change_percent": float(self.change_percent),
             "volume": self.volume,
             "oi": self.oi,
-            "ohlc": {
-                "open": self.open,
-                "high": self.high,
-                "low": self.low,
-                "close": self.close,
-            },
+            "timestamp": self.timestamp.isoformat(),
+            "broker_type": self.broker_type,
+            "bid": float(self.bid) if self.bid is not None else None,
+            "ask": float(self.ask) if self.ask is not None else None,
+            "bid_qty": self.bid_qty,
+            "ask_qty": self.ask_qty,
         }
 ```
 
@@ -86,13 +107,18 @@ class NormalizedTick:
 
 | Field | Type | Source (SmartAPI) | Source (Kite) | Source (Upstox) |
 |-------|------|-------------------|---------------|-----------------|
-| `token` | int | Reverse-map from SmartAPI token | `instrument_token` (identity) | Parse from `instrument_key` |
-| `ltp` | float | `last_traded_price / 100` | `last_price / 100` (WS) | `ltp` (already rupees) |
-| `change` | float | Computed: `ltp - close` | `change` or computed | Computed |
+| `token` | int | Reverse-map from SmartAPI token via TokenManager | `instrument_token` (identity) | Parse from `instrument_key` |
+| `ltp` | **Decimal** | `Decimal(str(last_traded_price / 100))` | `Decimal(str(last_price / 100))` | `Decimal(str(ltp))` |
+| `change` | **Decimal** | Computed: `ltp - close` | `change` or computed | Computed |
+| `change_percent` | **Decimal** | Computed: `((ltp - close) / close) * 100` | Computed | Computed |
 | `volume` | int | `volume_trade_for_the_day` | `volume_traded` | `vol` |
 | `oi` | int | `open_interest` | `oi` | `oi` |
-| `open` | float | `open_price_of_the_day / 100` | `ohlc.open / 100` (WS) | `ohlc.open` |
-| `close` | float | `closed_price / 100` | `ohlc.close / 100` (WS) | `ohlc.close` |
+| `open` | **Decimal** | `Decimal(str(open_price_of_the_day / 100))` | `Decimal(str(ohlc.open / 100))` | `Decimal(str(ohlc.open))` |
+| `close` | **Decimal** | `Decimal(str(closed_price / 100))` | `Decimal(str(ohlc.close / 100))` | `Decimal(str(ohlc.close))` |
+| `timestamp` | datetime | `datetime.now(pytz.timezone('Asia/Kolkata'))` | Same | Same |
+| `broker_type` | str | `"smartapi"` | `"kite"` | `"upstox"` |
+
+**Why Decimal?** Trading applications require exact decimal precision. Using `float` can introduce errors like `24500.50` becoming `24500.499999999996`. `Decimal` eliminates these issues.
 
 ---
 
@@ -788,20 +814,27 @@ class PaytmTickerAdapter(TickerAdapter):
 
 **Location**: `backend/app/services/brokers/market_data/ticker/pool.py`
 
-Manages adapter lifecycle and ref-counted subscription aggregation. Singleton.
+**Updated**: Now includes integrated credential management (no separate SystemCredentialManager component)
+
+Manages adapter lifecycle, ref-counted subscription aggregation, and system credentials. Singleton.
 
 ```python
 class TickerPool:
     """
-    Adapter lifecycle manager with ref-counted subscriptions.
+    Adapter lifecycle manager with ref-counted subscriptions + credential management.
 
     Key behaviors:
     - Lazy adapter creation: Adapters created on first subscription
     - Ref-counted subscriptions: Multiple users subscribing to same token
       = 1 broker subscription. Unsubscribe only when ref_count hits 0.
-    - Idle cleanup: If adapter has 0 subscriptions for TICKER_IDLE_TIMEOUT_S,
-      disconnect and remove it.
+    - Idle cleanup: If adapter has 0 subscriptions for 5 minutes, disconnect and remove it.
     - Wires adapter._on_tick → self._on_adapter_tick → router.dispatch
+    - **NEW (v2.1): Integrated credential management** - loads and refreshes system credentials
+
+    Credential management (replaces SystemCredentialManager):
+    - load_system_credentials(): Load from database on startup
+    - refresh_credentials(broker): Per-broker credential refresh
+    - Auto-refresh loops (SmartAPI: 30 min before 5AM IST)
     """
 
     _instance: Optional["TickerPool"] = None
@@ -813,28 +846,92 @@ class TickerPool:
         return cls._instance
 
     def __init__(self):
-        self._adapters: Dict[str, TickerAdapter] = {}
-        self._ref_counts: Dict[str, Dict[int, int]] = {}  # broker → {token → count}
-        self._idle_timers: Dict[str, asyncio.Task] = {}
-        self._credential_manager = None
-        self._health_monitor = None
-        self._ticker_router = None
+        self._adapters: Dict[str, TickerAdapter] = {}  # broker_type → adapter
+        self._adapter_registry: Dict[str, type] = {}   # broker_type → adapter class
 
-    def set_dependencies(self, credential_manager, health_monitor, ticker_router):
-        """Injected during startup in main.py."""
-        self._credential_manager = credential_manager
+        # Ref-counted subscriptions: broker_type → {canonical_token → ref_count}
+        self._subscriptions: Dict[str, Dict[int, int]] = defaultdict(lambda: defaultdict(int))
+
+        # NEW: System credentials management (integrated)
+        self._credentials: Dict[str, dict] = {}  # broker_type → credentials
+        self._refresh_tasks: Dict[str, asyncio.Task] = {}  # Per-broker refresh loops
+
+        # Dependencies (injected)
+        self._router: Optional["TickerRouter"] = None
+        self._health_monitor: Optional["HealthMonitor"] = None
+
+        # Idle cleanup
+        self._cleanup_task: Optional[asyncio.Task] = None
+        self._idle_threshold = timedelta(minutes=5)
+
+    async def initialize(
+        self,
+        router: "TickerRouter",
+        health_monitor: Optional["HealthMonitor"] = None
+    ) -> None:
+        """
+        Initialize TickerPool with dependencies.
+
+        Args:
+            router: TickerRouter instance (for tick dispatching)
+            health_monitor: HealthMonitor instance (optional)
+        """
+        self._router = router
         self._health_monitor = health_monitor
-        self._ticker_router = ticker_router
 
-    # Adapter map for factory creation
-    ADAPTER_MAP = {
-        "smartapi": "...ticker.adapters.smartapi.SmartAPITickerAdapter",
-        "kite":     "...ticker.adapters.kite.KiteTickerAdapter",
-        "upstox":   "...ticker.adapters.upstox.UpstoxTickerAdapter",
-        "dhan":     "...ticker.adapters.dhan.DhanTickerAdapter",
-        "fyers":    "...ticker.adapters.fyers.FyersTickerAdapter",
-        "paytm":    "...ticker.adapters.paytm.PaytmTickerAdapter",
-    }
+        # Load system credentials from database
+        await self.load_system_credentials()
+
+        # Start idle cleanup loop
+        self._cleanup_task = asyncio.create_task(self._idle_cleanup_loop())
+
+    def register_adapter(self, broker_type: str, adapter_class: type) -> None:
+        """
+        Register a broker adapter class.
+
+        Args:
+            broker_type: Broker identifier ("smartapi", "kite", etc.)
+            adapter_class: TickerAdapter subclass
+        """
+        self._adapter_registry[broker_type] = adapter_class
+
+    # NEW: System Credentials Management (integrated from SystemCredentialManager)
+
+    async def load_system_credentials(self) -> None:
+        """
+        Load system broker credentials from database.
+
+        For each active broker in system_broker_credentials table:
+        1. Decrypt credentials (using app/utils/encryption.py)
+        2. Authenticate (SmartAPI: auto-TOTP, others: validate token)
+        3. Store in self._credentials
+        4. Schedule refresh loop if token expires
+        """
+        # Implementation in TICKER-IMPLEMENTATION-GUIDE.md Phase T1 Step 1.4
+        pass
+
+    async def refresh_credentials(self, broker_type: str) -> None:
+        """
+        Refresh credentials for specified broker.
+
+        Broker-specific logic:
+        - SmartAPI: Re-authenticate with auto-TOTP
+        - Upstox/Fyers/Paytm: Standard OAuth refresh
+        - Dhan: No refresh (static token)
+        - Kite: Log limitation (user OAuth only)
+
+        Args:
+            broker_type: Broker to refresh
+        """
+        pass
+
+    async def _smartapi_refresh_loop(self, broker_type: str) -> None:
+        """
+        Auto-refresh SmartAPI credentials 30 minutes before 5 AM IST expiry.
+
+        Runs continuously in background task.
+        """
+        pass
 
     async def get_adapter(self, broker_type: str) -> TickerAdapter:
         """
@@ -1185,6 +1282,8 @@ class TickerRouter:
 
 **Location**: `backend/app/services/brokers/market_data/ticker/health.py`
 
+**Updated**: New health score formula (changed from original ADR-003 v2)
+
 ```python
 import asyncio
 import logging
@@ -1327,7 +1426,23 @@ class HealthMonitor:
                 health.error_count_60s = max(0, health.error_count_60s - health.error_count_60s // 12)
 
     def _compute_health_score(self, health: AdapterHealth) -> float:
-        """Weighted health score: Connection 30%, Latency 20%, Errors 20%, Freshness 30%."""
+        """
+        Weighted health score (0-100).
+
+        **NEW FORMULA (v2.1):**
+        health_score = (
+            latency_score      * 0.30 +    # 30%: Average tick latency
+            tick_rate_score    * 0.30 +    # 30%: Ticks per minute
+            error_score        * 0.20 +    # 20%: Error rate in last 5 min
+            staleness_score    * 0.20      # 20%: Time since last tick
+        )
+
+        **Component scoring:**
+        - latency_score: 100 if <100ms, 50 if 100-500ms, 0 if >1000ms
+        - tick_rate_score: min(100, tick_count_1min * 2) // Expected ~50 ticks/min
+        - error_score: max(0, 100 - error_count_5min * 20)
+        - staleness_score: 100 if last_tick <10s ago, else max(0, 100 - seconds*2)
+        """
         # Connection (30%)
         connection = 100.0 if health.is_connected else 0.0
 
@@ -1543,7 +1658,28 @@ class FailoverController:
 
 ---
 
-## 10. SystemCredentialManager
+## 10. SystemCredentialManager (REMOVED)
+
+**Status**: ⚠️ **REMOVED IN v2.1** - Functionality merged into TickerPool
+
+**Original ADR-003 v2**: Separate component for managing system credentials
+**Current Design (v2.1)**: Credentials managed directly in TickerPool (5 components instead of 6)
+
+**Migration**: All SystemCredentialManager functionality now available via TickerPool methods:
+- `TickerPool.load_system_credentials()` - Replaces `SystemCredentialManager.initialize()`
+- `TickerPool.refresh_credentials(broker)` - Replaces `SystemCredentialManager.refresh_credentials(broker)`
+- `TickerPool._smartapi_refresh_loop()` - Replaces `SystemCredentialManager._smartapi_refresh_loop()`
+
+**Why removed?**
+- Simpler architecture (5 components vs 6)
+- Reduced wiring complexity (one less dependency to inject)
+- Credentials naturally belong with adapter lifecycle management
+
+**See**: [TickerPool section](#6-tickerpool) for integrated credential management API
+
+---
+
+## ~~10. SystemCredentialManager (Original - Deprecated)~~
 
 **Location**: `backend/app/services/brokers/market_data/ticker/credential_manager.py`
 

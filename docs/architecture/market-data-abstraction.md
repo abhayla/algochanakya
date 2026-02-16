@@ -40,12 +40,12 @@ This document provides a **comprehensive specification for the Market Data Broke
 │  ┌────────────────────────────────────────────────────────────────────────────────────┐ │
 │  │  Market Data Source                                                                 │ │
 │  │  ┌─────────────────────────────────────────────────────────────────────────────┐   │ │
-│  │  │  ○ Angel One (SmartAPI) - FREE                        [DEFAULT]             │   │ │
-│  │  │  ○ Zerodha (Kite Connect) - ₹500/month                                      │   │ │
-│  │  │  ○ Upstox - FREE                                                            │   │ │
-│  │  │  ○ Dhan - FREE (25 F&O trades/mo) or ₹499/mo                               │   │ │
-│  │  │  ○ Paytm Money - FREE                                                       │   │ │
+│  │  │  ○ Angel One (SmartAPI) - FREE                                              │   │ │
+│  │  │  ○ Dhan - FREE† (25 F&O trades/mo) or ₹499/mo                              │   │ │
 │  │  │  ○ Fyers - FREE                                                             │   │ │
+│  │  │  ○ Paytm Money - FREE                                                       │   │ │
+│  │  │  ○ Upstox - ₹499/month                                                      │   │ │
+│  │  │  ○ Zerodha (Kite Connect) - ₹500/month                                      │   │ │
 │  │  └─────────────────────────────────────────────────────────────────────────────┘   │ │
 │  │                                                                                     │ │
 │  │  [Save] [Test Connection]                                                           │ │
@@ -1556,12 +1556,12 @@ Add broker selection section:
           @change="handleBrokerChange"
           data-testid="settings-market-data-broker-select"
         >
-          <option value="smartapi">Angel One (SmartAPI) - FREE [Default]</option>
-          <option value="kite">Zerodha (Kite Connect) - ₹500/month</option>
-          <option value="upstox">Upstox - FREE</option>
-          <option value="dhan">Dhan - FREE (25 F&O trades/mo) or ₹499/mo</option>
+          <option value="smartapi">Angel One (SmartAPI) - FREE</option>
+          <option value="dhan">Dhan - FREE† (25 F&O trades/mo) or ₹499/mo</option>
           <option value="fyers">Fyers - FREE</option>
           <option value="paytm">Paytm Money - FREE</option>
+          <option value="upstox">Upstox - ₹499/month</option>
+          <option value="kite">Zerodha (Kite Connect) - ₹500/month</option>
         </select>
 
         <div class="broker-info" v-if="brokerInfo[settings.market_data_broker]">

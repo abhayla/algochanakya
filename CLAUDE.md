@@ -3,12 +3,44 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 **AlgoChanakya:** Multi-broker options trading platform (Indian markets)
-**Last Updated:** 2026-02-15
+**Last Updated:** 2026-02-16
+**Working Directory:** `C:\Abhay\VideCoding\algochanakya` (development)
+
+## ⚡ Quick Reference Card
+
+```bash
+# Check status first (ALWAYS)
+git status && git log --oneline -5
+
+# Start dev environment
+cd backend && venv\Scripts\activate && python run.py  # Port 8001
+cd frontend && npm run dev                             # Port 5173
+
+# After ANY code change
+Skill(skill="auto-verify")
+
+# Fix failing tests
+Skill(skill="test-fixer")
+
+# Dev ports: Backend=8001, Frontend=5173 | Production: Backend=8000, Frontend=3004
+```
+
+## 🚨 Most Common Mistakes (Fix These First!)
+
+1. **Wrong backend port:** `backend/.env` should have `PORT=8001` (NOT 8000)
+2. **Wrong frontend API URL:** `frontend/.env.local` must have `VITE_API_BASE_URL=http://localhost:8001`
+3. **Touching production:** NEVER modify `C:\Apps\algochanakya` - only work in dev folder
+4. **Missing alembic import:** New models must be imported in `backend/alembic/env.py`
+5. **Direct broker API usage:** Always use adapters from `app.services.brokers/`, never import `KiteConnect` or `SmartAPI` directly
+
+---
 
 ## 📋 Specialized Guides
 
-- **Backend:** [backend/CLAUDE.md](backend/CLAUDE.md) - 26 AutoPilot services, broker adapters, AI/ML, pytest markers
-- **Frontend:** [frontend/CLAUDE.md](frontend/CLAUDE.md) - E2E test rules, Vue patterns, data-testid conventions
+- **Backend:** [backend/CLAUDE.md](backend/CLAUDE.md) — AutoPilot services, broker adapters, AI/ML, pytest markers
+- **Frontend:** [frontend/CLAUDE.md](frontend/CLAUDE.md) — E2E test rules, Vue patterns, data-testid conventions
+- **Quick commands:** [Developer Quick Reference](docs/DEVELOPER-QUICK-REFERENCE.md)
+- **Current tasks:** [Implementation Checklist](docs/IMPLEMENTATION-CHECKLIST.md)
 - **Root (this file):** Cross-cutting behaviors, production safety, multi-broker architecture
 
 ## Quick Decision Tree
@@ -18,69 +50,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - 🔧 **Backend code?** → See [backend/CLAUDE.md](backend/CLAUDE.md)
 - 🎨 **Frontend code?** → See [frontend/CLAUDE.md](frontend/CLAUDE.md)
 - 🧪 **Tests failing?** → Run `Skill(skill="test-fixer")` or see [Testing](#testing)
-- 🐛 **Bug fix?** → Follow [Common Workflows](#common-workflows)
+- 🐛 **Bug fix?** → See [backend/CLAUDE.md](backend/CLAUDE.md) or [frontend/CLAUDE.md](frontend/CLAUDE.md)
 - ✨ **New feature?** → Read [Critical Behaviors](#critical-mandatory-behaviors) first
 - 📚 **Architecture questions?** → Check [Core Architecture](#core-purpose-multi-broker-architecture) or [docs/README.md](docs/README.md)
-- 🤔 **Not sure?** → Start with [🚨 Critical First Steps](#-critical-first-steps)
-
-## 🚨 Critical First Steps
-
-1. **Check current work:** `git status && git log --oneline -5`
-2. **Never touch production:** Work in `D:\Abhay\VibeCoding\algochanakya` ONLY (not `C:\Apps\algochanakya`)
-3. **Auto-verify all changes:** Run `Skill(skill="auto-verify")` after ANY code change
-4. **Check ports:**
-   - Dev backend: **ALWAYS** use 8001 (`backend/.env` PORT=8001)
-   - Dev frontend: 5173 (Vite default)
-   - Production: 8000/3004 (DO NOT TOUCH - in C:\Apps\algochanakya)
-   - **Verify:** `frontend/.env.local` must have `VITE_API_BASE_URL=http://localhost:8001`
-
-## 📚 Quick Navigation
-
-- **Backend work?** → [backend/CLAUDE.md](backend/CLAUDE.md)
-- **Frontend work?** → [frontend/CLAUDE.md](frontend/CLAUDE.md)
-- **Quick commands?** → [Developer Quick Reference](docs/DEVELOPER-QUICK-REFERENCE.md)
-- **Current tasks?** → [Implementation Checklist](docs/IMPLEMENTATION-CHECKLIST.md)
 
 ## Current Work & Roadmap
 
-See **[docs/ROADMAP.md](docs/ROADMAP.md)** for:
-- 🚧 Active work (Workflow redesign, Ticker architecture v2)
-- ✅ Recently completed (Multi-broker abstraction, SmartAPI integration)
-- 📋 Planned features (Upstox, Fyers, Dhan, Paytm, Backtesting)
-- 🎯 Long-term vision (Multi-timeframe, Social trading, Mobile app)
-
-**Quick Status:**
-- ✅ **Complete:** Multi-broker abstraction, SmartAPI integration, Auto-TOTP, E2E test suite (185 files)
-- 🚧 **In Progress:** [Workflow Redesign](.claude/WORKFLOW-DESIGN-SPEC.md), [Ticker Architecture v2](docs/decisions/TICKER-DESIGN-SPEC.md)
-- 📋 **Next:** Upstox integration (Q2 2026), Fyers integration (Q2 2026)
-
-**Recent Automation Improvements (Feb 2026):**
-- ✅ Iteration memory system for fix-loop (AI-powered hypothesis tracking)
-- ✅ 6-level gradual thinking escalation (Normal → UltraThink)
-- ✅ Learning engine with knowledge.db integration
-- ✅ Test verification workflow architecture
-- ✅ P0 automation proposals (cross-layer guards, schema parity)
-- ✅ Comprehensive .claude automation system (14 hooks, 21 skills, 5 agents)
-- See [Automation Workflows Guide](docs/guides/AUTOMATION_WORKFLOWS.md) for complete documentation
-
-## Table of Contents
-
-**Essential:**
-1. [Critical Behaviors](#critical-mandatory-behaviors) - Must follow
-2. [Quick Start](#quick-start) - Commands to get running
-3. [Core Architecture](#core-purpose-multi-broker-architecture) - Multi-broker design
-
-**Reference:**
-4. [Common Tasks](#common-tasks) - Quick how-to guides
-5. [Important Patterns](#important-patterns) - Broker abstraction, constants, DB
-6. [Testing](#testing) - E2E and backend tests
-7. [Troubleshooting](#troubleshooting-common-errors) - Error messages and fixes
-
-**Advanced:**
-8. [Documentation](#documentation) - Where to find detailed docs
-9. [Skills](#claude-code-skills) - Automated workflows
-10. [Pitfalls](#common-pitfalls) - What to avoid
-11. [CI/CD](#cicd) - GitHub Actions
+See **[docs/ROADMAP.md](docs/ROADMAP.md)** for active work, completed features, and planned roadmap.
 
 ---
 
@@ -88,7 +64,7 @@ See **[docs/ROADMAP.md](docs/ROADMAP.md)** for:
 
 ### 0. Production vs Development - NEVER TOUCH PRODUCTION
 
-- **✅ Work here:** `D:\Abhay\VibeCoding\algochanakya`
+- **✅ Work here:** `C:\Abhay\VideCoding\algochanakya`
 - **❌ NEVER touch:** `C:\Apps\algochanakya` (production folder on same machine)
 
 **NEVER:**
@@ -149,9 +125,15 @@ Before features/refactors/architecture changes:
 
 ## Quick Start
 
-**Requirements:** Python 3.11+ | Node.js 20+ | PostgreSQL | Redis
+**Requirements:** Python 3.13+ | Node.js 24+ | PostgreSQL | Redis
 
 ```bash
+# Initial setup
+cd backend && copy .env.example .env
+# IMPORTANT: Edit .env and change PORT=8000 to PORT=8001
+cd ../frontend && copy .env.example .env.local
+# Verify .env.local has VITE_API_BASE_URL=http://localhost:8001
+
 # Start dev backend (from backend/)
 venv\Scripts\activate && python run.py    # Windows
 
@@ -165,7 +147,15 @@ npm test
 alembic revision --autogenerate -m "description" && alembic upgrade head
 ```
 
-**Full command reference:** [Developer Quick Reference](docs/DEVELOPER-QUICK-REFERENCE.md#quick-commands) | [backend/CLAUDE.md](backend/CLAUDE.md#development-commands) | [frontend/CLAUDE.md](frontend/CLAUDE.md#development-commands)
+**Full command reference:** [Developer Quick Reference](docs/DEVELOPER-QUICK-REFERENCE.md) | [backend/CLAUDE.md](backend/CLAUDE.md#development-commands) | [frontend/CLAUDE.md](frontend/CLAUDE.md#development-commands)
+
+---
+
+## Claude Code Automation System
+
+Extensive `.claude/` automation: hooks (pre/post tool), skills (workflows), agents (specialists), learning engine (knowledge.db), sessions.
+
+**Complete documentation:** [Automation Workflows Guide](docs/guides/AUTOMATION_WORKFLOWS.md)
 
 ---
 
@@ -195,61 +185,35 @@ Claude Code maintains persistent memory at `.claude/projects/{project-hash}/memo
 
 ---
 
+## Documentation Rules (SSOT Principle)
+
+**Each fact lives in ONE authoritative file. Other files link, never copy.**
+
+| Topic | Authoritative Source |
+|-------|---------------------|
+| Port config, dev environment | This file (`CLAUDE.md` - Development Environment) |
+| Broker architecture, comparison tables | `docs/architecture/broker-abstraction.md` |
+| E2E test rules | `docs/testing/e2e-test-rules.md` |
+| Troubleshooting | `docs/guides/troubleshooting.md` |
+| Folder structure, architectural rules | `.claude/rules.md` |
+| Automation (hooks, skills, agents) | `docs/guides/AUTOMATION_WORKFLOWS.md` |
+| Backend patterns, pitfalls, commands | `backend/CLAUDE.md` |
+| Frontend patterns, pitfalls, commands | `frontend/CLAUDE.md` |
+| Production safety | This file (`CLAUDE.md` - Production vs Development) |
+
+**Rules:**
+- When adding new information, put it in the authoritative source. Add a link (not a copy) elsewhere.
+- Never hardcode volatile counts (test files, hook counts, skill counts). These change constantly.
+- ADRs are frozen decisions. They record WHY, not current HOW. Mark tables as "snapshot at decision time" if they contain status info.
+- Run `Skill(skill="docs-maintainer")` after code changes to keep docs in sync.
+
+---
+
 ## Common Workflows
 
-### Adding a New API Endpoint
-
-1. Create route: `backend/app/api/routes/{feature}.py`
-2. Update `backend/app/main.py`: `app.include_router({feature}.router)`
-3. Add E2E test: `tests/e2e/specs/{screen}/{feature}.spec.js`
-4. Run: `Skill(skill="auto-verify")`
-5. Update feature registry: `docs/feature-registry.yaml`
-
-### Fixing a Bug
-
-1. Check current state: `git status && git log --oneline -5`
-2. Fix the code (use Read, Edit, Write tools)
-3. Run: `Skill(skill="auto-verify")`
-4. If tests fail: `Skill(skill="test-fixer")`
-5. Commit only when user approves
-
-### Adding a New Broker
-
-1. Create adapter: `backend/app/services/brokers/{broker}_adapter.py`
-2. Implement `BrokerAdapter` and/or `MarketDataBrokerAdapter` interfaces
-3. Register in factory: `get_broker_adapter()` / `get_market_data_adapter()`
-4. Add credentials model + migration (if needed)
-5. See [Broker Abstraction docs](docs/architecture/broker-abstraction.md)
-
-### Database Schema Change
-
-1. Create/modify model: `backend/app/models/{model}.py`
-2. Import in `backend/app/models/__init__.py`
-3. Import in `backend/alembic/env.py` (CRITICAL - autogenerate won't work without this)
-4. Generate: `alembic revision --autogenerate -m "description"`
-5. Review migration, then: `alembic upgrade head`
-
-### Debugging Production Issues
-
-1. ❌ **DO NOT** restart services or modify `C:\Apps\algochanakya`
-2. ✅ **DO** read-only observe: `pm2 logs algochanakya-backend`
-3. ✅ **DO** check user-reported symptoms
-4. ✅ **DO** test fix in dev (`D:\Abhay\VibeCoding\algochanakya`)
-5. ✅ **DO** notify user before any production changes
-
-### Saving/Resuming Work Sessions
-
-**When to save:**
-- Ending a work session (use `/save-session` or `Skill(skill="save-session")`)
-- Switching tasks mid-implementation
-- Before context limits are reached (automatic compression happens, but sessions preserve more)
-
-**When to resume:**
-- Starting a new conversation to continue previous work
-- Use `/start-session` or `Skill(skill="start-session")`
-- Sessions include: active tasks, modified files, pending work
-
-**Saved sessions location:** `.claude/sessions/{date}-{description}.md`
+**Backend tasks:** [backend/CLAUDE.md](backend/CLAUDE.md) — API endpoints, database models, broker adapters, migrations
+**Frontend tasks:** [frontend/CLAUDE.md](frontend/CLAUDE.md) — Vue components, E2E tests, Pinia stores
+**Session management:** Use `save-session` / `start-session` skills. Sessions saved to `.claude/sessions/`
 
 ## Development Environment
 
@@ -263,7 +227,10 @@ Claude Code maintains persistent memory at `.claude/projects/{project-hash}/memo
 
 **⚠️ Production (DO NOT TOUCH):** Backend=8000, Frontend=3004, Location=`C:\Apps\algochanakya`
 
-**CRITICAL:** Frontend `.env.local` overrides `.env` and must point to dev backend (`http://localhost:8001`), not production (8000)
+**CRITICAL Port Configuration:**
+- Frontend `.env.local` overrides `.env` and must point to dev backend (`http://localhost:8001`)
+- After copying `.env.example`, manually change `PORT=8000` to `PORT=8001` in `backend/.env`
+- This is the **#1 most common mistake** - wrong port configuration causes API calls to fail
 
 **Database Servers:** PostgreSQL and Redis hosted on VPS (103.118.16.189). Shared between dev and production - use different database names to isolate environments.
 
@@ -271,118 +238,19 @@ Claude Code maintains persistent memory at `.claude/projects/{project-hash}/memo
 
 ## Core Purpose: Multi-Broker Architecture
 
-**Primary Goal:** Broker-agnostic platform where adding a new broker requires **zero core code changes** - only adapter implementation and factory registration.
+**Primary Goal:** Broker-agnostic platform where adding a new broker requires **zero core code changes** — only adapter implementation and factory registration.
 
-### Why Multi-Broker Support?
+**Key design:** Dual-path market data (platform-default for all users, optional user upgrade) + per-user order execution. Platform failover chain: SmartAPI → Dhan → Fyers → Paytm → Upstox → Kite.
 
-- **Cost savings:** Zerodha charges Rs.500/month for data; others are FREE
-- **Flexibility:** Mix FREE data providers with funded broker for orders
-- **No lock-in:** Switch brokers instantly without reinstalling
-
-**Example:** SmartAPI (FREE data) + Zerodha Personal API (FREE orders) = Rs.0/month
-
-### Two Independent Abstractions
-
-**1. Market Data Brokers** - Live prices, historical OHLC, WebSocket ticks
-- Interface: `MarketDataBrokerAdapter`
-- Factory: `get_market_data_adapter(broker_type, credentials)`
-
-**2. Order Execution Brokers** - Place orders, manage positions, margins
-- Interface: `BrokerAdapter`
-- Factory: `get_broker_adapter(broker_type, credentials)`
-
-**WebSocket Tickers:** Currently using legacy singleton services (`SmartAPITickerService`, `KiteTickerService`).
-Migration to new 5-component architecture (ADR-003 v2) planned - see [Ticker Design Spec](docs/decisions/TICKER-DESIGN-SPEC.md).
-
-### Supported Brokers (Updated: 2026-02-14)
-
-| Broker | Market Data | Orders | Status | Version |
-|--------|-------------|--------|--------|---------|
-| **Angel One** (SmartAPI) | ✅ FREE | ✅ FREE | ✔️ Production | v1.0 (Jan 2026) |
-| **Zerodha** (Kite) | Rs.500/mo | ✅ FREE | ✔️ Production | v1.0 (Dec 2025) |
-| **Upstox** | FREE | FREE | 📋 Planned | Q2 2026 |
-| **Fyers** | FREE | FREE | 📋 Planned | Q2 2026 |
-| **Dhan** | FREE | FREE | 📋 Planned | Q3 2026 |
-| **Paytm Money** | FREE | FREE | 📋 Planned | Q3 2026 |
-
-**Legend:** ✔️ Production Ready | 🚧 In Progress | 📋 Planned | ❌ Deprecated
-
-**Details:** [backend/CLAUDE.md](backend/CLAUDE.md#broker-abstraction-code-examples) | [Broker Abstraction Architecture](docs/architecture/broker-abstraction.md) | [ADR-002](docs/decisions/002-broker-abstraction.md)
+**Complete architecture:** [Broker Abstraction Architecture](docs/architecture/broker-abstraction.md) | [Working Doc](docs/architecture/Working-Doc-AlgoChanakya-Multi-Broker-Architecture-Platform-Level.md) | [ADR-002](docs/decisions/002-broker-abstraction.md)
 
 ---
 
 ## Project Overview
 
-AlgoChanakya is an options trading platform (similar to Sensibull) for Indian markets with multi-broker support.
+Multi-broker options trading platform for Indian markets. **Tech Stack:** FastAPI + Vue 3 + PostgreSQL + Redis + Playwright + pytest. AutoPilot automated trading (26 services). AI-powered regime detection.
 
-**Current Setup:** SmartAPI (FREE market data) + Zerodha Kite (FREE order execution) = Rs.0/month
-
-**Tech Stack:**
-- **Backend:** FastAPI + async SQLAlchemy + PostgreSQL + Redis
-- **Frontend:** Vue 3 + Vite + Pinia + Tailwind CSS 4
-- **Testing:** Playwright (122 E2E specs) + Vitest + pytest (63 backend tests)
-- **AI/ML:** pandas (required dependency) + XGBoost + LightGBM
-  - **Why pandas is required:** Used by AutoPilot for time-series analysis, regime detection, and risk scoring
-  - **Note:** Even if not using AI features, pandas must be installed for backend to start
-  - See [AI services documentation](docs/autopilot/README.md) for details
-
-**Key Features:**
-- Multi-broker abstraction (swap brokers without code changes)
-- Auto-TOTP authentication for SmartAPI
-- Real-time WebSocket data feeds (legacy singletons, migrating to 5-component architecture)
-- AI-powered regime detection and risk analysis
-- **AutoPilot automated trading**
-  - 26 service files, 16 database tables
-  - Features: Condition engine, order executor, strategy monitor, kill switch, adjustment engine
-  - See [docs/autopilot/](docs/autopilot/) and [backend/CLAUDE.md](backend/CLAUDE.md#autopilot-services-26-files)
-
-**Production:** https://algochanakya.com (Windows Server 2022) - Not production-ready yet
-
-**Architecture details:** [backend/CLAUDE.md](backend/CLAUDE.md#architecture-overview) | [docs/README.md](docs/README.md)
-
----
-
-## Common Tasks
-
-### Add a New Broker
-
-1. Create adapter: `backend/app/services/brokers/{broker}_adapter.py`
-2. Implement `BrokerAdapter` and/or `MarketDataBrokerAdapter` interfaces
-3. Register in factory: `get_broker_adapter()` / `get_market_data_adapter()`
-4. Add credentials model to database (if needed)
-5. See [Broker Abstraction docs](docs/architecture/broker-abstraction.md) for detailed guide
-
-### Add a New API Endpoint
-
-1. Create router: `backend/app/api/routes/{feature}.py`
-2. Add to `main.py`: `app.include_router({feature}.router)`
-3. Use `Depends(get_current_user)` for authentication
-4. Add E2E test: `tests/e2e/specs/{screen}/{feature}.spec.js`
-5. Update feature registry: `docs/feature-registry.yaml`
-
-### Fix a Failing E2E Test
-
-1. Run locally: `npm test -- {test-file}` (from root)
-2. Check `data-testid` attributes match code
-3. Ensure using `authenticatedPage` fixture (from `auth.fixture.js`)
-4. For AngelOne login, use `timeout: 35000` (auto-TOTP takes 20-25s)
-5. Or invoke: `Skill(skill="test-fixer")`
-
-### Add a Database Model
-
-1. Create model: `backend/app/models/{model_name}.py`
-2. Import in `backend/app/models/__init__.py`
-3. Import in `backend/alembic/env.py` (CRITICAL - autogenerate won't work without this)
-4. Generate migration: `alembic revision --autogenerate -m "Add {model_name}"`
-5. Review migration, then apply: `alembic upgrade head`
-
-### Debug WebSocket Issues
-
-1. Check backend logs for connection errors
-2. Verify `.env.local` has correct WebSocket URL (`ws://localhost:8001/ws/ticks`)
-3. Ensure Redis is running (`redis-server`)
-4. Check browser console for WebSocket errors
-5. Verify `onUnmounted()` cleanup in Vue components
+**Details:** [backend/CLAUDE.md](backend/CLAUDE.md) | [docs/README.md](docs/README.md)
 
 ---
 
@@ -401,11 +269,7 @@ This is the **single source of truth** for architectural constraints. When in do
 
 ### Folder Structure Rules (ENFORCED by hooks)
 
-**Backend:** Services MUST be in subdirectories under `app/services/` (autopilot/, options/, legacy/, ai/, brokers/). Only `__init__.py`, `instruments.py`, `ofo_calculator.py`, `option_chain_service.py` allowed at root. See [backend/CLAUDE.md](backend/CLAUDE.md#folder-structure-rules-enforced-by-hooks) for full details.
-
-**Frontend:** CSS in `src/assets/styles/`, images in `src/assets/logos/`, API code in `src/services/`. See [frontend/CLAUDE.md](frontend/CLAUDE.md#folder-structure-rules-enforced-by-hooks).
-
-**Tests:** E2E in `tests/e2e/specs/{screen}/` subdirectories. Backend tests in `tests/backend/{module}/`.
+All rules enforced by PreToolUse hooks. See [.claude/rules.md](.claude/rules.md) for complete rules.
 
 ### Broker Abstraction (CRITICAL)
 
@@ -415,25 +279,15 @@ This is the **single source of truth** for architectural constraints. When in do
 
 ### Trading Constants (CRITICAL)
 
-**NEVER hardcode lot sizes, strike steps, or index tokens.** Always use centralized constants:
-- **Backend:** `from app.constants.trading import get_lot_size, get_strike_step`
-- **Frontend:** `import { getLotSize, getStrikeStep } from '@/constants/trading'`
-
-**Full examples:** [backend/CLAUDE.md](backend/CLAUDE.md#trading-constants-backend) | [frontend/CLAUDE.md](frontend/CLAUDE.md#trading-constants-frontend)
+**NEVER hardcode lot sizes, strike steps, or index tokens.** See [backend/CLAUDE.md](backend/CLAUDE.md#trading-constants-backend) | [frontend/CLAUDE.md](frontend/CLAUDE.md#trading-constants-frontend).
 
 ### Database Patterns
 
-- **Adding models:** Create in `models/`, import in `__init__.py` + `alembic/env.py`, run migration
-- **Adding routes:** Create router in `api/routes/`, include in `main.py`, use `Depends(get_current_user)`
-- **Encryption:** Use `app/utils/encryption.py` for sensitive stored credentials
-
-**Full details:** [backend/CLAUDE.md](backend/CLAUDE.md#database-patterns)
+See [backend/CLAUDE.md](backend/CLAUDE.md#database-patterns) for models, routes, encryption, migrations.
 
 ### Environment Variables
 
-**Setup:** Copy `.env.example` files to `.env` and update with actual values.
-
-**CRITICAL:** Frontend `.env.local` overrides `.env`. Must point to `http://localhost:8001` for dev backend. Common mistake: pointing to wrong port (8005, 8000).
+**Setup:** Copy `.env.example` files to `.env` and update with actual values. Port configuration: see [Most Common Mistakes](#-most-common-mistakes-fix-these-first) and [Development Environment](#development-environment).
 
 **Full variable lists:** [backend/CLAUDE.md](backend/CLAUDE.md#environment-variables) | [frontend/CLAUDE.md](frontend/CLAUDE.md#environment-variables)
 
@@ -452,99 +306,38 @@ This is the **single source of truth** for architectural constraints. When in do
 1. **[Developer Quick Reference](docs/DEVELOPER-QUICK-REFERENCE.md)** - All docs organized by task
 2. **[Broker Abstraction Architecture](docs/architecture/broker-abstraction.md)** - Primary architecture (multi-broker)
 3. **[Implementation Checklist](docs/IMPLEMENTATION-CHECKLIST.md)** - Current implementation tasks
-4. **[Automation Workflows Guide](docs/guides/AUTOMATION_WORKFLOWS.md)** - Complete automation system documentation (14 hooks, 6 commands, 5 agents, 21 skills)
-
-**Automation System (NEW - Feb 2026):**
-- **[Automation Workflows Guide](docs/guides/AUTOMATION_WORKFLOWS.md)** - Unified guide to all automation (2,291 lines)
-- **[Automation Gap Report](docs/guides/AUTOMATION-GAP-REPORT.md)** - Comparison with best practices, identified gaps
-- **[Automation Feature Proposals](docs/guides/AUTOMATION-FEATURE-PROPOSALS.md)** - 7 proposed improvements (P0-P2 prioritized)
+4. **[Automation Workflows Guide](docs/guides/AUTOMATION_WORKFLOWS.md)** - Complete automation system documentation
 
 **Architecture Decision Records:**
 - **[ADR-002: Broker Abstraction](docs/decisions/002-broker-abstraction.md)** - Why and how we abstract brokers
-- **[ADR-003: Ticker Architecture](docs/decisions/003-multi-broker-ticker-architecture.md)** - Multi-broker WebSocket design
-  - [Implementation Guide](docs/architecture/multi-broker-ticker-implementation.md)
-  - [API Reference](docs/api/multi-broker-ticker-api.md)
+- **[TICKER-DESIGN-SPEC.md](docs/decisions/TICKER-DESIGN-SPEC.md)** - Multi-broker ticker architecture (5-component design)
+  - [Implementation Guide](docs/guides/TICKER-IMPLEMENTATION-GUIDE.md) | [API Reference](docs/api/multi-broker-ticker-api.md) | [Documentation Index](docs/decisions/ticker-documentation-index.md)
+- ~~[ADR-003 v2: Ticker Architecture](docs/decisions/003-multi-broker-ticker-architecture.md)~~ - Superseded (historical reference)
 
-**Organized by topic:**
-- **Architecture:** `docs/architecture/` - System design (auth, WebSocket, database, brokers)
-- **Features:** `docs/features/{feature}/` - Per-feature docs (README, REQUIREMENTS, CHANGELOG)
-- **Testing:** `docs/testing/` - Test guides and patterns
-- **API Reference:** `docs/api/` - Endpoint documentation
-- **Guides:** `docs/guides/` - Comprehensive guides (automation workflows, etc.)
+## Testing
 
-**Maintenance:**
-- After code changes, run `Skill(skill="docs-maintainer")` to auto-update docs
-- Feature registry: `docs/feature-registry.yaml` maps code files to features
+**E2E rules:** `data-testid` only, import from `auth.fixture.js`, use `authenticatedPage`. Full guide: [E2E Test Rules](docs/testing/e2e-test-rules.md)
+**Test docs:** [docs/testing/README.md](docs/testing/README.md)
+
+---
 
 ## Claude Code Skills
 
-**Proactive (automatically suggested by Claude Code):**
-- `auto-verify` - **Primary verification tool** after ANY code change ⚡
-  - Runs tests, captures screenshots, analyzes results, iterates
-  - Use after: bug fixes, features, refactors (unless docs-only)
-- `docs-maintainer` - Runs after code changes to keep docs in sync 📚
-- `learning-engine` - Records fix patterns to `knowledge.db` (SQLite) 🧠
-  - Automatically captures error fingerprints and ranked fix strategies
-  - Integrates with `fix-loop` and `auto-verify`
-  - See `.claude/skills/learning-engine/references/` for DB schema
-- `health-check` - Runs on session start + manual invocation (7-step scan) 🏥
+**Proactive:** `auto-verify` (after code changes), `docs-maintainer`, `learning-engine`, `health-check`
+**Testing:** `test-fixer`, `browser-testing`, `e2e-test-generator`, `vitest-generator`
+**Code Gen:** `vue-component-generator`, `trading-constants-manager`
+**Debugging:** `debug-log`, `phase-gate`
+**Workflow:** `implement`, `fix-loop`, `run-tests`, `reflect`, `post-fix-pipeline`, `fix-issue`
+**Broker Experts:** `smartapi-expert`, `kite-expert`, `upstox-expert`, `dhan-expert`, `fyers-expert`, `paytm-expert`
+**Other:** `autopilot-assistant`, `save-session`, `start-session`, `keybindings-help`
 
-**Testing & Verification (manual invocation):**
-- `test-fixer` - Diagnose and fix failing tests
-- `browser-testing` - **Manual browser debugging** for UI issues 🌐
-  - Use when: Testing specific UI screens, debugging browser console errors
-  - Not for automated verification (use `auto-verify` instead)
-  - Controlled Chrome extension for visual inspection
-- `e2e-test-generator` - Generate Playwright tests
-- `vitest-generator` - Generate Vitest unit tests
-
-**Code Generation:**
-- `vue-component-generator` - Create Vue 3 components/Pinia stores
-- `trading-constants-manager` - Enforce centralized trading constants
-
-**Workflow Orchestration:**
-- `implement` - 7-step implementation workflow (TDD enforced)
-- `fix-loop` - Iterative fix cycle with:
-  - **6-level gradual thinking escalation** (Normal → Basic → Moderate → Deep → VeryDeep → UltraThink)
-  - **AI-powered iteration memory** - Records hypotheses, outcomes, and patterns across fix attempts
-  - **Code review gates** - All fixes pass through code-reviewer agent
-  - **knowledge.db integration** - Learns from fix patterns
-  - Use when tests fail during implement Step 5, or standalone for any bug fix
-- `run-tests` - Multi-layer test runner with auto-fix
-- `reflect` - Learning + self-modification (4 modes)
-  - **session**: Capture outcomes, update knowledge.db
-  - **deep**: Analyze gaps, modify skills/hooks
-  - **meta**: Convergence analysis
-  - **test-run**: Dry-run deep mode
-- `post-fix-pipeline` - Verification + commit with hard blocks
-- `fix-issue` - GitHub issue workflow (fetch, implement, commit)
-
-**Broker API Experts:**
-- `smartapi-expert` - SmartAPI (Angel One) API guidance
-- `kite-expert` - Kite Connect (Zerodha) API guidance
-- `upstox-expert` - Upstox API guidance
-- `dhan-expert` - Dhan API guidance
-- `fyers-expert` - Fyers API guidance
-- `paytm-expert` - Paytm Money API guidance
-
-> 6 consultative skills for API guidance, code auditing, and cross-broker comparison. Shared comparison matrix at `.claude/skills/broker-shared/comparison-matrix.md`.
-
-**Other:**
-- `autopilot-assistant` - AutoPilot strategy config guidance
-- `save-session` / `start-session` - Save/resume context
-- `keybindings-help` - Customize keyboard shortcuts, rebind keys, add chord bindings
+**Complete skill documentation:** [Automation Workflows Guide](docs/guides/AUTOMATION_WORKFLOWS.md)
 
 ---
 
 ## Customization
 
 **Keyboard shortcuts:** Use `Skill(skill="keybindings-help")` or `/keybindings-help` to customize shortcuts, rebind keys, or add chord bindings (edits `~/.claude/keybindings.json`).
-
-**Examples:**
-- Rebind Ctrl+S to a different command
-- Add chord shortcuts (e.g., Ctrl+K, Ctrl+C for comments)
-- Change the submit key binding
-- View all available keybindings
 
 ---
 
@@ -556,133 +349,24 @@ Dashboard `/dashboard`, Watchlist `/watchlist`, Positions `/positions`, Option C
 
 ---
 
-## Testing
-
-~185 test files (122 E2E spec files + 63 backend pytest files). See [docs/testing/README.md](docs/testing/README.md) for complete documentation.
-
-### E2E Test Rules (CRITICAL)
-
-- **Use `data-testid` ONLY** - no CSS classes, tags, or text selectors
-- **Import from `auth.fixture.js`** (NOT `@playwright/test`)
-- **Use `authenticatedPage` fixture** for authenticated tests
-- **data-testid convention:** `[screen]-[component]-[element]` (e.g., `positions-exit-modal`)
-
-**Full test config, categories, and commands:** [frontend/CLAUDE.md](frontend/CLAUDE.md#e2e-test-rules-critical)
-
----
-
 ## Common Pitfalls
 
-### Git & File System
-- **File path encoding issues** - Escaped characters in `git status` indicate UTF-8 encoding issues. Use `git status --porcelain`.
-
-### Backend
-- **Direct broker API usage** - NEVER import `KiteConnect` or `SmartAPI` directly; use adapters
-- **Hardcoded broker assumptions** - Code should work with any broker via abstraction
-- **Bypassing market data abstraction** - Use `get_market_data_adapter()`, not legacy services
-- **Symbol format confusion** - Use canonical format (Kite) internally; `SymbolConverter` for broker-specific
-- **Broker name mismatch** - BrokerConnection stores 'zerodha'/'angelone' but BrokerType uses 'kite'/'angel'
-- **Forgot model import in `alembic/env.py`** - Autogenerate won't detect it
-- **Sync database operations** - All SQLAlchemy must use `async/await`
-- **Hardcoded trading constants** - Use `app.constants.trading` instead
-
-### Frontend
-- **Missing `data-testid`** - Required for E2E tests; use `[screen]-[component]-[element]`
-- **WebSocket not cleaned up** - Close subscriptions in `onUnmounted()`
-- **Wrong backend port in `.env.local`** - Must point to `http://localhost:8001` for dev
-- **AngelOne login timeout** - Use `timeout: 35000` (auto-TOTP takes 20-25s)
-
-**Detailed pitfalls with code examples:** [backend/CLAUDE.md](backend/CLAUDE.md#backend-specific-pitfalls) | [frontend/CLAUDE.md](frontend/CLAUDE.md#frontend-specific-pitfalls)
+**Backend:** [backend/CLAUDE.md - Pitfalls](backend/CLAUDE.md#backend-specific-pitfalls) — broker API usage, symbol format, alembic imports, async ops, trading constants
+**Frontend:** [frontend/CLAUDE.md - Pitfalls](frontend/CLAUDE.md#frontend-specific-pitfalls) — data-testid, WebSocket cleanup, port config, AngelOne timeout
+**Git:** Use `git status --porcelain` if you see escaped characters (UTF-8 encoding issues)
 
 ---
 
-## Troubleshooting Common Errors
+## Troubleshooting
 
 ### Quick Diagnosis
-
-1. **Services not responding?** → Check if backend/PostgreSQL/Redis are running
+1. **Services not responding?** → Check backend/PostgreSQL/Redis are running
 2. **Auth errors (401/403)?** → Re-login or check broker credentials
-3. **Tests failing?** → Run `Skill(skill="test-fixer")` or check `data-testid`, timeouts
-4. **Code issues?** → Run `Skill(skill="health-check")` for 7-step automated scan
-5. **Wrong data/endpoints?** → Verify `.env` and `.env.local` point to dev (port 8001)
-6. **Database errors?** → Run `alembic upgrade head` or check model imports in `alembic/env.py`
+3. **Tests failing?** → Run `Skill(skill="test-fixer")`
+4. **Wrong data/endpoints?** → Verify `.env` and `.env.local` point to dev (port 8001)
+5. **Database errors?** → Run `alembic upgrade head` or check model imports in `alembic/env.py`
 
-### Debugging Fix Loops
-
-If `fix-loop` is stuck or not converging:
-1. **Check iteration memory:** `.claude/skills/fix-loop/iteration-memory.json`
-   - Review hypothesis history and outcomes
-   - Look for repeated failed attempts with same approach
-2. **Review knowledge.db** for similar past failures:
-   ```bash
-   sqlite3 .claude/learning/knowledge.db "SELECT * FROM fix_strategies ORDER BY success_count DESC LIMIT 10"
-   ```
-3. **Consider manual escalation** to higher thinking level (VeryDeep or UltraThink)
-4. **Check auto-memory** for project-specific patterns: `.claude/memory/debugging.md`
-
-**Protected file note:** `knowledge.db` is hook-managed - never edit manually. Use `learning-engine` skill to query/update.
-
-### Connection Errors
-
-| Error | Quick Fix |
-|-------|-----------|
-| `Connection refused [Errno 61/111]` | Start backend: `cd backend && python run.py` |
-| `ECONNREFUSED 127.0.0.1:5432` | Start PostgreSQL service |
-| `ECONNREFUSED 127.0.0.1:6379` | Start Redis: `redis-server` |
-| `WebSocket connection failed` | Check `.env.local` WebSocket URL + backend running |
-| `Database connection pool exhausted` | Check for unclosed connections, increase pool size |
-
-### Authentication Errors
-
-| Error | Quick Fix |
-|-------|-----------|
-| `401 Unauthorized` | Re-login via `/login` in frontend |
-| `403 Forbidden` on broker API | Re-authenticate (SmartAPI auto-refreshes, Kite needs OAuth) |
-| `Incorrect api_key or access_token` | SmartAPI auto-refreshes; Kite needs re-login via OAuth |
-
-### Python/Backend Errors
-
-| Error | Quick Fix |
-|-------|-----------|
-| `ModuleNotFoundError: No module named 'app'` | Activate venv: `venv\Scripts\activate` in `backend/` |
-| `relation "table_name" does not exist` | Run: `alembic upgrade head` in `backend/` |
-| `alembic.util.exc.CommandError` | Check `alembic.ini` and `DATABASE_URL` in `.env` |
-| Backend starts on port 8000 (not 8001) | Check `backend/.env` has `PORT=8001` |
-
-### Frontend/Node Errors
-
-| Error | Quick Fix |
-|-------|-----------|
-| `npm ERR! ENOENT: no such file or directory` | Run `npm install` in `frontend/` |
-| `Cannot find module '@/...'` | Check Vite config, restart dev server |
-| Frontend API calls fail with 404 | Check `frontend/.env.local` has `VITE_API_BASE_URL=http://localhost:8001` |
-
-### Test Errors
-
-| Error | Quick Fix |
-|-------|-----------|
-| `Target page, context or browser has been closed` | Increase timeout or fix test. Check `playwright.config.js` |
-| `playwright: command not found` | Run `npm install` in project root |
-| AngelOne login timeout | Use `timeout: 35000` (auto-TOTP takes 20-25s) |
-
-### Other Errors
-
-| Error | Quick Fix |
-|-------|-----------|
-| File path encoding (e.g., `\357\200\272`) | Use `git status --porcelain` or fix file system encoding |
-| `Rate limit exceeded` | Adapters handle this - don't bypass them |
-| `no pg_hba.conf entry for host` | Whitelist IP in PostgreSQL `pg_hba.conf` |
-
-**General Debugging Steps:**
-1. Check if all services are running (backend, PostgreSQL, Redis)
-2. Verify environment variables (`.env`, `.env.local`) have correct values
-3. Run `git status && git log --oneline -5` to check current state
-4. Check browser console and network tab for frontend issues
-5. Check backend logs for detailed error messages
-6. Use `/health-check` skill for automated codebase health scan
-7. For broker-specific API errors, consult the relevant broker expert skill
-
-**Debug commands and production debugging:** [backend/CLAUDE.md](backend/CLAUDE.md#debug-commands) | [backend/CLAUDE.md](backend/CLAUDE.md#production-debugging)
+**Complete troubleshooting guide:** [Troubleshooting Guide](docs/guides/troubleshooting.md)
 
 ---
 
@@ -694,6 +378,7 @@ GitHub Actions runs automatically on push/PR to `main` and `develop`:
 |----------|------|-------------|
 | **Backend Tests** | `.github/workflows/backend-tests.yml` | pytest with PostgreSQL/Redis services |
 | **E2E Tests** | `.github/workflows/e2e-tests.yml` | Playwright with full stack (30min timeout) |
+| **Hook Parity** | `.github/workflows/hook-parity.yml` | Validates hook/skill consistency |
 | **Deploy** | `.github/workflows/deploy.yml` | Production deployment pipeline |
 
 Allure reports deploy to GitHub Pages on main branch merges.

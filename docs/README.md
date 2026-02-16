@@ -12,8 +12,8 @@ Welcome to the AlgoChanakya documentation. This index provides quick access to a
 4. **[Broker Abstraction](architecture/broker-abstraction.md)** - Multi-broker architecture (primary design)
 
 **Common Tasks:**
-- [Adding API Routes](../CLAUDE.md#adding-new-api-routes) | [Adding Database Models](../CLAUDE.md#adding-new-database-models) | [Using Broker Adapters](../CLAUDE.md#broker-abstraction-critical)
-- [E2E Test Rules](../CLAUDE.md#e2e-test-rules-critical) | [Trading Constants](../CLAUDE.md#trading-constants-critical)
+- [Adding API Routes](../backend/CLAUDE.md#adding-new-api-routes) | [Database Patterns](../backend/CLAUDE.md#database-patterns) | [Broker Adapters](../backend/CLAUDE.md#broker-abstraction-code-examples)
+- [E2E Test Rules](testing/e2e-test-rules.md) | [Trading Constants](../CLAUDE.md#trading-constants-critical)
 
 ## Production Deployment
 
@@ -104,7 +104,7 @@ docs/
 │   └── openapi.yaml    # OpenAPI specification
 │
 ├── testing/            # Testing documentation
-│   └── README.md       # Testing architecture (160 tests)
+│   └── README.md       # Testing architecture
 │
 ├── decisions/          # Architecture Decision Records (ADRs)
 │   ├── template.md     # ADR template
@@ -126,9 +126,13 @@ docs/
 ## Architecture
 
 - **[Overview](architecture/overview.md)** - Tech stack (Vue 3 + FastAPI + PostgreSQL), project structure
-- **[Broker Abstraction](architecture/broker-abstraction.md)** ⭐ - Multi-broker system (market data + order execution)
+- **[Broker Abstraction](architecture/broker-abstraction.md)** ⭐ - Multi-broker system (market data + order execution) - Updated Feb 16, 2026
+- **[Multi-Broker Ticker Architecture](decisions/TICKER-DESIGN-SPEC.md)** ⭐ - WebSocket 5-component design (Feb 14, 2026)
+  - [Implementation Guide](guides/TICKER-IMPLEMENTATION-GUIDE.md) - 3,868 lines with complete code
+  - [API Reference](api/multi-broker-ticker-api.md) - v2.1.0
+  - [Documentation Index](decisions/ticker-documentation-index.md) - Navigation guide
 - **[Authentication](architecture/authentication.md)** - Zerodha OAuth flow, JWT sessions, protected routes
-- **[WebSocket](architecture/websocket.md)** - Live price streaming via Kite/SmartAPI WebSocket
+- **[WebSocket](architecture/websocket.md)** - Live price streaming (legacy, superseded by ticker architecture)
 - **[Database](architecture/database.md)** - SQLAlchemy models, Alembic migrations
 
 ## Guides
@@ -163,15 +167,17 @@ Each feature has its own folder with README.md, REQUIREMENTS.md, and CHANGELOG.m
 
 ## Testing
 
-- **[Testing Guide](testing/README.md)** - ~184 test files (121 E2E + 63 backend pytest)
-- **[Conventions](testing/conventions.md)** - data-testid naming conventions
+- **[Testing Guide](testing/README.md)** - Comprehensive test suite (E2E + backend pytest). See [E2E Test Rules](testing/e2e-test-rules.md) for guidelines.
+- **[E2E Test Rules](testing/e2e-test-rules.md)** - data-testid naming conventions and guidelines
 
 ## Decisions
 
 Architecture Decision Records document why key decisions were made:
 
 - **[ADR-001: Tech Stack](decisions/001-tech-stack.md)** - Vue 3, FastAPI, PostgreSQL
-- **[ADR-002: Multi-Broker Abstraction](decisions/002-broker-abstraction.md)** - Dual broker system architecture
+- **[ADR-002: Multi-Broker Abstraction](decisions/002-broker-abstraction.md)** - Dual broker system architecture (updated Feb 16, 2026)
+- **[TICKER-DESIGN-SPEC.md](decisions/TICKER-DESIGN-SPEC.md)** - Current ticker architecture (5-component design, Feb 14, 2026)
+- ~~[ADR-003 v2: Ticker Architecture](decisions/003-multi-broker-ticker-architecture.md)~~ - Superseded (historical reference)
 - **[ADR Template](decisions/template.md)** - Template for new ADRs
 
 ## Contributing
@@ -180,4 +186,4 @@ See the main [README](../README.md) for contribution guidelines.
 
 ---
 
-*Last updated: January 2026*
+*Last updated: February 16, 2026*

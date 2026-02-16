@@ -8,7 +8,7 @@ metadata:
 
 # Fyers API Expert
 
-Fyers offers a **FREE** API with a unique **dual WebSocket system** (FyersDataSocket for market data + FyersOrderSocket for order updates), OAuth authentication with a distinctive `appid:accesstoken` header format, and built-in **virtual trading** (paper trading mode). It's a planned broker for AlgoChanakya. Key differentiator: two separate WebSocket connections and exchange-prefixed symbol format (`NSE:SYMBOL`).
+Fyers offers a **FREE** API with a unique **dual WebSocket system** (FyersDataSocket for market data + FyersOrderSocket for order updates), OAuth authentication with a distinctive `appid:accesstoken` header format. **API v3.0.0** (released Feb 3, 2026) supports up to **5,000 symbols** per WebSocket connection (massive upgrade from 200) and includes a dedicated Position Socket for real-time P&L updates. It's a planned broker for AlgoChanakya. Key differentiator: two separate WebSocket connections and exchange-prefixed symbol format (`NSE:SYMBOL`).
 
 ## When to Use
 
@@ -32,7 +32,7 @@ Fyers offers a **FREE** API with a unique **dual WebSocket system** (FyersDataSo
 | Property | Value |
 |----------|-------|
 | **Official Docs** | https://myapi.fyers.in/docs/ |
-| **API Version** | v3 |
+| **API Version** | v3.0.0 (released Feb 3, 2026) |
 | **Python SDK** | `fyers-apiv3` (`pip install fyers-apiv3`) |
 | **Pricing** | **FREE** (market data + orders) |
 | **REST Base URL** | `https://api-t1.fyers.in/api/v3` |
@@ -184,7 +184,7 @@ order_ws.connect()
 
 | Limit | Value |
 |-------|-------|
-| Max symbols (Data WS) | **200** per connection |
+| Max symbols (Data WS) | **5,000** per connection (upgraded in v3.0.0, Feb 2026) |
 | Max connections | **1** per token |
 | Data types | SymbolUpdate, DepthUpdate |
 | Message format | JSON (not binary) |
@@ -242,11 +242,13 @@ fyers = fyersModel.FyersModel(
 
 ## Common Gotchas
 
-1. **Auth header format** - `{app_id}:{access_token}` (colon-separated, no Bearer). Most common auth error.
+1. **v3.0.0 breaking changes** - API v3 released Feb 3, 2026 with breaking changes. Ensure using `fyers-apiv3` (not v2). WebSocket symbol capacity increased to 5,000.
 
-2. **Exchange prefix required** - All symbols need `NSE:` or `BSE:` prefix. Forgetting it = 400 error.
+2. **Auth header format** - `{app_id}:{access_token}` (colon-separated, no Bearer). Most common auth error.
 
-3. **Dual WebSocket** - Must manage TWO WebSocket connections for full functionality. Data and order sockets are independent.
+3. **Exchange prefix required** - All symbols need `NSE:` or `BSE:` prefix. Forgetting it = 400 error.
+
+4. **Dual WebSocket** - Must manage TWO WebSocket connections for full functionality. Data and order sockets are independent.
 
 4. **Index symbol suffix** - Indices need `-INDEX` suffix: `NSE:NIFTY50-INDEX`, not `NSE:NIFTY50`.
 

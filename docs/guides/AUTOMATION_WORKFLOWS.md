@@ -4,7 +4,7 @@
 **Last Updated:** February 14, 2026
 **Version:** 2.0
 
-This is the unified automation guide for AlgoChanakya. It documents the entire automation system: 14 hooks, 6 commands, 5 agents, 21 skills, and the knowledge.db learning system.
+This is the unified automation guide for AlgoChanakya. It documents the entire automation system: hooks, commands, agents, skills, and the knowledge.db learning system.
 
 ---
 

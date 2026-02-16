@@ -1,31 +1,61 @@
 # ADR-003: Multi-Broker Ticker Architecture (v2)
 
-**Status:** ⚠️ **REDESIGN PROPOSED** - See [TICKER-DESIGN-SPEC.md](TICKER-DESIGN-SPEC.md)
+**Status:** ⚠️ **SUPERSEDED BY TICKER-DESIGN-SPEC.md** - This document describes the original proposal. For implementation, use the refined design.
 
 **Date:** 2026-02-13
 
-**Latest Update:** February 14, 2026 - Redesign documentation phase
+**Latest Update:** February 16, 2026 - Supersession notice added
 
 **Decision Makers:** Development Team
 
 **Supersedes:** Original ADR-003 (Multiton TickerServiceManager pattern — rejected due to conflated concerns, no failover, passive health monitoring)
 
+**Superseded By:** [TICKER-DESIGN-SPEC.md](TICKER-DESIGN-SPEC.md) - Refined 5-component design (Feb 14, 2026)
+
 ---
 
-## 🔄 Redesign Proposal (Feb 14, 2026)
+## ⚠️ IMPORTANT: Read This First
 
-A refined v2 design has been proposed with the following improvements:
+**This document is kept for historical reference only.**
 
-**Key changes:**
-- **Components:** 6 → 5 (SystemCredentialManager merged into TickerPool)
-- **websocket.py:** 495 → ~90 lines (82% reduction)
-- **Data model:** NormalizedTick uses `Decimal` for prices (not `float`)
-- **Kite positioning:** Failover-only (uses first user's OAuth token)
-- **Credential management:** Integrated into TickerPool (simpler wiring)
+### For Implementation: Use TICKER-DESIGN-SPEC.md Instead
 
-**See:** [TICKER-DESIGN-SPEC.md](TICKER-DESIGN-SPEC.md) for complete redesign specification.
+**Why this ADR was superseded:**
+1. **Never implemented** — this was a proposal written before deep broker research
+2. **6 components vs 5** — SystemCredentialManager should be integrated into TickerPool
+3. **Data types wrong** — NormalizedTick should use `Decimal` for prices, not `float`
+4. **Health formula outdated** — New formula uses different weights (latency 30%, tick_rate 30%, errors 20%, staleness 20%)
 
-**Current document below describes the original v2 proposal (to be updated).**
+### Quick Comparison: Original v2 vs Refined Design
+
+| Aspect | This Document (Original v2) | TICKER-DESIGN-SPEC (Refined) |
+|--------|----------------------------|------------------------------|
+| **Components** | 6 (TickerAdapter, Pool, Router, Health, Failover, **CredentialManager**) | **5** (CredentialManager merged into Pool) |
+| **NormalizedTick prices** | `float` | **`Decimal`** (eliminates floating-point errors) |
+| **Health formula** | Connection 30%, Latency 20%, Errors 20%, Freshness 30% | **Latency 30%, Tick_Rate 30%, Errors 20%, Staleness 20%** |
+| **Credential management** | Separate SystemCredentialManager component | **Integrated into TickerPool** (`load_system_credentials()` method) |
+| **websocket.py target** | ~90 lines | ~90 lines (same goal) |
+| **Implementation phases** | 5 phases (unspecified timeline) | **5 phases (T1-T5, ~28 hours total)** |
+| **Wiring complexity** | 6 components to wire together | **5 components** (simpler dependencies) |
+| **Document status** | Original proposal (Feb 13, 2026) | **Current design** (Feb 14, 2026) |
+
+### How to Use This Document
+
+1. **Read TICKER-DESIGN-SPEC.md first** — it's the current design
+2. **Use this document for context** — understand why the original approach was taken
+3. **Compare the two** — see what changed and why
+4. **Implement from TICKER-DESIGN-SPEC** — not this document
+
+### Navigation
+
+- **📋 Current Design:** [TICKER-DESIGN-SPEC.md](TICKER-DESIGN-SPEC.md)
+- **📖 Implementation Guide:** [Multi-Broker Ticker Implementation Guide](../architecture/multi-broker-ticker-implementation.md) (⚠️ needs update for 5-component design)
+- **📚 API Reference:** [Multi-Broker Ticker API Reference](../api/multi-broker-ticker-api.md) (⚠️ needs update for Decimal types)
+- **🏗️ Parent Architecture:** [ADR-002: Broker Abstraction](./002-broker-abstraction.md)
+
+---
+
+## [ORIGINAL v2 PROPOSAL BELOW - FOR REFERENCE ONLY]
 
 ---
 
@@ -220,7 +250,9 @@ We will replace the legacy singletons and hardcoded route logic with a **5-compo
 
 ## 5. Component Interfaces (Summary)
 
-Full method signatures, parameters, and return types are in the [API Reference](../api/multi-broker-ticker-api.md).
+**⚠️ NOTE:** The interfaces below describe the original 6-component design. The refined design has 5 components (SystemCredentialManager merged into TickerPool). See TICKER-DESIGN-SPEC.md for current interfaces.
+
+Full method signatures, parameters, and return types are in the [API Reference](../api/multi-broker-ticker-api.md) (⚠️ needs update for 5-component design).
 
 ### TickerAdapter (Abstract Base)
 
@@ -495,7 +527,11 @@ Kite Connect requires per-user OAuth (no way to authenticate without user browse
 
 ## 8. Health Scoring & Failover Rules
 
-### Health Score Formula
+**⚠️ NOTE:** The health formula below is from the original v2 proposal. The refined design in TICKER-DESIGN-SPEC.md uses updated weights:
+- **Original (this doc):** Connection 30%, Latency 20%, Errors 20%, Freshness 30%
+- **Refined (current):** Latency 30%, Tick_Rate 30%, Errors 20%, Staleness 20%
+
+### Health Score Formula (Original v2)
 
 Each adapter has a health score (0-100) calculated every 5 seconds:
 
@@ -557,6 +593,9 @@ Step 6: Notify frontend: {"type": "failover", "from": "smartapi", "to": "kite"}
 
 ## 10. File Structure
 
+**⚠️ NOTE:** The file structure below includes `credential_manager.py` from the original 6-component design. In the refined design (TICKER-DESIGN-SPEC.md), this file is **not needed** — credential management is integrated into `pool.py`.
+
+**Original v2 File Structure (6 components):**
 ```
 backend/app/services/brokers/market_data/ticker/
 ├── __init__.py              # Package exports
@@ -566,7 +605,7 @@ backend/app/services/brokers/market_data/ticker/
 ├── router.py                # TickerRouter singleton
 ├── health.py                # HealthMonitor + AdapterHealth
 ├── failover.py              # FailoverController + FailoverConfig
-├── credential_manager.py    # SystemCredentialManager
+├── credential_manager.py    # SystemCredentialManager ← ⚠️ REMOVED IN REFINED DESIGN
 └── adapters/
     ├── __init__.py
     ├── smartapi.py           # SmartAPITickerAdapter
@@ -578,6 +617,29 @@ backend/app/services/brokers/market_data/ticker/
 
 backend/app/models/
 └── system_broker_credentials.py  # SystemBrokerCredential SQLAlchemy model
+```
+
+**Refined Design File Structure (5 components):**
+```
+backend/app/services/brokers/market_data/ticker/
+├── __init__.py              # Package exports
+├── models.py                # NormalizedTick dataclass (uses Decimal for prices)
+├── adapter_base.py          # TickerAdapter ABC
+├── pool.py                  # TickerPool singleton + credential management
+├── router.py                # TickerRouter singleton
+├── health.py                # HealthMonitor + AdapterHealth
+├── failover.py              # FailoverController + FailoverConfig
+└── adapters/
+    ├── __init__.py
+    ├── smartapi.py           # SmartAPITickerAdapter
+    ├── kite.py               # KiteTickerAdapter
+    ├── upstox.py             # UpstoxTickerAdapter (stub)
+    ├── dhan.py               # DhanTickerAdapter (stub)
+    ├── fyers.py              # FyersTickerAdapter (stub)
+    └── paytm.py              # PaytmTickerAdapter (stub)
+
+backend/app/models/
+└── system_broker_credentials.py  # SystemBrokerCredential SQLAlchemy model (unchanged)
 ```
 
 ---

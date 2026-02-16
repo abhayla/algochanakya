@@ -8,7 +8,7 @@ metadata:
 
 # Dhan API Expert
 
-Dhan offers a modern REST API with unique features: **200-level market depth** (unique in India), **Little Endian binary WebSocket**, and **security_id-based** instrument identification (numeric IDs only). Dhan provides 25 free F&O trades/month or unlimited at ₹499/month. It's a planned broker for AlgoChanakya. Key differentiator: deepest market depth data and multi-tier rate limiting system.
+Dhan offers a modern REST API with unique features: **200-level market depth** (unique in India), **Little Endian binary WebSocket**, and **security_id-based** instrument identification (numeric IDs only). Dhan has a **two-tier pricing model**: Trading APIs are FREE for all users, but Data APIs (market data WebSocket) require either executing 25 F&O trades/month OR paying ₹499/month subscription. It's a planned broker for AlgoChanakya. Key differentiator: deepest market depth data and multi-tier rate limiting system.
 
 ## When to Use
 
@@ -34,7 +34,7 @@ Dhan offers a modern REST API with unique features: **200-level market depth** (
 | **Official Docs** | https://dhanhq.co/docs/v2/ |
 | **API Version** | v2 |
 | **Python SDK** | `dhanhq` (`pip install dhanhq`) |
-| **Pricing** | FREE (25 F&O trades/mo) or ₹499/mo unlimited |
+| **Pricing** | Trading API: FREE \| Data API: FREE (with 25 F&O trades/mo) OR ₹499/mo |
 | **REST Base URL** | `https://api.dhan.co/v2` |
 | **WebSocket URL** | `wss://api-feed.dhan.co` |
 | **Auth Method** | API access token (from web dashboard) |
@@ -203,17 +203,19 @@ Dhan returns all prices in RUPEES. No paise conversion needed.
 
 ## Common Gotchas
 
-1. **Little Endian binary** - Use `struct.unpack('<...')` NOT `'>'`. This is unique among Indian brokers.
+1. **Two-tier pricing model** - Trading APIs are FREE, but Data APIs (market data) require 25 F&O trades/month OR ₹499/month subscription. Common confusion point.
 
-2. **Numeric IDs only** - No string trading symbols. Must maintain instrument mapping table.
+2. **Little Endian binary** - Use `struct.unpack('<...')` NOT `'>'`. This is unique among Indian brokers.
 
-3. **Auth header format** - `access-token: {token}` (hyphenated, lowercase). Not `Authorization: Bearer`.
+3. **Numeric IDs only** - No string trading symbols. Must maintain instrument mapping table.
 
-4. **200-Depth limit** - Only 1 instrument per connection. Need 5 connections for 5 instruments.
+4. **Auth header format** - `access-token: {token}` (hyphenated, lowercase). Not `Authorization: Bearer`.
 
-5. **Multi-tier order limits** - Check all 4 limits (sec/min/hour/day). Can hit daily limit even within rate limit.
+5. **200-Depth limit** - Only 1 instrument per connection. Need 5 connections for 5 instruments.
 
-6. **Free tier limit** - 25 F&O trades/month free. After that, orders fail unless subscribed.
+6. **Multi-tier order limits** - Check all 4 limits (sec/min/hour/day). Can hit daily limit even within rate limit.
+
+7. **Data API unlock requirement** - Must execute 25 F&O trades monthly to unlock free data access, otherwise ₹499/month subscription required.
 
 7. **Instrument CSV download** - Must download from Dhan website manually or via undocumented URL.
 

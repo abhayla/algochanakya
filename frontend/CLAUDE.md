@@ -62,43 +62,20 @@ ws.send(JSON.stringify({action: 'subscribe', tokens: [256265], mode: 'quote'}))
 
 ## Folder Structure Rules (ENFORCED by hooks)
 
-- **CSS files:** MUST be in `src/assets/styles/` (NOT `assets/css/`)
-- **Image files:** MUST be in `src/assets/logos/` (NOT `assets/` root)
-- **API code:** MUST be in `src/services/` (NOT `composables/` unless it's a Vue composable)
-
-**Test Organization:**
-- **E2E tests:** MUST be in `tests/e2e/specs/{screen}/` subdirectories (NOT `tests/e2e/specs/` root)
-- **Manual scripts:** MUST be in `tests/e2e/scripts/` (NOT `tests/e2e/` root)
-
-**Enforcement:**
-- Git pre-commit hook (`.git/hooks/pre-commit`) blocks commits violating rules
-- See `.claude/recommended-hooks.json` for Claude Code PostToolUse hook configuration
-- CI/CD pipelines validate folder structure before deployment
+See [.claude/rules.md](../.claude/rules.md) for all enforced folder structure rules (CSS, images, API code, test organization).
 
 ---
 
 ## E2E Test Rules (CRITICAL)
 
+**Complete E2E guidelines:** [E2E Test Rules](../docs/testing/e2e-test-rules.md) | [Testing README](../docs/testing/README.md)
+
+**Key rules (quick reference):**
 - **Use `data-testid` ONLY** - no CSS classes, tags, or text selectors
 - **Import from `auth.fixture.js`** (NOT `@playwright/test`)
 - **Use `authenticatedPage` fixture** for authenticated tests
-- **Extend `BasePage.js`** for Page Objects with `this.url` property
 - **data-testid convention:** `[screen]-[component]-[element]` (e.g., `positions-exit-modal`)
-- **Headless mode:** `playwright.config.js` sets `headless: false` by default for better debugging. Use `--headed` flag is not needed in npm scripts.
-
-### Test Config
-
-~185 test files (122 E2E spec files + 63 backend pytest files). See [docs/testing/README.md](../docs/testing/README.md) for complete documentation.
-
-**Config:** 30s default timeout (playwright.config.js), 2 parallel workers for stability, auth state reused via `./tests/config/.auth-state.json`. Auth token stored in `./tests/config/.auth-token`. Projects: `setup` (SmartAPI auto-login), `chromium` (main), `isolated` (fresh context). **SmartAPI auto-TOTP** - no manual TOTP entry required. **Note:** Some legacy tests use longer timeouts (180s-600s) specified in npm scripts.
-
-### Test Categories
-
-- `*.happy.spec.js` - Normal flows
-- `*.edge.spec.js` - Error/boundary cases
-- `*.visual.spec.js` - Screenshots
-- `*.api.spec.js` - API validation
-- `*.audit.spec.js` - a11y/CSS audits
+- **Headless mode:** `playwright.config.js` sets `headless: false` by default for better debugging.
 
 ---
 

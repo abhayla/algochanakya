@@ -146,7 +146,7 @@ This checklist tracks remaining implementation tasks with links to relevant docu
   - File: `tests/e2e/specs/broker-abstraction/`
   - Test broker selection in settings
   - Test order placement through different brokers
-  - **Docs:** [Testing Guide](testing/README.md) | [CLAUDE.md - E2E Rules](../CLAUDE.md#e2e-test-rules-critical)
+  - **Docs:** [Testing Guide](testing/README.md) | [E2E Test Rules](testing/e2e-test-rules.md)
 
 - [ ] **Add unit tests for broker adapters**
   - File: `backend/tests/unit/test_broker_adapters.py`

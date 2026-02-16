@@ -282,5 +282,5 @@ Sessions expire based on `JWT_EXPIRY_HOURS` setting.
 - [Database Setup](../guides/database-setup.md) - Configuration guide
 
 **See also:**
-- [CLAUDE.md - Adding Models](../../CLAUDE.md#adding-new-database-models) for step-by-step guide
+- [backend/CLAUDE.md - Database Patterns](../../backend/CLAUDE.md#database-patterns) for step-by-step guide
 - [CLAUDE.md - Common Pitfalls](../../CLAUDE.md#common-pitfalls) for alembic/env.py import reminder

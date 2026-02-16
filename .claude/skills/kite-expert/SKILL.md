@@ -8,7 +8,7 @@ metadata:
 
 # Kite Connect (Zerodha) API Expert
 
-Zerodha's Kite Connect is used for **order execution** in AlgoChanakya. It provides a well-documented REST API and binary WebSocket (KiteTicker) for market data. Kite Connect requires a ₹500/month subscription for third-party app access, but Zerodha's personal Kite API is free. AlgoChanakya uses Kite for orders and SmartAPI for market data (₹0/month total). **Kite symbol format IS the canonical format** used throughout AlgoChanakya - no symbol conversion needed.
+Zerodha's Kite Connect is used for **order execution** in AlgoChanakya. It provides a well-documented REST API and binary WebSocket (KiteTicker) for market data. Kite Connect costs ₹500/month for third-party apps (includes live market data + historical data since Feb 2025). Zerodha's Personal API is free (since March 2025) but provides order execution only—no market data access. AlgoChanakya uses Kite for orders and SmartAPI for market data (₹0/month total). **Kite symbol format IS the canonical format** used throughout AlgoChanakya - no symbol conversion needed.
 
 ## When to Use
 
@@ -34,7 +34,7 @@ Zerodha's Kite Connect is used for **order execution** in AlgoChanakya. It provi
 | **Official Docs** | https://kite.trade/docs/connect/v3/ |
 | **API Version** | v3 |
 | **Python SDK** | `kiteconnect` (`pip install kiteconnect`) |
-| **Pricing** | ₹500/month (Connect subscription), FREE (personal Kite API) |
+| **Pricing** | ₹500/month (Connect: market data + historical data included), FREE (Personal API: orders only, no market data) |
 | **REST Base URL** | `https://api.kite.trade` |
 | **WebSocket URL** | `wss://ws.kite.trade` |
 | **Auth Method** | OAuth 2.0 redirect flow (request_token + api_secret) |
@@ -243,7 +243,11 @@ quote = await data_adapter.get_quote(["NIFTY2522725000CE"])
 
 1. **No auto-refresh** - Access token expires ~6 AM. No refresh mechanism. User must OAuth again. This is why SmartAPI is default for market data.
 
-2. **Symbol format IS canonical** - Don't convert Kite symbols. They ARE the canonical format. `SymbolConverter.to_canonical(symbol, "kite")` is identity.
+2. **Personal API has no market data** - Free Personal API (since March 2025) provides order execution only. For live quotes/historical data, need ₹500/month Connect subscription.
+
+3. **Historical data now included** - Since Feb 2025, historical data (up to 10 years intraday) is bundled with ₹500/month subscription, no separate charge.
+
+4. **Symbol format IS canonical** - Don't convert Kite symbols. They ARE the canonical format. `SymbolConverter.to_canonical(symbol, "kite")` is identity.
 
 3. **Auth header format** - `token api_key:access_token` (not `Bearer`). Common mistake: using Bearer prefix.
 

@@ -54,16 +54,17 @@ pytest tests/test_file.py::test_function -v  # Single test function
 - `app/services/brokers/market_data/symbol_converter.py` - Canonical <-> broker symbols
 - `app/services/brokers/market_data/exceptions.py` - Market data errors
 
-**Ticker System (Phase 4 — ADR-003 v2, to be implemented):**
+**Ticker System (Phase 4 — 5-Component Design, to be implemented):**
 - `app/services/brokers/market_data/ticker/adapter_base.py` - `TickerAdapter` ABC
-- `app/services/brokers/market_data/ticker/pool.py` - `TickerPool` (adapter lifecycle, ref-counted subscriptions)
+- `app/services/brokers/market_data/ticker/pool.py` - `TickerPool` (adapter lifecycle, ref-counted subscriptions, **integrated credentials**)
 - `app/services/brokers/market_data/ticker/router.py` - `TickerRouter` (user fan-out, dispatch)
 - `app/services/brokers/market_data/ticker/health.py` - `HealthMonitor` (5s heartbeat, scoring)
 - `app/services/brokers/market_data/ticker/failover.py` - `FailoverController` (make-before-break)
-- `app/services/brokers/market_data/ticker/credential_manager.py` - `SystemCredentialManager`
 - `app/services/brokers/market_data/ticker/adapters/smartapi.py` - SmartAPI ticker adapter
 - `app/services/brokers/market_data/ticker/adapters/kite.py` - Kite ticker adapter
 - `app/services/brokers/market_data/ticker/adapters/` - Upstox, Dhan, Fyers, Paytm stubs
+- **Note:** Uses `Decimal` (not `float`) for NormalizedTick prices to eliminate precision errors
+- **Docs:** [TICKER-DESIGN-SPEC.md](../docs/decisions/TICKER-DESIGN-SPEC.md) | [Implementation Guide](../docs/guides/TICKER-IMPLEMENTATION-GUIDE.md) (3,868 lines) | [API Reference](../docs/api/multi-broker-ticker-api.md)
 
 **Legacy Market Data Services (to be replaced by ticker adapters):**
 - `app/services/legacy/smartapi_ticker.py` - SmartAPI WebSocket V2 (default, deprecated by Phase 4)
@@ -150,13 +151,13 @@ See `app/services/brokers/base.py` and `app/services/brokers/market_data/market_
 - `KiteMarketDataAdapter` implemented for Kite market data
 - Routes updated: `optionchain.py`, `ofo.py`, `orders.py`, `strategy_wizard.py`, `websocket.py`
 
-**Phase 4: Ticker/WebSocket Refactoring (ADR-003 v2) — PLANNED:**
+**Phase 4: Ticker/WebSocket Refactoring — PLANNED (Documentation Complete Feb 16, 2026):**
 - New 5-component architecture replacing legacy singletons
-- Core: `ticker/adapter_base.py`, `ticker/pool.py`, `ticker/router.py`, `ticker/health.py`, `ticker/failover.py`
+- Core: `ticker/adapter_base.py`, `ticker/pool.py` (integrated credentials), `ticker/router.py`, `ticker/health.py`, `ticker/failover.py`
 - Adapters: `ticker/adapters/smartapi.py`, `ticker/adapters/kite.py` + 4 stubs (Upstox, Dhan, Fyers, Paytm)
-- System credentials: `ticker/credential_manager.py` + `models/system_broker_credentials.py`
-- Refactor `websocket.py` from 495 lines → ~90 lines (broker-agnostic)
-- See [Implementation Guide](../docs/architecture/multi-broker-ticker-implementation.md) | [API Reference](../docs/api/multi-broker-ticker-api.md)
+- NormalizedTick uses `Decimal` (not `float`) for price precision
+- Refactor `websocket.py` from 494 lines → 90 lines (82% reduction, broker-agnostic)
+- **Docs:** [TICKER-DESIGN-SPEC.md](../docs/decisions/TICKER-DESIGN-SPEC.md) | [Implementation Guide](../docs/guides/TICKER-IMPLEMENTATION-GUIDE.md) (3,868 lines) | [API Reference](../docs/api/multi-broker-ticker-api.md) | [Documentation Index](../docs/decisions/ticker-documentation-index.md)
 
 **Phase 5-6 To Be Implemented:**
 - Phase 5: Additional broker adapters (Upstox, Dhan, Fyers, Paytm) for market data + ticker
@@ -175,10 +176,13 @@ Once abstraction is complete, adding a broker will require:
 **Skill guidance:** Use the relevant broker expert skill (`/smartapi-expert`, `/kite-expert`, `/upstox-expert`, `/dhan-expert`, `/fyers-expert`, `/paytm-expert`) for API-specific guidance. See [Comparison Matrix](../.claude/skills/broker-shared/comparison-matrix.md) for cross-broker differences.
 
 **Documentation:**
-- [Broker Abstraction Architecture](../docs/architecture/broker-abstraction.md) - Complete technical design
-- [ADR-002: Multi-Broker Abstraction](../docs/decisions/002-broker-abstraction.md) - Decision rationale and alternatives
-- [ADR-003: Multi-Broker Ticker Architecture](../docs/decisions/003-multi-broker-ticker-architecture.md) - Ticker refactoring design
-  - [Implementation Guide](../docs/architecture/multi-broker-ticker-implementation.md) | [API Reference](../docs/api/multi-broker-ticker-api.md)
+- [Broker Abstraction Architecture](../docs/architecture/broker-abstraction.md) - Complete technical design (updated Feb 16, 2026)
+- [ADR-002: Multi-Broker Abstraction](../docs/decisions/002-broker-abstraction.md) - Decision rationale and alternatives (updated Feb 16, 2026)
+- [TICKER-DESIGN-SPEC.md](../docs/decisions/TICKER-DESIGN-SPEC.md) - **Current** ticker architecture (5-component design, Feb 14, 2026)
+  - [Implementation Guide](../docs/guides/TICKER-IMPLEMENTATION-GUIDE.md) - 3,868 lines with complete code (Feb 16, 2026)
+  - [API Reference](../docs/api/multi-broker-ticker-api.md) - v2.1.0
+  - [Documentation Index](../docs/decisions/ticker-documentation-index.md) - Navigation guide
+- ~~[ADR-003 v2](../docs/decisions/003-multi-broker-ticker-architecture.md)~~ - Superseded (historical reference)
 
 ---
 
@@ -263,22 +267,7 @@ All authenticated endpoints use `get_current_user` / `get_current_broker_connect
 
 ## Folder Structure Rules (ENFORCED by hooks)
 
-**Backend Services Organization** (`app/services/`):
-- **Allowed at root:** ONLY `__init__.py`, `instruments.py`, `ofo_calculator.py`, `option_chain_service.py`
-- **All other services MUST be in subdirectories:**
-  - `autopilot/` - AutoPilot services (26 files): kill_switch, condition_engine, order_executor, strategy_monitor, adjustment_engine, etc.
-  - `options/` - Options calculation services (8 files): greeks_calculator, pnl_calculator, payoff_calculator, iv_metrics_service, theta_curve_service, gamma_risk_service, expected_move_service, oi_analysis_service
-  - `legacy/` - Legacy broker services (8 files, to be deprecated): smartapi_auth, smartapi_ticker, smartapi_market_data, smartapi_historical, smartapi_instruments, kite_orders, kite_ticker, market_data
-  - `ai/` - AI services: market_regime, risk_state_engine, strategy_recommender, deployment_executor, etc.
-  - `brokers/` - Broker adapters: base, factory, kite_adapter, market_data/
-
-**Test Organization:**
-- **Backend tests:** MUST be in `tests/backend/{module}/` (NOT `backend/` root)
-
-**Enforcement:**
-- Git pre-commit hook (`.git/hooks/pre-commit`) blocks commits violating rules
-- See `.claude/recommended-hooks.json` for Claude Code PostToolUse hook configuration
-- CI/CD pipelines validate folder structure before deployment
+See [.claude/rules.md](../.claude/rules.md) for all enforced folder structure rules (backend services, test organization, enforcement details).
 
 ---
 
@@ -337,28 +326,16 @@ The learning engine at `.claude/learning/knowledge.db` records every error and f
 
 ## Production Debugging
 
-**IMPORTANT:** Production runs on the SAME machine as development. **NEVER interfere with production processes or files.**
+**CRITICAL:** See [root CLAUDE.md](../CLAUDE.md#0-production-vs-development---never-touch-production) for production safety rules.
 
-| Environment | Path | Port |
-|-------------|------|------|
-| **Development** | `D:\Abhay\VibeCoding\algochanakya` | Backend: 8001, Frontend: 5173 |
-| **Production** | `C:\Apps\algochanakya` (DO NOT TOUCH) | Backend: 8000, Frontend: 3004 |
-
-**Server:** Windows Server 2022 (544934-ABHAYVPS) | https://algochanakya.com
-
-**PM2 Logs (read-only observation only):**
-```bash
-pm2 logs algochanakya-backend    # Backend logs
-pm2 logs algochanakya-frontend   # Frontend logs (static serve)
-# NEVER run pm2 restart - ask user to do it manually
-```
+**PM2 Logs (read-only):** `pm2 logs algochanakya-backend` (NEVER run `pm2 restart`)
 
 **Common Production Issues:**
 - **API calls fail:** Check `frontend/.env.production` has `VITE_API_BASE_URL=https://algochanakya.com`
 - **OAuth fails:** Verify Kite redirect URL = `https://algochanakya.com/api/auth/zerodha/callback`
 - **"Incorrect api_key or access_token":** SmartAPI token expired (8h) or Kite access token expired (24h). SmartAPI auto-refreshes via stored credentials; Kite requires re-login via OAuth.
 - **WebSocket won't connect:** Check `VITE_WS_URL` in `.env.production`, ensure wss:// for HTTPS
-- **Backend won't start - Database connection refused:** PostgreSQL server blocking your IP. Error: `no pg_hba.conf entry for host`. Solution: Whitelist your current IP in PostgreSQL `pg_hba.conf` on the database server.
+- **Backend won't start - Database connection refused:** PostgreSQL server blocking your IP. Whitelist IP in `pg_hba.conf`.
 - **AngelOne login shows "Failed to login":** Either backend not running on correct port (check 8001 not 8005/8000), or request timeout (login takes 20-25s, needs 35s timeout)
 
 **Full deployment docs:** `C:\Apps\shared\docs\ALGOCHANAKYA-SETUP.md` on VPS
