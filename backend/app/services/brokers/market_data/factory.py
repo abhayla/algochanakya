@@ -20,6 +20,7 @@ from app.services.brokers.market_data.market_data_base import (
     SmartAPIMarketDataCredentials,
     KiteMarketDataCredentials,
     DhanMarketDataCredentials,
+    FyersMarketDataCredentials,
 )
 from app.services.brokers.market_data.exceptions import AuthenticationError
 from app.models.smartapi_credentials import SmartAPICredentials
@@ -63,7 +64,7 @@ async def get_market_data_adapter(
     elif broker_type == MarketDataBrokerType.DHAN:
         return await _create_dhan_adapter(user_id, db)
     elif broker_type == MarketDataBrokerType.FYERS:
-        raise NotImplementedError("Fyers market data adapter not yet implemented (Phase 5)")
+        return await _create_fyers_adapter(user_id, db)
     elif broker_type == MarketDataBrokerType.PAYTM:
         raise NotImplementedError("Paytm market data adapter not yet implemented (Phase 6)")
     else:
@@ -179,6 +180,65 @@ async def _create_kite_adapter(user_id: UUID, db: AsyncSession) -> MarketDataBro
     except Exception as e:
         logger.error(f"[Factory] Failed to create Kite adapter: {e}")
         raise AuthenticationError("kite", f"Failed to initialize: {str(e)}")
+
+
+async def _create_fyers_adapter(user_id: UUID, db: AsyncSession) -> MarketDataBrokerAdapter:
+    """
+    Create Fyers adapter with credentials from database.
+
+    Fyers uses OAuth access_token stored in BrokerConnection (broker="fyers").
+    Auth header format: {app_id}:{access_token} (colon-separated).
+
+    Args:
+        user_id: User UUID
+        db: Database session
+
+    Returns:
+        FyersMarketDataAdapter instance
+
+    Raises:
+        AuthenticationError: If credentials not found or token expired
+    """
+    try:
+        result = await db.execute(
+            select(BrokerConnection).where(
+                BrokerConnection.user_id == user_id,
+                BrokerConnection.broker == "fyers"
+            )
+        )
+        conn = result.scalar_one_or_none()
+
+        if not conn:
+            raise AuthenticationError(
+                "fyers",
+                "Fyers credentials not found. Please login via Fyers OAuth in Settings."
+            )
+
+        if not conn.access_token:
+            raise AuthenticationError(
+                "fyers",
+                "Fyers access token missing or expired. Please re-login via OAuth."
+            )
+
+        credentials = FyersMarketDataCredentials(
+            broker_type="fyers",
+            user_id=user_id,
+            app_id=conn.api_key or "",
+            access_token=conn.access_token,
+        )
+
+        from app.services.brokers.market_data.fyers_adapter import FyersMarketDataAdapter
+        adapter = FyersMarketDataAdapter(credentials, db)
+        await adapter.connect()
+
+        logger.info(f"[Factory] Created Fyers adapter for user {user_id}")
+        return adapter
+
+    except AuthenticationError:
+        raise
+    except Exception as e:
+        logger.error(f"[Factory] Failed to create Fyers adapter: {e}")
+        raise AuthenticationError("fyers", f"Failed to initialize: {str(e)}")
 
 
 async def _create_dhan_adapter(user_id: UUID, db: AsyncSession) -> MarketDataBrokerAdapter:
