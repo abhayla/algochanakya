@@ -91,7 +91,9 @@ test.describe('Broker Settings - Happy Path @happy', () => {
     await expect(brokerPage.saveBtn).toBeVisible();
   });
 
-  test('reset button is visible', async () => {
+  test('reset button is visible after making a change', async () => {
+    // Reset button only shows when there are unsaved changes
+    await brokerPage.selectMarketDataSource('smartapi');
     await expect(brokerPage.resetBtn).toBeVisible();
   });
 

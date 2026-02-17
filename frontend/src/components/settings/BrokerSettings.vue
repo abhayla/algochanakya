@@ -143,7 +143,7 @@ const handleReset = () => {
 
       <div class="action-buttons">
         <button
-          v-if="hasChanges"
+          v-show="hasChanges"
           class="btn btn-outline"
           @click="handleReset"
           data-testid="settings-broker-reset-btn"
