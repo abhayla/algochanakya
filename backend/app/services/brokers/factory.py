@@ -15,16 +15,22 @@ from typing import Optional
 
 from app.services.brokers.base import BrokerAdapter, BrokerType
 from app.services.brokers.kite_adapter import KiteAdapter
+from app.services.brokers.angelone_adapter import AngelOneAdapter
+from app.services.brokers.upstox_order_adapter import UpstoxOrderAdapter
+from app.services.brokers.dhan_order_adapter import DhanOrderAdapter
+from app.services.brokers.fyers_order_adapter import FyersOrderAdapter
+from app.services.brokers.paytm_order_adapter import PaytmOrderAdapter
 
 logger = logging.getLogger(__name__)
 
 # Registry of available broker adapters
 _BROKER_ADAPTERS = {
     BrokerType.KITE: KiteAdapter,
-    # Future brokers:
-    # BrokerType.UPSTOX: UpstoxAdapter,
-    # BrokerType.ANGEL: AngelAdapter,
-    # BrokerType.FYERS: FyersAdapter,
+    BrokerType.ANGEL: AngelOneAdapter,
+    BrokerType.UPSTOX: UpstoxOrderAdapter,
+    BrokerType.DHAN: DhanOrderAdapter,
+    BrokerType.FYERS: FyersOrderAdapter,
+    BrokerType.PAYTM: PaytmOrderAdapter,
 }
 
 
@@ -32,16 +38,22 @@ async def get_broker_adapter(
     broker_type: BrokerType,
     access_token: str,
     api_key: Optional[str] = None,
-    initialize: bool = True
+    initialize: bool = True,
+    **kwargs,
 ) -> BrokerAdapter:
     """
     Factory method to get the appropriate broker adapter.
 
     Args:
-        broker_type: Type of broker (KITE, UPSTOX, etc.)
-        access_token: OAuth access token from broker
-        api_key: API key (optional, uses settings if not provided)
+        broker_type: Type of broker (KITE, ANGEL, UPSTOX, DHAN, FYERS, PAYTM)
+        access_token: OAuth/access token from broker
+        api_key: API key (Kite and AngelOne; optional if set in config)
         initialize: Whether to initialize the adapter after creation
+        **kwargs: Broker-specific extra args:
+            - ANGEL:  client_id (str)
+            - DHAN:   client_id (str)
+            - FYERS:  client_id (str)
+            - PAYTM:  read_token (str), edge_token (str)
 
     Returns:
         Initialized broker adapter
@@ -59,10 +71,33 @@ async def get_broker_adapter(
 
     adapter_class = _BROKER_ADAPTERS[broker_type]
 
-    # Create adapter with appropriate args
+    # Create adapter with broker-specific constructor args
     if broker_type == BrokerType.KITE:
         adapter = adapter_class(access_token=access_token, api_key=api_key)
+    elif broker_type == BrokerType.ANGEL:
+        adapter = adapter_class(
+            access_token=access_token,
+            api_key=api_key,
+            client_id=kwargs.get("client_id"),
+        )
+    elif broker_type == BrokerType.DHAN:
+        adapter = adapter_class(
+            access_token=access_token,
+            client_id=kwargs.get("client_id"),
+        )
+    elif broker_type == BrokerType.FYERS:
+        adapter = adapter_class(
+            access_token=access_token,
+            client_id=kwargs.get("client_id") or api_key,
+        )
+    elif broker_type == BrokerType.PAYTM:
+        adapter = adapter_class(
+            access_token=access_token,
+            read_token=kwargs.get("read_token"),
+            edge_token=kwargs.get("edge_token"),
+        )
     else:
+        # UPSTOX and future brokers: access_token only
         adapter = adapter_class(access_token=access_token)
 
     # Initialize if requested

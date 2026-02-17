@@ -24,10 +24,12 @@ logger = logging.getLogger(__name__)
 
 class BrokerType(str, Enum):
     """Supported broker types."""
-    KITE = "kite"           # Zerodha Kite Connect
-    UPSTOX = "upstox"       # Upstox (future)
-    ANGEL = "angel"         # Angel One (future)
-    FYERS = "fyers"         # Fyers (future)
+    KITE = "kite"       # Zerodha Kite Connect
+    ANGEL = "angel"     # Angel One (SmartAPI)
+    UPSTOX = "upstox"   # Upstox
+    FYERS = "fyers"     # Fyers
+    DHAN = "dhan"       # Dhan
+    PAYTM = "paytm"     # Paytm Money
 
 
 class OrderSide(str, Enum):
