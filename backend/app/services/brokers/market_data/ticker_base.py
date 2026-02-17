@@ -141,7 +141,11 @@ class TickerService(ABC):
 
 def get_ticker_service(broker_type: str, credentials) -> TickerService:
     """
-    Factory to get ticker service based on broker type.
+    DEPRECATED: Use TickerPool + TickerRouter from app.services.brokers.market_data.ticker instead.
+
+    Legacy factory kept for backward compatibility only. New code should use::
+
+        from app.services.brokers.market_data.ticker import TickerPool, TickerRouter
 
     Args:
         broker_type: Broker identifier (smartapi, kite, upstox, dhan, fyers, paytm)
@@ -152,30 +156,25 @@ def get_ticker_service(broker_type: str, credentials) -> TickerService:
 
     Raises:
         ValueError: If broker type not supported
-
-    Example:
-        >>> from app.services.brokers.market_data.ticker_base import get_ticker_service
-        >>> ticker = get_ticker_service("smartapi", smartapi_creds)
-        >>> await ticker.connect()
-        >>> await ticker.subscribe([256265], mode="quote")
     """
+    import warnings
+    warnings.warn(
+        "get_ticker_service() is deprecated. Use TickerPool + TickerRouter from "
+        "app.services.brokers.market_data.ticker instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+
     if broker_type == "smartapi":
-        from app.services.legacy.smartapi_ticker import SmartAPITickerService
+        from app.services.deprecated.smartapi_ticker import SmartAPITickerService
         return SmartAPITickerService(credentials)
     elif broker_type == "kite":
-        from app.services.legacy.kite_ticker import KiteTickerService
+        from app.services.deprecated.kite_ticker import KiteTickerService
         return KiteTickerService(credentials)
-    elif broker_type == "upstox":
-        # Future implementation
-        raise NotImplementedError("Upstox ticker service not yet implemented")
-    elif broker_type == "dhan":
-        # Future implementation
-        raise NotImplementedError("Dhan ticker service not yet implemented")
-    elif broker_type == "fyers":
-        # Future implementation
-        raise NotImplementedError("Fyers ticker service not yet implemented")
-    elif broker_type == "paytm":
-        # Future implementation
-        raise NotImplementedError("Paytm ticker service not yet implemented")
+    elif broker_type in ("upstox", "dhan", "fyers", "paytm"):
+        raise NotImplementedError(
+            f"{broker_type} ticker not available via legacy factory. "
+            f"Use TickerPool from app.services.brokers.market_data.ticker instead."
+        )
     else:
         raise ValueError(f"Unsupported broker type: {broker_type}")

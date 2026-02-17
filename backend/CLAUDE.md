@@ -54,7 +54,7 @@ pytest tests/test_file.py::test_function -v  # Single test function
 - `app/services/brokers/market_data/symbol_converter.py` - Canonical <-> broker symbols
 - `app/services/brokers/market_data/exceptions.py` - Market data errors
 
-**Ticker System (Phase 4 — 5-Component Design, to be implemented):**
+**Ticker System (Phase 4 — 5-Component Design, COMPLETE Feb 2026):**
 - `app/services/brokers/market_data/ticker/adapter_base.py` - `TickerAdapter` ABC
 - `app/services/brokers/market_data/ticker/pool.py` - `TickerPool` (adapter lifecycle, ref-counted subscriptions, **integrated credentials**)
 - `app/services/brokers/market_data/ticker/router.py` - `TickerRouter` (user fan-out, dispatch)
@@ -62,13 +62,16 @@ pytest tests/test_file.py::test_function -v  # Single test function
 - `app/services/brokers/market_data/ticker/failover.py` - `FailoverController` (make-before-break)
 - `app/services/brokers/market_data/ticker/adapters/smartapi.py` - SmartAPI ticker adapter
 - `app/services/brokers/market_data/ticker/adapters/kite.py` - Kite ticker adapter
-- `app/services/brokers/market_data/ticker/adapters/` - Upstox, Dhan, Fyers, Paytm stubs
+- `app/services/brokers/market_data/ticker/adapters/dhan.py` - Dhan ticker adapter
+- `app/services/brokers/market_data/ticker/adapters/fyers.py` - Fyers ticker adapter
+- `app/services/brokers/market_data/ticker/adapters/paytm.py` - Paytm ticker adapter
+- `app/services/brokers/market_data/ticker/adapters/upstox.py` - Upstox ticker adapter
 - **Note:** Uses `Decimal` (not `float`) for NormalizedTick prices to eliminate precision errors
-- **Docs:** [TICKER-DESIGN-SPEC.md](../docs/decisions/TICKER-DESIGN-SPEC.md) | [Implementation Guide](../docs/guides/TICKER-IMPLEMENTATION-GUIDE.md) (3,868 lines) | [API Reference](../docs/api/multi-broker-ticker-api.md)
+- **Docs:** [TICKER-DESIGN-SPEC.md](../docs/decisions/TICKER-DESIGN-SPEC.md) | [Implementation Guide](../docs/guides/TICKER-IMPLEMENTATION-GUIDE.md) | [API Reference](../docs/api/multi-broker-ticker-api.md)
 
-**Legacy Market Data Services (to be replaced by ticker adapters):**
-- `app/services/legacy/smartapi_ticker.py` - SmartAPI WebSocket V2 (default, deprecated by Phase 4)
-- `app/services/legacy/kite_ticker.py` - Kite WebSocket (singleton, deprecated by Phase 4)
+**Legacy Market Data Services (deprecated — replaced by ticker adapters):**
+- `app/services/deprecated/smartapi_ticker.py` - SmartAPI WebSocket V2 (deprecated, superseded by Phase 4)
+- `app/services/deprecated/kite_ticker.py` - Kite WebSocket (deprecated, superseded by Phase 4)
 - `app/services/legacy/smartapi_historical.py` - Historical OHLCV data
 
 **AutoPilot Services (26 files):**
@@ -151,17 +154,18 @@ See `app/services/brokers/base.py` and `app/services/brokers/market_data/market_
 - `KiteMarketDataAdapter` implemented for Kite market data
 - Routes updated: `optionchain.py`, `ofo.py`, `orders.py`, `strategy_wizard.py`, `websocket.py`
 
-**Phase 4: Ticker/WebSocket Refactoring — PLANNED (Documentation Complete Feb 16, 2026):**
+**Phase 4: Ticker/WebSocket Refactoring — COMPLETE (Feb 2026):**
 - New 5-component architecture replacing legacy singletons
 - Core: `ticker/adapter_base.py`, `ticker/pool.py` (integrated credentials), `ticker/router.py`, `ticker/health.py`, `ticker/failover.py`
-- Adapters: `ticker/adapters/smartapi.py`, `ticker/adapters/kite.py` + 4 stubs (Upstox, Dhan, Fyers, Paytm)
+- Adapters: All 6 brokers implemented — `ticker/adapters/{smartapi,kite,dhan,fyers,paytm,upstox}.py`
 - NormalizedTick uses `Decimal` (not `float`) for price precision
-- Refactor `websocket.py` from 494 lines → 90 lines (82% reduction, broker-agnostic)
-- **Docs:** [TICKER-DESIGN-SPEC.md](../docs/decisions/TICKER-DESIGN-SPEC.md) | [Implementation Guide](../docs/guides/TICKER-IMPLEMENTATION-GUIDE.md) (3,868 lines) | [API Reference](../docs/api/multi-broker-ticker-api.md) | [Documentation Index](../docs/decisions/ticker-documentation-index.md)
+- `websocket.py` refactored from 494 lines → 292 lines (broker-agnostic)
+- 714 broker tests passing (413 ticker adapter + 122 core component + 179 REST adapter)
+- **Docs:** [TICKER-DESIGN-SPEC.md](../docs/decisions/TICKER-DESIGN-SPEC.md) | [API Reference](../docs/api/multi-broker-ticker-api.md) | [Documentation Index](../docs/decisions/ticker-documentation-index.md)
 
-**Phase 5-6 To Be Implemented:**
-- Phase 5: Additional broker adapters (Upstox, Dhan, Fyers, Paytm) for market data + ticker
-- Phase 6: `AngelAdapter` for order execution, order stubs for remaining brokers, frontend broker selection UI
+**Phase 5 To Be Implemented:**
+- `AngelAdapter` for order execution (order stubs for remaining brokers)
+- Frontend broker selection UI (persistent banner, source indicator badge, settings dropdowns)
 
 ### Adding a New Broker (Future State)
 

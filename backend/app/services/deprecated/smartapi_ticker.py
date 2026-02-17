@@ -1,8 +1,12 @@
 """
-SmartAPI Ticker WebSocket Service
+DEPRECATED — SmartAPI Ticker WebSocket Service
 
-Manages WebSocket V2 connection to AngelOne SmartAPI for live market data.
-Mirrors the interface of KiteTickerService for seamless switching.
+Replaced by: app.services.brokers.market_data.ticker.adapters.smartapi.SmartAPITickerAdapter
+See: docs/guides/TICKER-MIGRATION.md
+
+This file is kept for reference only. DO NOT import in new code.
+
+Original: Manages WebSocket V2 connection to AngelOne SmartAPI for live market data.
 """
 import asyncio
 import logging

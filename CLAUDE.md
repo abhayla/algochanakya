@@ -75,21 +75,7 @@ See **[docs/ROADMAP.md](docs/ROADMAP.md)** for active work, completed features, 
 
 **Note:** If backend at localhost:8000 is production, start dev backend on 8001 separately.
 
-#### Production Emergency Response
-
-**If production is down or has critical issues:**
-
-1. ❌ **DO NOT** restart services yourself (`pm2 restart`)
-2. ❌ **DO NOT** modify files in `C:\Apps\algochanakya`
-3. ❌ **DO NOT** run database migrations on production
-4. ❌ **DO NOT** kill processes or clear caches without approval
-5. ✅ **DO** notify user immediately with specific symptoms
-6. ✅ **DO** read-only observe logs: `pm2 logs algochanakya-backend --lines 50`
-7. ✅ **DO** test fixes in dev environment first
-8. ✅ **DO** document the issue and proposed solution
-9. ✅ **DO** wait for explicit user approval before any production action
-
-**Escalation:** For production emergencies, describe the issue and ask user to handle production changes directly.
+**Production emergencies:** Notify user with symptoms, observe logs read-only (`pm2 logs algochanakya-backend --lines 50`), test fixes in dev first, and wait for explicit user approval before any production action.
 
 ### 1. Auto-Verification After Code Changes
 
@@ -148,40 +134,6 @@ alembic revision --autogenerate -m "description" && alembic upgrade head
 ```
 
 **Full command reference:** [Developer Quick Reference](docs/DEVELOPER-QUICK-REFERENCE.md) | [backend/CLAUDE.md](backend/CLAUDE.md#development-commands) | [frontend/CLAUDE.md](frontend/CLAUDE.md#development-commands)
-
----
-
-## Claude Code Automation System
-
-Extensive `.claude/` automation: hooks (pre/post tool), skills (workflows), agents (specialists), learning engine (knowledge.db), sessions.
-
-**Complete documentation:** [Automation Workflows Guide](docs/guides/AUTOMATION_WORKFLOWS.md)
-
----
-
-## Auto-Memory System
-
-Claude Code maintains persistent memory at `.claude/projects/{project-hash}/memory/` that survives across conversations.
-
-**Key files:**
-- `MEMORY.md` - Always loaded in system prompt (keep concise, <200 lines)
-- Topic files (e.g., `debugging.md`, `patterns.md`) - Detailed notes linked from MEMORY.md
-
-**What to save:**
-- Recurring bug patterns and solutions
-- User preferences (e.g., "always use bun", "never auto-commit")
-- Architecture decisions confirmed across multiple sessions
-- Project-specific gotchas not in CLAUDE.md
-
-**What NOT to save:**
-- Session-specific context (current tasks, in-progress work)
-- Information that might be incomplete
-- Anything that duplicates CLAUDE.md
-- Speculative or unverified conclusions
-
-**Searching past context:**
-1. Search topic files: `Grep pattern="<term>" path=".claude/memory/" glob="*.md"`
-2. Session logs (last resort): `Grep pattern="<term>" path=".claude/" glob="*.jsonl"`
 
 ---
 
@@ -321,31 +273,20 @@ See [backend/CLAUDE.md](backend/CLAUDE.md#database-patterns) for models, routes,
 
 ---
 
-## Claude Code Skills
+## Proactive Skills
 
-**Proactive:** `auto-verify` (after code changes), `docs-maintainer`, `learning-engine`, `health-check`
-**Testing:** `test-fixer`, `browser-testing`, `e2e-test-generator`, `vitest-generator`
-**Code Gen:** `vue-component-generator`, `trading-constants-manager`
-**Debugging:** `debug-log`, `phase-gate`
-**Workflow:** `implement`, `fix-loop`, `run-tests`, `reflect`, `post-fix-pipeline`, `fix-issue`
-**Broker Experts:** `smartapi-expert`, `kite-expert`, `upstox-expert`, `dhan-expert`, `fyers-expert`, `paytm-expert`
-**Other:** `autopilot-assistant`, `save-session`, `start-session`, `keybindings-help`
+These skills should be invoked automatically at the right time:
+- **`auto-verify`** — after ANY code change
+- **`docs-maintainer`** — after code changes that affect docs
+- **`learning-engine`** — after fix completions and test outcomes
 
-**Complete skill documentation:** [Automation Workflows Guide](docs/guides/AUTOMATION_WORKFLOWS.md)
-
----
-
-## Customization
-
-**Keyboard shortcuts:** Use `Skill(skill="keybindings-help")` or `/keybindings-help` to customize shortcuts, rebind keys, or add chord bindings (edits `~/.claude/keybindings.json`).
+All other available skills (testing, code gen, broker experts, workflows) are listed in the system prompt and invoked on demand. Full docs: [Automation Workflows Guide](docs/guides/AUTOMATION_WORKFLOWS.md)
 
 ---
 
 ## Key URLs
 
 Dashboard `/dashboard`, Watchlist `/watchlist`, Positions `/positions`, Option Chain `/optionchain`, Strategy `/strategy`, Strategy Library `/strategies`, AutoPilot `/autopilot`, AI `/ai`, OFO `/ofo`, Settings `/settings`
-
-**Console Prefixes:** `[AutoPilot WS]`, `[OptionChain]`, `[Strategy]`, `[AI Regime]`, `[AI Risk]`
 
 ---
 

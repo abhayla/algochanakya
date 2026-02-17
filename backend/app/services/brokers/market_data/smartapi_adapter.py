@@ -244,20 +244,18 @@ class SmartAPIMarketDataAdapter(MarketDataBrokerAdapter):
         """
         Subscribe to live ticks via WebSocket.
 
-        Note: WebSocket is managed separately via SmartAPITickerService.
-        This method is a placeholder for future WebSocket integration.
+        Note: WebSocket is managed by the ticker system (TickerPool + TickerRouter).
+        Use SmartAPITickerAdapter from app.services.brokers.market_data.ticker.adapters.smartapi.
 
         Args:
             tokens: List of SmartAPI tokens
             mode: "ltp" or "quote"
         """
-        logger.warning("[SmartAPI] subscribe() called on adapter - WebSocket managed separately")
-        # TODO: Integrate with SmartAPITickerService
+        logger.warning("[SmartAPI] subscribe() called on REST adapter - use TickerPool instead")
 
     async def unsubscribe(self, tokens: List[int]) -> None:
-        """Unsubscribe from live ticks."""
-        logger.warning("[SmartAPI] unsubscribe() called on adapter - WebSocket managed separately")
-        # TODO: Integrate with SmartAPITickerService
+        """Unsubscribe from live ticks. Use TickerPool instead."""
+        logger.warning("[SmartAPI] unsubscribe() called on REST adapter - use TickerPool instead")
 
     def on_tick(self, callback: Callable[[List[UnifiedQuote]], None]) -> None:
         """Register callback for incoming ticks."""

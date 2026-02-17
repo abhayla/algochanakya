@@ -8,7 +8,7 @@ import traceback
 
 from app.config import settings
 from app.database import init_db, close_db, AsyncSessionLocal
-from app.api.routes import health, auth, watchlist, instruments, websocket, options, strategy, orders, optionchain, positions, strategy_wizard, constants, user_preferences, ofo, smartapi
+from app.api.routes import health, auth, watchlist, instruments, websocket, options, strategy, orders, optionchain, positions, strategy_wizard, constants, user_preferences, ofo, smartapi, ticker
 from app.api.v1.autopilot import router as autopilot_router
 from app.api.v1.ai import router as ai_router
 from app.websocket.routes import router as autopilot_ws_router
@@ -87,11 +87,76 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"[WARNING] WebSocket Health Monitor failed to start: {e}")
 
+    # Initialize Multi-Broker Ticker System (Phase 4 architecture)
+    try:
+        from app.services.brokers.market_data.ticker import (
+            TickerPool, TickerRouter, HealthMonitor as TickerHealthMonitor,
+            FailoverController, SmartAPITickerAdapter, KiteTickerAdapter,
+            DhanTickerAdapter, FyersTickerAdapter,
+            UpstoxTickerAdapter, PaytmTickerAdapter,
+        )
+
+        pool = TickerPool.get_instance()
+        router = TickerRouter.get_instance()
+
+        # Register available broker adapters (implemented)
+        pool.register_adapter("smartapi", SmartAPITickerAdapter)
+        pool.register_adapter("kite", KiteTickerAdapter)
+
+        # Register stub adapters (will raise NotImplementedError if used)
+        pool.register_adapter("dhan", DhanTickerAdapter)
+        pool.register_adapter("fyers", FyersTickerAdapter)
+        pool.register_adapter("upstox", UpstoxTickerAdapter)
+        pool.register_adapter("paytm", PaytmTickerAdapter)
+
+        # Wire pool → router dispatch
+        router.set_pool(pool)
+        await pool.initialize(on_tick_callback=router.dispatch)
+
+        # Create health monitor and register adapters
+        ticker_health = TickerHealthMonitor()
+        ticker_health.register_adapter("smartapi")
+        ticker_health.register_adapter("kite")
+
+        # Create failover controller and wire dependencies
+        failover = FailoverController(
+            primary_broker="smartapi",
+            secondary_broker="kite",
+        )
+        failover.set_dependencies(pool, router, ticker_health)
+
+        # Store references on app state for API access and shutdown
+        app.state.ticker_health_monitor = ticker_health
+        app.state.failover_controller = failover
+
+        # Start health monitoring
+        await ticker_health.start()
+
+        print("[SUCCESS] Ticker system initialized with health monitoring + failover")
+    except Exception as e:
+        print(f"[WARNING] Ticker system failed to initialize: {e}")
+        logger.error("Ticker system init failed: %s", e, exc_info=True)
+
     yield
 
     # Shutdown
     from app.services.autopilot.strategy_monitor import stop_strategy_monitor
     await stop_strategy_monitor()
+
+    # Shutdown ticker system (health monitor + failover + pool)
+    try:
+        ticker_health = getattr(app.state, "ticker_health_monitor", None)
+        if ticker_health:
+            await ticker_health.stop()
+        failover = getattr(app.state, "failover_controller", None)
+        if failover:
+            await failover.stop()
+        from app.services.brokers.market_data.ticker import TickerPool
+        pool = TickerPool.get_instance()
+        await pool.shutdown()
+        print("[INFO] Ticker system shut down")
+    except Exception:
+        pass
 
     # Stop health monitor
     try:
@@ -157,6 +222,7 @@ app.include_router(user_preferences.router, prefix="/api/user/preferences", tags
 app.include_router(smartapi.router, prefix="/api/smartapi", tags=["SmartAPI"])
 app.include_router(autopilot_router, prefix="/api/v1/autopilot", tags=["AutoPilot"])
 app.include_router(ai_router, prefix="/api/v1/ai", tags=["AI"])
+app.include_router(ticker.router, prefix="/api", tags=["Ticker"])
 app.include_router(autopilot_ws_router, tags=["AutoPilot WebSocket"])
 app.include_router(websocket.router, tags=["WebSocket"])
 

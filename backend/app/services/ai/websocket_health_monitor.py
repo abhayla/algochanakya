@@ -105,7 +105,7 @@ class WebSocketHealthMonitor:
     Usage:
         monitor = WebSocketHealthMonitor()
 
-        # Record metrics from kite_ticker
+        # Record metrics from ticker system (TickerPool/TickerRouter)
         monitor.record_tick_received(latency_ms=15)
         monitor.record_error("connection_lost")
 

@@ -1,10 +1,16 @@
 """
-Example: Ticker Service Manager (Multiton Pattern)
+DEPRECATED Example: Ticker Service Manager (Multiton Pattern)
 
-This is a reference implementation showing how to refactor from multiple
-singletons to a centralized manager.
+This was a reference implementation for the old singleton approach.
+The actual implementation uses the 5-component ticker architecture:
+  - app.services.brokers.market_data.ticker.pool (TickerPool)
+  - app.services.brokers.market_data.ticker.router (TickerRouter)
+  - app.services.brokers.market_data.ticker.health (HealthMonitor)
+  - app.services.brokers.market_data.ticker.failover (FailoverController)
 
-DO NOT import this file - it's for documentation purposes only.
+See: docs/guides/TICKER-MIGRATION.md
+
+DO NOT import this file - it's for documentation/historical reference only.
 """
 import asyncio
 import logging
@@ -111,20 +117,16 @@ class TickerServiceManager:
         2. Add to ticker_classes dict below
         3. Done! No other code changes needed.
         """
-        # Import here to avoid circular dependencies
-        from app.services.legacy.smartapi_ticker import SmartAPITickerService
-        from app.services.legacy.kite_ticker import KiteTickerService
-        # from app.services.brokers.upstox_ticker import UpstoxTickerService
-        # from app.services.brokers.dhan_ticker import DhanTickerService
+        # DEPRECATED: These legacy imports are kept for reference only.
+        # New code uses TickerPool + TickerRouter from:
+        #   app.services.brokers.market_data.ticker
+        from app.services.deprecated.smartapi_ticker import SmartAPITickerService
+        from app.services.deprecated.kite_ticker import KiteTickerService
 
         ticker_classes = {
             'smartapi': SmartAPITickerService,
             'kite': KiteTickerService,
-            # Add new brokers here (just one line!)
-            # 'upstox': UpstoxTickerService,
-            # 'dhan': DhanTickerService,
-            # 'fyers': FyersTickerService,
-            # 'paytm': PaytmTickerService,
+            # New architecture uses TickerPool.register_adapter() instead
         }
 
         ticker_class = ticker_classes.get(broker_type)

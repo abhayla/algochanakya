@@ -363,7 +363,7 @@ const niftyToken = INDEX_TOKENS.NIFTY  // 256265
 - Run commands affecting this folder
 - Reference this path in any tool call
 
-**Development folder:** `D:\Abhay\VibeCoding\algochanakya` - Work ONLY here.
+**Development folder:** `C:\Abhay\VideCoding\algochanakya` - Work ONLY here.
 
 ---
 

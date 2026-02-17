@@ -1,6 +1,6 @@
 # Implementation Checklist
 
-**Last Updated:** 2026-02-13
+**Last Updated:** 2026-02-17
 
 This checklist tracks remaining implementation tasks with links to relevant documentation.
 
@@ -46,95 +46,82 @@ This checklist tracks remaining implementation tasks with links to relevant docu
 
 ---
 
-### Phase 4: Multi-Broker Ticker Architecture 🟡 PROPOSED (ADR-003)
+### Phase 4: Multi-Broker Ticker Architecture ✅ COMPLETE (Feb 2026)
 
 **Goal:** Unified multi-tenant WebSocket ticker system supporting concurrent broker connections.
 
-**Status:** Proposed — Design documented in [ADR-003](decisions/003-multi-broker-ticker-architecture.md)
+**Status:** ✅ Complete (Feb 2026) — 714 broker tests passing
 
 **Design Documents:**
-- [ADR-003: Multi-Broker Ticker Architecture](decisions/003-multi-broker-ticker-architecture.md) — Decision rationale and architecture
-- [Implementation Guide](architecture/multi-broker-ticker-implementation.md) — Step-by-step implementation plan
+- [TICKER-DESIGN-SPEC.md](decisions/TICKER-DESIGN-SPEC.md) — 5-component architecture spec
 - [API Reference](api/multi-broker-ticker-api.md) — Complete API documentation
-- [Architecture Comparison](architecture/websocket-ticker-architectures-comparison.md) — Evaluated alternatives
+- [Documentation Index](decisions/ticker-documentation-index.md) — All ticker docs
 
-**Skill Guidance:** Use `/smartapi-expert` or `/kite-expert` for broker-specific WebSocket protocol details. See [Comparison Matrix](../.claude/skills/broker-shared/comparison-matrix.md) section 4 for WebSocket capability comparison.
-
-#### Tasks
-
-- [ ] **Remove dead WebSocket stubs from `MarketDataBrokerAdapter`**
-  - Stubs moved to `MultiTenantTickerService` per ADR-003
-  - File: `backend/app/services/brokers/market_data/market_data_base.py`
-
-- [ ] **Implement `MultiTenantTickerService`**
-  - Per ADR-003 architecture (single service managing multiple broker ticker connections)
-  - File: `backend/app/services/brokers/market_data/multi_tenant_ticker.py`
-
-- [ ] **Migrate `SmartAPITickerService` to implement `TickerServiceBase`**
-  - File: `backend/app/services/legacy/smartapi_ticker.py`
-  - Must implement interface from `ticker_base.py`
-
-- [ ] **Migrate `KiteTickerService` to implement `TickerServiceBase`**
-  - File: `backend/app/services/legacy/kite_ticker.py`
-  - Must implement interface from `ticker_base.py`
-
-- [ ] **Create ticker factory/registry**
-  - File: `backend/app/services/brokers/market_data/ticker_factory.py`
-  - Function: `get_ticker_service(broker_type) → TickerServiceBase`
-
-- [ ] **Update WebSocket route to use ticker factory**
-  - File: `backend/app/api/routes/websocket.py`
-  - Use factory instead of direct imports
-
-- [ ] **Implement subscription routing in `MultiTenantTickerService`**
-  - Route subscriptions to correct broker ticker based on token mapping
-  - Use `TokenManager` for broker resolution
-
-- [ ] **Add health monitoring and auto-reconnect**
-  - Per-broker connection health tracking
-  - Automatic reconnection with exponential backoff
-
-**Estimated effort:** 4-5 days
+**Delivered:**
+- `ticker/adapter_base.py` — `TickerAdapter` ABC (NormalizedTick with `Decimal` prices)
+- `ticker/pool.py` — `TickerPool` (adapter lifecycle, ref-counted subscriptions, integrated credentials)
+- `ticker/router.py` — `TickerRouter` (user fan-out, broker-to-user dispatch)
+- `ticker/health.py` — `HealthMonitor` (5s heartbeat, per-adapter scoring, triggers failover)
+- `ticker/failover.py` — `FailoverController` (make-before-break with configurable priority chain)
+- `ticker/adapters/{smartapi,kite,dhan,fyers,paytm,upstox}.py` — All 6 broker adapters
+- `backend/app/api/routes/websocket.py` — Refactored to 292 lines (broker-agnostic)
+- `backend/app/api/routes/ticker.py` — New REST ticker management endpoints
+- `backend/app/services/brokers/market_data/paytm_adapter.py` — Paytm REST adapter
+- `backend/app/services/brokers/market_data/upstox_adapter.py` — Upstox REST adapter
+- 714 broker tests: 413 ticker adapter + 122 core component + 179 REST adapter
 
 ---
 
-### Phase 5: User Configuration & New Broker Adapters
+### Phase 5: Order Execution Adapters & Frontend Broker UI
 
-**Goal:** User-facing broker selection and additional broker adapters.
+**Goal:** Order execution adapters for all 6 brokers and user-facing broker selection UI.
 
 **Status:** Not started
 
-**Skill Guidance:** Use broker expert skills (`/smartapi-expert`, `/kite-expert`, `/upstox-expert`, `/dhan-expert`, `/fyers-expert`, `/paytm-expert`) for API-specific guidance when implementing adapters. See [Comparison Matrix](../.claude/skills/broker-shared/comparison-matrix.md) for cross-broker feature comparison.
+**Reference:** [BrokerAdapter interface](../backend/app/services/brokers/base.py) | [KiteAdapter reference impl](../backend/app/services/brokers/kite_adapter.py) | [Working Doc](architecture/Working-Doc-AlgoChanakya-Multi-Broker-Architecture-Platform-Level.md)
+
+**Skill Guidance:** Use broker expert skills (`/smartapi-expert`, `/upstox-expert`, `/dhan-expert`, `/fyers-expert`, `/paytm-expert`) for API-specific guidance. See [Comparison Matrix](../.claude/skills/broker-shared/comparison-matrix.md) for cross-broker feature comparison.
 
 #### Tasks
 
-- [ ] **Create `AngelAdapter` for order execution** (moved from Phase 3)
-  - File: `backend/app/services/brokers/angel_adapter.py`
-  - Implement `BrokerAdapter` interface for Angel One orders
-  - Use SmartAPI SDK for order placement
-  - **Docs:** [Broker Abstraction - Adding a Broker](architecture/broker-abstraction.md#adding-a-new-broker-future-state)
+- [ ] **Create `AngelOneAdapter` for order execution** (moved from Phase 3)
+  - File: `backend/app/services/brokers/angelone_adapter.py`
+  - Implement `BrokerAdapter` interface for Angel One (SmartAPI) orders
   - **Skill:** `/smartapi-expert` for SmartAPI order endpoints and error codes
 
+- [ ] **Create `UpstoxOrderAdapter` for order execution**
+  - File: `backend/app/services/brokers/upstox_adapter.py`
+  - **Skill:** `/upstox-expert` for Upstox order endpoints (OAuth ~1yr token)
+
+- [ ] **Create `DhanOrderAdapter` for order execution**
+  - File: `backend/app/services/brokers/dhan_adapter.py`
+  - **Skill:** `/dhan-expert` for Dhan order endpoints (static token auth)
+
+- [ ] **Create `FyersOrderAdapter` for order execution**
+  - File: `backend/app/services/brokers/fyers_adapter.py`
+  - **Skill:** `/fyers-expert` for Fyers order endpoints (OAuth)
+
+- [ ] **Create `PaytmOrderAdapter` for order execution**
+  - File: `backend/app/services/brokers/paytm_adapter.py`
+  - **Skill:** `/paytm-expert` for Paytm 3-token system
+
+- [ ] **Register all new adapters in order execution factory**
+  - File: `backend/app/services/brokers/factory.py`
+  - Add entries for AngelOne, Upstox, Dhan, Fyers, Paytm
+
 - [ ] **Create frontend broker settings UI**
-  - File: `frontend/src/components/settings/BrokerSettings.vue`
-  - Dropdowns for market data broker + order broker
-  - Credential management forms per broker
-  - Test connection buttons
+  - Files: `frontend/src/components/settings/BrokerSettings.vue`
+  - Persistent upgrade banner on Dashboard, Watchlist, Option Chain, Positions
+  - Source indicator badge showing active data source
+  - Market data broker dropdown (6 brokers) + order broker dropdown
+  - Credential management forms per broker + test connection buttons
 
 - [ ] **Add broker selection API endpoints**
   - File: `backend/app/api/routes/user.py`
   - `PATCH /api/user/broker-preferences`
   - `GET /api/user/broker-preferences`
 
-- [ ] **Create `UpstoxMarketDataAdapter`** (next broker)
-  - File: `backend/app/services/brokers/market_data/upstox_adapter.py`
-  - **Skill:** `/upstox-expert` for Protobuf WebSocket, extended token, instrument_key format
-
-- [ ] **Create `UpstoxAdapter` for order execution**
-  - File: `backend/app/services/brokers/upstox_adapter.py`
-  - **Skill:** `/upstox-expert` for order endpoints and error handling
-
-**Estimated effort:** 3-4 days per broker adapter
+**Estimated effort:** 3-4 days per order adapter, 2-3 days for frontend UI
 
 ---
 
@@ -180,18 +167,18 @@ This checklist tracks remaining implementation tasks with links to relevant docu
 | **Phase 1: SmartAPI Services** | - | - | ✅ Complete |
 | **Phase 2: Market Data Abstraction** | 9 | 9 | ✅ Complete |
 | **Phase 3: Route Refactoring** | 7 | 7 | ✅ Complete |
-| **Phase 4: Ticker Architecture** | 8 | 0 | 🟡 Proposed (ADR-003) |
-| **Phase 5: User Config & New Adapters** | 5 | 0 | 🔴 Not Started |
+| **Phase 4: Ticker Architecture** | 14 | 14 | ✅ Complete (Feb 2026) |
+| **Phase 5: User Config & Order Adapters** | 5 | 0 | 🔴 Not Started |
 
 ---
 
 ## 🎯 Suggested Implementation Order
 
-1. **Phase 4** (Multi-Broker Ticker) - Implement ADR-003 architecture
-2. **Phase 5** (User Config + Adapters) - Enable broker selection, add Upstox
-3. **Testing & Docs** - Comprehensive tests and documentation updates
+1. ~~**Phase 4** (Multi-Broker Ticker)~~ — ✅ COMPLETE
+2. **Phase 5** (Order Adapters + Frontend UI) — Implement order adapters for all 6 brokers, broker selection UI
+3. **Testing & Docs** — E2E tests for broker abstraction, comprehensive documentation
 
-**Total estimated effort:** 10-14 days of focused development
+**Total estimated effort:** 10-14 days of focused development remaining
 
 ---
 
@@ -199,6 +186,8 @@ This checklist tracks remaining implementation tasks with links to relevant docu
 
 | Topic | Link |
 |-------|------|
+| **Broker Data Checklist** | [Per-Broker Data Implementation Checklist](architecture/BROKER-DATA-IMPLEMENTATION-CHECKLIST.md) |
+| **Autonomous Implementation Plan** | [Session-by-Session Execution Plan](guides/AUTONOMOUS-IMPLEMENTATION-PLAN.md) |
 | **Multi-Broker Architecture** | [Broker Abstraction](architecture/broker-abstraction.md) |
 | **Decision Rationale (Broker)** | [ADR-002](decisions/002-broker-abstraction.md) |
 | **Ticker Architecture** | [ADR-003: Multi-Broker Ticker](decisions/003-multi-broker-ticker-architecture.md) |

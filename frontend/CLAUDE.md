@@ -30,6 +30,7 @@ npm run test:ui                    # Interactive UI mode for debugging
 npm run test:audit                 # Accessibility audits
 npm run test:isolated              # Tests needing fresh context (login, OAuth)
 npx playwright test path/to/spec  # Single file
+npx playwright test --grep "test name"  # Single test by name
 
 # AutoPilot-specific tests
 npm run test:autopilot:fast        # Fast AutoPilot tests (4 workers, 15s timeout)

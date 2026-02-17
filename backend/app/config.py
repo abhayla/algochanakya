@@ -33,6 +33,26 @@ class Settings(BaseSettings):
     ANGEL_TRADE_API_SECRET: str = ""  # Secret for trading API
     ANGEL_API_KEY_HISTORICAL: str = ""  # Alias for ANGEL_HIST_API_KEY (legacy)
 
+    # Dhan (Platform Fallback #2 — static token, never expires)
+    DHAN_CLIENT_ID: str = ""
+    DHAN_ACCESS_TOKEN: str = ""
+
+    # Fyers (Platform Fallback #3 — OAuth, expires midnight IST)
+    FYERS_APP_ID: str = ""
+    FYERS_SECRET_KEY: str = ""
+    FYERS_ACCESS_TOKEN: str = ""
+
+    # Upstox (Platform Fallback #5 — OAuth, ~1 year token)
+    UPSTOX_API_KEY: str = ""
+    UPSTOX_API_SECRET: str = ""
+    UPSTOX_ACCESS_TOKEN: str = ""
+
+    # Paytm Money (Platform Fallback #4 — OAuth, 3 JWTs)
+    PAYTM_API_KEY: str = ""
+    PAYTM_API_SECRET: str = ""
+    PAYTM_ACCESS_TOKEN: str = ""
+    PAYTM_PUBLIC_ACCESS_TOKEN: str = ""  # WebSocket token (NOT access_token)
+
     # Frontend
     FRONTEND_URL: str
 

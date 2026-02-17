@@ -1,8 +1,12 @@
 """
-Kite Ticker WebSocket Service
+DEPRECATED — Kite Ticker WebSocket Service
 
-Manages WebSocket connection to Kite Connect for live market data.
-Integrates with WebSocket Health Monitor for circuit breaker protection.
+Replaced by: app.services.brokers.market_data.ticker.adapters.kite.KiteTickerAdapter
+See: docs/guides/TICKER-MIGRATION.md
+
+This file is kept for reference only. DO NOT import in new code.
+
+Original: Manages WebSocket connection to Kite Connect for live market data.
 """
 import asyncio
 import logging

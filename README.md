@@ -14,10 +14,11 @@ Comprehensive documentation is available in the [docs/](docs/README.md) folder:
 ## Tech Stack
 
 - **Frontend**: Vue.js 3 + Vite + Tailwind CSS + Pinia + Vue Router
-- **Backend**: FastAPI + Python 3.11+
+- **Backend**: FastAPI + Python 3.13+
 - **Database**: PostgreSQL (VPS Server)
 - **Cache**: Redis (VPS Server)
-- **Broker Integration**: Zerodha Kite Connect API
+- **Broker Integration**: Multi-broker (Zerodha, AngelOne, Upstox, Fyers, Dhan, Paytm) via abstraction layer
+- **Testing**: Playwright (E2E) + pytest (backend) + Vitest (frontend)
 
 ## Project Structure
 
@@ -56,8 +57,10 @@ algochanakya/
 
 ### Prerequisites
 
-- Node.js 20+
-- Python 3.11+
+- Node.js 24+
+- Python 3.13+
+- PostgreSQL
+- Redis
 - Git
 
 ### Backend Setup
@@ -163,19 +166,21 @@ npm run preview
 
 ### Implemented
 
-- **Broker Authentication** - Zerodha Kite Connect OAuth
+- **Multi-Broker Authentication** - Zerodha OAuth, AngelOne SmartAPI (auto-TOTP), Upstox, Fyers, Dhan, Paytm
 - **Watchlist** - Real-time price streaming via WebSocket
 - **Option Chain** - Full chain with OI, IV, Greeks, Max Pain
 - **Strategy Builder** - P/L calculator, payoff charts, breakeven analysis
 - **Positions** - Live F&O positions with P&L tracking
-- **Order Placement** - Basket orders via Kite API
+- **Order Placement** - Basket orders via broker abstraction layer
+- **AutoPilot** - Automated trading with conditions, adjustments, kill switch
+- **AI Module** - Market regime detection, risk states, strategy recommendations
+- **Multi-Broker Abstraction** - Broker-agnostic adapters for market data and order execution
 
 ### In Progress
 
-- **Multi-broker abstraction** - SmartAPI (Angel One) implemented for market data, Kite for orders
-- Additional brokers planned: Upstox, Fyers, Dhan
+- Ticker/WebSocket refactoring (5-component architecture)
+- Additional broker adapter implementations
 - Backtesting capabilities
-- Advanced risk management tools
 
 ## Contributing
 
