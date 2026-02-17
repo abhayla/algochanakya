@@ -72,42 +72,43 @@ This checklist tracks remaining implementation tasks with links to relevant docu
 
 ---
 
-### Phase 5: Order Execution Adapters & Frontend Broker UI
+### Phase 5: Order Execution Adapters & Frontend Broker UI ✅ COMPLETE (Feb 2026)
 
 **Goal:** Order execution adapters for all 6 brokers and user-facing broker selection UI.
 
-**Status:** Not started
+**Status:** ✅ Complete (Feb 2026)
 
 **Reference:** [BrokerAdapter interface](../backend/app/services/brokers/base.py) | [KiteAdapter reference impl](../backend/app/services/brokers/kite_adapter.py) | [Working Doc](architecture/Working-Doc-AlgoChanakya-Multi-Broker-Architecture-Platform-Level.md)
 
-**Skill Guidance:** Use broker expert skills (`/smartapi-expert`, `/upstox-expert`, `/dhan-expert`, `/fyers-expert`, `/paytm-expert`) for API-specific guidance. See [Comparison Matrix](../.claude/skills/broker-shared/comparison-matrix.md) for cross-broker feature comparison.
+**Delivered:**
+- `backend/app/services/brokers/angelone_adapter.py` — AngelOne (SmartAPI) order execution
+- `backend/app/services/brokers/upstox_order_adapter.py` — Upstox order execution (OAuth ~1yr)
+- `backend/app/services/brokers/dhan_order_adapter.py` — Dhan order execution (static token)
+- `backend/app/services/brokers/fyers_order_adapter.py` — Fyers order execution (OAuth)
+- `backend/app/services/brokers/paytm_order_adapter.py` — Paytm order execution (3-token)
+- `backend/app/services/brokers/factory.py` — All 6 adapters registered
+- 61 unit tests in `backend/tests/backend/brokers/test_order_adapters.py`
 
 #### Tasks
 
-- [ ] **Create `AngelOneAdapter` for order execution** (moved from Phase 3)
+- [x] **Create `AngelOneAdapter` for order execution** (moved from Phase 3)
   - File: `backend/app/services/brokers/angelone_adapter.py`
   - Implement `BrokerAdapter` interface for Angel One (SmartAPI) orders
-  - **Skill:** `/smartapi-expert` for SmartAPI order endpoints and error codes
 
-- [ ] **Create `UpstoxOrderAdapter` for order execution**
-  - File: `backend/app/services/brokers/upstox_adapter.py`
-  - **Skill:** `/upstox-expert` for Upstox order endpoints (OAuth ~1yr token)
+- [x] **Create `UpstoxOrderAdapter` for order execution**
+  - File: `backend/app/services/brokers/upstox_order_adapter.py`
 
-- [ ] **Create `DhanOrderAdapter` for order execution**
-  - File: `backend/app/services/brokers/dhan_adapter.py`
-  - **Skill:** `/dhan-expert` for Dhan order endpoints (static token auth)
+- [x] **Create `DhanOrderAdapter` for order execution**
+  - File: `backend/app/services/brokers/dhan_order_adapter.py`
 
-- [ ] **Create `FyersOrderAdapter` for order execution**
-  - File: `backend/app/services/brokers/fyers_adapter.py`
-  - **Skill:** `/fyers-expert` for Fyers order endpoints (OAuth)
+- [x] **Create `FyersOrderAdapter` for order execution**
+  - File: `backend/app/services/brokers/fyers_order_adapter.py`
 
-- [ ] **Create `PaytmOrderAdapter` for order execution**
-  - File: `backend/app/services/brokers/paytm_adapter.py`
-  - **Skill:** `/paytm-expert` for Paytm 3-token system
+- [x] **Create `PaytmOrderAdapter` for order execution**
+  - File: `backend/app/services/brokers/paytm_order_adapter.py`
 
-- [ ] **Register all new adapters in order execution factory**
+- [x] **Register all new adapters in order execution factory**
   - File: `backend/app/services/brokers/factory.py`
-  - Add entries for AngelOne, Upstox, Dhan, Fyers, Paytm
 
 - [x] **Create frontend broker settings UI**
   - Files: `frontend/src/components/settings/BrokerSettings.vue`, `frontend/src/stores/brokerPreferences.js`
@@ -131,17 +132,22 @@ This checklist tracks remaining implementation tasks with links to relevant docu
 
 ### Testing
 
-- [ ] **Add E2E tests for broker abstraction**
-  - File: `tests/e2e/specs/broker-abstraction/`
-  - Test broker selection in settings
-  - Test order placement through different brokers
+- [x] **Add E2E tests for broker abstraction** ✅ Complete (Feb 2026)
+  - `tests/e2e/specs/broker-abstraction/broker-settings.happy.spec.js` — settings UI happy path (12 tests)
+  - `tests/e2e/specs/broker-abstraction/broker-banner.edge.spec.js` — banner/dismiss edge cases (8 tests)
+  - `tests/e2e/pages/BrokerSettingsPage.js` — Page Object Model
   - **Docs:** [Testing Guide](testing/README.md) | [E2E Test Rules](testing/e2e-test-rules.md)
 
-- [ ] **Add unit tests for broker adapters**
-  - File: `backend/tests/unit/test_broker_adapters.py`
-  - Mock broker APIs
-  - Test unified data model conversion
-  - **Command:** `pytest tests/unit/test_broker_adapters.py -v`
+- [x] **Add unit tests for broker adapters** ✅ Complete (Feb 2026)
+  - File: `backend/tests/backend/brokers/test_order_adapters.py` (61 tests passing)
+  - Covers all 6 order adapters with mocked HTTP/SDK responses
+  - Tests unified data model conversion for orders, positions, quotes
+  - **Command:** `pytest backend/tests/backend/brokers/test_order_adapters.py -v`
+
+- [ ] **Apply Alembic migration** (pending DB access)
+  - Migration file: `backend/alembic/versions/a1b2c3d4e5f6_add_order_broker_and_platform_source.py`
+  - Adds `order_broker` and `market_data_source` columns to user_preferences table
+  - **Command:** `cd backend && alembic upgrade head` (run when DB at 103.118.16.189:5432 is accessible)
 
 ### Documentation
 
@@ -170,17 +176,18 @@ This checklist tracks remaining implementation tasks with links to relevant docu
 | **Phase 2: Market Data Abstraction** | 9 | 9 | ✅ Complete |
 | **Phase 3: Route Refactoring** | 7 | 7 | ✅ Complete |
 | **Phase 4: Ticker Architecture** | 14 | 14 | ✅ Complete (Feb 2026) |
-| **Phase 5: User Config & Order Adapters** | 5 | 5 | 🟡 Backend+Frontend Done, Needs Migration |
+| **Phase 5: User Config & Order Adapters** | 7 | 7 | ✅ Complete (Feb 2026) — Migration pending DB access |
+| **Phase 6: Testing & Docs** | 3 | 2 | 🟡 E2E + unit tests done, Alembic migration pending |
 
 ---
 
 ## 🎯 Suggested Implementation Order
 
 1. ~~**Phase 4** (Multi-Broker Ticker)~~ — ✅ COMPLETE
-2. **Phase 5** (Order Adapters + Frontend UI) — Implement order adapters for all 6 brokers, broker selection UI
-3. **Testing & Docs** — E2E tests for broker abstraction, comprehensive documentation
+2. ~~**Phase 5** (Order Adapters + Frontend UI)~~ — ✅ COMPLETE
+3. **Phase 6** (Testing & Docs) — 🟡 E2E + unit tests done; apply Alembic migration when DB accessible
 
-**Total estimated effort:** 10-14 days of focused development remaining
+**Total estimated effort:** Apply Alembic migration (30 min) + optional further testing
 
 ---
 
