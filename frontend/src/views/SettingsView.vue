@@ -10,6 +10,7 @@ import { useUserPreferencesStore } from '@/stores/userPreferences'
 import KiteLayout from '@/components/layout/KiteLayout.vue'
 import SmartAPISettings from '@/components/settings/SmartAPISettings.vue'
 import MarketDataSourceToggle from '@/components/settings/MarketDataSourceToggle.vue'
+import BrokerSettings from '@/components/settings/BrokerSettings.vue'
 
 const router = useRouter()
 const store = useUserPreferencesStore()
@@ -152,6 +153,17 @@ const handleReset = () => {
               :refresh-trigger="sourceRefreshTrigger"
               @source-changed="handleCredentialsUpdated"
             />
+          </div>
+        </div>
+
+        <!-- Broker Selection Settings -->
+        <div class="settings-section">
+          <div class="section-header">
+            <h2 class="section-title">Broker Selection</h2>
+            <p class="section-subtitle">Configure your market data source and order execution broker</p>
+          </div>
+          <div class="section-content">
+            <BrokerSettings />
           </div>
         </div>
 

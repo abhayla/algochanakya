@@ -32,16 +32,25 @@
 - [x] Layout preferences (future)
 - [x] Table density (future)
 
+## Broker Preferences (Phase 5)
+- [x] `market_data_source` field: platform | smartapi | kite | upstox | dhan | fyers | paytm (default: platform)
+- [x] `order_broker` field: kite | angel | upstox | dhan | fyers | paytm (nullable, not required)
+- [x] Platform-default data source uses SmartAPI→Dhan→Fyers→Paytm→Upstox→Kite failover chain
+- [x] Persistent upgrade banner on Dashboard, Watchlist, Option Chain, and Positions screens
+- [x] Live data source badge showing active market data broker
+- [x] BrokerSettings UI component with dropdowns for market data and order broker selection
+
 ## API Requirements
-- [x] GET /api/user-preferences - Get preferences
-- [x] PUT /api/user-preferences - Update preferences
-- [x] POST /api/user-preferences/reset - Reset to defaults
+- [x] GET /api/user/preferences/ - Get preferences (includes market_data_source + order_broker)
+- [x] PUT /api/user/preferences/ - Update preferences (partial update, all 7 market data sources + 6 order brokers valid)
 
 ## Data Requirements
 - [x] `user_preferences` table
 - [x] JSON field for flexible schema
 - [x] One-to-one relationship with user
 - [x] Created/updated timestamps
+- [x] `market_data_source` column (7 valid values: platform + 6 brokers)
+- [x] `order_broker` column (nullable, 6 valid values)
 
 ## Default Preference Values
 ```json
@@ -68,4 +77,4 @@
 - [x] Used by Settings view for UI
 
 ---
-Last updated: 2025-12-22
+Last updated: 2026-02-17

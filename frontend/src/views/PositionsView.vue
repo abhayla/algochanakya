@@ -2,6 +2,8 @@
   <KiteLayout>
     <div class="positions-page" data-testid="positions-page">
 
+      <BrokerUpgradeBanner screen="positions" />
+
       <!-- Page Header -->
       <div class="page-header">
         <div class="header-left">
@@ -391,6 +393,7 @@ import KiteLayout from '@/components/layout/KiteLayout.vue';
 import AutoPilotBadge from '@/components/autopilot/positions/AutoPilotBadge.vue';
 import { usePositionsStore } from '@/stores/positions';
 import { useScrollIndicator } from '@/composables/useScrollIndicator';
+import BrokerUpgradeBanner from '@/components/common/BrokerUpgradeBanner.vue';
 
 const store = usePositionsStore();
 

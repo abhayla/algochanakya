@@ -1,6 +1,9 @@
 <template>
   <KiteLayout>
-    <div class="flex h-full w-full max-w-full min-w-0 overflow-x-hidden" data-testid="watchlist-page">
+    <div class="flex h-full w-full max-w-full min-w-0 overflow-x-hidden flex-col" data-testid="watchlist-page">
+      <BrokerUpgradeBanner screen="watchlist" class="mx-3 mt-3" />
+      <!-- Left Panel + Right Panel -->
+      <div class="flex flex-1 min-h-0">
       <!-- Left Panel: Watchlist -->
       <div class="w-80 border-r border-gray-200 flex flex-col" style="height: calc(100vh - 48px);">
 
@@ -194,7 +197,8 @@
           <button @click="createWatchlist" class="px-4 py-2 text-white rounded" style="background: #387ed1;" onmouseover="this.style.background='#2c6cb8'" onmouseout="this.style.background='#387ed1'" data-testid="watchlist-create-submit">Create</button>
         </div>
       </div>
-    </div>
+      </div><!-- /.flex.flex-1 inner panels wrapper -->
+    </div><!-- /.watchlist-page outer -->
   </KiteLayout>
 </template>
 
@@ -203,6 +207,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useWatchlistStore } from '../stores/watchlist'
 import KiteLayout from '../components/layout/KiteLayout.vue'
 import { fetchWatchlistPrices } from '@/services/priceService'
+import BrokerUpgradeBanner from '../components/common/BrokerUpgradeBanner.vue'
 
 const store = useWatchlistStore()
 

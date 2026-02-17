@@ -109,17 +109,19 @@ This checklist tracks remaining implementation tasks with links to relevant docu
   - File: `backend/app/services/brokers/factory.py`
   - Add entries for AngelOne, Upstox, Dhan, Fyers, Paytm
 
-- [ ] **Create frontend broker settings UI**
-  - Files: `frontend/src/components/settings/BrokerSettings.vue`
-  - Persistent upgrade banner on Dashboard, Watchlist, Option Chain, Positions
-  - Source indicator badge showing active data source
-  - Market data broker dropdown (6 brokers) + order broker dropdown
-  - Credential management forms per broker + test connection buttons
+- [x] **Create frontend broker settings UI**
+  - Files: `frontend/src/components/settings/BrokerSettings.vue`, `frontend/src/stores/brokerPreferences.js`
+  - Persistent upgrade banner: `frontend/src/components/common/BrokerUpgradeBanner.vue`
+  - Source indicator badge: `frontend/src/components/common/DataSourceBadge.vue`
+  - Market data broker dropdown (7 options: platform + 6 brokers) + order broker dropdown (6 brokers)
+  - Banner wired into Dashboard, Watchlist, Option Chain, Positions
+  - BrokerSettings section added to SettingsView
 
-- [ ] **Add broker selection API endpoints**
-  - File: `backend/app/api/routes/user.py`
-  - `PATCH /api/user/broker-preferences`
-  - `GET /api/user/broker-preferences`
+- [x] **Add broker selection API endpoints**
+  - File: `backend/app/api/routes/user_preferences.py` (extended existing)
+  - `PUT /api/user/preferences/` — now accepts `market_data_source` (7 values) and `order_broker` (6 values)
+  - `GET /api/user/preferences/` — now returns `order_broker` field
+  - Alembic migration: `a1b2c3d4e5f6_add_order_broker_and_platform_source.py`
 
 **Estimated effort:** 3-4 days per order adapter, 2-3 days for frontend UI
 
@@ -168,7 +170,7 @@ This checklist tracks remaining implementation tasks with links to relevant docu
 | **Phase 2: Market Data Abstraction** | 9 | 9 | ✅ Complete |
 | **Phase 3: Route Refactoring** | 7 | 7 | ✅ Complete |
 | **Phase 4: Ticker Architecture** | 14 | 14 | ✅ Complete (Feb 2026) |
-| **Phase 5: User Config & Order Adapters** | 5 | 0 | 🔴 Not Started |
+| **Phase 5: User Config & Order Adapters** | 5 | 5 | 🟡 Backend+Frontend Done, Needs Migration |
 
 ---
 

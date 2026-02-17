@@ -9,6 +9,7 @@ from sqlalchemy import select
 
 from app.database import get_db
 from app.models import User, UserPreferences
+from app.models.user_preferences import MarketDataSource, OrderBroker
 from app.schemas.user_preferences import (
     UserPreferencesResponse,
     UserPreferencesUpdateRequest
@@ -38,11 +39,10 @@ async def get_user_preferences(
 
     if not preferences:
         # Create default preferences
-        from app.models.user_preferences import MarketDataSource
         preferences = UserPreferences(
             user_id=user.id,
             pnl_grid_interval=100,
-            market_data_source=MarketDataSource.SMARTAPI
+            market_data_source=MarketDataSource.PLATFORM
         )
         db.add(preferences)
         await db.commit()
@@ -92,12 +92,20 @@ async def update_user_preferences(
 
     # Validate market_data_source
     if 'market_data_source' in update_data:
-        from app.models.user_preferences import MarketDataSource
         source = update_data['market_data_source']
         if source not in MarketDataSource.VALID_SOURCES:
             raise HTTPException(
                 status_code=400,
                 detail=f"market_data_source must be one of: {MarketDataSource.VALID_SOURCES}"
+            )
+
+    # Validate order_broker
+    if 'order_broker' in update_data and update_data['order_broker'] is not None:
+        broker = update_data['order_broker']
+        if broker not in OrderBroker.VALID_BROKERS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"order_broker must be one of: {OrderBroker.VALID_BROKERS}"
             )
 
     for key, value in update_data.items():

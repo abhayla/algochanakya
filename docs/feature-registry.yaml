@@ -425,15 +425,28 @@ features:
   user-preferences:
     name: "User Preferences"
     docs_folder: "docs/features/user-preferences/"
-    description: "User settings and preferences (P&L grid config, notifications, etc.)"
+    description: "User settings, preferences, and broker selection (P&L grid, market data source, order broker)"
     backend_files:
       - "backend/app/api/routes/user_preferences.py"
       - "backend/app/models/user_preferences.py"
+      - "backend/app/schemas/user_preferences.py"
+      - "backend/alembic/versions/a1b2c3d4e5f6_add_order_broker_and_platform_source.py"
     frontend_files:
       - "frontend/src/stores/userPreferences.js"
+      - "frontend/src/stores/brokerPreferences.js"
       - "frontend/src/views/SettingsView.vue"
+      - "frontend/src/components/settings/BrokerSettings.vue"
+      - "frontend/src/components/common/BrokerUpgradeBanner.vue"
+      - "frontend/src/components/common/DataSourceBadge.vue"
+    tests:
+      - "frontend/tests/stores/brokerPreferences.test.js"
+      - "backend/tests/backend/preferences/test_broker_preferences_api.py"
     used_by_features:
       - strategy-builder
+      - dashboard
+      - watchlist
+      - positions
+      - option-chain
 
   dashboard:
     name: "Dashboard"

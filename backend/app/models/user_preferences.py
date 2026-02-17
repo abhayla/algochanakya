@@ -13,6 +13,7 @@ from app.database import Base
 
 class MarketDataSource:
     """Valid market data source values."""
+    PLATFORM = "platform"  # Platform default (SmartAPI → Dhan → Fyers → Paytm → Upstox → Kite)
     SMARTAPI = "smartapi"  # Angel One SmartAPI - FREE
     KITE = "kite"          # Zerodha Kite Connect - ₹500/mo
     UPSTOX = "upstox"      # Upstox - FREE
@@ -20,7 +21,19 @@ class MarketDataSource:
     FYERS = "fyers"        # Fyers - FREE
     PAYTM = "paytm"        # Paytm Money - FREE
 
-    VALID_SOURCES = [SMARTAPI, KITE, UPSTOX, DHAN, FYERS, PAYTM]
+    VALID_SOURCES = [PLATFORM, SMARTAPI, KITE, UPSTOX, DHAN, FYERS, PAYTM]
+
+
+class OrderBroker:
+    """Valid order execution broker values."""
+    KITE = "kite"      # Zerodha Kite Connect
+    ANGEL = "angel"    # Angel One (SmartAPI)
+    UPSTOX = "upstox"  # Upstox
+    DHAN = "dhan"      # Dhan
+    FYERS = "fyers"    # Fyers
+    PAYTM = "paytm"    # Paytm Money
+
+    VALID_BROKERS = [KITE, ANGEL, UPSTOX, DHAN, FYERS, PAYTM]
 
 
 class UserPreferences(Base):
@@ -37,8 +50,15 @@ class UserPreferences(Base):
     market_data_source = Column(
         String(20),
         nullable=False,
-        default=MarketDataSource.SMARTAPI,
-        server_default=MarketDataSource.SMARTAPI
+        default=MarketDataSource.PLATFORM,
+        server_default=MarketDataSource.PLATFORM
+    )
+
+    # Order Execution Settings
+    order_broker = Column(
+        String(20),
+        nullable=True,
+        default=None
     )
 
     # Timestamps
@@ -55,7 +75,11 @@ class UserPreferences(Base):
             name='check_pnl_grid_interval'
         ),
         CheckConstraint(
-            "market_data_source IN ('smartapi', 'kite', 'upstox', 'dhan', 'fyers', 'paytm')",
+            "market_data_source IN ('platform', 'smartapi', 'kite', 'upstox', 'dhan', 'fyers', 'paytm')",
             name='check_market_data_source'
+        ),
+        CheckConstraint(
+            "order_broker IS NULL OR order_broker IN ('kite', 'angel', 'upstox', 'dhan', 'fyers', 'paytm')",
+            name='check_order_broker'
         ),
     )

@@ -2,6 +2,8 @@
   <KiteLayout>
     <div class="optionchain-page" data-testid="optionchain-page">
 
+      <BrokerUpgradeBanner screen="optionchain" />
+
       <!-- Page Header -->
       <div class="page-header" data-testid="optionchain-header">
         <div class="header-left">
@@ -301,6 +303,7 @@ import KiteLayout from '@/components/layout/KiteLayout.vue'
 import StrikeFinder from '@/components/optionchain/StrikeFinder.vue'
 import { useOptionChainStore } from '@/stores/optionchain'
 import { useStrategyStore } from '@/stores/strategy'
+import BrokerUpgradeBanner from '@/components/common/BrokerUpgradeBanner.vue'
 import { useWatchlistStore } from '@/stores/watchlist'
 import { useScrollIndicator } from '@/composables/useScrollIndicator'
 

@@ -2,6 +2,7 @@
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import KiteLayout from '../components/layout/KiteLayout.vue'
+import BrokerUpgradeBanner from '../components/common/BrokerUpgradeBanner.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -12,6 +13,7 @@ const authStore = useAuthStore()
     <!-- Main Content -->
     <div class="dashboard-container" data-testid="dashboard-page">
       <div class="dashboard-content">
+        <BrokerUpgradeBanner screen="dashboard" />
         <div class="dashboard-header">
           <h1 class="dashboard-title" data-testid="dashboard-title">Welcome to AlgoChanakya</h1>
           <p class="dashboard-subtitle">
