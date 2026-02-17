@@ -9,7 +9,7 @@ Comprehensive documentation is available in the [docs/](docs/README.md) folder:
 - **[Architecture](docs/architecture/)** - System design, authentication, WebSocket, database
 - **[API Reference](docs/api/)** - Endpoint documentation and OpenAPI spec
 - **[Guides](docs/guides/)** - Setup, database configuration, troubleshooting
-- **[Testing](docs/testing/)** - E2E test architecture (~184 test files: 121 E2E + 63 backend)
+- **[Testing](docs/testing/)** - E2E test architecture (Playwright + pytest)
 
 ## Tech Stack
 
@@ -178,8 +178,8 @@ npm run preview
 
 ### In Progress
 
-- Ticker/WebSocket refactoring (5-component architecture)
-- Additional broker adapter implementations
+- Additional broker order execution adapters (Angel, Upstox, Dhan, Fyers, Paytm)
+- Frontend broker selection UI (data source + order broker dropdowns)
 - Backtesting capabilities
 
 ## Contributing

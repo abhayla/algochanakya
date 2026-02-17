@@ -29,6 +29,7 @@
         </div>
 
         <div class="header-right">
+          <DataSourceBadge screen="positions" />
           <!-- Total P&L Box -->
           <div :class="['pnl-box', store.summary.total_pnl >= 0 ? 'profit' : 'loss']" data-testid="positions-pnl-box">
             <span class="pnl-label">Total P&L</span>
@@ -394,6 +395,7 @@ import AutoPilotBadge from '@/components/autopilot/positions/AutoPilotBadge.vue'
 import { usePositionsStore } from '@/stores/positions';
 import { useScrollIndicator } from '@/composables/useScrollIndicator';
 import BrokerUpgradeBanner from '@/components/common/BrokerUpgradeBanner.vue';
+import DataSourceBadge from '@/components/common/DataSourceBadge.vue';
 
 const store = usePositionsStore();
 

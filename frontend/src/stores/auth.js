@@ -8,6 +8,10 @@ export const useAuthStore = defineStore('auth', () => {
   const loading = ref(false)
   const zerodhaLoading = ref(false)
   const angelOneLoading = ref(false)
+  const upstoxLoading = ref(false)
+  const fyersLoading = ref(false)
+  const dhanLoading = ref(false)
+  const paytmLoading = ref(false)
 
   async function login(credentials) {
     loading.value = true
@@ -73,6 +77,75 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  async function initiateUpstoxLogin() {
+    upstoxLoading.value = true
+    try {
+      const response = await api.get('/api/auth/upstox/login')
+      window.location.href = response.data.login_url
+      return { success: true }
+    } catch (error) {
+      upstoxLoading.value = false
+      return {
+        success: false,
+        error: error.response?.data?.detail || 'Failed to initiate Upstox login',
+      }
+    }
+  }
+
+  async function initiateFyersLogin() {
+    fyersLoading.value = true
+    try {
+      const response = await api.get('/api/auth/fyers/login')
+      window.location.href = response.data.login_url
+      return { success: true }
+    } catch (error) {
+      fyersLoading.value = false
+      return {
+        success: false,
+        error: error.response?.data?.detail || 'Failed to initiate Fyers login',
+      }
+    }
+  }
+
+  async function initiateDhanLogin(clientId, accessToken) {
+    dhanLoading.value = true
+    try {
+      const response = await api.post('/api/auth/dhan/login', {
+        client_id: clientId,
+        access_token: accessToken,
+      })
+      if (response.data.success && response.data.token) {
+        localStorage.setItem('access_token', response.data.token)
+        isAuthenticated.value = true
+        window.location.href = response.data.redirect_url
+        return { success: true }
+      }
+      dhanLoading.value = false
+      return { success: false, error: 'Login failed' }
+    } catch (error) {
+      dhanLoading.value = false
+      return {
+        success: false,
+        error: error.response?.data?.detail || 'Failed to login with Dhan',
+      }
+    }
+  }
+
+  async function initiatePaytmLogin() {
+    paytmLoading.value = true
+    try {
+      const response = await api.get('/api/auth/paytm/login')
+      window.location.href = response.data.login_url
+      return { success: true }
+    } catch (error) {
+      paytmLoading.value = false
+      return {
+        success: false,
+        error: error.response?.data?.detail || 'Failed to initiate Paytm login',
+      }
+    }
+  }
+
   function setToken(token) {
     localStorage.setItem('access_token', token)
     isAuthenticated.value = true
@@ -133,9 +206,17 @@ export const useAuthStore = defineStore('auth', () => {
     loading,
     zerodhaLoading,
     angelOneLoading,
+    upstoxLoading,
+    fyersLoading,
+    dhanLoading,
+    paytmLoading,
     login,
     initiateZerodhaLogin,
     initiateAngelOneLogin,
+    initiateUpstoxLogin,
+    initiateFyersLogin,
+    initiateDhanLogin,
+    initiatePaytmLogin,
     setToken,
     fetchUser,
     logout,

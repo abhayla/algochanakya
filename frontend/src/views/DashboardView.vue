@@ -3,6 +3,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import KiteLayout from '../components/layout/KiteLayout.vue'
 import BrokerUpgradeBanner from '../components/common/BrokerUpgradeBanner.vue'
+import DataSourceBadge from '../components/common/DataSourceBadge.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -15,10 +16,13 @@ const authStore = useAuthStore()
       <div class="dashboard-content">
         <BrokerUpgradeBanner screen="dashboard" />
         <div class="dashboard-header">
-          <h1 class="dashboard-title" data-testid="dashboard-title">Welcome to AlgoChanakya</h1>
-          <p class="dashboard-subtitle">
-            Your options trading platform is ready. Start building your strategies!
-          </p>
+          <div class="dashboard-header-text">
+            <h1 class="dashboard-title" data-testid="dashboard-title">Welcome to AlgoChanakya</h1>
+            <p class="dashboard-subtitle">
+              Your options trading platform is ready. Start building your strategies!
+            </p>
+          </div>
+          <DataSourceBadge screen="dashboard" />
         </div>
 
         <!-- Feature Cards -->
@@ -124,6 +128,9 @@ const authStore = useAuthStore()
 }
 
 .dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
   margin-bottom: 32px;
 }
 

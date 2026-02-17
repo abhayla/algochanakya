@@ -3,7 +3,7 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 **AlgoChanakya:** Multi-broker options trading platform (Indian markets)
-**Last Updated:** 2026-02-16
+**Last Updated:** 2026-02-17
 **Working Directory:** `C:\Abhay\VideCoding\algochanakya` (development)
 
 ## ⚡ Quick Reference Card
@@ -57,6 +57,8 @@ Skill(skill="test-fixer")
 ## Current Work & Roadmap
 
 See **[docs/ROADMAP.md](docs/ROADMAP.md)** for active work, completed features, and planned roadmap.
+- **ROADMAP.md** = high-level milestones and release schedule (updated weekly)
+- **[IMPLEMENTATION-CHECKLIST.md](docs/IMPLEMENTATION-CHECKLIST.md)** = granular daily tasks for active work
 
 ---
 
@@ -225,13 +227,11 @@ All rules enforced by PreToolUse hooks. See [.claude/rules.md](.claude/rules.md)
 
 ### Broker Abstraction (CRITICAL)
 
-**NEVER directly use broker-specific APIs (KiteConnect, SmartAPI client).** Always use broker adapters and factories. **All symbol references must use canonical format (Kite format) internally.** Use `SymbolConverter` for broker-specific symbols.
-
-**Code examples and unified data models:** See [backend/CLAUDE.md](backend/CLAUDE.md#broker-abstraction-code-examples)
+See [`.claude/rules.md`](.claude/rules.md#broker-abstraction-rules) for the full rule with code examples. Quick summary: always use broker adapters via factories, never import `KiteConnect` or `SmartAPI` directly, use canonical symbol format internally.
 
 ### Trading Constants (CRITICAL)
 
-**NEVER hardcode lot sizes, strike steps, or index tokens.** See [backend/CLAUDE.md](backend/CLAUDE.md#trading-constants-backend) | [frontend/CLAUDE.md](frontend/CLAUDE.md#trading-constants-frontend).
+See [`.claude/rules.md`](.claude/rules.md#trading-constants-rules) for the full rule with code examples. Quick summary: never hardcode lot sizes, strike steps, or index tokens — use `app.constants.trading` (backend) or `@/constants/trading` (frontend).
 
 ### Database Patterns
 
@@ -268,7 +268,8 @@ See [backend/CLAUDE.md](backend/CLAUDE.md#database-patterns) for models, routes,
 
 ## Testing
 
-**E2E rules:** `data-testid` only, import from `auth.fixture.js`, use `authenticatedPage`. Full guide: [E2E Test Rules](docs/testing/e2e-test-rules.md)
+**E2E rules:** See [E2E Test Rules](docs/testing/e2e-test-rules.md) (SSOT) for complete guidelines. Quick summary: `data-testid` only, import from `auth.fixture.js`, use `authenticatedPage`.
+**Backend test markers:** `@unit`, `@api`, `@integration`, `@slow` — see [backend/CLAUDE.md](backend/CLAUDE.md#development-commands)
 **Test docs:** [docs/testing/README.md](docs/testing/README.md)
 
 ---

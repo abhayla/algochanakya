@@ -1,7 +1,7 @@
 # AlgoChanakya Architectural Rules
 
 **Purpose:** Consolidated architectural rules enforced by code-reviewer agent and hooks.
-**Last Updated:** 2026-02-14
+**Last Updated:** 2026-02-17
 **Status:** Protected file - changes require review
 
 This document consolidates all critical architectural rules from CLAUDE.md, backend/CLAUDE.md, frontend/CLAUDE.md, and agent definitions.
@@ -199,6 +199,7 @@ from app.services.brokers.factory import get_broker_adapter
 ## Broker Abstraction Rules
 
 **Enforcement:** Code-reviewer agent (critical severity)
+**SSOT:** [docs/architecture/broker-abstraction.md](../docs/architecture/broker-abstraction.md) for full architecture. Code examples below are quick reference.
 
 ### Rule 1: Never Use Broker-Specific APIs Directly
 
@@ -428,6 +429,8 @@ def validate_quantity(symbol: str, quantity: int):
 **Enforcement:** Code-reviewer agent (high severity) + E2E test hooks
 
 ### E2E Test Rules (CRITICAL)
+
+**SSOT:** [docs/testing/e2e-test-rules.md](../docs/testing/e2e-test-rules.md) for complete guidelines. Quick reference below.
 
 **1. Use `data-testid` ONLY - no CSS classes, tags, or text selectors**
 

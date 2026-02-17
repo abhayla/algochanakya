@@ -8,8 +8,10 @@
  */
 import { ref, computed, onMounted } from 'vue'
 import { useBrokerPreferencesStore } from '@/stores/brokerPreferences'
+import { useWatchlistStore } from '@/stores/watchlist'
 
 const store = useBrokerPreferencesStore()
+const watchlistStore = useWatchlistStore()
 
 // Local state — track unsaved changes
 const localMarketDataSource = ref('platform')
@@ -35,6 +37,7 @@ const hasChanges = computed(() => {
 const handleSave = async () => {
   saveError.value = null
   saveSuccess.value = false
+  const oldMarketDataSource = store.marketDataSource
   try {
     await store.updatePreferences({
       market_data_source: localMarketDataSource.value,
@@ -42,6 +45,12 @@ const handleSave = async () => {
     })
     saveSuccess.value = true
     setTimeout(() => { saveSuccess.value = false }, 3000)
+
+    // If market data source changed, reconnect WebSocket to use updated broker
+    if (oldMarketDataSource !== localMarketDataSource.value && watchlistStore.isConnected) {
+      watchlistStore.disconnectWebSocket()
+      watchlistStore.connectWebSocket()
+    }
   } catch (err) {
     saveError.value = store.error || 'Failed to save broker settings'
   }

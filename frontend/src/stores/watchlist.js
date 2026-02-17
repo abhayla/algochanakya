@@ -299,6 +299,8 @@ export const useWatchlistStore = defineStore('watchlist', () => {
       pingInterval.value = null
     }
     if (websocket.value) {
+      // Nullify onclose to prevent the old handler from triggering auto-reconnect
+      websocket.value.onclose = null
       websocket.value.close()
       websocket.value = null
       isConnected.value = false

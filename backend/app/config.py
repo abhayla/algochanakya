@@ -41,17 +41,20 @@ class Settings(BaseSettings):
     FYERS_APP_ID: str = ""
     FYERS_SECRET_KEY: str = ""
     FYERS_ACCESS_TOKEN: str = ""
+    FYERS_REDIRECT_URL: str = ""
 
     # Upstox (Platform Fallback #5 — OAuth, ~1 year token)
     UPSTOX_API_KEY: str = ""
     UPSTOX_API_SECRET: str = ""
     UPSTOX_ACCESS_TOKEN: str = ""
+    UPSTOX_REDIRECT_URL: str = ""
 
     # Paytm Money (Platform Fallback #4 — OAuth, 3 JWTs)
     PAYTM_API_KEY: str = ""
     PAYTM_API_SECRET: str = ""
     PAYTM_ACCESS_TOKEN: str = ""
     PAYTM_PUBLIC_ACCESS_TOKEN: str = ""  # WebSocket token (NOT access_token)
+    PAYTM_REDIRECT_URL: str = ""
 
     # Frontend
     FRONTEND_URL: str

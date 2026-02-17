@@ -163,7 +163,11 @@ See `app/services/brokers/base.py` and `app/services/brokers/market_data/market_
 - 714 broker tests passing (413 ticker adapter + 122 core component + 179 REST adapter)
 - **Docs:** [TICKER-DESIGN-SPEC.md](../docs/decisions/TICKER-DESIGN-SPEC.md) | [API Reference](../docs/api/multi-broker-ticker-api.md) | [Documentation Index](../docs/decisions/ticker-documentation-index.md)
 
-**Phase 5 To Be Implemented:**
+**Phase 6: Broker Abstraction E2E Tests — COMPLETE (Feb 2026):**
+- E2E tests for broker settings and abstraction layer
+- Reset button visibility and interaction tests
+
+**Phase 7 To Be Implemented:**
 - `AngelAdapter` for order execution (order stubs for remaining brokers)
 - Frontend broker selection UI (persistent banner, source indicator badge, settings dropdowns)
 

@@ -11,6 +11,10 @@ import KiteLayout from '@/components/layout/KiteLayout.vue'
 import SmartAPISettings from '@/components/settings/SmartAPISettings.vue'
 import MarketDataSourceToggle from '@/components/settings/MarketDataSourceToggle.vue'
 import BrokerSettings from '@/components/settings/BrokerSettings.vue'
+import DhanSettings from '@/components/settings/DhanSettings.vue'
+import UpstoxSettings from '@/components/settings/UpstoxSettings.vue'
+import FyersSettings from '@/components/settings/FyersSettings.vue'
+import PaytmSettings from '@/components/settings/PaytmSettings.vue'
 
 const router = useRouter()
 const store = useUserPreferencesStore()
@@ -175,6 +179,50 @@ const handleReset = () => {
           </div>
           <div class="section-content">
             <SmartAPISettings @credentials-updated="handleCredentialsUpdated" />
+          </div>
+        </div>
+
+        <!-- Dhan Settings -->
+        <div class="settings-section">
+          <div class="section-header">
+            <h2 class="section-title">Dhan</h2>
+            <p class="section-subtitle">Configure Dhan credentials (static token from developer console)</p>
+          </div>
+          <div class="section-content">
+            <DhanSettings />
+          </div>
+        </div>
+
+        <!-- Upstox Settings -->
+        <div class="settings-section">
+          <div class="section-header">
+            <h2 class="section-title">Upstox</h2>
+            <p class="section-subtitle">Connect your Upstox account via OAuth</p>
+          </div>
+          <div class="section-content">
+            <UpstoxSettings />
+          </div>
+        </div>
+
+        <!-- Fyers Settings -->
+        <div class="settings-section">
+          <div class="section-header">
+            <h2 class="section-title">Fyers</h2>
+            <p class="section-subtitle">Connect your Fyers account via OAuth</p>
+          </div>
+          <div class="section-content">
+            <FyersSettings />
+          </div>
+        </div>
+
+        <!-- Paytm Money Settings -->
+        <div class="settings-section">
+          <div class="section-header">
+            <h2 class="section-title">Paytm Money</h2>
+            <p class="section-subtitle">Connect your Paytm Money account via OAuth</p>
+          </div>
+          <div class="section-content">
+            <PaytmSettings />
           </div>
         </div>
       </div>

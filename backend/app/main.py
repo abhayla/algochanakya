@@ -9,6 +9,7 @@ import traceback
 from app.config import settings
 from app.database import init_db, close_db, AsyncSessionLocal
 from app.api.routes import health, auth, watchlist, instruments, websocket, options, strategy, orders, optionchain, positions, strategy_wizard, constants, user_preferences, ofo, smartapi, ticker
+from app.api.routes import dhan_auth, upstox_auth, fyers_auth, paytm_auth
 from app.api.v1.autopilot import router as autopilot_router
 from app.api.v1.ai import router as ai_router
 from app.websocket.routes import router as autopilot_ws_router
@@ -208,6 +209,10 @@ app.add_middleware(
 # Include routers
 app.include_router(health.router, prefix="/api", tags=["Health"])
 app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
+app.include_router(dhan_auth.router, prefix="/api/auth", tags=["Authentication"])
+app.include_router(upstox_auth.router, prefix="/api/auth", tags=["Authentication"])
+app.include_router(fyers_auth.router, prefix="/api/auth", tags=["Authentication"])
+app.include_router(paytm_auth.router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(watchlist.router, prefix="/api/watchlists", tags=["Watchlists"])
 app.include_router(instruments.router, prefix="/api/instruments", tags=["Instruments"])
 app.include_router(options.router, prefix="/api/options", tags=["Options"])

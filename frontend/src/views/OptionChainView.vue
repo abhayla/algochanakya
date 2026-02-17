@@ -29,6 +29,7 @@
         </div>
 
         <div class="header-right">
+          <DataSourceBadge screen="optionchain" />
           <!-- Spot Price Box -->
           <div class="spot-box" data-testid="optionchain-spot-box">
             <span class="spot-label">Spot</span>
@@ -304,6 +305,7 @@ import StrikeFinder from '@/components/optionchain/StrikeFinder.vue'
 import { useOptionChainStore } from '@/stores/optionchain'
 import { useStrategyStore } from '@/stores/strategy'
 import BrokerUpgradeBanner from '@/components/common/BrokerUpgradeBanner.vue'
+import DataSourceBadge from '@/components/common/DataSourceBadge.vue'
 import { useWatchlistStore } from '@/stores/watchlist'
 import { useScrollIndicator } from '@/composables/useScrollIndicator'
 

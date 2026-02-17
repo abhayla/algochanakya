@@ -1,6 +1,6 @@
 import uuid
 from sqlalchemy import Column, String, DateTime, Boolean, Text, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.sql import func
 from app.database import Base
 
@@ -21,6 +21,9 @@ class BrokerConnection(Base):
     access_token = Column(Text, nullable=False)
     refresh_token = Column(Text, nullable=True)  # Not all brokers provide refresh tokens
     token_expiry = Column(DateTime(timezone=True), nullable=True)
+
+    # Broker-specific metadata (e.g., Paytm's extra tokens, Fyers client_id)
+    broker_metadata = Column(JSONB, nullable=True, default=dict)
 
     # Status
     is_active = Column(Boolean, default=True, nullable=False)

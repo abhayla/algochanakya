@@ -60,11 +60,14 @@ See [CLAUDE.md Quick Reference Card](../CLAUDE.md#-quick-reference-card) for dai
 | **Connection Flow** | [WebSocket - Connection Flow](architecture/websocket.md#connection-flow) |
 | **Message Types** | [WebSocket - Messages](architecture/websocket.md#message-types) |
 
-**Key Files:**
-- `backend/app/services/legacy/kite_ticker.py` - Kite WebSocket (singleton, legacy)
-- `backend/app/services/legacy/smartapi_ticker.py` - SmartAPI WebSocket V2 (singleton, legacy)
-- `backend/app/services/brokers/market_data/ticker_base.py` - `TickerServiceBase` interface
-- `backend/app/api/routes/websocket.py` - WebSocket endpoint
+**Key Files (Current — 5-component architecture, Feb 2026):**
+- `backend/app/services/brokers/market_data/ticker/` - All ticker components (adapter_base, pool, router, health, failover)
+- `backend/app/services/brokers/market_data/ticker/adapters/` - Per-broker adapters (smartapi, kite, dhan, fyers, paytm, upstox)
+- `backend/app/api/routes/websocket.py` - WebSocket endpoint (broker-agnostic)
+
+**Legacy (deprecated — replaced by ticker adapters above):**
+- ~~`backend/app/services/deprecated/kite_ticker.py`~~ - Kite WebSocket (singleton, superseded)
+- ~~`backend/app/services/deprecated/smartapi_ticker.py`~~ - SmartAPI WebSocket V2 (singleton, superseded)
 
 **Ticker Architecture:** [TICKER-DESIGN-SPEC.md](decisions/TICKER-DESIGN-SPEC.md) (current) | [Implementation Guide](guides/TICKER-IMPLEMENTATION-GUIDE.md) | [API Reference](api/multi-broker-ticker-api.md) | [Documentation Index](decisions/ticker-documentation-index.md)
 

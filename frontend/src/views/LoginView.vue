@@ -25,6 +25,46 @@ const handleAngelOneLogin = async () => {
   }
 }
 
+const handleUpstoxLogin = async () => {
+  error.value = ''
+  const result = await authStore.initiateUpstoxLogin()
+  if (!result.success) {
+    error.value = result.error
+  }
+}
+
+const handleFyersLogin = async () => {
+  error.value = ''
+  const result = await authStore.initiateFyersLogin()
+  if (!result.success) {
+    error.value = result.error
+  }
+}
+
+const showDhanForm = ref(false)
+const dhanClientId = ref('')
+const dhanAccessToken = ref('')
+
+const handleDhanLogin = async () => {
+  error.value = ''
+  if (!dhanClientId.value || !dhanAccessToken.value) {
+    error.value = 'Please enter both Client ID and Access Token'
+    return
+  }
+  const result = await authStore.initiateDhanLogin(dhanClientId.value, dhanAccessToken.value)
+  if (!result.success) {
+    error.value = result.error
+  }
+}
+
+const handlePaytmLogin = async () => {
+  error.value = ''
+  const result = await authStore.initiatePaytmLogin()
+  if (!result.success) {
+    error.value = result.error
+  }
+}
+
 const scrollToLogin = () => {
   document.querySelector('.login-card')?.scrollIntoView({
     behavior: 'smooth',
@@ -155,8 +195,7 @@ const scrollToLogin = () => {
               style="height: 48px; background-color: #f5f9ff; border: 0.8px solid #bfd7f2; border-radius: 8px; padding: 11px 12px 11px 16px;"
               data-testid="login-zerodha-button"
             >
-              <!-- Kite Logo -->
-              <img src="../assets/logos/kite-logo.png" alt="Kite" style="height: 24px; width: auto;" class="flex-shrink-0" />
+              <svg class="broker-logo flex-shrink-0" width="24" height="24" viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="5" fill="#e74c3c"/><path d="M7 7l10 10M17 7L7 17" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/></svg>
               <span v-if="!authStore.zerodhaLoading">Login with Zerodha</span>
               <span v-else class="flex items-center">
                 <svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-gray-500" width="20" height="20" fill="none" viewBox="0 0 24 24">
@@ -188,8 +227,7 @@ const scrollToLogin = () => {
               style="height: 44px; background-color: #ffffff; border: 0.8px solid #d8dce3; border-radius: 6px; padding: 11px 15px;"
               data-testid="login-angelone-button"
             >
-              <!-- Angel One Logo -->
-              <img src="../assets/logos/angelone-logo.png" alt="Angel One" style="height: 24px; width: auto;" class="flex-shrink-0" />
+              <svg class="broker-logo flex-shrink-0" width="24" height="24" viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="5" fill="#2196f3"/><path d="M12 5l6 14H6L12 5z" fill="#fff"/></svg>
               <span v-if="!authStore.angelOneLoading">Angel One</span>
               <span v-else class="flex items-center">
                 <svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-gray-500" width="20" height="20" fill="none" viewBox="0 0 24 24">
@@ -205,6 +243,118 @@ const scrollToLogin = () => {
                 Open Now
               </a>
             </p>
+
+            <!-- More Brokers Divider -->
+            <div class="flex items-center my-6">
+              <div class="flex-1 border-t border-gray-200"></div>
+              <span class="px-4 text-sm text-gray-400">More brokers</span>
+              <div class="flex-1 border-t border-gray-200"></div>
+            </div>
+
+            <!-- Upstox -->
+            <button
+              @click="handleUpstoxLogin"
+              :disabled="authStore.upstoxLoading"
+              class="w-full text-gray-700 text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-3 mb-3"
+              style="height: 44px; background-color: #ffffff; border: 0.8px solid #d8dce3; border-radius: 6px; padding: 11px 15px;"
+              data-testid="login-upstox-button"
+            >
+              <svg class="broker-logo flex-shrink-0" width="24" height="24" viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="5" fill="#6b21a8"/><path d="M7 8v4c0 2.8 2.2 5 5 5s5-2.2 5-5V8" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/></svg>
+              <span v-if="!authStore.upstoxLoading">Upstox</span>
+              <span v-else class="flex items-center">
+                <svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-gray-500" width="20" height="20" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Connecting...
+              </span>
+            </button>
+
+            <!-- Fyers -->
+            <button
+              @click="handleFyersLogin"
+              :disabled="authStore.fyersLoading"
+              class="w-full text-gray-700 text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-3 mb-3"
+              style="height: 44px; background-color: #ffffff; border: 0.8px solid #d8dce3; border-radius: 6px; padding: 11px 15px;"
+              data-testid="login-fyers-button"
+            >
+              <svg class="broker-logo flex-shrink-0" width="24" height="24" viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="5" fill="#0ea5e9"/><path d="M8 7h8M8 12h6M8 17h4" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/></svg>
+              <span v-if="!authStore.fyersLoading">Fyers</span>
+              <span v-else class="flex items-center">
+                <svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-gray-500" width="20" height="20" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Connecting...
+              </span>
+            </button>
+
+            <!-- Dhan (expands to inline form) -->
+            <button
+              v-if="!showDhanForm"
+              @click="showDhanForm = true"
+              class="w-full text-gray-700 text-sm font-medium transition-all flex items-center justify-center space-x-3 mb-3"
+              style="height: 44px; background-color: #ffffff; border: 0.8px solid #d8dce3; border-radius: 6px; padding: 11px 15px;"
+              data-testid="login-dhan-button"
+            >
+              <svg class="broker-logo flex-shrink-0" width="24" height="24" viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="5" fill="#059669"/><circle cx="12" cy="12" r="5" stroke="#fff" stroke-width="2.5" fill="none"/></svg>
+              <span>Dhan</span>
+            </button>
+
+            <!-- Dhan Credential Form -->
+            <div v-if="showDhanForm" class="mb-3 p-4 border border-gray-200 rounded-lg bg-gray-50" data-testid="login-dhan-form">
+              <p class="text-sm font-medium text-gray-700 mb-3">Dhan Login</p>
+              <input
+                v-model="dhanClientId"
+                type="text"
+                placeholder="Client ID"
+                class="w-full px-3 py-2 text-sm border border-gray-300 rounded mb-2 focus:outline-none focus:border-blue-500"
+                data-testid="login-dhan-client-id"
+              />
+              <input
+                v-model="dhanAccessToken"
+                type="password"
+                placeholder="Access Token"
+                class="w-full px-3 py-2 text-sm border border-gray-300 rounded mb-3 focus:outline-none focus:border-blue-500"
+                data-testid="login-dhan-access-token"
+              />
+              <div class="flex gap-2">
+                <button
+                  @click="showDhanForm = false"
+                  class="flex-1 text-sm text-gray-600 py-2 border border-gray-300 rounded hover:bg-gray-100"
+                >
+                  Cancel
+                </button>
+                <button
+                  @click="handleDhanLogin"
+                  :disabled="authStore.dhanLoading"
+                  class="flex-1 text-sm text-white py-2 rounded disabled:opacity-50"
+                  style="background: #387ed1;"
+                  data-testid="login-dhan-submit"
+                >
+                  {{ authStore.dhanLoading ? 'Connecting...' : 'Login' }}
+                </button>
+              </div>
+            </div>
+
+            <!-- Paytm Money -->
+            <button
+              @click="handlePaytmLogin"
+              :disabled="authStore.paytmLoading"
+              class="w-full text-gray-700 text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-3 mb-3"
+              style="height: 44px; background-color: #ffffff; border: 0.8px solid #d8dce3; border-radius: 6px; padding: 11px 15px;"
+              data-testid="login-paytm-button"
+            >
+              <svg class="broker-logo flex-shrink-0" width="24" height="24" viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="5" fill="#1e40af"/><path d="M8 8h4a4 4 0 010 8H8V8z" stroke="#fff" stroke-width="2" fill="none"/></svg>
+              <span v-if="!authStore.paytmLoading">Paytm Money</span>
+              <span v-else class="flex items-center">
+                <svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-gray-500" width="20" height="20" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Connecting...
+              </span>
+            </button>
 
             <!-- Safety Info Link -->
             <div class="text-center mt-6">

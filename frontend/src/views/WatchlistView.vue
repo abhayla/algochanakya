@@ -55,9 +55,12 @@
         <!-- Watchlist Header -->
         <div class="px-3 py-2 border-b border-gray-200 flex items-center justify-between bg-gray-50" data-testid="watchlist-header">
           <span class="text-sm font-medium text-gray-700" data-testid="watchlist-count">{{ activeWatchlist?.name || 'Watchlist' }} ({{ instruments.length }}/100)</span>
-          <button @click="showCreateModal = true" class="text-sm text-blue-600 hover:text-blue-700 font-medium" data-testid="watchlist-new-group-button">
-            + New group
-          </button>
+          <div class="flex items-center gap-2">
+            <DataSourceBadge screen="watchlist" />
+            <button @click="showCreateModal = true" class="text-sm text-blue-600 hover:text-blue-700 font-medium" data-testid="watchlist-new-group-button">
+              + New group
+            </button>
+          </div>
         </div>
 
         <!-- Watchlist Tabs -->
@@ -208,6 +211,7 @@ import { useWatchlistStore } from '../stores/watchlist'
 import KiteLayout from '../components/layout/KiteLayout.vue'
 import { fetchWatchlistPrices } from '@/services/priceService'
 import BrokerUpgradeBanner from '../components/common/BrokerUpgradeBanner.vue'
+import DataSourceBadge from '../components/common/DataSourceBadge.vue'
 
 const store = useWatchlistStore()
 
