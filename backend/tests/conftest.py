@@ -21,8 +21,9 @@ from datetime import datetime, date
 
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.pool import StaticPool
-from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy import JSON, event
+from sqlalchemy.dialects.postgresql import JSONB, ARRAY, UUID as PgUUID
+from sqlalchemy.dialects.postgresql import ENUM as PgEnum
+from sqlalchemy import JSON, BigInteger, event
 from httpx import AsyncClient, ASGITransport
 
 
@@ -108,6 +109,26 @@ from sqlalchemy.ext.compiler import compiles
 @compiles(JSONB, 'sqlite')
 def compile_jsonb_sqlite(element, compiler, **kw):
     return compiler.visit_JSON(JSON(), **kw)
+
+
+@compiles(ARRAY, 'sqlite')
+def compile_array_sqlite(element, compiler, **kw):
+    return "JSON"
+
+
+@compiles(BigInteger, 'sqlite')
+def compile_biginteger_sqlite(element, compiler, **kw):
+    return "INTEGER"
+
+
+@compiles(PgUUID, 'sqlite')
+def compile_uuid_sqlite(element, compiler, **kw):
+    return "TEXT"
+
+
+@compiles(PgEnum, 'sqlite')
+def compile_pgenum_sqlite(element, compiler, **kw):
+    return compiler.visit_VARCHAR(element, **kw)
 
 
 @pytest.fixture(scope="session")
