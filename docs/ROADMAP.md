@@ -8,15 +8,25 @@ This document tracks active work, recently completed features, and planned devel
 
 ## 🔄 Active Work (February 2026)
 
-### Pending: Apply Alembic Migration
-**Goal:** Apply `order_broker` and `market_data_source` DB columns to the live database
-**Status:** 🚧 Code complete, DB migration not yet applied
-**Command:** `cd backend && alembic upgrade head` (requires VPS DB at 103.118.16.189:5432)
-**Migration file:** `backend/alembic/versions/a1b2c3d4e5f6_add_order_broker_and_platform_source.py`
+### Broker Settings Hardening — In Progress
+**Goal:** Verify all 6 broker integrations work end-to-end with real credentials.
+- [ ] Test OAuth flows with real accounts (Upstox, Fyers, Paytm)
+- [ ] Test Dhan static token flow end-to-end
+- [ ] Verify `DataSourceBadge` reflects actual live data source
 
 ---
 
 ## ✅ Recently Completed (February 2026)
+
+### Broker Settings UX — COMPLETE (Feb 2026)
+- Disconnect endpoints for all 6 brokers (`DELETE /api/auth/{broker}/disconnect`)
+- `KiteSettings.vue` with connect/reconnect/disconnect
+- AngelOne login hint in `LoginView` explaining credentials prerequisite
+- Paytm `public_access_token` input in `PaytmSettings` (required for WebSocket ticks)
+- `disconnectBroker()` added to auth store
+
+### Alembic Migration Applied — COMPLETE (Feb 2026)
+- DB confirmed at head (`efdf0659b0ab`) — `order_broker` and `market_data_source` columns live
 
 ### Phase 6: OAuth Flows, DataSourceBadge & WebSocket Reconnect — COMPLETE (Feb 17, 2026)
 - OAuth/auth endpoints for Dhan (static token), Upstox, Fyers, and Paytm Money
@@ -166,7 +176,7 @@ This document tracks active work, recently completed features, and planned devel
 
 | Priority | Feature | Timeline | Status |
 |----------|---------|----------|--------|
-| **P0** | Apply Alembic migration | Now | 🚧 Pending DB access |
+| **P0** | Apply Alembic migration | Now | ✅ Complete |
 | **P0** | Live broker E2E verification | Q2 2026 | 📋 Ready to start |
 | **P1** | Kelly Criterion (AI) | Q2 2026 | ✅ Bug fixed, wired |
 | **P1** | OpenAPI spec + docs | Q2 2026 | ✅ Generated (243 paths) |
@@ -189,7 +199,7 @@ This document tracks active work, recently completed features, and planned devel
 - ✅ All 6 broker adapters (market data + order execution + WebSocket)
 - ✅ Frontend broker selection UI
 - ✅ 714 broker tests passing
-- 🚧 Alembic migration pending
+- ✅ Alembic migration applied (head: efdf0659b0ab)
 
 ### v1.2 (Q2 2026) - Hardening & AI
 - Live broker verification (all 6 brokers)
