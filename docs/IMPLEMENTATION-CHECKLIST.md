@@ -144,16 +144,16 @@ This checklist tracks remaining implementation tasks with links to relevant docu
   - Tests unified data model conversion for orders, positions, quotes
   - **Command:** `pytest backend/tests/backend/brokers/test_order_adapters.py -v`
 
-- [ ] **Apply Alembic migration** (pending DB access)
+- [x] **Apply Alembic migration** ✅ Complete (Feb 2026)
   - Migration file: `backend/alembic/versions/a1b2c3d4e5f6_add_order_broker_and_platform_source.py`
   - Adds `order_broker` and `market_data_source` columns to user_preferences table
-  - **Command:** `cd backend && alembic upgrade head` (run when DB at 103.118.16.189:5432 is accessible)
+  - DB confirmed at head (efdf0659b0ab) via `alembic current`
 
 ### Documentation
 
-- [ ] **Generate OpenAPI spec**
-  - File: `docs/api/openapi.yaml`
-  - **Status:** Currently just placeholder
+- [x] **Generate OpenAPI spec** ✅ Complete (Feb 2026)
+  - Script: `backend/scripts/generate_openapi.py`
+  - Output: `docs/api/openapi.json` (243 paths, 199 schemas)
 
 - [ ] **Update feature docs after broker refactor**
   - Use `docs-maintainer` skill after completing Phase 4
@@ -161,10 +161,9 @@ This checklist tracks remaining implementation tasks with links to relevant docu
 
 ### AI Module Enhancements
 
-- [ ] **Implement Kelly Criterion**
-  - File: `backend/app/services/ai/kelly_calculator.py`
-  - Currently marked as TBD in requirements
-  - **Docs:** [AI Requirements](features/ai/REQUIREMENTS.md)
+- [x] **Implement Kelly Criterion** ✅ Complete (Feb 2026)
+  - File: `backend/app/services/ai/kelly_calculator.py` — bug fixed, wired in `deploy.py`
+  - Frontend updated to display Kelly Criterion output
 
 ---
 
@@ -176,8 +175,8 @@ This checklist tracks remaining implementation tasks with links to relevant docu
 | **Phase 2: Market Data Abstraction** | 9 | 9 | ✅ Complete |
 | **Phase 3: Route Refactoring** | 7 | 7 | ✅ Complete |
 | **Phase 4: Ticker Architecture** | 14 | 14 | ✅ Complete (Feb 2026) |
-| **Phase 5: User Config & Order Adapters** | 7 | 7 | ✅ Complete (Feb 2026) — Migration pending DB access |
-| **Phase 6: Testing & Docs** | 3 | 2 | 🟡 E2E + unit tests done, Alembic migration pending |
+| **Phase 5: User Config & Order Adapters** | 7 | 7 | ✅ Complete (Feb 2026) |
+| **Phase 6: Testing & Docs** | 3 | 3 | ✅ Complete (Feb 2026) |
 
 ---
 
@@ -185,9 +184,9 @@ This checklist tracks remaining implementation tasks with links to relevant docu
 
 1. ~~**Phase 4** (Multi-Broker Ticker)~~ — ✅ COMPLETE
 2. ~~**Phase 5** (Order Adapters + Frontend UI)~~ — ✅ COMPLETE
-3. **Phase 6** (Testing & Docs) — 🟡 E2E + unit tests done; apply Alembic migration when DB accessible
+3. ~~**Phase 6** (Testing & Docs)~~ — ✅ COMPLETE (Feb 2026)
 
-**Total estimated effort:** Apply Alembic migration (30 min) + optional further testing
+**All phases complete.** See roadmap for next milestones.
 
 ---
 
