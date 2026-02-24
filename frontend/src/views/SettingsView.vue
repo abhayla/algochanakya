@@ -11,6 +11,7 @@ import KiteLayout from '@/components/layout/KiteLayout.vue'
 import SmartAPISettings from '@/components/settings/SmartAPISettings.vue'
 import MarketDataSourceToggle from '@/components/settings/MarketDataSourceToggle.vue'
 import BrokerSettings from '@/components/settings/BrokerSettings.vue'
+import KiteSettings from '@/components/settings/KiteSettings.vue'
 import DhanSettings from '@/components/settings/DhanSettings.vue'
 import UpstoxSettings from '@/components/settings/UpstoxSettings.vue'
 import FyersSettings from '@/components/settings/FyersSettings.vue'
@@ -171,11 +172,22 @@ const handleReset = () => {
           </div>
         </div>
 
+        <!-- Zerodha / Kite Settings -->
+        <div class="settings-section">
+          <div class="section-header">
+            <h2 class="section-title">Zerodha (Kite Connect)</h2>
+            <p class="section-subtitle">Connect your Zerodha account via OAuth. Token expires daily at ~6 AM IST.</p>
+          </div>
+          <div class="section-content">
+            <KiteSettings />
+          </div>
+        </div>
+
         <!-- SmartAPI Settings -->
         <div class="settings-section">
           <div class="section-header">
             <h2 class="section-title">AngelOne SmartAPI</h2>
-            <p class="section-subtitle">Configure AngelOne credentials for market data</p>
+            <p class="section-subtitle">Configure AngelOne credentials for market data and order execution</p>
           </div>
           <div class="section-content">
             <SmartAPISettings @credentials-updated="handleCredentialsUpdated" />

@@ -10,6 +10,7 @@ import { useAuthStore } from '@/stores/auth'
 
 const authStore = useAuthStore()
 const error = ref(null)
+const disconnecting = ref(false)
 
 // Check if user has an active Upstox connection
 const isConnected = ref(
@@ -20,6 +21,18 @@ async function handleConnect() {
   error.value = null
   const result = await authStore.initiateUpstoxLogin()
   if (!result.success) {
+    error.value = result.error
+  }
+}
+
+async function handleDisconnect() {
+  error.value = null
+  disconnecting.value = true
+  const result = await authStore.disconnectBroker('upstox')
+  disconnecting.value = false
+  if (result.success) {
+    isConnected.value = false
+  } else {
     error.value = result.error
   }
 }
@@ -34,14 +47,26 @@ async function handleConnect() {
 
     <p v-if="error" class="error-msg" data-testid="settings-upstox-error">{{ error }}</p>
 
-    <button
-      @click="handleConnect"
-      :disabled="authStore.upstoxLoading"
-      class="btn btn-primary"
-      data-testid="settings-upstox-connect-btn"
-    >
-      {{ authStore.upstoxLoading ? 'Connecting...' : (isConnected ? 'Reconnect' : 'Connect Upstox') }}
-    </button>
+    <div class="btn-row">
+      <button
+        @click="handleConnect"
+        :disabled="authStore.upstoxLoading"
+        class="btn btn-primary"
+        data-testid="settings-upstox-connect-btn"
+      >
+        {{ authStore.upstoxLoading ? 'Connecting...' : (isConnected ? 'Reconnect' : 'Connect Upstox') }}
+      </button>
+
+      <button
+        v-if="isConnected"
+        @click="handleDisconnect"
+        :disabled="disconnecting"
+        class="btn btn-danger"
+        data-testid="settings-upstox-disconnect-btn"
+      >
+        {{ disconnecting ? 'Disconnecting...' : 'Disconnect' }}
+      </button>
+    </div>
 
     <p class="form-hint">Uses OAuth 2.0. Token valid for ~1 year.</p>
   </div>
@@ -112,4 +137,19 @@ async function handleConnect() {
   background: #9ca3af;
   cursor: not-allowed;
 }
+
+.btn-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.btn-danger {
+  background: white;
+  color: #dc2626;
+  border: 1px solid #fca5a5;
+}
+
+.btn-danger:hover:not(:disabled) { background: #fef2f2; }
+.btn-danger:disabled { opacity: 0.5; cursor: not-allowed; }
 </style>

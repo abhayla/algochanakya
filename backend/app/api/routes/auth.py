@@ -315,6 +315,54 @@ async def logout(
         )
 
 
+@router.delete("/zerodha/disconnect")
+async def zerodha_disconnect(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Disconnect active Zerodha broker connection."""
+    result = await db.execute(
+        select(BrokerConnection).where(
+            BrokerConnection.user_id == user.id,
+            BrokerConnection.broker == "zerodha",
+            BrokerConnection.is_active == True,
+        )
+    )
+    conn = result.scalar_one_or_none()
+    if not conn:
+        raise HTTPException(status_code=404, detail="No active Zerodha connection found")
+    conn.is_active = False
+    conn.access_token = None
+    conn.updated_at = datetime.utcnow()
+    await db.commit()
+    logger.info(f"[Zerodha] Disconnected user {user.id}")
+    return {"success": True, "message": "Zerodha disconnected"}
+
+
+@router.delete("/angelone/disconnect")
+async def angelone_disconnect(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Disconnect active AngelOne broker connection."""
+    result = await db.execute(
+        select(BrokerConnection).where(
+            BrokerConnection.user_id == user.id,
+            BrokerConnection.broker == "angelone",
+            BrokerConnection.is_active == True,
+        )
+    )
+    conn = result.scalar_one_or_none()
+    if not conn:
+        raise HTTPException(status_code=404, detail="No active AngelOne connection found")
+    conn.is_active = False
+    conn.access_token = None
+    conn.updated_at = datetime.utcnow()
+    await db.commit()
+    logger.info(f"[AngelOne] Disconnected user {user.id}")
+    return {"success": True, "message": "AngelOne disconnected"}
+
+
 @router.post("/angelone/login")
 async def angelone_login(
     db: AsyncSession = Depends(get_db)

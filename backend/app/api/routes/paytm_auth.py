@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from pydantic import BaseModel
 from datetime import datetime
 import httpx
 import logging
@@ -17,6 +18,7 @@ from app.database import get_db, get_redis
 from app.config import settings
 from app.models import User, BrokerConnection
 from app.utils.jwt import create_access_token
+from app.utils.dependencies import get_current_user
 
 logger = logging.getLogger(__name__)
 
@@ -181,3 +183,64 @@ async def paytm_callback(
             url=f"{settings.FRONTEND_URL}/login?error=auth_failed&message={str(e)}",
             status_code=302,
         )
+
+
+class PaytmPublicTokenRequest(BaseModel):
+    public_access_token: str
+
+
+@router.post("/paytm/public-token")
+async def paytm_save_public_token(
+    body: PaytmPublicTokenRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Save the Paytm public_access_token (WebSocket token) to the broker connection metadata.
+
+    This token is separate from the OAuth access_token and is required for
+    live market data via Paytm WebSocket. It must be manually obtained from
+    the Paytm developer console.
+    """
+    result = await db.execute(
+        select(BrokerConnection).where(
+            BrokerConnection.user_id == user.id,
+            BrokerConnection.broker == "paytm",
+            BrokerConnection.is_active == True,
+        )
+    )
+    conn = result.scalar_one_or_none()
+    if not conn:
+        raise HTTPException(status_code=404, detail="No active Paytm connection found. Connect via OAuth first.")
+
+    metadata = conn.broker_metadata or {}
+    metadata["public_access_token"] = body.public_access_token
+    conn.broker_metadata = metadata
+    conn.updated_at = datetime.utcnow()
+    await db.commit()
+    logger.info(f"[Paytm] Saved public_access_token for user {user.id}")
+    return {"success": True, "message": "Public access token saved"}
+
+
+@router.delete("/paytm/disconnect")
+async def paytm_disconnect(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Disconnect active Paytm Money broker connection."""
+    result = await db.execute(
+        select(BrokerConnection).where(
+            BrokerConnection.user_id == user.id,
+            BrokerConnection.broker == "paytm",
+            BrokerConnection.is_active == True,
+        )
+    )
+    conn = result.scalar_one_or_none()
+    if not conn:
+        raise HTTPException(status_code=404, detail="No active Paytm connection found")
+    conn.is_active = False
+    conn.access_token = None
+    conn.broker_metadata = None
+    conn.updated_at = datetime.utcnow()
+    await db.commit()
+    logger.info(f"[Paytm] Disconnected user {user.id}")
+    return {"success": True, "message": "Paytm Money disconnected"}

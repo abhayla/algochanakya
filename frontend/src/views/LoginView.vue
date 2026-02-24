@@ -223,7 +223,7 @@ const scrollToLogin = () => {
             <button
               @click="handleAngelOneLogin"
               :disabled="authStore.angelOneLoading"
-              class="w-full text-gray-700 text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-3 mb-3"
+              class="w-full text-gray-700 text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-3 mb-2"
               style="height: 44px; background-color: #ffffff; border: 0.8px solid #d8dce3; border-radius: 6px; padding: 11px 15px;"
               data-testid="login-angelone-button"
             >
@@ -234,9 +234,14 @@ const scrollToLogin = () => {
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                   <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                Connecting...
+                Connecting... (may take 20-30s)
               </span>
             </button>
+            <!-- Hint: AngelOne requires pre-configured SmartAPI credentials -->
+            <p class="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded px-3 py-2 mb-4" data-testid="login-angelone-hint">
+              Requires SmartAPI credentials (Client ID, PIN, TOTP secret) saved in
+              <a href="/settings" class="underline font-medium">Settings → AngelOne SmartAPI</a> first.
+            </p>
             <p class="text-center text-sm text-gray-500 mb-6">
               Don't have an Angel One account?
               <a href="https://tinyurl.com/2d98g2qe" target="_blank" class="text-blue-600 hover:text-blue-700 underline">

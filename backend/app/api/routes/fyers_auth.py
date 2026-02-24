@@ -16,6 +16,7 @@ from app.database import get_db, get_redis
 from app.config import settings
 from app.models import User, BrokerConnection
 from app.utils.jwt import create_access_token
+from app.utils.dependencies import get_current_user
 
 logger = logging.getLogger(__name__)
 
@@ -174,3 +175,27 @@ async def fyers_callback(
             url=f"{settings.FRONTEND_URL}/login?error=auth_failed&message={str(e)}",
             status_code=302,
         )
+
+
+@router.delete("/fyers/disconnect")
+async def fyers_disconnect(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Disconnect active Fyers broker connection."""
+    result = await db.execute(
+        select(BrokerConnection).where(
+            BrokerConnection.user_id == user.id,
+            BrokerConnection.broker == "fyers",
+            BrokerConnection.is_active == True,
+        )
+    )
+    conn = result.scalar_one_or_none()
+    if not conn:
+        raise HTTPException(status_code=404, detail="No active Fyers connection found")
+    conn.is_active = False
+    conn.access_token = None
+    conn.updated_at = datetime.utcnow()
+    await db.commit()
+    logger.info(f"[Fyers] Disconnected user {user.id}")
+    return {"success": True, "message": "Fyers disconnected"}

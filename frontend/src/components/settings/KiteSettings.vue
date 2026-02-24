@@ -1,9 +1,9 @@
 <script setup>
 /**
- * FyersSettings
+ * KiteSettings
  *
- * OAuth connection status for Fyers.
- * Connect button redirects to Fyers OAuth flow.
+ * OAuth connection status for Zerodha Kite Connect.
+ * Connect redirects to Kite OAuth flow; Disconnect clears the stored token.
  */
 import { ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
@@ -13,12 +13,12 @@ const error = ref(null)
 const disconnecting = ref(false)
 
 const isConnected = ref(
-  authStore.user?.broker_connections?.some(bc => bc.broker === 'fyers' && bc.is_active) || false
+  authStore.user?.broker_connections?.some(bc => bc.broker === 'zerodha' && bc.is_active) || false
 )
 
 async function handleConnect() {
   error.value = null
-  const result = await authStore.initiateFyersLogin()
+  const result = await authStore.initiateZerodhaLogin()
   if (!result.success) {
     error.value = result.error
   }
@@ -27,7 +27,7 @@ async function handleConnect() {
 async function handleDisconnect() {
   error.value = null
   disconnecting.value = true
-  const result = await authStore.disconnectBroker('fyers')
+  const result = await authStore.disconnectBroker('zerodha')
   disconnecting.value = false
   if (result.success) {
     isConnected.value = false
@@ -38,22 +38,22 @@ async function handleDisconnect() {
 </script>
 
 <template>
-  <div class="oauth-settings" data-testid="settings-fyers-section">
+  <div class="oauth-settings" data-testid="settings-kite-section">
     <div class="connection-status">
       <span :class="['status-dot', isConnected ? 'active' : 'inactive']"></span>
       <span class="status-text">{{ isConnected ? 'Connected' : 'Not connected' }}</span>
     </div>
 
-    <p v-if="error" class="error-msg" data-testid="settings-fyers-error">{{ error }}</p>
+    <p v-if="error" class="error-msg" data-testid="settings-kite-error">{{ error }}</p>
 
     <div class="btn-row">
       <button
         @click="handleConnect"
-        :disabled="authStore.fyersLoading"
+        :disabled="authStore.zerodhaLoading"
         class="btn btn-primary"
-        data-testid="settings-fyers-connect-btn"
+        data-testid="settings-kite-connect-btn"
       >
-        {{ authStore.fyersLoading ? 'Connecting...' : (isConnected ? 'Reconnect' : 'Connect Fyers') }}
+        {{ authStore.zerodhaLoading ? 'Connecting...' : (isConnected ? 'Reconnect' : 'Connect Zerodha') }}
       </button>
 
       <button
@@ -61,13 +61,13 @@ async function handleDisconnect() {
         @click="handleDisconnect"
         :disabled="disconnecting"
         class="btn btn-danger"
-        data-testid="settings-fyers-disconnect-btn"
+        data-testid="settings-kite-disconnect-btn"
       >
         {{ disconnecting ? 'Disconnecting...' : 'Disconnect' }}
       </button>
     </div>
 
-    <p class="form-hint">Uses OAuth 2.0. Token expires daily at midnight IST.</p>
+    <p class="form-hint">Uses OAuth 2.0. Token expires daily at ~6 AM IST — reconnect each morning.</p>
   </div>
 </template>
 
@@ -113,6 +113,12 @@ async function handleDisconnect() {
   margin: 0;
 }
 
+.btn-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .btn {
   padding: 8px 16px;
   border-radius: 6px;
@@ -128,20 +134,8 @@ async function handleDisconnect() {
   color: white;
 }
 
-.btn-primary:hover:not(:disabled) {
-  background: #2563eb;
-}
-
-.btn-primary:disabled {
-  background: #9ca3af;
-  cursor: not-allowed;
-}
-
-.btn-row {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
+.btn-primary:hover:not(:disabled) { background: #2563eb; }
+.btn-primary:disabled { background: #9ca3af; cursor: not-allowed; }
 
 .btn-danger {
   background: white;

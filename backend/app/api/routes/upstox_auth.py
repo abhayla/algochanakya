@@ -15,6 +15,7 @@ from app.database import get_db, get_redis
 from app.config import settings
 from app.models import User, BrokerConnection
 from app.utils.jwt import create_access_token
+from app.utils.dependencies import get_current_user
 
 logger = logging.getLogger(__name__)
 
@@ -162,3 +163,27 @@ async def upstox_callback(
             url=f"{settings.FRONTEND_URL}/login?error=auth_failed&message={str(e)}",
             status_code=302,
         )
+
+
+@router.delete("/upstox/disconnect")
+async def upstox_disconnect(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Disconnect active Upstox broker connection."""
+    result = await db.execute(
+        select(BrokerConnection).where(
+            BrokerConnection.user_id == user.id,
+            BrokerConnection.broker == "upstox",
+            BrokerConnection.is_active == True,
+        )
+    )
+    conn = result.scalar_one_or_none()
+    if not conn:
+        raise HTTPException(status_code=404, detail="No active Upstox connection found")
+    conn.is_active = False
+    conn.access_token = None
+    conn.updated_at = datetime.utcnow()
+    await db.commit()
+    logger.info(f"[Upstox] Disconnected user {user.id}")
+    return {"success": True, "message": "Upstox disconnected"}

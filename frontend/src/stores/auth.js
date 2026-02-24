@@ -146,6 +146,20 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  async function disconnectBroker(broker) {
+    try {
+      await api.delete(`/api/auth/${broker}/disconnect`)
+      // Refresh user so connection status updates everywhere
+      await fetchUser()
+      return { success: true }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.detail || `Failed to disconnect ${broker}`,
+      }
+    }
+  }
+
   function setToken(token) {
     localStorage.setItem('access_token', token)
     isAuthenticated.value = true
@@ -217,6 +231,7 @@ export const useAuthStore = defineStore('auth', () => {
     initiateFyersLogin,
     initiateDhanLogin,
     initiatePaytmLogin,
+    disconnectBroker,
     setToken,
     fetchUser,
     logout,
