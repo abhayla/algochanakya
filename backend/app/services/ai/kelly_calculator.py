@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_
 
-from app.models.autopilot import AutoPilotOrder, AutoPilotStrategy
+from app.models.autopilot import AutoPilotPositionLeg, AutoPilotStrategy
 from app.constants.trading import get_lot_size
 
 logger = logging.getLogger(__name__)
@@ -59,38 +59,34 @@ class KellyCalculator:
         """
         cutoff_date = datetime.utcnow() - timedelta(days=days)
 
-        # Build query for completed trades
-        query = select(AutoPilotOrder).where(
-            and_(
-                AutoPilotOrder.user_id == user_id,
-                AutoPilotOrder.created_at >= cutoff_date,
-                AutoPilotOrder.status == "COMPLETE"
+        # Query AutoPilotPositionLeg (which has realized_pnl) joined to AutoPilotStrategy
+        # for user scoping and optional strategy/underlying filtering.
+        query = (
+            select(AutoPilotPositionLeg)
+            .join(AutoPilotStrategy, AutoPilotPositionLeg.strategy_id == AutoPilotStrategy.id)
+            .where(
+                and_(
+                    AutoPilotStrategy.user_id == user_id,
+                    AutoPilotPositionLeg.created_at >= cutoff_date,
+                    AutoPilotPositionLeg.status.in_(["exited", "closed"]),
+                    AutoPilotPositionLeg.realized_pnl.isnot(None),
+                )
             )
         )
 
         # Filter by strategy name if provided
         if strategy_name:
-            strategy_query = select(AutoPilotStrategy.id).where(
-                and_(
-                    AutoPilotStrategy.user_id == user_id,
-                    AutoPilotStrategy.name == strategy_name
-                )
-            )
-            strategy_result = await self.db.execute(strategy_query)
-            strategy_id = strategy_result.scalar_one_or_none()
+            query = query.where(AutoPilotStrategy.name == strategy_name)
 
-            if strategy_id:
-                query = query.where(AutoPilotOrder.strategy_id == strategy_id)
-
-        # Filter by underlying if provided
+        # Filter by underlying if provided (underlying is on AutoPilotStrategy)
         if underlying:
-            query = query.where(AutoPilotOrder.underlying == underlying)
+            query = query.where(AutoPilotStrategy.underlying == underlying)
 
         result = await self.db.execute(query)
-        orders = result.scalars().all()
+        legs = result.scalars().all()
 
-        if not orders:
-            logger.warning(f"No historical trades found for user {user_id}")
+        if not legs:
+            logger.warning(f"No closed position legs found for user {user_id}")
             return {
                 "total_trades": 0,
                 "winning_trades": 0,
@@ -105,15 +101,15 @@ class KellyCalculator:
         wins = []
         losses = []
 
-        for order in orders:
-            pnl = order.realized_pnl or Decimal("0")
+        for leg in legs:
+            pnl = leg.realized_pnl
 
             if pnl > 0:
                 wins.append(pnl)
             elif pnl < 0:
                 losses.append(abs(pnl))
 
-        total_trades = len(orders)
+        total_trades = len(legs)
         winning_trades = len(wins)
         losing_trades = len(losses)
 

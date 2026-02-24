@@ -27,7 +27,10 @@ export const useAIConfigStore = defineStore('aiConfig', {
     claudeKeyValidating: false,
 
     // Paper trading status
-    paperTradingStatus: null
+    paperTradingStatus: null,
+
+    // Kelly Criterion recommendation (fetched async)
+    kellyRecommendation: null
   }),
 
   getters: {
@@ -99,10 +102,10 @@ export const useAIConfigStore = defineStore('aiConfig', {
         return Math.floor(state.config.base_lots * tier.multiplier)
       }
 
-      // Kelly (placeholder)
+      // Kelly — async; actual lot count comes from fetchKellyRecommendation() action.
+      // Return cached recommendation if available, otherwise base_lots as fallback.
       if (state.config.sizing_mode === 'kelly') {
-        console.warn('Kelly sizing not yet implemented')
-        return state.config.base_lots
+        return state.kellyRecommendation?.optimal_lots ?? state.config.base_lots
       }
 
       return state.config.base_lots
@@ -215,6 +218,26 @@ export const useAIConfigStore = defineStore('aiConfig', {
       } catch (error) {
         console.error('[AI Config] Error fetching strategies:', error)
         throw error
+      }
+    },
+
+    /**
+     * Fetch Kelly Criterion position sizing recommendation from backend.
+     * @param {object} params - { capital, max_loss_per_lot, underlying, strategy_name }
+     * @returns {object} Kelly recommendation response
+     */
+    async fetchKellyRecommendation({ capital, max_loss_per_lot, underlying = 'NIFTY', strategy_name = null } = {}) {
+      try {
+        const params = { capital, max_loss_per_lot, underlying }
+        if (strategy_name) params.strategy_name = strategy_name
+
+        const response = await api.get('/api/v1/ai/config/kelly-recommendation', { params })
+        this.kellyRecommendation = response.data
+        return response.data
+      } catch (error) {
+        console.error('[AI Config] Error fetching Kelly recommendation:', error)
+        this.kellyRecommendation = null
+        return null
       }
     },
 

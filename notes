@@ -431,3 +431,9 @@ Documentation Sync Summary
   The documentation is now production-ready and implementation can begin whenever you're ready! 🚀
 
   Why [INFO] Instruments table has 117,972 records?
+
+    │ DataSourceBadge visibility    │ Component exists but not placed in any view ❌    │ No — needs wiring first         │
+  ├───────────────────────────────┼───────────────────────────────────────────────────┼─────────────────────────────────┤
+  │ WebSocket after broker switch │ No auto-reconnect on switch ❌                    │ No — needs implementation first │
+  ├───────────────────────────────┼───────────────────────────────────────────────────┼─────────────────────────────────┤
+  │ OAuth flows                   │ OAuth buttons exist per broker in SettingsView    │ Partially — can mock 

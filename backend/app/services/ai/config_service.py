@@ -233,9 +233,12 @@ class AIConfigService:
             )
             return lots
 
-        # Kelly criterion (placeholder for Week 9)
+        # Kelly criterion — requires async db session; this static method cannot call
+        # KellyCalculator directly. Callers with db access (deploy.py, order_executor.py)
+        # should call KellyCalculator.get_kelly_recommendation() before calling this method.
+        # This path is only reached when db is not available — fall back to base_lots.
         if config.sizing_mode == 'kelly':
-            logger.warning("Kelly sizing not yet implemented, using fixed sizing")
+            logger.info("Kelly sizing requires db session; caller should use KellyCalculator. Falling back to base_lots.")
             return config.base_lots
 
         logger.error(f"Unknown sizing mode: {config.sizing_mode}")

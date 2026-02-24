@@ -18,6 +18,7 @@ from app.utils.dependencies import get_current_user
 from app.models.users import User
 from app.models.ai import AIUserConfig, AIPaperTrade
 from app.services.ai.config_service import AIConfigService
+from app.services.ai.kelly_calculator import KellyCalculator
 from app.services.ai.market_regime import MarketRegimeClassifier
 from app.services.ai.strategy_recommender import StrategyRecommender
 from app.services.ai.strike_selector import StrikeSelector
@@ -202,7 +203,9 @@ async def trigger_deploy(
         # Calculate position size based on sizing mode
         lots = await _calculate_position_size(
             user_config=user_config,
-            confidence=recommendation['confidence']
+            confidence=recommendation['confidence'],
+            user_id=current_user.id,
+            db=db
         )
 
         # TEST MODE: Use mock strikes when force=True
@@ -497,13 +500,20 @@ async def list_paper_trades(
 # Helper Functions
 # ============================================================================
 
-async def _calculate_position_size(user_config: AIUserConfig, confidence: float) -> int:
+async def _calculate_position_size(
+    user_config: AIUserConfig,
+    confidence: float,
+    user_id=None,
+    db: AsyncSession = None
+) -> int:
     """
     Calculate position size based on sizing mode and confidence.
 
     Args:
         user_config: User's AI configuration
         confidence: Strategy confidence score (0-100)
+        user_id: User ID (required for Kelly mode)
+        db: Database session (required for Kelly mode)
 
     Returns:
         Number of lots to trade
@@ -520,11 +530,28 @@ async def _calculate_position_size(user_config: AIUserConfig, confidence: float)
         return user_config.base_lots
 
     elif user_config.sizing_mode == 'kelly':
-        # Kelly criterion calculation (simplified for now)
-        # In production, this would use win rate and avg win/loss data
-        # For paper trading, we'll use a conservative 50% of Kelly
-        kelly_fraction = 0.5
-        return max(1, int(user_config.base_lots * kelly_fraction * (confidence / 100)))
+        if db is None or user_id is None:
+            return user_config.base_lots
+
+        calculator = KellyCalculator(db)
+        # Use a default capital estimate from base_lots × typical margin per lot
+        # Capital and max_loss_per_lot defaults; callers can extend this later
+        capital = float(user_config.base_lots) * 50000.0  # rough per-lot margin
+        max_loss_per_lot = capital / max(user_config.base_lots, 1) * 0.1  # 10% of margin
+
+        result = await calculator.get_kelly_recommendation(
+            user_id=user_id,
+            capital=capital,
+            max_loss_per_lot=max_loss_per_lot,
+            underlying=(user_config.preferred_underlyings or ["NIFTY"])[0],
+            lookback_days=90,
+        )
+
+        if result.get("enabled") and result.get("optimal_lots", 0) > 0:
+            return result["optimal_lots"]
+
+        # Kelly not reliable yet — fall back to confidence-scaled base
+        return max(1, int(user_config.base_lots * (confidence / 100)))
 
     else:
         return user_config.base_lots

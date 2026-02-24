@@ -175,7 +175,7 @@
             >
               <option value="fixed">Fixed</option>
               <option value="tiered">Tiered (Confidence-based)</option>
-              <option value="kelly">Kelly Criterion (Week 9)</option>
+              <option value="kelly">Kelly Criterion</option>
             </select>
           </div>
         </div>

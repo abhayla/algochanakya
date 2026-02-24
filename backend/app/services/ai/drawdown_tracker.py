@@ -21,7 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, func, desc
 
 from app.models.ai import AIUserConfig
-from app.models.autopilot import AutoPilotOrder
+from app.models.autopilot import AutoPilotPositionLeg, AutoPilotStrategy
 
 logger = logging.getLogger(__name__)
 
@@ -306,35 +306,42 @@ class DrawdownTracker:
     # ============================================================================
 
     async def _get_current_portfolio_value(self, user_id) -> Decimal:
-        """Get current portfolio value from cumulative realized P&L"""
-        query = select(func.sum(AutoPilotOrder.realized_pnl)).where(
-            and_(
-                AutoPilotOrder.user_id == user_id,
-                AutoPilotOrder.status == "COMPLETE"
+        """Get current portfolio value from cumulative realized P&L across all position legs"""
+        query = (
+            select(func.sum(AutoPilotPositionLeg.realized_pnl))
+            .join(AutoPilotStrategy, AutoPilotPositionLeg.strategy_id == AutoPilotStrategy.id)
+            .where(
+                and_(
+                    AutoPilotStrategy.user_id == user_id,
+                    AutoPilotPositionLeg.status.in_(["exited", "closed"]),
+                    AutoPilotPositionLeg.realized_pnl.isnot(None),
+                )
             )
         )
         result = await self.db.execute(query)
         total_pnl = result.scalar() or Decimal("0")
 
-        # Assume starting capital (could be made configurable)
-        # For now, we use realized P&L as proxy for portfolio value change
+        # Use realized P&L as proxy for portfolio value change
         return total_pnl
 
     async def _get_daily_pnl(self, user_id, cutoff_date: datetime) -> List[float]:
         """Get daily P&L values for volatility calculation"""
-        query = select(
-            func.date(AutoPilotOrder.updated_at).label('trade_date'),
-            func.sum(AutoPilotOrder.realized_pnl).label('daily_pnl')
-        ).where(
-            and_(
-                AutoPilotOrder.user_id == user_id,
-                AutoPilotOrder.status == "COMPLETE",
-                AutoPilotOrder.updated_at >= cutoff_date
+        query = (
+            select(
+                func.date(AutoPilotPositionLeg.updated_at).label('trade_date'),
+                func.sum(AutoPilotPositionLeg.realized_pnl).label('daily_pnl')
             )
-        ).group_by(
-            func.date(AutoPilotOrder.updated_at)
-        ).order_by(
-            func.date(AutoPilotOrder.updated_at)
+            .join(AutoPilotStrategy, AutoPilotPositionLeg.strategy_id == AutoPilotStrategy.id)
+            .where(
+                and_(
+                    AutoPilotStrategy.user_id == user_id,
+                    AutoPilotPositionLeg.status.in_(["exited", "closed"]),
+                    AutoPilotPositionLeg.updated_at >= cutoff_date,
+                    AutoPilotPositionLeg.realized_pnl.isnot(None),
+                )
+            )
+            .group_by(func.date(AutoPilotPositionLeg.updated_at))
+            .order_by(func.date(AutoPilotPositionLeg.updated_at))
         )
 
         result = await self.db.execute(query)

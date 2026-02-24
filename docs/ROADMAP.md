@@ -1,6 +1,6 @@
 # AlgoChanakya Roadmap
 
-**Last Updated:** 2026-02-17
+**Last Updated:** 2026-02-24
 
 This document tracks active work, recently completed features, and planned development.
 
@@ -8,70 +8,86 @@ This document tracks active work, recently completed features, and planned devel
 
 ## 🔄 Active Work (February 2026)
 
-### Workflow Redesign (In Progress)
-**Goal:** Simplify and optimize automation workflows
-**Status:** 🚧 Design complete, implementation in progress
-**Details:** [.claude/WORKFLOW-DESIGN-SPEC.md](../.claude/WORKFLOW-DESIGN-SPEC.md)
-
-**Improvements:**
-- Hooks: 9 → 4 (consolidation)
-- Total timeout: 395s → 110s (72% reduction)
-- Total code: 3,100 → 1,200 lines (61% reduction)
-
-**Timeline:** Q1 2026
-
----
+### Pending: Apply Alembic Migration
+**Goal:** Apply `order_broker` and `market_data_source` DB columns to the live database
+**Status:** 🚧 Code complete, DB migration not yet applied
+**Command:** `cd backend && alembic upgrade head` (requires VPS DB at 103.118.16.189:5432)
+**Migration file:** `backend/alembic/versions/a1b2c3d4e5f6_add_order_broker_and_platform_source.py`
 
 ---
 
 ## ✅ Recently Completed (February 2026)
 
-### Ticker Architecture Redesign — COMPLETE (Feb 2026)
-**Goal:** Multi-broker WebSocket architecture (5-component design)
-**Status:** ✅ Complete
-**Details:** [TICKER-DESIGN-SPEC.md](decisions/TICKER-DESIGN-SPEC.md) | [Implementation Guide](guides/TICKER-IMPLEMENTATION-GUIDE.md) | [API Reference](api/multi-broker-ticker-api.md)
+### Phase 6: OAuth Flows, DataSourceBadge & WebSocket Reconnect — COMPLETE (Feb 17, 2026)
+- OAuth/auth endpoints for Dhan (static token), Upstox, Fyers, and Paytm Money
+- `broker_metadata` JSONB column added to `BrokerConnection` model (with migration)
+- `DataSourceBadge` placed in Dashboard, Watchlist, OptionChain, Positions views
+- Fixed WebSocket double-reconnect bug (nullify `onclose` before disconnect)
+- WebSocket auto-reconnect when market data source changes in BrokerSettings
+- Broker login buttons added to LoginView (all 6 brokers with SVG logos)
+- Per-broker settings components: `DhanSettings`, `UpstoxSettings`, `FyersSettings`, `PaytmSettings`
 
-**Results:**
-- 5-component architecture: TickerAdapter, TickerPool, TickerRouter, HealthMonitor, FailoverController
-- All 6 broker ticker adapters implemented (SmartAPI, Kite, Dhan, Fyers, Paytm, Upstox)
-- `websocket.py` refactored from 494 → 292 lines (broker-agnostic)
-- 714 broker tests passing (413 ticker adapter + 122 core component + 179 REST adapter)
-- NormalizedTick uses `Decimal` for price precision
-
-### Phase 6: Broker Abstraction E2E Tests — COMPLETE (Feb 2026)
-- E2E tests for broker settings and abstraction layer
+### Phase 6: Broker Abstraction E2E Tests — COMPLETE (Feb 17, 2026)
+- E2E tests for broker settings UI (`broker-settings.happy.spec.js` — 12 tests)
+- Banner/dismiss edge cases (`broker-banner.edge.spec.js` — 8 tests)
+- `BrokerSettingsPage` Page Object Model
 - Reset button visibility and interaction tests
+- Fixed SQLite test compilers for CI (ARRAY, UUID, BigInteger, ENUM)
+- Added `aiosqlite` to requirements.txt for async SQLite tests
+
+### Phase 5: Order Execution Adapters & Frontend Broker UI — COMPLETE (Feb 17, 2026)
+**Goal:** Order execution adapters for all 6 brokers and user-facing broker selection UI.
+
+- `AngelOneAdapter` — Angel One (SmartAPI) order execution
+- `UpstoxOrderAdapter` — Upstox order execution (OAuth ~1yr token)
+- `DhanOrderAdapter` — Dhan order execution (static token)
+- `FyersOrderAdapter` — Fyers order execution (OAuth)
+- `PaytmOrderAdapter` — Paytm Money order execution (3-token system)
+- All 6 adapters registered in `brokers/factory.py`
+- 61 unit tests in `tests/backend/brokers/test_order_adapters.py`
+- Frontend `BrokerSettings.vue`, `BrokerUpgradeBanner.vue`, `DataSourceBadge.vue`
+- Market data source dropdown (platform + 6 brokers) + order broker dropdown
+- `PUT /api/user/preferences/` and `GET /api/user/preferences/` updated
+
+### Phase 4: Ticker/WebSocket Architecture — COMPLETE (Feb 17, 2026)
+**Goal:** Unified multi-tenant WebSocket ticker system supporting all 6 brokers.
+
+- 5-component architecture: `TickerAdapter`, `TickerPool`, `TickerRouter`, `HealthMonitor`, `FailoverController`
+- All 6 broker ticker adapters: `smartapi`, `kite`, `dhan`, `fyers`, `paytm`, `upstox`
+- `websocket.py` refactored 494 → 292 lines (fully broker-agnostic)
+- 714 broker tests passing (413 ticker adapter + 122 core + 179 REST adapter)
+- `NormalizedTick` uses `Decimal` for price precision
+- **Docs:** [TICKER-DESIGN-SPEC.md](decisions/TICKER-DESIGN-SPEC.md) | [API Reference](api/multi-broker-ticker-api.md)
+
+### auto-verify Skill Enhancements — COMPLETE (Feb 15, 2026)
+- AI-powered analysis and structured error parsing (Steps 4–5)
+- Smart test execution and performance optimization (Step 3)
+- Decision matrix, MCP tools, auto-diagnosis (Steps 6–7)
+- Learning-engine integration and consolidated approvals (Step 8)
+- Enhanced iteration tracking (Section 10)
 
 ---
 
-## ✅ Recently Completed (January 2026)
+## ✅ Completed (January 2026)
 
-### Multi-Broker Abstraction (Phase 1-3)
-- ✅ BrokerAdapter interface and factory pattern
-- ✅ MarketDataBrokerAdapter interface
-- ✅ SmartAPI market data adapter (FREE data source)
-- ✅ Kite market data adapter
-- ✅ TokenManager for cross-broker symbol/token mapping
-- ✅ RateLimiter for per-broker API limits
-- ✅ SymbolConverter for canonical format
+### Multi-Broker Abstraction (Phases 1–3)
+- ✅ `BrokerAdapter` interface and factory pattern
+- ✅ `MarketDataBrokerAdapter` interface
+- ✅ SmartAPI market data adapter (FREE) + Kite market data adapter
+- ✅ `TokenManager`, `RateLimiter`, `SymbolConverter`
 - ✅ All routes refactored to use broker factories
 - ✅ `broker_instrument_tokens` database table
+- ✅ Dhan and Fyers REST market data adapters
 
 **Status:** Production-ready (Jan 2026)
 
 ### SmartAPI Integration
-- ✅ Auto-TOTP authentication (no manual TOTP entry)
-- ✅ Encrypted credentials storage
-- ✅ WebSocket V2 ticker service
-- ✅ Historical OHLC data service
-- ✅ Frontend settings UI
+- ✅ Auto-TOTP authentication, encrypted credentials, WebSocket V2, historical OHLC, frontend settings UI
 
 **Status:** Production-ready (Jan 2026)
 
-### E2E Test Suite Expansion
-- ✅ Auto-login via SmartAPI
-- ✅ Auth state reuse
-- ✅ Allure reporting
+### E2E Test Suite
+- ✅ Auto-login via SmartAPI, auth state reuse, Allure reporting
 
 **Status:** Production-ready (Jan 2026)
 
@@ -79,102 +95,70 @@ This document tracks active work, recently completed features, and planned devel
 
 ## 📋 Planned Features
 
-### Q2 2026: Additional Broker Integrations
+### Q2 2026: Live Broker Verification & Hardening
 
-**Upstox Adapter**
-- Market data adapter
-- Order execution adapter
-- Ticker WebSocket implementation
-- Frontend broker selection
+**Goal:** Verify all 6 broker integrations with real credentials end-to-end.
 
-**Fyers Adapter**
-- Market data adapter
-- Order execution adapter
-- Ticker WebSocket implementation
+- [ ] Test all OAuth flows with real broker accounts (Upstox, Fyers, Paytm)
+- [ ] Test Dhan static token flow end-to-end
+- [ ] Verify `DataSourceBadge` reflects actual live data source
+- [ ] Load-test `TickerPool` failover under real market conditions
+- [ ] Apply pending Alembic migration to production DB
 
-**Status:** Design phase, Q2 2026 target
+**Status:** Unblocked, ready to start
 
 ---
 
-### Q2-Q3 2026: More Broker Support
+### Q2 2026: Kelly Criterion & AI Enhancements
 
-**Dhan Adapter** - Q3 2026
-**Paytm Money Adapter** - Q3 2026
+**Goal:** Complete AI module outstanding tasks.
 
-Each includes:
-- Market data abstraction
-- Order execution abstraction
-- WebSocket ticker
-- Frontend integration
+- [x] Fix `KellyCalculator` data model bug (was querying `AutoPilotOrder.realized_pnl` which doesn't exist; fixed to use `AutoPilotPositionLeg.realized_pnl`)
+- [x] Fix `DrawdownTracker` same bug (now queries `AutoPilotPositionLeg`)
+- [x] Wire `deploy.py` Kelly mode to real `KellyCalculator` (replaced hardcoded `kelly_fraction = 0.5`)
+- [x] Frontend: remove "(Week 9)" placeholder label, add `fetchKellyRecommendation` action
+- [ ] Enhanced regime detection (additional regime types)
+- [ ] Better strategy recommendations
+- [ ] Paper trading graduation refinements
+
+**Status:** Kelly Criterion bug fixed and wired. Regime/recommendations planned for Q2.
 
 ---
 
-### Q2 2026: AngelOne Order Execution
+### Q2 2026: OpenAPI Spec & Docs
 
-**Goal:** Support Angel One for order placement (currently only market data)
+- [x] Generate `docs/api/openapi.json` from FastAPI (243 paths, 199 schemas) — via `backend/scripts/generate_openapi.py`
+- [ ] Update `docs/features/feature-registry.yaml` post-broker-refactor
+- [ ] Workflow Redesign (hook consolidation — 16 scripts / 13 registered; see note below)
 
-**Tasks:**
-- Implement `AngelAdapter` extending `BrokerAdapter`
-- Order placement API integration
-- Position/margin fetching
-- Register in factory
-- Add E2E tests
+**Status:** OpenAPI spec generated. Workflow redesign is planned (not started).
 
-**Benefit:** Fully FREE broker option (SmartAPI data + SmartAPI orders = Rs.0/month)
+**Workflow Redesign Note:** The repo currently has 16 hook scripts with 13 registered in `.claude/settings.json`. Any consolidation plan should start from that baseline — not the earlier estimate of "9 → 4". No design spec or implementation exists yet.
 
-**Status:** Planned, Q2 2026
+**To regenerate OpenAPI spec:** `cd backend && python scripts/generate_openapi.py`
 
 ---
 
 ### Q3 2026: Advanced Features
 
 **Backtesting System**
-- Historical strategy backtesting
-- Performance metrics
-- Monte Carlo simulation
-- Report generation
-
-**Status:** Design phase
+- Historical strategy backtesting with performance metrics
+- Monte Carlo simulation, report generation
 
 **Risk Management Enhancements**
-- Portfolio-level risk limits
-- Exposure tracking
-- Margin utilization alerts
-- Kill switch improvements
-
-**Status:** Planning
+- Portfolio-level risk limits, exposure tracking, margin utilization alerts
 
 **AI Improvements**
-- Enhanced regime detection (more regimes)
-- Better strategy recommendations
-- Paper trading improvements
-- Trust ladder refinements
-
-**Status:** Continuous improvement
+- ML model improvements (XGBoost/LightGBM), trust ladder refinements
 
 ---
 
 ## 🎯 Long-Term Vision (2026+)
 
-### Multi-Timeframe Analysis
-- Intraday + swing trading support
-- Multi-day position tracking
-- Overnight risk management
-
-### Social Trading
-- Share strategies (anonymized)
-- Leaderboards
-- Community insights
-
-### Mobile App
-- React Native mobile client
-- Push notifications
-- Quick trade execution
-
-### Advanced Analytics
-- Machine learning for price prediction
-- Sentiment analysis integration
-- News impact analysis
+- **Multi-Timeframe Analysis** — Intraday + swing trading, overnight risk management
+- **Social Trading** — Anonymous strategy sharing, leaderboards
+- **Mobile App** — React Native, push notifications
+- **Advanced Analytics** — ML price prediction, sentiment analysis
 
 ---
 
@@ -182,42 +166,41 @@ Each includes:
 
 | Priority | Feature | Timeline | Status |
 |----------|---------|----------|--------|
-| **P0** | Workflow Redesign | Q1 2026 | 🚧 In Progress |
-| **P0** | Ticker Architecture | Q1 2026 | ✅ Complete |
-| **P1** | Upstox Integration | Q2 2026 | 📋 Planned |
-| **P1** | Fyers Integration | Q2 2026 | 📋 Planned |
-| **P1** | Angel Orders | Q2 2026 | 📋 Planned |
-| **P2** | Dhan Integration | Q3 2026 | 📋 Planned |
-| **P2** | Paytm Integration | Q3 2026 | 📋 Planned |
+| **P0** | Apply Alembic migration | Now | 🚧 Pending DB access |
+| **P0** | Live broker E2E verification | Q2 2026 | 📋 Ready to start |
+| **P1** | Kelly Criterion (AI) | Q2 2026 | ✅ Bug fixed, wired |
+| **P1** | OpenAPI spec + docs | Q2 2026 | ✅ Generated (243 paths) |
+| **P1** | Workflow Redesign (hooks) | Q2 2026 | 📋 Planned (not started) |
 | **P2** | Backtesting | Q3 2026 | 💡 Design |
+| **P2** | Risk Management Enhancements | Q3 2026 | 💡 Planning |
 | **P3** | Multi-Timeframe | Q4 2026 | 💡 Planning |
 | **P3** | Social Trading | 2027 | 💡 Vision |
 | **P3** | Mobile App | 2027 | 💡 Vision |
 
-**Legend:**
-- ✅ Complete
-- 🚧 In Progress
-- 📋 Planned (ready to start)
-- 💡 Design/Vision phase
+**Legend:** ✅ Complete | 🚧 In Progress / Blocked | 📋 Planned (ready to start) | 💡 Design/Vision phase
 
 ---
 
 ## Release Schedule
 
-### v1.1 (Q1 2026) - Architecture Improvements
-- Workflow redesign complete
-- Ticker architecture v2
-- Performance optimizations
+### v1.1 (Q1 2026) - Architecture — SHIPPED
+- ✅ Multi-broker abstraction (Phases 1–6)
+- ✅ 5-component ticker architecture
+- ✅ All 6 broker adapters (market data + order execution + WebSocket)
+- ✅ Frontend broker selection UI
+- ✅ 714 broker tests passing
+- 🚧 Alembic migration pending
 
-### v1.2 (Q2 2026) - Broker Expansion
-- Upstox support
-- Fyers support
-- Angel One order execution
+### v1.2 (Q2 2026) - Hardening & AI
+- Live broker verification (all 6 brokers)
+- ✅ Kelly Criterion position sizing (bug fixed + wired)
+- ✅ OpenAPI spec (243 paths generated)
+- Workflow redesign (hook consolidation — planned, not started)
 
-### v1.3 (Q3 2026) - More Brokers + Features
-- Dhan support
-- Paytm Money support
+### v1.3 (Q3 2026) - Advanced Features
 - Backtesting system (beta)
+- Risk management enhancements
+- AI model improvements
 
 ### v2.0 (Q4 2026) - Major Features
 - Advanced analytics
@@ -242,7 +225,3 @@ When planning new features:
 2. Update this ROADMAP.md with timeline
 3. Add detailed plan to `docs/features/{feature}/`
 4. Link from IMPLEMENTATION-CHECKLIST.md for active work
-
----
-
-**Questions about roadmap?** Check [docs/README.md](README.md) or ask the development team.

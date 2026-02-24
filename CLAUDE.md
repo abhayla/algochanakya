@@ -3,7 +3,7 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 **AlgoChanakya:** Multi-broker options trading platform (Indian markets)
-**Last Updated:** 2026-02-17
+**Last Updated:** 2026-02-24
 **Working Directory:** `C:\Abhay\VideCoding\algochanakya` (development)
 
 ## ⚡ Quick Reference Card
