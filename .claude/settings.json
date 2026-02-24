@@ -1,184 +1,184 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(python -m venv:*)",
-      "Bash(dir:*)",
-      "Bash(python .claude/hooks/*)"
-    ],
-    "deny": [
-      "Write(C:\\Apps\\algochanakya/**)",
-      "Edit(C:\\Apps\\algochanakya/**)",
-      "Read(C:\\Apps\\algochanakya/**)",
-      "Bash(*C:\\Apps\\algochanakya*)",
-      "Write(**/.env)",
-      "Edit(**/.env)",
-      "Write(**/.env.*)",
-      "Edit(**/.env.*)",
-      "Write(**/knowledge.db)",
-      "Edit(**/knowledge.db)",
-      "Write(**/workflow-state.json)",
-      "Edit(**/workflow-state.json)",
-      "Write(**/.auth-state.json)",
-      "Edit(**/.auth-state.json)",
-      "Write(**/.auth-token)",
-      "Edit(**/.auth-token)"
-    ],
-    "ask": []
-  },
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python .claude/hooks/protect_sensitive_files.py",
-            "timeout": 5
-          },
-          {
-            "type": "command",
-            "command": "python .claude/hooks/guard_folder_structure.py",
-            "timeout": 5
-          },
-          {
-            "type": "command",
-            "command": "python .claude/hooks/guard_cross_feature_imports.py",
-            "timeout": 5
-          },
-          {
-            "type": "command",
-            "command": "python .claude/hooks/validate_workflow_step.py",
-            "timeout": 10
-          }
-        ]
-      },
-      {
-        "matcher": "Edit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python .claude/hooks/protect_sensitive_files.py",
-            "timeout": 5
-          },
-          {
-            "type": "command",
-            "command": "python .claude/hooks/guard_cross_feature_imports.py",
-            "timeout": 5
-          },
-          {
-            "type": "command",
-            "command": "python .claude/hooks/validate_workflow_step.py",
-            "timeout": 10
-          }
-        ]
-      },
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python .claude/hooks/validate_workflow_step.py",
-            "timeout": 10
-          },
-          {
-            "type": "command",
-            "command": "python .claude/hooks/verify_evidence_artifacts.py",
-            "timeout": 10
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python .claude/hooks/post_test_update.py",
-            "timeout": 30
-          },
-          {
-            "type": "command",
-            "command": "python .claude/hooks/verify_test_rerun.py",
-            "timeout": 300
-          },
-          {
-            "type": "command",
-            "command": "python .claude/hooks/post_screenshot_resize.py",
-            "timeout": 30
-          },
-          {
-            "type": "command",
-            "command": "python .claude/hooks/auto_fix_pattern_scan.py",
-            "timeout": 10
-          },
-          {
-            "type": "command",
-            "command": "python .claude/hooks/log_workflow.py",
-            "timeout": 5
-          }
-        ]
-      },
-      {
-        "matcher": "mcp__playwright__browser_take_screenshot",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python .claude/hooks/post_screenshot_resize.py",
-            "timeout": 30
-          }
-        ]
-      },
-      {
-        "matcher": "Skill",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python .claude/hooks/log_workflow.py",
-            "timeout": 5
-          },
-          {
-            "type": "command",
-            "command": "python .claude/hooks/post_skill_learning.py",
-            "timeout": 30
-          }
-        ]
-      },
-      {
-        "matcher": "Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python .claude/hooks/log_workflow.py",
-            "timeout": 5
-          },
-          {
-            "type": "command",
-            "command": "python .claude/hooks/schema_parity_reminder.py",
-            "timeout": 10
-          },
-          {
-            "type": "command",
-            "command": "python .claude/hooks/auto_format.py",
-            "timeout": 15
-          }
-        ]
-      },
-      {
-        "matcher": "Edit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python .claude/hooks/log_workflow.py",
-            "timeout": 5
-          },
-          {
-            "type": "command",
-            "command": "python .claude/hooks/auto_format.py",
-            "timeout": 15
-          }
-        ]
-      }
-    ]
+  {
+    "permissions": {                                                                                                              
+      "allow": [                                                                                                                  
+        "Bash(python -m venv:*)",
+        "Bash(dir:*)",
+        "Bash(python C:\\Abhay\\VideCoding\\algochanakya\\.claude\\hooks\\*)"
+      ],
+      "deny": [
+        "Write(C:\\Apps\\algochanakya/**)",
+        "Edit(C:\\Apps\\algochanakya/**)",
+        "Read(C:\\Apps\\algochanakya/**)",
+        "Bash(*C:\\Apps\\algochanakya*)",
+        "Write(**/.env)",
+        "Edit(**/.env)",
+        "Write(**/.env.*)",
+        "Edit(**/.env.*)",
+        "Write(**/knowledge.db)",
+        "Edit(**/knowledge.db)",
+        "Write(**/workflow-state.json)",
+        "Edit(**/workflow-state.json)",
+        "Write(**/.auth-state.json)",
+        "Edit(**/.auth-state.json)",
+        "Write(**/.auth-token)",
+        "Edit(**/.auth-token)"
+      ],
+      "ask": []
+    },
+    "hooks": {
+      "PreToolUse": [
+        {
+          "matcher": "Write",
+          "hooks": [
+            {
+              "type": "command",
+              "command": "cmd /c python C:\\Abhay\\VideCoding\\algochanakya\\.claude\\hooks\\protect_sensitive_files.py",
+              "timeout": 5
+            },
+            {
+              "type": "command",
+              "command": "cmd /c python C:\\Abhay\\VideCoding\\algochanakya\\.claude\\hooks\\guard_folder_structure.py",
+              "timeout": 5
+            },
+            {
+              "type": "command",
+              "command": "cmd /c python C:\\Abhay\\VideCoding\\algochanakya\\.claude\\hooks\\guard_cross_feature_imports.py",     
+              "timeout": 5
+            },
+            {
+              "type": "command",
+              "command": "cmd /c python C:\\Abhay\\VideCoding\\algochanakya\\.claude\\hooks\\validate_workflow_step.py",
+              "timeout": 10
+            }
+          ]
+        },
+        {
+          "matcher": "Edit",
+          "hooks": [
+            {
+              "type": "command",
+              "command": "cmd /c python C:\\Abhay\\VideCoding\\algochanakya\\.claude\\hooks\\protect_sensitive_files.py",
+              "timeout": 5
+            },
+            {
+              "type": "command",
+              "command": "cmd /c python C:\\Abhay\\VideCoding\\algochanakya\\.claude\\hooks\\guard_cross_feature_imports.py",     
+              "timeout": 5
+            },
+            {
+              "type": "command",
+              "command": "cmd /c python C:\\Abhay\\VideCoding\\algochanakya\\.claude\\hooks\\validate_workflow_step.py",
+              "timeout": 10
+            }
+          ]
+        },
+        {
+          "matcher": "Bash",
+          "hooks": [
+            {
+              "type": "command",
+              "command": "cmd /c python C:\\Abhay\\VideCoding\\algochanakya\\.claude\\hooks\\validate_workflow_step.py",
+              "timeout": 10
+            },
+            {
+              "type": "command",
+              "command": "cmd /c python C:\\Abhay\\VideCoding\\algochanakya\\.claude\\hooks\\verify_evidence_artifacts.py",       
+              "timeout": 10
+            }
+          ]
+        }
+      ],
+      "PostToolUse": [
+        {
+          "matcher": "Bash",
+          "hooks": [
+            {
+              "type": "command",
+              "command": "cmd /c python C:\\Abhay\\VideCoding\\algochanakya\\.claude\\hooks\\post_test_update.py",
+              "timeout": 30
+            },
+            {
+              "type": "command",
+              "command": "cmd /c python C:\\Abhay\\VideCoding\\algochanakya\\.claude\\hooks\\verify_test_rerun.py",
+              "timeout": 300
+            },
+            {
+              "type": "command",
+              "command": "cmd /c python C:\\Abhay\\VideCoding\\algochanakya\\.claude\\hooks\\post_screenshot_resize.py",
+              "timeout": 30
+            },
+            {
+              "type": "command",
+              "command": "cmd /c python C:\\Abhay\\VideCoding\\algochanakya\\.claude\\hooks\\auto_fix_pattern_scan.py",
+              "timeout": 10
+            },
+            {
+              "type": "command",
+              "command": "cmd /c python C:\\Abhay\\VideCoding\\algochanakya\\.claude\\hooks\\log_workflow.py",
+              "timeout": 5
+            }
+          ]
+        },
+        {
+          "matcher": "mcp__playwright__browser_take_screenshot",
+          "hooks": [
+            {
+              "type": "command",
+              "command": "cmd /c python C:\\Abhay\\VideCoding\\algochanakya\\.claude\\hooks\\post_screenshot_resize.py",
+              "timeout": 30
+            }
+          ]
+        },
+        {
+          "matcher": "Skill",
+          "hooks": [
+            {
+              "type": "command",
+              "command": "cmd /c python C:\\Abhay\\VideCoding\\algochanakya\\.claude\\hooks\\log_workflow.py",
+              "timeout": 5
+            },
+            {
+              "type": "command",
+              "command": "cmd /c python C:\\Abhay\\VideCoding\\algochanakya\\.claude\\hooks\\post_skill_learning.py",
+              "timeout": 30
+            }
+          ]
+        },
+        {
+          "matcher": "Write",
+          "hooks": [
+            {
+              "type": "command",
+              "command": "cmd /c python C:\\Abhay\\VideCoding\\algochanakya\\.claude\\hooks\\log_workflow.py",
+              "timeout": 5
+            },
+            {
+              "type": "command",
+              "command": "cmd /c python C:\\Abhay\\VideCoding\\algochanakya\\.claude\\hooks\\schema_parity_reminder.py",
+              "timeout": 10
+            },
+            {
+              "type": "command",
+              "command": "cmd /c python C:\\Abhay\\VideCoding\\algochanakya\\.claude\\hooks\\auto_format.py",
+              "timeout": 15
+            }
+          ]
+        },
+        {
+          "matcher": "Edit",
+          "hooks": [
+            {
+              "type": "command",
+              "command": "cmd /c python C:\\Abhay\\VideCoding\\algochanakya\\.claude\\hooks\\log_workflow.py",
+              "timeout": 5
+            },
+            {
+              "type": "command",
+              "command": "cmd /c python C:\\Abhay\\VideCoding\\algochanakya\\.claude\\hooks\\auto_format.py",
+              "timeout": 15
+            }
+          ]
+        }
+      ]
+    }
   }
-}

@@ -46,6 +46,9 @@ from app.constants import (
     IVEnvironment,
 )
 
+# Alias: tests use SuggestionPriority; canonical name is SuggestionUrgency
+SuggestionPriority = SuggestionUrgency
+
 
 # Models
 class AutoPilotUserSettings(Base):

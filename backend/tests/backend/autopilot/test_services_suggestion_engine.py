@@ -68,7 +68,7 @@ class TestSuggestionEngine:
         # Should get critical delta suggestion
         delta_suggestions = [s for s in suggestions if s.suggestion_type == SuggestionType.SHIFT]
         assert len(delta_suggestions) > 0
-        assert delta_suggestions[0].priority == SuggestionPriority.CRITICAL
+        assert delta_suggestions[0].urgency == SuggestionPriority.CRITICAL
 
     @pytest.mark.asyncio
     async def test_suggest_for_moderate_delta_warning(
@@ -98,7 +98,7 @@ class TestSuggestionEngine:
         # Should get high priority delta suggestion
         delta_suggestions = [s for s in suggestions if s.suggestion_type == SuggestionType.SHIFT]
         assert len(delta_suggestions) > 0
-        assert delta_suggestions[0].priority == SuggestionPriority.HIGH
+        assert delta_suggestions[0].urgency == SuggestionPriority.HIGH
 
     @pytest.mark.asyncio
     async def test_suggest_break_trade_for_losing_leg(
@@ -124,7 +124,7 @@ class TestSuggestionEngine:
         # Should get break trade suggestion
         break_suggestions = [s for s in suggestions if s.suggestion_type == SuggestionType.BREAK]
         assert len(break_suggestions) > 0
-        assert break_suggestions[0].priority == SuggestionPriority.CRITICAL
+        assert break_suggestions[0].urgency == SuggestionPriority.CRITICAL
         assert "break trade" in break_suggestions[0].title.lower()
 
     @pytest.mark.asyncio
@@ -183,7 +183,7 @@ class TestSuggestionEngine:
         roll_suggestions = [s for s in suggestions if s.suggestion_type == SuggestionType.ROLL]
         assert len(roll_suggestions) > 0
         assert "roll" in roll_suggestions[0].title.lower()
-        assert roll_suggestions[0].priority == SuggestionPriority.MEDIUM
+        assert roll_suggestions[0].urgency == SuggestionPriority.MEDIUM
 
     @pytest.mark.asyncio
     async def test_suggest_exit_expiry_day(
@@ -213,7 +213,7 @@ class TestSuggestionEngine:
         assert len(exit_suggestions) > 0
         expiry_exit = [s for s in exit_suggestions if "expiry" in s.title.lower()]
         assert len(expiry_exit) > 0
-        assert expiry_exit[0].priority == SuggestionPriority.CRITICAL
+        assert expiry_exit[0].urgency == SuggestionPriority.CRITICAL
 
     @pytest.mark.asyncio
     async def test_no_suggestion_when_healthy(
@@ -244,8 +244,8 @@ class TestSuggestionEngine:
         suggestions = await service.generate_suggestions(test_strategy_active.id, test_user.id)
 
         # Should have no critical or high priority suggestions
-        critical_suggestions = [s for s in suggestions if s.priority == SuggestionPriority.CRITICAL]
-        high_suggestions = [s for s in suggestions if s.priority == SuggestionPriority.HIGH]
+        critical_suggestions = [s for s in suggestions if s.urgency == SuggestionPriority.CRITICAL]
+        high_suggestions = [s for s in suggestions if s.urgency == SuggestionPriority.HIGH]
         assert len(critical_suggestions) == 0
         assert len(high_suggestions) == 0
 
