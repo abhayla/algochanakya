@@ -19,34 +19,41 @@ A complete, auto-updating test suite for all 8 screens with full coverage (happy
 
 ---
 
-## Test Count Summary (Actual)
+## Test Count Summary
+
+> **Note:** Test counts change frequently. Run the commands below for current numbers. Do NOT hardcode counts in docs (per SSOT rules).
+
+```bash
+# Current backend test count
+cd backend && grep -r "def test_\|async def test_" tests/ --include="*.py" | wc -l
+
+# Current E2E spec file count
+find tests/e2e/specs -name "*.spec.js" | wc -l
+
+# Broker tests specifically
+grep -r "def test_\|async def test_" backend/tests/backend/brokers/ --include="*.py" | wc -l
+```
 
 ### Frontend E2E Tests (Playwright)
 
-| Screen | Happy | Edge | Visual | API/WS | Audit | Total |
-|--------|-------|------|--------|--------|-------|-------|
-| Login | 6 | 5 | 5 | 3 | 5 | **24** |
-| Dashboard | 8 | 3 | 2 | - | 6 | **19** |
-| Positions | 11 | 6 | 4 | 5 | 7 | **33** |
-| Watchlist | 10 | 9 | 6 | 6 | 7 | **38** |
-| Option Chain | 11 | 7 | 5 | 7 | 7 | **37** |
-| Strategy Builder | 11 | 10 | 8 | 9 | 9 | **47** |
-| Strategy Library | 25 | 20 | 15 | 20 | 9 | **89** |
-| AutoPilot | TBD | TBD | TBD | TBD | TBD | **TBD** |
-| Integration | - | - | - | 3 | - | **3** |
-| **Frontend Total** | **82+** | **60+** | **45+** | **53+** | **50+** | **290+** |
+Tests organized by screen across `tests/e2e/specs/` directories: login, dashboard, positions, watchlist, optionchain, strategy, strategylibrary, autopilot, navigation, broker-abstraction, ai, ofo, audit, integration, header, and legacy.
+
+Test types per screen: happy path, edge cases, visual regression, API/WebSocket, and accessibility audits.
 
 ### Backend Tests (pytest)
 
-| Test File | Tests | Description |
-|-----------|-------|-------------|
-| `test_strategy_templates.py` | ~15 | Model CRUD, constraints, JSON legs, defaults |
-| `test_strategy_wizard_api.py` | ~35 | API endpoints: templates, wizard, deploy, compare |
-| `test_strategy_validation.py` | ~15 | Legs config, strategy characteristics, win probs |
-| `test_strategy_integration.py` | ~5 | Full flows, concurrent requests, mocked Kite |
-| **Backend Total** | | **~70** |
+Backend tests are organized across `backend/tests/backend/` with dedicated directories for:
+- **Brokers** — Ticker adapters, core components, REST adapters, order adapters
+- **AutoPilot** — Strategies, orders, logs, settings, conditions, adjustments
+- **AI** — Indicators (more test coverage needed)
+- **Options** — (indirect coverage via AutoPilot, dedicated tests needed)
+- **API routes** — Strategy wizard, validation, templates, integration
 
-### Grand Total: **~360 tests**
+### Frontend Unit Tests (Vitest)
+
+Unit tests in `frontend/tests/` covering:
+- Pinia stores (autopilot, brokerPreferences)
+- Composables (useWebSocket)
 
 ---
 
@@ -274,19 +281,24 @@ tests/e2e/
 ### Backend Tests (pytest)
 
 ```
-backend/tests/
-  __init__.py
-  conftest.py                    # Fixtures: db_session, templates, mock Kite
+backend/tests/backend/
+  brokers/                       # Broker abstraction tests
+    ticker/                      # Ticker adapter tests (all 6 brokers)
+    test_order_adapters.py       # Order execution adapter tests
+    ... (core, REST adapter tests)
+  autopilot/                     # AutoPilot backend tests
+    test_autopilot_strategies.py # Strategy CRUD, activation
+    test_autopilot_orders.py     # Order execution, slippage
+    test_autopilot_logs.py       # Activity logging
+    test_autopilot_settings.py   # User settings CRUD
+    ... (conditions, adjustments, etc.)
+  ai/                            # AI module tests
+    test_services_indicators.py  # Technical indicators
+  conftest.py                    # Fixtures: db_session, templates, mock clients
   test_strategy_templates.py     # Model CRUD, constraints, JSON legs
   test_strategy_wizard_api.py    # All API endpoints
   test_strategy_validation.py    # Legs config, strategy characteristics
   test_strategy_integration.py   # Full flows, concurrent requests
-
-tests/backend/autopilot/         # AutoPilot backend tests (NEW)
-  test_autopilot_strategies.py   # Strategy CRUD, activation
-  test_autopilot_orders.py       # Order execution, slippage
-  test_autopilot_logs.py         # Activity logging
-  test_autopilot_settings.py     # User settings CRUD
 ```
 
 ### API Testing (Postman)
@@ -586,7 +598,7 @@ Keep all 16 existing test files in `tests/e2e/` as reference/fallback until new 
 
 ## Success Criteria
 
-1. All 134 tests pass (61 happy + 31 edge + 22 visual + 20 API)
+1. All E2E tests pass across all screen directories
 2. Visual baselines generated for all screens
 3. Test generator creates valid scaffolds
 4. Token injection bypasses OAuth for 95% of tests

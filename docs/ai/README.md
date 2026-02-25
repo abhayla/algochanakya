@@ -5,37 +5,67 @@
 The AutoPilot AI module is a complete autonomous trading system that makes intelligent trading decisions with zero human intervention during market hours. It combines rule-based systems, machine learning, and Claude AI to maximize profits while managing risk.
 
 **Version:** 1.0
-**Status:** Production Ready
-**Last Updated:** 2025-12-25
+**Status:** Production Ready (⚠️ limited test coverage — see [Test Coverage Gap](#test-coverage-gap) below)
+**Last Updated:** 2026-02-25
 
 ---
 
 ## Architecture
 
 ```
-backend/app/services/ai/
-├── __init__.py                     # Module exports
-├── historical_data.py              # Kite Historical API wrapper + Redis caching
-├── indicators.py                   # RSI, ADX, EMA, ATR, Bollinger Bands
-├── market_regime.py                # 6-regime classification system
-├── strategy_recommender.py         # Regime-strategy scoring matrix
-├── strike_selector.py              # Delta-based strike selection + VIX adjustments
-├── claude_advisor.py               # Claude Sonnet 4.5 explanations
-├── daily_scheduler.py              # APScheduler for deployment timing
-├── deployment_executor.py          # Order placement via Kite Connect
-├── position_sync.py                # WebSocket + 60s reconciliation
-├── ai_monitor.py                   # AI decision making and monitoring
-├── ai_adjustment_advisor.py        # What-if analysis + adjustment recommendations
-├── feedback_scorer.py              # Multi-factor decision quality scoring
-├── learning_pipeline.py            # Daily post-market learning + retraining
-├── kelly_calculator.py             # Kelly Criterion position sizing
-├── backtester.py                   # Historical strategy backtesting
-├── portfolio_manager.py            # Multi-strategy portfolio management
-└── ml/
-    ├── feature_extractor.py        # 30-feature extraction for ML
-    ├── strategy_scorer.py          # XGBoost/LightGBM strategy scoring
-    ├── training_pipeline.py        # Model training + evaluation
-    └── model_registry.py           # Model versioning + activation
+backend/app/services/ai/              # 35 service files (run: find backend/app/services/ai -name "*.py" ! -name "__init__.py" | wc -l)
+├── __init__.py                       # Module exports
+│
+│  # Core Intelligence
+├── market_regime.py                  # 6-regime classification system
+├── risk_state_engine.py              # GREEN/YELLOW/RED risk states
+├── strategy_recommender.py           # Regime-strategy scoring matrix
+├── deployment_executor.py            # Order placement via broker adapters
+│
+│  # Data & Indicators
+├── historical_data.py                # Historical OHLC via broker abstraction + Redis caching
+├── indicators.py                     # RSI, ADX, EMA, ATR, Bollinger Bands
+├── strike_selector.py                # Delta-based strike selection + VIX adjustments
+│
+│  # Portfolio & Capital
+├── portfolio_manager.py              # Multi-strategy portfolio management
+├── position_sizing_engine.py         # Position sizing calculations
+├── capital_risk_meter.py             # Capital risk assessment
+├── kelly_calculator.py               # Kelly Criterion position sizing
+│
+│  # Monitoring & Scheduling
+├── ai_monitor.py                     # AI decision making and monitoring
+├── websocket_health_monitor.py       # WebSocket health tracking
+├── daily_scheduler.py                # APScheduler for deployment timing
+├── position_sync.py                  # WebSocket + 60s reconciliation
+│
+│  # Learning & Feedback
+├── learning_pipeline.py              # Daily post-market learning + retraining
+├── feedback_scorer.py                # Multi-factor decision quality scoring
+├── ai_adjustment_advisor.py          # What-if analysis + adjustment recommendations
+├── autonomy_status.py                # Trust ladder (Sandbox→Supervised→Autonomous)
+│
+│  # Risk Management
+├── stress_greeks_engine.py           # Stress testing with Greeks
+├── regime_drift_tracker.py           # Regime change detection
+├── regime_quality_scorer.py          # Regime classification quality
+├── drawdown_tracker.py               # Drawdown monitoring
+├── extreme_event_handler.py          # Black swan event handling
+├── strategy_cooldown.py              # Strategy cooldown periods
+│
+│  # Utilities
+├── claude_advisor.py                 # Claude Sonnet explanations
+├── backtester.py                     # Historical strategy backtesting
+├── config_service.py                 # AI configuration management
+│
+└── ml/                               # ML sub-module (7 files)
+    ├── feature_extractor.py          # 30-feature extraction for ML
+    ├── strategy_scorer.py            # XGBoost/LightGBM strategy scoring
+    ├── training_pipeline.py          # Model training + evaluation
+    ├── model_registry.py             # Model versioning + activation
+    ├── global_model_trainer.py       # Global model training across users
+    ├── model_blender.py              # Ensemble model blending
+    └── retraining_scheduler.py       # Automated retraining schedule
 ```
 
 ---
@@ -402,12 +432,24 @@ For issues or questions about the AI module, contact the development team or fil
 
 ---
 
+## Test Coverage Gap
+
+> **⚠️ Warning:** The AI module currently has minimal automated test coverage. Only `backend/tests/backend/ai/test_services_indicators.py` exists, covering technical indicators. The remaining 34 services (including core services like `market_regime.py`, `risk_state_engine.py`, `strategy_recommender.py`, `kelly_calculator.py`, and all ML services) have no dedicated unit tests.
+>
+> **Priority areas for test coverage:**
+> 1. Core: `market_regime.py`, `risk_state_engine.py`, `strategy_recommender.py`
+> 2. Capital: `kelly_calculator.py`, `position_sizing_engine.py`, `capital_risk_meter.py`
+> 3. Risk: `stress_greeks_engine.py`, `drawdown_tracker.py`, `extreme_event_handler.py`
+> 4. ML: `strategy_scorer.py`, `training_pipeline.py`, `model_registry.py`
+
+---
+
 ## Version History
 
-- **v1.0 (2025-12-25):** Initial production release
+- **v1.0 (2025-12-25, updated 2026-02-25):** Production release
   - All 12 weeks of AutoPilot AI plan completed
   - MVP (Weeks 1-4), Enhancement (Weeks 5-8), Optimization (Weeks 9-12) phases done
-  - 11 core services, 6 API routers, 4 database tables, 15+ endpoints
+  - 35 services (28 core + 7 ML), 16 API endpoints, 4 database tables
   - ML-powered strategy scoring with XGBoost/LightGBM
   - Self-learning pipeline with daily retraining
   - Multi-strategy portfolio management

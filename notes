@@ -7,9 +7,6 @@ Perform comprehensive testing of AI Autopilot feature. Currently market is open,
 Add this condition to Passing criteria - take screenshot after each testing, analyze the screenshot to verify it matches with the expected output. Do not pass the test until this is done. Check if you have Claude Chrome access or use it?
 If any issue or error found then fix it and retest it. Do this in loop until the issue is fixed and test passes. 
 
-
-Do not proceed until you have 100% confidence of what I want. Ask me questions until you reach that confidence. Ask one question at a time. Tell me the approximate number of questions you are going to ask. After each response and before asking next question, check the related codebase and docs. For each question, always give your recommendation. Your recommendation should be based on best practices and standards.
-
 ***
 ## Approach
 

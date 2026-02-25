@@ -28,7 +28,7 @@ pytest tests/test_file.py::test_function -v  # Single test function
 **Key Modules:**
 - **Broker Abstraction** - Dual system: Market data brokers (SmartAPI, planned: Kite/Upstox) + Order execution brokers (Kite implemented, planned: Angel/Upstox). Factory pattern with unified data models (`UnifiedOrder`, `UnifiedPosition`, `UnifiedQuote`). See [Multi-Broker Architecture](../CLAUDE.md#core-purpose-multi-broker-architecture).
 - **Authentication** - SmartAPI with auto-TOTP (default) or Zerodha OAuth. JWT stored in localStorage + Redis. Use `get_current_user` / `get_current_broker_connection` dependencies. SmartAPI credentials stored encrypted in `smartapi_credentials` table.
-- **WebSocket Live Prices** - Dev: `ws://localhost:8001/ws/ticks?token=<jwt>` | Prod: `wss://algochanakya.com/ws/ticks?token=<jwt>`. New 5-component ticker architecture (ADR-003 v2): TickerAdapter (per-broker WS) + TickerPool (lifecycle/ref-counting) + TickerRouter (user fan-out) + HealthMonitor + FailoverController. Legacy singletons (`SmartAPITickerService`, `KiteTickerService`) being replaced. Index tokens: NIFTY=256265, BANKNIFTY=260105, FINNIFTY=257801, SENSEX=265. See [WebSocket Architecture](../docs/architecture/websocket.md)
+- **WebSocket Live Prices** - Dev: `ws://localhost:8001/ws/ticks?token=<jwt>` | Prod: `wss://algochanakya.com/ws/ticks?token=<jwt>`. 5-component ticker architecture: TickerAdapter (per-broker WS) + TickerPool (lifecycle/ref-counting) + TickerRouter (user fan-out) + HealthMonitor + FailoverController. All 6 broker ticker adapters implemented. Legacy singletons (`SmartAPITickerService`, `KiteTickerService`) deprecated and moved to `services/deprecated/`. Index tokens: NIFTY=256265, BANKNIFTY=260105, FINNIFTY=257801, SENSEX=265. See [TICKER-DESIGN-SPEC.md](../docs/decisions/TICKER-DESIGN-SPEC.md)
 - **Option Chain** - IV via Newton-Raphson, Greeks via Black-Scholes. Max Pain, PCR calculated.
 - **Strategy Builder** - P/L modes: "At Expiry" (intrinsic) and "Current" (Black-Scholes via scipy)
 - **AutoPilot** - Automated execution with conditions, adjustments, kill switch. 16 database tables. See [docs/autopilot/](../docs/autopilot/)
@@ -160,20 +160,16 @@ See `app/services/brokers/base.py` and `app/services/brokers/market_data/market_
 - Adapters: All 6 brokers implemented — `ticker/adapters/{smartapi,kite,dhan,fyers,paytm,upstox}.py`
 - NormalizedTick uses `Decimal` (not `float`) for price precision
 - `websocket.py` refactored from 494 lines → 292 lines (broker-agnostic)
-- 714 broker tests passing (413 ticker adapter + 122 core component + 179 REST adapter)
+- Broker tests passing (run `grep -r "def test_" backend/tests/backend/brokers/ --include="*.py" | wc -l` for current count)
 - **Docs:** [TICKER-DESIGN-SPEC.md](../docs/decisions/TICKER-DESIGN-SPEC.md) | [API Reference](../docs/api/multi-broker-ticker-api.md) | [Documentation Index](../docs/decisions/ticker-documentation-index.md)
 
 **Phase 6: Broker Abstraction E2E Tests — COMPLETE (Feb 2026):**
 - E2E tests for broker settings and abstraction layer
 - Reset button visibility and interaction tests
 
-**Phase 7 To Be Implemented:**
-- `AngelAdapter` for order execution (order stubs for remaining brokers)
-- Frontend broker selection UI (persistent banner, source indicator badge, settings dropdowns)
+### Adding a New Broker
 
-### Adding a New Broker (Future State)
-
-Once abstraction is complete, adding a broker will require:
+Adding a new broker requires:
 1. Create adapter class implementing `BrokerAdapter` or `MarketDataBrokerAdapter`
 2. Register in factory (`_BROKER_ADAPTERS` dict)
 3. Add credentials table (if needed) + migration
