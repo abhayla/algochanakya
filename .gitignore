@@ -33,6 +33,9 @@ logs/
 # Process files
 *.pid
 
+# MCP server configuration (contains env var references per developer)
+.mcp.json
+
 # Claude Code (allow specific .claude/ subdirectories to be committed for team sharing)
 .claude/*
 !.claude/skills/
