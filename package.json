@@ -72,7 +72,7 @@
   },
   "homepage": "https://github.com/abhayla/algochanakya#readme",
   "devDependencies": {
-    "@axe-core/playwright": "^4.11.0",
+    "@axe-core/playwright": "^4.11.1",
     "@playwright/test": "^1.57.0",
     "allure-playwright": "^3.4.3"
   }
