@@ -16,14 +16,17 @@ git status && git log --oneline -5
 cd backend && venv\Scripts\activate && python run.py  # Port 8001
 cd frontend && npm run dev                             # Port 5173
 
-# After ANY code change
-Skill(skill="auto-verify")
-
-# Fix failing tests
-Skill(skill="test-fixer")
+# Run tests
+npm test                                               # All E2E tests
+npx playwright test path/to/spec                       # Single E2E test
+cd backend && pytest tests/module/test_file.py::test_func -v  # Single backend test
 
 # Dev ports: Backend=8001, Frontend=5173 | Production: Backend=8000, Frontend=3004
 ```
+
+**After code changes** (Claude Code skills, not shell commands):
+- `Skill(skill="auto-verify")` — verify changes work
+- `Skill(skill="test-fixer")` — fix failing tests
 
 ## 🚨 Most Common Mistakes (Fix These First!)
 
@@ -127,9 +130,6 @@ venv\Scripts\activate && python run.py    # Windows
 
 # Start frontend (from frontend/)
 npm run dev
-
-# Run E2E tests (from root)
-npm test
 
 # Database migration (from backend/)
 alembic revision --autogenerate -m "description" && alembic upgrade head

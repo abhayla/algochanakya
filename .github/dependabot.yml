@@ -1,0 +1,129 @@
+# Dependabot configuration for AlgoChanakya
+# Security-critical: trading platform handling broker credentials + OAuth tokens
+version: 2
+updates:
+  # Backend Python dependencies
+  - package-ecosystem: "pip"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "backend"
+    reviewers:
+      - "Abhay"
+    commit-message:
+      prefix: "chore(deps)"
+    # Group minor/patch updates to reduce PR noise
+    groups:
+      security:
+        patterns:
+          - "cryptography"
+          - "PyJWT"
+          - "python-jose"
+          - "bcrypt"
+        update-types:
+          - "minor"
+          - "patch"
+      broker-sdks:
+        patterns:
+          - "kiteconnect"
+          - "smartapi-python"
+        update-types:
+          - "minor"
+          - "patch"
+      database:
+        patterns:
+          - "sqlalchemy"
+          - "alembic"
+          - "asyncpg"
+          - "psycopg2-binary"
+          - "redis"
+        update-types:
+          - "minor"
+          - "patch"
+      ml-analytics:
+        patterns:
+          - "numpy"
+          - "pandas"
+          - "scikit-learn"
+          - "scipy"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # Frontend npm dependencies
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "frontend"
+    reviewers:
+      - "Abhay"
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      vue-ecosystem:
+        patterns:
+          - "vue"
+          - "vue-router"
+          - "pinia"
+          - "@vue/*"
+        update-types:
+          - "minor"
+          - "patch"
+      testing:
+        patterns:
+          - "@playwright/*"
+          - "vitest"
+          - "@vue/test-utils"
+          - "allure-*"
+        update-types:
+          - "minor"
+          - "patch"
+      build-tools:
+        patterns:
+          - "vite"
+          - "@vitejs/*"
+          - "tailwindcss"
+          - "postcss"
+          - "autoprefixer"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # Root npm dependencies (Playwright, Allure)
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "testing"
+    reviewers:
+      - "Abhay"
+    commit-message:
+      prefix: "chore(deps)"
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "ci"
+    reviewers:
+      - "Abhay"
+    commit-message:
+      prefix: "chore(ci)"

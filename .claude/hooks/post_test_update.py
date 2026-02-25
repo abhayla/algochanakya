@@ -16,6 +16,7 @@ Exit codes:
 
 import sys
 import re
+import json
 from pathlib import Path
 from datetime import datetime
 
@@ -31,8 +32,12 @@ from hook_utils import (
     write_evidence,
     log_event,
     exit_with_code,
-    LEARNING_LOG_DIR
+    LEARNING_LOG_DIR,
+    PROJECT_ROOT
 )
+
+# Cache file for cross-hook result sharing (verify_test_rerun reads this)
+_TEST_RESULT_CACHE = PROJECT_ROOT / ".claude" / "logs" / "last-test-result.json"
 
 
 def extract_test_target(command: str) -> str:
@@ -90,6 +95,20 @@ def main():
     if result is None:
         # Unable to determine result
         exit_with_code(0)
+
+    # Write result cache for verify_test_rerun.py (avoids re-parsing same output)
+    try:
+        _TEST_RESULT_CACHE.parent.mkdir(parents=True, exist_ok=True)
+        _TEST_RESULT_CACHE.write_text(json.dumps({
+            "command": command,
+            "result": result,
+            "layer": layer,
+            "passed": passed,
+            "failed": failed,
+            "timestamp": datetime.now().isoformat()
+        }))
+    except Exception:
+        pass  # Non-critical
 
     # Extract test target
     target = extract_test_target(command)

@@ -1,0 +1,66 @@
+# Pre-commit hooks for AlgoChanakya
+# Install: pip install pre-commit && pre-commit install
+# Run manually: pre-commit run --all-files
+repos:
+  # General file hygiene
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-added-large-files
+        args: ['--maxkb=500']
+      - id: detect-private-key
+      - id: check-merge-conflict
+
+  # Python linting with Ruff
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.9.7
+    hooks:
+      - id: ruff
+        args: [--config, backend/ruff.toml]
+        files: ^backend/
+      - id: ruff-format
+        args: [--config, backend/ruff.toml]
+        files: ^backend/
+
+  # Secret scanning
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args: ['--baseline', '.secrets.baseline']
+        exclude: |
+          (?x)^(
+            .*\.lock$|
+            .*package-lock\.json$|
+            .*\.env\.example$|
+            .*\.auth-state\.json$|
+            .*\.auth-token.*$|
+            frontend/node_modules/.*
+          )$
+
+  # Prevent .env files from being committed
+  - repo: local
+    hooks:
+      - id: no-env-files
+        name: Prevent .env file commits
+        entry: bash -c 'echo "ERROR: .env files must not be committed!" && exit 1'
+        language: system
+        files: '\.env$|\.env\.local$'
+        exclude: '\.env\.example$|\.env\.production$'
+      - id: no-production-paths
+        name: Prevent production path references
+        entry: bash -c 'if grep -rn "C:\\\\Apps\\\\algochanakya" "$@" 2>/dev/null; then echo "ERROR: Production path reference detected!"; exit 1; fi'
+        language: system
+        files: '\.(py|js|vue|ts|json)$'
+        exclude: |
+          (?x)^(
+            CLAUDE\.md$|
+            \.claude/.*|
+            docs/.*|
+            \.github/workflows/deploy\.yml$
+          )$

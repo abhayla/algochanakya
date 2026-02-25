@@ -16,11 +16,39 @@ Exit codes:
 import sys
 import subprocess
 import re
+import json
 from pathlib import Path
 
 # Add hooks directory to path
 sys.path.insert(0, str(Path(__file__).parent))
 from hook_utils import parse_hook_input, exit_with_code, PROJECT_ROOT
+
+# Cache file for formatter availability (avoids repeated subprocess checks)
+_FORMATTER_CACHE_FILE = PROJECT_ROOT / ".claude" / "logs" / "formatter-availability.json"
+
+
+def _check_formatter_cache(formatter: str) -> bool | None:
+    """Check cached formatter availability. Returns None if no cache."""
+    try:
+        if _FORMATTER_CACHE_FILE.exists():
+            cache = json.loads(_FORMATTER_CACHE_FILE.read_text())
+            return cache.get(formatter)
+    except Exception:
+        pass
+    return None
+
+
+def _update_formatter_cache(formatter: str, available: bool):
+    """Update cached formatter availability."""
+    try:
+        _FORMATTER_CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
+        cache = {}
+        if _FORMATTER_CACHE_FILE.exists():
+            cache = json.loads(_FORMATTER_CACHE_FILE.read_text())
+        cache[formatter] = available
+        _FORMATTER_CACHE_FILE.write_text(json.dumps(cache))
+    except Exception:
+        pass
 
 
 def should_skip_file(file_path: str) -> bool:
@@ -65,17 +93,24 @@ def format_python_file(file_path: Path) -> tuple[bool, str]:
         Tuple of (success: bool, message: str)
     """
     try:
-        # Check if black is installed
-        check_result = subprocess.run(
-            ['python', '-m', 'black', '--version'],
-            cwd=PROJECT_ROOT,
-            capture_output=True,
-            text=True,
-            timeout=5
-        )
+        # Check cached availability first (avoids subprocess on every call)
+        cached = _check_formatter_cache('black')
+        if cached is False:
+            return (False, "black not installed (cached)")
 
-        if check_result.returncode != 0:
-            return (False, "black not installed")
+        if cached is None:
+            # First call: check if black is installed and cache result
+            check_result = subprocess.run(
+                ['python', '-m', 'black', '--version'],
+                cwd=PROJECT_ROOT,
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+            available = check_result.returncode == 0
+            _update_formatter_cache('black', available)
+            if not available:
+                return (False, "black not installed")
 
         # Run black
         format_result = subprocess.run(

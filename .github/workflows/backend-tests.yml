@@ -25,6 +25,7 @@ env:
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     services:
       postgres:
@@ -55,6 +56,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
       - name: Validate folder structure
         run: |
           python .github/scripts/validate-structure.py
@@ -62,12 +69,6 @@ jobs:
       - name: Validate cross-layer imports
         run: |
           python .github/scripts/validate-cross-imports.py
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          cache: 'pip'
 
       - name: Install dependencies
         working-directory: backend

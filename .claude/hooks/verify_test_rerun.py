@@ -36,6 +36,9 @@ from hook_utils import (
     PROJECT_ROOT
 )
 
+# Cache file written by post_test_update.py (avoids re-parsing same output)
+_TEST_RESULT_CACHE = PROJECT_ROOT / ".claude" / "logs" / "last-test-result.json"
+
 # Cooldown cache file
 VERIFICATION_CACHE_FILE = PROJECT_ROOT / ".claude" / "logs" / "test-verification-cache.json"
 COOLDOWN_MINUTES = 5
@@ -68,14 +71,23 @@ def is_targeted_test(command: str) -> bool:
     return False
 
 
-def rerun_test(command: str, layer: str, timeout: int = 300) -> tuple:
+def get_layer_timeout(layer: str) -> int:
+    """Get appropriate timeout for test layer."""
+    return {
+        'e2e': 60,       # Playwright specs rarely exceed 30s
+        'backend': 90,   # pytest files with DB setup
+        'frontend': 30,  # Vitest (already skipped, but just in case)
+    }.get(layer, 120)
+
+
+def rerun_test(command: str, layer: str, timeout: int = None) -> tuple:
     """
     Re-run the test command independently.
 
     Args:
         command: Test command to re-run
         layer: Test layer ('e2e', 'backend')
-        timeout: Timeout in seconds (default 300)
+        timeout: Timeout in seconds (auto-detected from layer if None)
 
     Returns:
         Tuple of (success, result, output)
@@ -83,6 +95,8 @@ def rerun_test(command: str, layer: str, timeout: int = 300) -> tuple:
         result: 'pass' or 'fail' or None
         output: Command output
     """
+    if timeout is None:
+        timeout = get_layer_timeout(layer)
     try:
         # Run command in project root
         result = subprocess.run(
@@ -188,9 +202,22 @@ def main():
         print(f"\n⏭️  Skipping re-verification (verified within last {COOLDOWN_MINUTES} min)\n", file=sys.stderr)
         exit_with_code(0)
 
-    # Detect test layer and claimed result
+    # Try reading cached result from post_test_update.py (avoids re-parsing)
     layer = detect_test_layer(command)
-    claimed_result, _, _ = detect_test_result(tool_output, layer)
+    claimed_result = None
+    try:
+        if _TEST_RESULT_CACHE.exists():
+            import json as _json
+            cache = _json.loads(_TEST_RESULT_CACHE.read_text())
+            if cache.get('command') == command:
+                claimed_result = cache.get('result')
+                layer = cache.get('layer', layer)
+    except Exception:
+        pass
+
+    # Fallback to direct parsing if cache miss
+    if claimed_result is None:
+        claimed_result, _, _ = detect_test_result(tool_output, layer)
 
     if claimed_result is None:
         # Unable to determine result, skip verification
