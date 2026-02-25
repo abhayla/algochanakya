@@ -99,7 +99,7 @@ async def fyers_callback(
         broker_user_id = profile.get("fy_id", "unknown")
         email = profile.get("email_id")
 
-        # Find or create user
+        # Find or create user — first by existing Fyers connection, then by email
         result = await db.execute(
             select(User).join(BrokerConnection).where(
                 BrokerConnection.broker == "fyers",
@@ -107,6 +107,10 @@ async def fyers_callback(
             )
         )
         user = result.scalar_one_or_none()
+
+        if not user and email:
+            result = await db.execute(select(User).where(User.email == email))
+            user = result.scalar_one_or_none()
 
         if not user:
             user = User(email=email)

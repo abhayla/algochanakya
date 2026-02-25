@@ -102,7 +102,7 @@ async def paytm_callback(
             broker_user_id = profile.get("client_id") or profile.get("user_id") or "unknown"
             email = profile.get("email")
 
-        # Find or create user
+        # Find or create user — first by existing Paytm connection, then by email
         result = await db.execute(
             select(User).join(BrokerConnection).where(
                 BrokerConnection.broker == "paytm",
@@ -110,6 +110,10 @@ async def paytm_callback(
             )
         )
         user = result.scalar_one_or_none()
+
+        if not user and email:
+            result = await db.execute(select(User).where(User.email == email))
+            user = result.scalar_one_or_none()
 
         if not user:
             user = User(email=email)

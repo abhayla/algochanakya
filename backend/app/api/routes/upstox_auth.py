@@ -89,7 +89,7 @@ async def upstox_callback(
         broker_user_id = profile.get("user_id", "unknown")
         email = profile.get("email")
 
-        # Find or create user
+        # Find or create user — first by existing Upstox connection, then by email
         result = await db.execute(
             select(User).join(BrokerConnection).where(
                 BrokerConnection.broker == "upstox",
@@ -97,6 +97,11 @@ async def upstox_callback(
             )
         )
         user = result.scalar_one_or_none()
+
+        if not user and email:
+            # Check if user already exists with this email (from another broker)
+            result = await db.execute(select(User).where(User.email == email))
+            user = result.scalar_one_or_none()
 
         if not user:
             user = User(email=email)
