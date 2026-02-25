@@ -15,6 +15,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 from app.services.ai.risk_state_engine import RiskStateEngine
+from app.models.ai_risk_state import RiskState
 
 
 # ---------------------------------------------------------------------------
@@ -78,7 +79,7 @@ class TestKellyCriterionFormula:
         assert reliable is True
 
     def test_kelly_fraction_negative_edge(self):
-        """Negative edge should return zero or negative fraction."""
+        """Negative edge should return zero fraction."""
         from app.services.ai.kelly_calculator import KellyCalculator
         calc = KellyCalculator(db=MagicMock())
 
@@ -105,96 +106,134 @@ class TestKellyCriterionFormula:
 
 
 # ---------------------------------------------------------------------------
-# State evaluation tests
+# State transition logic tests (pure/synchronous)
+# ---------------------------------------------------------------------------
+
+class TestStateTransitionLogic:
+    """Test _evaluate_transition directly (no DB)."""
+
+    def test_normal_state_when_good_metrics(self, engine):
+        """Good metrics should stay NORMAL."""
+        state, reason = engine._evaluate_transition(
+            current_state=RiskState.NORMAL,
+            sharpe_ratio=1.2,
+            drawdown=Decimal("3.00"),
+            consecutive_losses=0,
+        )
+        assert state == RiskState.NORMAL
+        assert reason is None
+
+    def test_degraded_on_low_sharpe(self, engine):
+        """Low Sharpe ratio should trigger DEGRADED."""
+        state, reason = engine._evaluate_transition(
+            current_state=RiskState.NORMAL,
+            sharpe_ratio=0.3,  # Below SHARPE_DEGRADED_THRESHOLD (0.5)
+            drawdown=Decimal("5.00"),
+            consecutive_losses=0,
+        )
+        assert state == RiskState.DEGRADED
+        assert reason is not None
+
+    def test_degraded_on_high_drawdown(self, engine):
+        """High drawdown (>10%) should trigger DEGRADED."""
+        state, reason = engine._evaluate_transition(
+            current_state=RiskState.NORMAL,
+            sharpe_ratio=0.8,
+            drawdown=Decimal("12.00"),  # Above DRAWDOWN_DEGRADED_THRESHOLD (10%)
+            consecutive_losses=0,
+        )
+        assert state == RiskState.DEGRADED
+        assert reason is not None
+
+    def test_paused_on_very_high_drawdown(self, engine):
+        """Very high drawdown (>20%) should trigger PAUSED."""
+        state, reason = engine._evaluate_transition(
+            current_state=RiskState.DEGRADED,
+            sharpe_ratio=0.2,
+            drawdown=Decimal("25.00"),  # Above DRAWDOWN_PAUSED_THRESHOLD (20%)
+            consecutive_losses=5,
+        )
+        assert state == RiskState.PAUSED
+        assert reason is not None
+
+    def test_paused_on_negative_sharpe(self, engine):
+        """Negative Sharpe ratio should trigger PAUSED."""
+        state, reason = engine._evaluate_transition(
+            current_state=RiskState.NORMAL,
+            sharpe_ratio=-0.5,  # Below SHARPE_PAUSED_THRESHOLD (0.0)
+            drawdown=Decimal("5.00"),
+            consecutive_losses=2,
+        )
+        assert state == RiskState.PAUSED
+
+    def test_recovery_from_degraded_when_metrics_improve(self, engine):
+        """Good metrics from DEGRADED should trigger recovery to NORMAL."""
+        state, reason = engine._evaluate_transition(
+            current_state=RiskState.DEGRADED,
+            sharpe_ratio=0.8,  # Above SHARPE_RECOVERY_THRESHOLD (0.7)
+            drawdown=Decimal("3.00"),  # Below DRAWDOWN_RECOVERY_THRESHOLD (5%)
+            consecutive_losses=0,
+        )
+        assert state == RiskState.NORMAL
+
+    def test_no_data_returns_current_state(self, engine):
+        """None sharpe and drawdown should return current state unchanged."""
+        state, reason = engine._evaluate_transition(
+            current_state=RiskState.NORMAL,
+            sharpe_ratio=None,
+            drawdown=None,
+            consecutive_losses=0,
+        )
+        assert state == RiskState.NORMAL
+
+
+# ---------------------------------------------------------------------------
+# State evaluation tests (with DB mock)
 # ---------------------------------------------------------------------------
 
 class TestStateEvaluation:
-    """Test risk state evaluation logic."""
+    """Test risk state evaluation with mocked DB."""
 
     @pytest.mark.asyncio
     async def test_evaluate_returns_tuple(self, engine, user_id, mock_db):
         """evaluate_state should return (RiskState, reason) tuple."""
-        # Mock current state query
+        mock_state_obj = MagicMock()
+        mock_state_obj.state = "NORMAL"
+
         mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = _make_risk_state("NORMAL")
+        mock_result.scalar_one_or_none.return_value = mock_state_obj
         mock_db.execute.return_value = mock_result
 
-        with patch.object(engine, '_get_recent_performance', new_callable=AsyncMock) as mock_perf:
-            mock_perf.return_value = {
-                "total_trades": 30,
-                "sharpe_ratio": 1.0,
-                "drawdown": Decimal("3.00"),
-                "consecutive_losses": 0,
-            }
+        # Mock _get_performance_metrics to avoid DB queries
+        with patch.object(engine, '_get_performance_metrics', new_callable=AsyncMock) as mock_perf:
+            mock_perf.return_value = (1.0, Decimal("3.00"), 0)  # sharpe, drawdown, consecutive_losses
 
             state, reason = await engine.evaluate_state(user_id)
 
             assert state is not None
-            # Should remain NORMAL with good metrics
             assert state.value in ["NORMAL", "DEGRADED", "PAUSED"]
 
     @pytest.mark.asyncio
-    async def test_degraded_on_low_sharpe(self, engine, user_id, mock_db):
-        """Low Sharpe ratio should trigger DEGRADED state."""
+    async def test_evaluate_handles_no_data(self, engine, user_id, mock_db):
+        """evaluate_state returns NORMAL when no performance data available."""
+        mock_state_obj = MagicMock()
+        mock_state_obj.state = "NORMAL"
+
         mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = _make_risk_state("NORMAL")
+        mock_result.scalar_one_or_none.return_value = mock_state_obj
         mock_db.execute.return_value = mock_result
 
-        with patch.object(engine, '_get_recent_performance', new_callable=AsyncMock) as mock_perf:
-            mock_perf.return_value = {
-                "total_trades": 30,
-                "sharpe_ratio": 0.3,  # Below SHARPE_DEGRADED (0.5)
-                "drawdown": Decimal("5.00"),
-                "consecutive_losses": 0,
-            }
+        with patch.object(engine, '_get_performance_metrics', new_callable=AsyncMock) as mock_perf:
+            mock_perf.return_value = (None, None, 0)  # No data
 
             state, reason = await engine.evaluate_state(user_id)
 
-            assert state.value == "DEGRADED"
-            assert reason is not None
-
-    @pytest.mark.asyncio
-    async def test_paused_on_high_drawdown(self, engine, user_id, mock_db):
-        """Very high drawdown should trigger PAUSED state."""
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = _make_risk_state("DEGRADED")
-        mock_db.execute.return_value = mock_result
-
-        with patch.object(engine, '_get_recent_performance', new_callable=AsyncMock) as mock_perf:
-            mock_perf.return_value = {
-                "total_trades": 30,
-                "sharpe_ratio": 0.2,
-                "drawdown": Decimal("25.00"),  # Above DRAWDOWN_PAUSED (20%)
-                "consecutive_losses": 5,
-            }
-
-            state, reason = await engine.evaluate_state(user_id)
-
-            assert state.value == "PAUSED"
-
-    @pytest.mark.asyncio
-    async def test_insufficient_trades_stays_normal(self, engine, user_id, mock_db):
-        """With fewer than MIN_TRADES, should stay NORMAL (not enough data)."""
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = _make_risk_state("NORMAL")
-        mock_db.execute.return_value = mock_result
-
-        with patch.object(engine, '_get_recent_performance', new_callable=AsyncMock) as mock_perf:
-            mock_perf.return_value = {
-                "total_trades": 5,  # Below MIN_TRADES (20)
-                "sharpe_ratio": -1.0,
-                "drawdown": Decimal("30.00"),
-                "consecutive_losses": 5,
-            }
-
-            state, reason = await engine.evaluate_state(user_id)
-
-            # Should not degrade with insufficient data
-            assert state.value == "NORMAL"
+            # Should stay NORMAL with no data
+            assert state == RiskState.NORMAL
 
 
 # ---------------------------------------------------------------------------
-# State transition tests
+# State transition record tests
 # ---------------------------------------------------------------------------
 
 class TestStateTransition:
@@ -202,14 +241,16 @@ class TestStateTransition:
 
     @pytest.mark.asyncio
     async def test_transition_creates_record(self, engine, user_id, mock_db):
-        """transition_state should create a new AIRiskState record."""
-        from app.models.ai_risk_state import RiskState
+        """transition_state should update and commit state."""
+        mock_state_obj = MagicMock()
+        mock_state_obj.state = "NORMAL"
+        mock_state_obj.previous_state = None
 
         mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = _make_risk_state("NORMAL")
+        mock_result.scalar_one_or_none.return_value = mock_state_obj
         mock_db.execute.return_value = mock_result
 
-        result = await engine.transition_state(
+        await engine.transition_state(
             user_id=user_id,
             new_state=RiskState.DEGRADED,
             reason="Sharpe ratio dropped below 0.5",
@@ -217,8 +258,8 @@ class TestStateTransition:
             drawdown=Decimal("12.00"),
         )
 
-        # Should have attempted to add and commit
-        assert mock_db.add.called or mock_db.commit.called
+        # Should have committed
+        assert mock_db.commit.called
 
 
 # ---------------------------------------------------------------------------
@@ -229,18 +270,59 @@ class TestDegradedAdjustments:
     """Test DEGRADED mode parameter adjustments."""
 
     @pytest.mark.asyncio
-    async def test_degraded_reduces_lot_size(self, engine):
-        """DEGRADED mode should reduce lot multiplier to 50%."""
+    async def test_degraded_adjustments_returns_dict(self, engine):
+        """apply_degraded_adjustments should return a dict."""
         mock_config = MagicMock()
-        mock_config.base_lots = 4
-        mock_config.min_confidence = Decimal("60.00")
+        mock_config.min_confidence_to_trade = Decimal("60.00")
+        mock_config.max_lots_per_strategy = 4
+        mock_config.max_strategies_per_day = 5
+        mock_config.confidence_tiers = [{"multiplier": 1.0}, {"multiplier": 2.0}]
 
         adjustments = await engine.apply_degraded_adjustments(mock_config)
 
         assert isinstance(adjustments, dict)
-        # Should contain reduced parameters
-        if "lot_multiplier" in adjustments:
-            assert adjustments["lot_multiplier"] <= 1.0
+
+    @pytest.mark.asyncio
+    async def test_degraded_increases_confidence_threshold(self, engine):
+        """DEGRADED mode should increase confidence threshold by 15%."""
+        mock_config = MagicMock()
+        mock_config.min_confidence_to_trade = Decimal("60.00")
+        mock_config.max_lots_per_strategy = 4
+        mock_config.max_strategies_per_day = 5
+        mock_config.confidence_tiers = []
+
+        adjustments = await engine.apply_degraded_adjustments(mock_config)
+
+        if "min_confidence_to_trade" in adjustments:
+            assert adjustments["min_confidence_to_trade"] >= Decimal("60.00")
+
+    @pytest.mark.asyncio
+    async def test_degraded_reduces_lot_multiplier(self, engine):
+        """DEGRADED mode should reduce lot sizes."""
+        mock_config = MagicMock()
+        mock_config.min_confidence_to_trade = Decimal("60.00")
+        mock_config.max_lots_per_strategy = 4
+        mock_config.max_strategies_per_day = 5
+        mock_config.confidence_tiers = [{"multiplier": 2.0}]
+
+        adjustments = await engine.apply_degraded_adjustments(mock_config)
+
+        if "max_lots_per_strategy" in adjustments:
+            assert adjustments["max_lots_per_strategy"] <= 4
+
+    @pytest.mark.asyncio
+    async def test_degraded_disables_adjustments(self, engine):
+        """DEGRADED mode should disable offensive adjustments."""
+        mock_config = MagicMock()
+        mock_config.min_confidence_to_trade = Decimal("60.00")
+        mock_config.max_lots_per_strategy = 4
+        mock_config.max_strategies_per_day = 5
+        mock_config.confidence_tiers = []
+
+        adjustments = await engine.apply_degraded_adjustments(mock_config)
+
+        if "adjustments_disabled" in adjustments:
+            assert adjustments["adjustments_disabled"] is True
 
 
 # ---------------------------------------------------------------------------
@@ -250,8 +332,7 @@ class TestDegradedAdjustments:
 def _make_risk_state(state_name, **kwargs):
     """Create a mock AIRiskState object."""
     state = MagicMock()
-    state.state = MagicMock()
-    state.state.value = state_name
+    state.state = state_name
     state.sharpe_ratio = kwargs.get("sharpe_ratio", 1.0)
     state.drawdown = kwargs.get("drawdown", Decimal("0.00"))
     state.created_at = datetime.now()

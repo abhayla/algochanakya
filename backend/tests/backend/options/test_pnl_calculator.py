@@ -104,7 +104,7 @@ class TestBlackScholes:
         """Call price should always be positive."""
         price = calc._black_scholes(
             spot=SPOT, strike=22000, time_to_expiry=0.05,
-            rate=RISK_FREE_RATE, volatility=0.15, option_type="CE"
+            risk_free_rate=RISK_FREE_RATE, volatility=0.15, option_type="CE"
         )
         assert price > 0
 
@@ -112,7 +112,7 @@ class TestBlackScholes:
         """Put price should always be positive."""
         price = calc._black_scholes(
             spot=SPOT, strike=22000, time_to_expiry=0.05,
-            rate=RISK_FREE_RATE, volatility=0.15, option_type="PE"
+            risk_free_rate=RISK_FREE_RATE, volatility=0.15, option_type="PE"
         )
         assert price > 0
 
@@ -120,7 +120,7 @@ class TestBlackScholes:
         """Deep ITM call should be near intrinsic value."""
         price = calc._black_scholes(
             spot=23000, strike=22000, time_to_expiry=0.01,
-            rate=RISK_FREE_RATE, volatility=0.15, option_type="CE"
+            risk_free_rate=RISK_FREE_RATE, volatility=0.15, option_type="CE"
         )
         intrinsic = 1000
         assert abs(price - intrinsic) < 50  # Within 50 of intrinsic
@@ -129,11 +129,11 @@ class TestBlackScholes:
         """Higher volatility should give higher option price."""
         low_vol = calc._black_scholes(
             spot=SPOT, strike=22000, time_to_expiry=0.05,
-            rate=RISK_FREE_RATE, volatility=0.10, option_type="CE"
+            risk_free_rate=RISK_FREE_RATE, volatility=0.10, option_type="CE"
         )
         high_vol = calc._black_scholes(
             spot=SPOT, strike=22000, time_to_expiry=0.05,
-            rate=RISK_FREE_RATE, volatility=0.25, option_type="CE"
+            risk_free_rate=RISK_FREE_RATE, volatility=0.25, option_type="CE"
         )
         assert high_vol > low_vol
 
@@ -141,11 +141,11 @@ class TestBlackScholes:
         """More time to expiry should give higher option price."""
         short_time = calc._black_scholes(
             spot=SPOT, strike=22000, time_to_expiry=0.01,
-            rate=RISK_FREE_RATE, volatility=0.15, option_type="CE"
+            risk_free_rate=RISK_FREE_RATE, volatility=0.15, option_type="CE"
         )
         long_time = calc._black_scholes(
             spot=SPOT, strike=22000, time_to_expiry=0.10,
-            rate=RISK_FREE_RATE, volatility=0.15, option_type="CE"
+            risk_free_rate=RISK_FREE_RATE, volatility=0.15, option_type="CE"
         )
         assert long_time > short_time
 
@@ -157,11 +157,11 @@ class TestBlackScholes:
 
         call = calc._black_scholes(
             spot=SPOT, strike=K, time_to_expiry=T,
-            rate=RISK_FREE_RATE, volatility=0.15, option_type="CE"
+            risk_free_rate=RISK_FREE_RATE, volatility=0.15, option_type="CE"
         )
         put = calc._black_scholes(
             spot=SPOT, strike=K, time_to_expiry=T,
-            rate=RISK_FREE_RATE, volatility=0.15, option_type="PE"
+            risk_free_rate=RISK_FREE_RATE, volatility=0.15, option_type="PE"
         )
 
         # C - P should ≈ S - K*e^(-rT)

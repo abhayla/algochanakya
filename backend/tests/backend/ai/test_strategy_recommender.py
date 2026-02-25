@@ -42,7 +42,7 @@ def mock_user_config():
     """Create a mock AIUserConfig."""
     config = MagicMock()
     config.allowed_strategies = None  # No restrictions
-    config.min_confidence = Decimal("50.00")
+    config.min_confidence_to_trade = Decimal("50.00")
     config.max_daily_trades = 5
     return config
 
@@ -121,6 +121,11 @@ class TestRegimeStrategyScores:
                     f"Score {score} for {strategy} in {regime} out of range"
                 )
 
+    def test_iron_condor_score_high_in_rangebound(self):
+        """Iron condor base score should be >= 50 in rangebound regime."""
+        scores = REGIME_STRATEGY_SCORES.get(RegimeType.RANGEBOUND, {})
+        assert scores.get("iron_condor", 0) >= 50
+
 
 # ---------------------------------------------------------------------------
 # Recommendation tests
@@ -134,13 +139,13 @@ class TestGetRecommendations:
         self, recommender, mock_regime_rangebound, mock_user_config, mock_db
     ):
         """get_recommendations should return a list."""
-        # Mock template query
         templates = _make_templates(["iron_condor", "short_strangle", "butterfly_spread"])
         mock_result = MagicMock()
         mock_result.scalars.return_value.all.return_value = templates
         mock_db.execute.return_value = mock_result
 
-        with patch.object(recommender, '_check_cooldown', new_callable=AsyncMock, return_value=False):
+        # Mock cooldown_service to always return False (not on cooldown)
+        with patch.object(recommender.cooldown_service, 'is_on_cooldown', new_callable=AsyncMock, return_value=False):
             recs = await recommender.get_recommendations(
                 underlying="NIFTY",
                 regime=mock_regime_rangebound,
@@ -160,7 +165,7 @@ class TestGetRecommendations:
         mock_result.scalars.return_value.all.return_value = templates
         mock_db.execute.return_value = mock_result
 
-        with patch.object(recommender, '_check_cooldown', new_callable=AsyncMock, return_value=False):
+        with patch.object(recommender.cooldown_service, 'is_on_cooldown', new_callable=AsyncMock, return_value=False):
             recs = await recommender.get_recommendations(
                 underlying="NIFTY",
                 regime=mock_regime_rangebound,
@@ -183,7 +188,7 @@ class TestGetRecommendations:
         mock_result.scalars.return_value.all.return_value = templates
         mock_db.execute.return_value = mock_result
 
-        with patch.object(recommender, '_check_cooldown', new_callable=AsyncMock, return_value=False):
+        with patch.object(recommender.cooldown_service, 'is_on_cooldown', new_callable=AsyncMock, return_value=False):
             recs = await recommender.get_recommendations(
                 underlying="NIFTY",
                 regime=mock_regime_rangebound,
@@ -227,11 +232,12 @@ class TestScoreStrategy:
             user_config=mock_user_config,
         )
 
+        # Iron condor base score in RANGEBOUND is 90 * (0.5 + 0.5*0.85) ≈ 83
         assert score >= 50, f"Iron condor should score >= 50 in rangebound, got {score}"
 
     @pytest.mark.asyncio
-    async def test_unknown_strategy_scores_low(self, recommender, mock_regime_rangebound, mock_user_config):
-        """Unknown strategy type should score 0 or very low."""
+    async def test_unknown_strategy_scores_zero(self, recommender, mock_regime_rangebound, mock_user_config):
+        """Unknown strategy type should score 0."""
         template = _make_template("nonexistent_strategy")
 
         score = await recommender.score_strategy(
@@ -240,23 +246,38 @@ class TestScoreStrategy:
             user_config=mock_user_config,
         )
 
-        assert score <= 20, f"Unknown strategy should score low, got {score}"
+        assert score == 0.0, f"Unknown strategy should score 0, got {score}"
+
+    @pytest.mark.asyncio
+    async def test_get_regime_base_score(self, recommender):
+        """_get_regime_base_score should return matrix value."""
+        score = recommender._get_regime_base_score("iron_condor", RegimeType.RANGEBOUND)
+        assert score == 90.0
+
+        score_unknown = recommender._get_regime_base_score("nonexistent", RegimeType.RANGEBOUND)
+        assert score_unknown == 0.0
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _make_template(strategy_type, name=None):
-    """Create a mock StrategyTemplate."""
+def _make_template(strategy_name):
+    """Create a mock StrategyTemplate with correct name for scoring lookup."""
     template = MagicMock()
-    template.strategy_type = strategy_type
-    template.name = name or strategy_type.replace("_", " ").title()
-    template.description = f"Test {strategy_type}"
+    template.name = strategy_name  # name is used for scoring lookup
+    template.display_name = strategy_name.replace("_", " ").title()
+    template.category = "neutral"
+    template.risk_level = "moderate"
+    template.market_outlook = "neutral"
+    template.theta_positive = True
+    template.vega_positive = False
+    template.delta_neutral = True
+    template.description = f"Test {strategy_name}"
     template.legs = []
     return template
 
 
-def _make_templates(strategy_types):
+def _make_templates(strategy_names):
     """Create a list of mock StrategyTemplates."""
-    return [_make_template(st) for st in strategy_types]
+    return [_make_template(name) for name in strategy_names]
