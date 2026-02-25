@@ -1,9 +1,9 @@
 ---
 name: paytm-expert
-description: Use when implementing Paytm Money adapter, debugging Paytm API errors, understanding Paytm's 3-token system, or auditing code calling Paytm API. Paytm Money API expert for AlgoChanakya.
+description: Use when implementing Paytm Money adapter, debugging Paytm API errors, understanding Paytm's 3-token system, GTT orders, option chain data, or auditing code calling Paytm API. Paytm Money API expert for AlgoChanakya.
 metadata:
   author: AlgoChanakya
-  version: "2.0"
+  version: "2.5"
   last_verified: "2026-02-25"
 ---
 
@@ -13,12 +13,16 @@ Paytm Money offers a **FREE** trading API with a unique **3 JWT token** system (
 
 **Maturity Warning:** Paytm Money API is the least mature among Indian broker APIs. Expect limited documentation, occasional breaking changes, and less community support. Test thoroughly before production use.
 
+**BSE F&O (2025):** Paytm Money added BSE F&O instruments in 2025. Previously NSE-only F&O; BSE options now available.
+
 ## When to Use
 
 - Implementing or debugging the Paytm Money market data, order, or ticker adapter
 - Debugging Paytm API errors or authentication issues
 - Understanding Paytm's 3-token system (access, public_access, read_access)
 - Working with Paytm WebSocket (public_access_token auth)
+- Implementing or researching GTT orders for Paytm
+- Fetching Paytm option chain data (Heckyl-powered Greeks)
 - Comparing Paytm capabilities with other brokers
 - Auditing code that calls Paytm API for correctness
 
@@ -34,7 +38,7 @@ Paytm Money offers a **FREE** trading API with a unique **3 JWT token** system (
 |----------|-------|
 | **Official Docs** | https://developer.paytmmoney.com/docs/ |
 | **API Version** | v1 |
-| **Python SDK** | `pyPMClient` (`pip install pyPMClient`) |
+| **Python SDK** | `pyPMClient` (`pip install pyPMClient`) — last updated Jul 2024, limited maintenance |
 | **Pricing** | **FREE** (market data + orders) |
 | **REST Base URL** | `https://developer.paytmmoney.com` |
 | **WebSocket URL** | `wss://developer-ws.paytmmoney.com/broadcast/user/v1/data` |
@@ -61,9 +65,9 @@ Paytm Money uses OAuth 2.0 with **3 different JWT token types**.
 
 | Token | Purpose | Validity | Used For |
 |-------|---------|----------|----------|
-| `access_token` | Full API access | ~24 hours | Orders, positions, holdings |
+| `access_token` | Full API access | ~24 hours | Orders, positions, holdings, GTT |
 | `public_access_token` | WebSocket only | ~24 hours | **WebSocket authentication** |
-| `read_access_token` | Read-only REST | ~24 hours | Market data, quotes, instruments |
+| `read_access_token` | Read-only REST | ~24 hours | Market data, quotes, instruments, option chain |
 
 ### Auth Header
 
@@ -71,7 +75,7 @@ Paytm Money uses OAuth 2.0 with **3 different JWT token types**.
 x-jwt-token: {access_token|read_access_token}
 ```
 
-**Note:** Header is `x-jwt-token` (not `Authorization: Bearer`).
+**Note:** Header is `x-jwt-token` (not `Authorization: Bearer`). Custom header format.
 
 See [auth-flow.md](./references/auth-flow.md) for complete request/response examples.
 
@@ -85,12 +89,15 @@ See [auth-flow.md](./references/auth-flow.md) for complete request/response exam
 | **Quote** | GET | `/data/v1/price/live` | read_access_token |
 | **OHLC** | GET | `/data/v1/price/ohlc` | read_access_token |
 | **Historical** | GET | `/data/v1/price/historical` | read_access_token |
+| **Option Chain** | GET | `/data/v1/option/chain` | read_access_token |
 | **Place Order** | POST | `/orders/v1/place/regular` | access_token |
 | **Modify Order** | PUT | `/orders/v1/modify/regular` | access_token |
 | **Cancel Order** | DELETE | `/orders/v1/cancel/regular` | access_token |
 | **Orders** | GET | `/orders/v1/order-book` | access_token |
 | **Positions** | GET | `/orders/v1/position` | access_token |
 | **Holdings** | GET | `/holdings/v1/get-user-holdings` | access_token |
+| **GTT Create** | POST | `/api/create-gtt` | access_token |
+| **GTT Get** | GET | `/api/get-gtt` | access_token |
 | **Instruments** | Download | Script master CSV | read_access_token |
 
 See [endpoints-catalog.md](./references/endpoints-catalog.md) for complete schemas.
@@ -190,16 +197,54 @@ See [websocket-protocol.md](./references/websocket-protocol.md) for detailed pro
 
 Paytm returns all prices in RUPEES. No paise conversion needed.
 
+## GTT Orders
+
+Paytm Money provides GTT (Good Till Triggered) order functionality. The endpoint is available but documentation is sparse.
+
+**Status: NOT YET IMPLEMENTED in AlgoChanakya's Paytm adapter.**
+
+- Endpoint: `POST /api/create-gtt`
+- Requires `access_token` (NOT `read_access_token`)
+- Valid for up to 365 days
+- Two types: Single trigger and Two-leg (OCO target + stop-loss)
+
+See [gtt-orders.md](./references/gtt-orders.md) for endpoint details, request format, and implementation cautions.
+
+## Option Chain
+
+Paytm Money provides option chain data including Greeks, powered by **Heckyl Technologies** as the underlying data vendor.
+
+**Status: NOT YET IMPLEMENTED in AlgoChanakya (uses SmartAPI for option chain).**
+
+- Endpoint: `GET /data/v1/option/chain`
+- Includes delta, gamma, theta, vega, IV
+- BSE F&O option chain available since 2025 (SENSEX, BANKEX)
+- Use `read_access_token`
+
+See [option-chain.md](./references/option-chain.md) for endpoint details and response format.
+
+## Webhooks / Order Updates
+
+**Paytm Money does NOT support webhooks or order update push notifications.**
+
+There is no HTTP webhook and no order update WebSocket. The only mechanism for tracking order status is **REST polling**.
+
+AlgoChanakya handles this via AutoPilot polling at 2-second intervals for active orders.
+
+See [webhook.md](./references/webhook.md) for polling implementation and broker comparison table.
+
 ## AlgoChanakya Implementation Status
 
 | Component | Status | File |
 |-----------|--------|------|
-| Market Data Adapter | **✅ Implemented** | `backend/app/services/brokers/market_data/paytm_adapter.py` (581 lines) |
-| Order Execution Adapter | **✅ Implemented** | `backend/app/services/brokers/paytm_order_adapter.py` (437 lines) |
-| Ticker (WebSocket) Adapter | **✅ Implemented** | `backend/app/services/brokers/market_data/ticker/adapters/paytm.py` (618 lines) |
-| Auth Route | **✅ Implemented** | `backend/app/api/routes/paytm_auth.py` (246 lines) |
-| Frontend Settings | **✅ Implemented** | `frontend/src/components/settings/PaytmSettings.vue` |
-| Tests | **✅ Complete** | `test_paytm_market_data_adapter.py` (509 lines), `test_paytm_ticker_adapter.py` (914 lines) |
+| Market Data Adapter | **Implemented** | `backend/app/services/brokers/market_data/paytm_adapter.py` (581 lines) |
+| Order Execution Adapter | **Implemented** | `backend/app/services/brokers/paytm_order_adapter.py` (437 lines) |
+| Ticker (WebSocket) Adapter | **Implemented** | `backend/app/services/brokers/market_data/ticker/adapters/paytm.py` (618 lines) |
+| Auth Route | **Implemented** | `backend/app/api/routes/paytm_auth.py` (246 lines) |
+| Frontend Settings | **Implemented** | `frontend/src/components/settings/PaytmSettings.vue` |
+| Tests | **Complete** | `test_paytm_market_data_adapter.py` (509 lines), `test_paytm_ticker_adapter.py` (914 lines) |
+| GTT Orders | **NOT implemented** | See gtt-orders.md for endpoint details |
+| Option Chain | **NOT implemented** | AlgoChanakya uses SmartAPI for option chain |
 
 ### Current Integration Pattern
 
@@ -217,21 +262,23 @@ order_id = await adapter.place_order(order_params)
 
 ## Common Gotchas
 
-1. **3 token types** - Must use the correct token for each endpoint. WebSocket requires `public_access_token`, not `access_token`. Read endpoints use `read_access_token`.
+1. **3 token types** - Must use the correct token for each endpoint. WebSocket requires `public_access_token`, not `access_token`. Read endpoints use `read_access_token`. GTT requires `access_token`.
 
-2. **Least mature API** - Limited documentation, occasional breaking changes. Test thoroughly.
+2. **Least mature API** - Limited documentation, occasional breaking changes without notice. Test thoroughly.
 
-3. **Limited F&O coverage** - Not all F&O instruments may be available. Verify before depending on it.
+3. **Limited F&O coverage** - Not all F&O instruments may be available. Verify before depending on it. BSE F&O added in 2025.
 
 4. **Header name** - `x-jwt-token` (not `Authorization: Bearer`). Custom header format.
 
-5. **pyPMClient SDK quality** - Lower quality than kiteconnect or smartapi-python. May need workarounds.
+5. **pyPMClient SDK quality** - Last updated Jul 2024. Lower quality than kiteconnect or smartapi-python. May need workarounds or raw HTTP calls.
 
 6. **Breaking changes** - Paytm has changed API endpoints and response formats without deprecation notices.
 
 7. **WebSocket auth** - Uses `public_access_token` as query parameter, not header. Different from REST auth.
 
 8. **Script master** - Instrument data may be less complete than other brokers. Verify coverage.
+
+9. **No webhooks** - No HTTP webhooks and no order update WebSocket. REST polling is the only option.
 
 ## Error Codes Quick Reference
 
@@ -271,6 +318,10 @@ See [error-codes.md](./references/error-codes.md) for complete error catalog.
 | error-codes.md | 2026-02-25 | Quarterly |
 | websocket-protocol.md | 2026-02-25 | Quarterly |
 | symbol-format.md | 2026-02-25 | Quarterly |
+| gtt-orders.md | 2026-02-25 | Quarterly |
+| option-chain.md | 2026-02-25 | Quarterly |
+| webhook.md | 2026-02-25 | Quarterly |
+| maintenance-log.md | 2026-02-25 | Quarterly |
 
 ### Auto-Update Trigger Rules
 
@@ -282,6 +333,7 @@ See [error-codes.md](./references/error-codes.md) for complete error catalog.
 
 | Version | Date | Changes |
 |---|---|---|
+| 2.5 | 2026-02-25 | Added GTT Orders section (not yet implemented), Option Chain section (Heckyl data, not implemented), Webhook section (no webhooks — REST polling only), BSE F&O 2025 note, pyPMClient last-updated note, expanded maintenance freshness table to 9 reference files, updated gotcha #9 (no webhooks) |
 | 2.0 | 2026-02-25 | Implementation status corrected: all 3 adapters fully Implemented (was Planned), auth route + frontend + tests added to status table, maintenance section added |
 | 1.0 | 2026-02-16 | Initial creation |
 
@@ -292,4 +344,8 @@ See [error-codes.md](./references/error-codes.md) for complete error catalog.
 - [WebSocket Protocol](./references/websocket-protocol.md) - public_access_token WS
 - [Error Codes](./references/error-codes.md) - Error code reference
 - [Symbol Format](./references/symbol-format.md) - Paytm instrument IDs
+- [GTT Orders](./references/gtt-orders.md) - GTT order endpoints and cautions
+- [Option Chain](./references/option-chain.md) - Option chain with Heckyl Greeks
+- [Webhook](./references/webhook.md) - No webhooks; REST polling implementation
+- [Maintenance Log](./references/maintenance-log.md) - API change tracker and review history
 - [Comparison Matrix](../broker-shared/comparison-matrix.md) - Cross-broker comparison

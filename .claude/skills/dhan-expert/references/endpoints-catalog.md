@@ -581,12 +581,92 @@ GET https://api.dhan.co/v2/edis/inquiry
 
 ---
 
+## 11. Option Chain
+
+### GET /v2/expirylist
+
+Get available expiry dates for an underlying.
+
+```
+GET https://api.dhan.co/v2/expirylist?UnderlyingScrip=13&UnderlyingSeg=IDX_I
+```
+
+**Query Parameters:**
+
+| Parameter | Type | Description | Example |
+|-----------|------|-------------|---------|
+| `UnderlyingScrip` | int | Underlying security_id | `13` (NIFTY) |
+| `UnderlyingSeg` | string | Exchange segment | `IDX_I` |
+
+**Response:**
+
+```json
+{
+  "status": "success",
+  "data": ["2025-02-27", "2025-03-06", "2025-03-27", "2025-04-24"]
+}
+```
+
+### POST /v2/optionchain
+
+Get full option chain with Greeks for an underlying and expiry.
+
+```
+POST https://api.dhan.co/v2/optionchain
+```
+
+**Request Body:**
+
+```json
+{
+  "UnderlyingScrip": 13,
+  "UnderlyingSeg": "IDX_I",
+  "Expiry": "2025-02-27"
+}
+```
+
+**Response includes:** Strike list with `call_options` and `put_options` for each strike. Each leg includes: `security_id`, `trading_symbol`, `last_price`, OHLC, `volume`, `open_interest`, `oi_change`, `iv`, `delta`, `theta`, `gamma`, `vega`.
+
+**AlgoChanakya status:** NOT yet implemented. See [option-chain.md](./option-chain.md) for full schema.
+
+---
+
+## 12. WebSockets
+
+### Market Data WebSocket
+
+**URL:** `wss://api-feed.dhan.co`
+
+Binary (little-endian) WebSocket for real-time market data ticks. Supports Ticker, Quote, Full, and 200-Depth modes.
+
+See [websocket-protocol.md](./websocket-protocol.md) for subscription format and binary parsing.
+
+### Live Order Update WebSocket
+
+**URL:** `wss://api-order-update.dhan.co`
+
+Real-time JSON WebSocket stream for order status updates. Authentication via JSON message on connect.
+
+```python
+# Auth message sent after connection
+auth_msg = {
+    "access-token": access_token,
+    "dhan-client-id": client_id
+}
+```
+
+**Response format:** JSON with `orderId`, `orderStatus`, and full order details.
+
+**AlgoChanakya status:** NOT currently used. AlgoChanakya polls REST for order status. See [webhook.md](./webhook.md).
+
+---
+
 ## Endpoint Summary Table
 
 | Category         | Method | Endpoint                        | Description                    |
 |------------------|--------|---------------------------------|--------------------------------|
 | Profile          | GET    | `/profile`                      | User profile                   |
-| Margins          | GET    | `/fundlimit`                    | Fund limits & margins          |
+| Margins          | GET    | `/fundlimit`                    | Fund limits (`availabelBalance` typo) |
 | Margins          | POST   | `/margincalculator`             | Margin requirement calc        |
 | Market Data      | POST   | `/marketfeed/ltp`               | Last traded price              |
 | Market Data      | POST   | `/marketfeed/ohlc`              | OHLC data                      |
@@ -605,12 +685,16 @@ GET https://api.dhan.co/v2/edis/inquiry
 | Holdings         | GET    | `/holdings`                     | All holdings                   |
 | Trades           | GET    | `/trades`                       | All trades today               |
 | Trades           | GET    | `/trades/{order_id}`            | Trades for order               |
-| Forever Orders   | POST   | `/forever/orders`               | Create GTT/GTC order           |
+| Forever Orders   | POST   | `/forever/orders`               | Create GTT/GTC order (NOT in AlgoChanakya) |
 | Forever Orders   | PUT    | `/forever/orders/{id}`          | Modify forever order           |
 | Forever Orders   | DELETE | `/forever/orders/{id}`          | Cancel forever order           |
 | Forever Orders   | GET    | `/forever/orders`               | List forever orders            |
+| Option Chain     | POST   | `/optionchain`                  | Option chain with Greeks (NOT in AlgoChanakya) |
+| Option Chain     | GET    | `/expirylist`                   | Expiry dates for underlying    |
 | EDIS             | POST   | `/edis/form`                    | Generate EDIS form             |
 | EDIS             | GET    | `/edis/inquiry`                 | Check EDIS status              |
+| WebSocket (data) | WS     | `wss://api-feed.dhan.co`        | Market data binary stream      |
+| WebSocket (orders) | WS   | `wss://api-order-update.dhan.co`| Live order updates (NOT in AlgoChanakya) |
 
 ---
 
@@ -621,4 +705,6 @@ GET https://api.dhan.co/v2/edis/inquiry
 3. **Array-based historical response** -- Candle data returns parallel arrays, not array of objects
 4. **Order slicing built-in** -- The `/orders/slicing` endpoint handles freeze quantity limits automatically
 5. **No separate login/session** -- Single long-lived token, no session management
-6. **Fund limit typo** -- `availabelBalance` is misspelled in the official API response
+6. **Fund limit typo** -- `availabelBalance` is misspelled in the official API response (missing second 'l'). Use the exact misspelled field name in code.
+7. **Option Chain has Greeks** -- `/v2/optionchain` returns delta, gamma, theta, vega, IV — unusual for a broker REST API
+8. **Dual WebSocket** -- Separate WebSocket URLs for market data (`api-feed`) and order updates (`api-order-update`)

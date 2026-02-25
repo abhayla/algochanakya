@@ -3,7 +3,7 @@ name: kite-expert
 description: Use when implementing Kite adapter, debugging Kite API errors, understanding Kite symbol format (canonical), or auditing code calling Kite API. Kite Connect (Zerodha) API expert for AlgoChanakya.
 metadata:
   author: AlgoChanakya
-  version: "2.0"
+  version: "2.5"
   last_verified: "2026-02-25"
 ---
 
@@ -20,6 +20,7 @@ Zerodha's Kite Connect is used for **order execution** in AlgoChanakya. It provi
 - Comparing Kite capabilities with other brokers
 - Auditing code that calls Kite API for correctness
 - Writing tests that mock Kite API responses
+- GTT (Good Till Triggered) order questions
 
 ## When NOT to Use
 
@@ -34,12 +35,13 @@ Zerodha's Kite Connect is used for **order execution** in AlgoChanakya. It provi
 |----------|-------|
 | **Official Docs** | https://kite.trade/docs/connect/v3/ |
 | **API Version** | v3 |
-| **Python SDK** | `kiteconnect` (`pip install kiteconnect`) |
+| **Python SDK** | `kiteconnect` v5.0.1 (`pip install kiteconnect`) |
 | **Pricing** | ₹500/month (Connect: market data + historical data included), FREE (Personal API: orders only, no market data) |
 | **REST Base URL** | `https://api.kite.trade` |
 | **WebSocket URL** | `wss://ws.kite.trade` |
 | **Auth Method** | OAuth 2.0 redirect flow (request_token + api_secret) |
 | **Token Validity** | access_token: ~24h (until 6 AM next day), no auto-refresh |
+| **Sandbox** | Yes — see [Sandbox Environment](#sandbox-environment) |
 
 ## Authentication Flow
 
@@ -76,7 +78,7 @@ Authorization: token {api_key}:{access_token}
 
 Unlike SmartAPI, Kite has **no refresh token**. When access_token expires (~6 AM), the user must complete the OAuth flow again. This is why AlgoChanakya uses SmartAPI (with auto-TOTP) as the default market data source.
 
-See [auth-flow.md](./references/auth-flow.md) for complete request/response examples.
+See [auth-flow.md](./references/auth-flow.md) for complete request/response examples including sandbox setup.
 
 ## Key Endpoints Quick Reference
 
@@ -90,7 +92,7 @@ See [auth-flow.md](./references/auth-flow.md) for complete request/response exam
 | **Quote** | GET | `/quote?i={exchange}:{symbol}` | Full quote |
 | **LTP** | GET | `/quote/ltp?i={exchange}:{symbol}` | LTP only |
 | **OHLC** | GET | `/quote/ohlc?i={exchange}:{symbol}` | OHLC + LTP |
-| **Historical** | GET | `/instruments/historical/{token}/{interval}` | OHLCV candles |
+| **Historical** | GET | `/instruments/historical/{token}/{interval}` | OHLCV candles (max 60 days/request for minute) |
 | **Instruments** | GET | `/instruments` | All instruments CSV |
 | **Instruments** | GET | `/instruments/{exchange}` | Exchange instruments |
 | **Place Order** | POST | `/orders/{variety}` | Place order |
@@ -100,7 +102,11 @@ See [auth-flow.md](./references/auth-flow.md) for complete request/response exam
 | **Trades** | GET | `/trades` | All trades |
 | **Positions** | GET | `/portfolio/positions` | Positions |
 | **Holdings** | GET | `/portfolio/holdings` | Holdings |
-| **GTT** | POST | `/gtt/triggers` | Create GTT |
+| **GTT Create** | POST | `/gtt/triggers` | Create GTT order |
+| **GTT List** | GET | `/gtt/triggers` | List all GTTs |
+| **GTT Get** | GET | `/gtt/triggers/{id}` | Get specific GTT |
+| **GTT Modify** | PUT | `/gtt/triggers/{id}` | Modify GTT |
+| **GTT Delete** | DELETE | `/gtt/triggers/{id}` | Delete GTT |
 
 See [endpoints-catalog.md](./references/endpoints-catalog.md) for complete schemas.
 
@@ -184,14 +190,56 @@ See [websocket-protocol.md](./references/websocket-protocol.md) for byte offsets
 
 | Endpoint Type | Limit | Notes |
 |---------------|-------|-------|
-| General API | **3 requests/second** | Default tier |
-| General API (premium) | **10 requests/second** | Higher plan |
-| Historical data | **3 requests/second** | Shared with general |
+| General API | **10 requests/second** | Standard tier |
+| Historical data | **10 requests/second** | Shared with general |
 | Order placement | **10 orders/second** | Per user |
 | Quote API | **1 request/second** | Use WebSocket for live data |
 | Instruments dump | **Once per day** | ~80MB CSV, cache it |
 
-**AlgoChanakya Configuration:** `rate_limiter.py` sets `"kite": 3` (3 req/sec).
+**AlgoChanakya Configuration:** `rate_limiter.py` currently sets `"kite": 3` — this is **INCORRECT** and should be updated to `"kite": 10`. See [maintenance-log.md](./references/maintenance-log.md) for details.
+
+## GTT Orders
+
+Kite supports **Good Till Triggered (GTT)** orders — orders that execute automatically when a price condition is met. GTTs persist for up to 1 year.
+
+| GTT Type | Code | Triggers | Description |
+|----------|------|----------|-------------|
+| Single | `single` | 1 | Fires when price crosses one level |
+| Two-Leg OCO | `two-leg` | 2 | Target + stop-loss, one fires and cancels the other |
+
+GTT is **not yet implemented** in AlgoChanakya's Kite adapter. Standard orders are fully supported.
+
+See [gtt-orders.md](./references/gtt-orders.md) for complete GTT reference including request/response examples and status values.
+
+## No Webhook Support
+
+Kite Connect does **NOT support HTTP webhooks** for order or trade notifications. There is no mechanism to register a URL that Zerodha will call when orders execute.
+
+**Alternatives:**
+- Use KiteTicker WebSocket for live market data (not order updates)
+- Poll `/orders` endpoint to check order status
+- AlgoChanakya's AutoPilot module handles order polling internally
+
+See [webhook.md](./references/webhook.md) for details and comparison with other brokers.
+
+## No Dedicated Option Chain API
+
+Kite Connect does **NOT** have a dedicated option chain endpoint. To build an option chain, you must query individual strike quotes in batches using the `/quote` endpoint (max 500 instruments per request).
+
+**Greeks are NOT available** from Kite's quote API. AlgoChanakya uses SmartAPI for option chain data (which provides delta, gamma, theta, vega, IV).
+
+See [option-chain.md](./references/option-chain.md) for the batched quote approach and performance considerations.
+
+## Sandbox Environment
+
+Kite Connect provides a **test/sandbox environment** for development:
+
+- **Sandbox docs:** https://kite.trade/docs/connect/v3/#sandbox
+- Sandbox allows testing API calls without real trades
+- Use sandbox API key/secret from the Kite developer console
+- Sandbox base URL differs from production — check auth-flow.md for setup
+
+See [auth-flow.md](./references/auth-flow.md) for sandbox configuration details.
 
 ## Price Normalization
 
@@ -207,14 +255,14 @@ See [websocket-protocol.md](./references/websocket-protocol.md) for byte offsets
 
 | Component | Status | File |
 |-----------|--------|------|
-| Order Execution Adapter | **✅ Implemented** | `backend/app/services/brokers/kite_adapter.py` |
-| Market Data Adapter | **✅ Implemented** | `backend/app/services/brokers/market_data/kite_adapter.py` (422 lines) |
-| Ticker (WebSocket) Adapter | **✅ Implemented** | `backend/app/services/brokers/market_data/ticker/adapters/kite.py` (313 lines) |
-| Order Service | **✅ Legacy** | `backend/app/services/legacy/kite_orders.py` |
-| OAuth Callback | **✅ Implemented** | `backend/app/api/routes/auth.py` |
-| Frontend Settings | **✅ Implemented** | `frontend/src/components/settings/KiteSettings.vue` |
-| Factory Registration | **✅ Implemented** | `backend/app/services/brokers/factory.py` |
-| Tests | **✅ Complete** | `test_kite_ticker_adapter.py` (598 lines) |
+| Order Execution Adapter | **Implemented** | `backend/app/services/brokers/kite_adapter.py` |
+| Market Data Adapter | **Implemented** | `backend/app/services/brokers/market_data/kite_adapter.py` (422 lines) |
+| Ticker (WebSocket) Adapter | **Implemented** | `backend/app/services/brokers/market_data/ticker/adapters/kite.py` (313 lines) |
+| Order Service | **Legacy** | `backend/app/services/legacy/kite_orders.py` |
+| OAuth Callback | **Implemented** | `backend/app/api/routes/auth.py` |
+| Frontend Settings | **Implemented** | `frontend/src/components/settings/KiteSettings.vue` |
+| Factory Registration | **Implemented** | `backend/app/services/brokers/factory.py` |
+| Tests | **Complete** | `test_kite_ticker_adapter.py` (598 lines) |
 
 ### Key Integration Points
 
@@ -254,7 +302,7 @@ quote = await data_adapter.get_quote(["NIFTY2522725000CE"])
 
 6. **Checksum for session** - `POST /session/token` requires SHA-256 of `api_key + request_token + api_secret`. Missing or wrong checksum = silent failure.
 
-7. **Instrument CSV is 80MB** - Download once, cache for 24h. Don't download on every request.
+7. **Instrument CSV is 80MB** - Download once, cache for 24h. Don't download on every request. BSE instruments are in a separate CSV.
 
 8. **WebSocket prices in paise** - int32 paise. REST prices in rupees (float). Don't mix them.
 
@@ -262,9 +310,15 @@ quote = await data_adapter.get_quote(["NIFTY2522725000CE"])
 
 10. **Exchange prefix in quotes** - Quote endpoint needs `i=NFO:NIFTY2522725000CE` format. Missing exchange prefix = 400 error.
 
-11. **Rate limit is 3/sec** - Moderate. Use WebSocket for live data, REST only for on-demand queries.
+11. **Rate limit is 10/sec** - The standard rate limit is 10 req/sec (NOT 3/sec as previously documented). `rate_limiter.py` setting `"kite": 3` is incorrect and should be updated to 10.
 
-12. **₹500/month subscription** - Kite Connect requires a paid subscription for third-party apps. Personal Kite API is free but limited.
+12. **Historical data: max 60 days per request for minute data** - When fetching `minute` interval, each request can span a maximum of 60 days. For longer ranges, make multiple requests.
+
+13. **No webhooks** - Kite has no push webhook mechanism. Use polling or KiteTicker WebSocket for real-time updates.
+
+14. **No option chain API** - No dedicated endpoint. Must batch-query individual strikes via `/quote`. Greeks are not available.
+
+15. **₹500/month subscription** - Kite Connect requires a paid subscription for third-party apps. Personal Kite API is free but limited to orders only.
 
 ## Error Codes Quick Reference
 
@@ -277,7 +331,7 @@ quote = await data_adapter.get_quote(["NIFTY2522725000CE"])
 | `502` | `NetworkException` | Gateway error | Yes - retry |
 | `503` | `NetworkException` | Service unavailable | Yes - retry |
 
-See [error-codes.md](./references/error-codes.md) for complete error catalog.
+See [error-codes.md](./references/error-codes.md) for complete error catalog including GTT-specific errors.
 
 ## Related Skills
 
@@ -297,12 +351,16 @@ See [error-codes.md](./references/error-codes.md) for complete error catalog.
 
 | Reference File | Last Verified | Check Frequency |
 |---|---|---|
-| skill.md | 2026-02-25 | Quarterly |
+| SKILL.md | 2026-02-25 | Quarterly |
 | endpoints-catalog.md | 2026-02-25 | Quarterly |
 | auth-flow.md | 2026-02-25 | Quarterly |
 | error-codes.md | 2026-02-25 | Quarterly |
 | websocket-protocol.md | 2026-02-25 | Quarterly |
 | symbol-format.md | 2026-02-25 | Quarterly |
+| gtt-orders.md | 2026-02-25 | Quarterly |
+| option-chain.md | 2026-02-25 | Quarterly |
+| webhook.md | 2026-02-25 | Quarterly |
+| maintenance-log.md | 2026-02-25 | Quarterly |
 
 ### Auto-Update Trigger Rules
 
@@ -314,14 +372,19 @@ See [error-codes.md](./references/error-codes.md) for complete error catalog.
 
 | Version | Date | Changes |
 |---|---|---|
+| 2.5 | 2026-02-25 | CRITICAL rate limit fix (3/sec → 10/sec), added GTT section + reference, added No Webhook section + reference, added No Option Chain API section + reference, added Sandbox section, updated SDK version to v5.0.1, added historical data 60-day limit note, expanded Maintenance section to all 9 reference files |
 | 2.0 | 2026-02-25 | Implementation status corrected (ticker adapter added, all adapters Implemented), updated Related Skills (removed outdated "next to implement" note), maintenance section added |
 | 1.0 | 2026-02-16 | Initial creation |
 
 ## References
 
-- [Authentication Flow](./references/auth-flow.md) - OAuth flow with request/response examples
+- [Authentication Flow](./references/auth-flow.md) - OAuth flow with request/response examples, sandbox setup
 - [Endpoints Catalog](./references/endpoints-catalog.md) - All REST endpoints with schemas
 - [WebSocket Protocol](./references/websocket-protocol.md) - KiteTicker binary format and parsing
 - [Error Codes](./references/error-codes.md) - Complete error code reference
 - [Symbol Format](./references/symbol-format.md) - Canonical format specification
+- [GTT Orders](./references/gtt-orders.md) - Good Till Triggered orders reference
+- [Option Chain](./references/option-chain.md) - Building option chains without dedicated API
+- [Webhook](./references/webhook.md) - No webhook support; alternatives documented
+- [Maintenance Log](./references/maintenance-log.md) - API change tracker and review history
 - [Comparison Matrix](../broker-shared/comparison-matrix.md) - Cross-broker comparison

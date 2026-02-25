@@ -225,6 +225,55 @@ Hour 48: New JWT via refresh → valid 24h more
 Day  15: Refresh token expires → full re-login required
 ```
 
+## Static IP Registration (Required Since Aug 2025)
+
+Since August 2025, Angel One requires all API keys to have registered static IP addresses. API calls from unregistered IPs return **HTTP 403 Forbidden**.
+
+### Setup Steps
+
+1. Log in to the Angel One developer portal: https://smartapi.angelbroking.com/
+2. Navigate to **My Apps** → select your app
+3. Go to **API Key Settings** → **IP Whitelist**
+4. Add your server's public IPv4 address (up to 5 IPs per API key)
+5. Save and wait up to 5 minutes for propagation
+
+### Finding Your Server's Public IP
+
+```bash
+# On the server running AlgoChanakya backend
+curl -s https://api.ipify.org
+# or
+curl -s https://ifconfig.me
+```
+
+### Error When IP Not Registered
+
+```json
+HTTP 403 Forbidden
+{
+  "status": false,
+  "message": "IP address not authorized",
+  "errorcode": "AG8008",
+  "data": null
+}
+```
+
+### Key Notes
+
+- Up to **5 IPv4 addresses** can be registered per API key
+- IPv6 addresses are not supported — register the IPv4 address only
+- Dynamic IPs (home internet, cloud instances with changing IPs) require updating the whitelist on each IP change
+- For cloud deployments (AWS EC2, GCP, Azure): use an Elastic/Static IP
+- For AlgoChanakya dev environment: register your development machine's public IP separately from the production server IP
+- Changes take effect within 5 minutes
+
+### AlgoChanakya Impact
+
+Both dev and production environments need their IPs registered:
+- Dev machine public IP → register for dev API key
+- Production server IP (`103.118.16.189` or similar) → register for production API key
+- If using separate API keys per environment, each key needs its own whitelist
+
 ## Security Notes
 
 - Never log or expose tokens in console/responses
@@ -232,3 +281,4 @@ Day  15: Refresh token expires → full re-login required
 - API key should be in environment variables, not in code
 - Refresh tokens should be stored securely (not in localStorage)
 - Rate limit auth attempts to prevent TOTP enumeration
+- Register only known, stable server IPs — avoid wildcards or broad ranges

@@ -124,10 +124,10 @@ Dhan enforces **four tiers** of order rate limits. Exceeding any tier returns HT
 
 | Tier      | Limit            | Window    | Reset                          |
 |-----------|------------------|-----------|--------------------------------|
-| Per-second| 25 orders/sec    | 1 second  | Rolling window                 |
+| Per-second| 10 orders/sec    | 1 second  | Rolling window                 |
 | Per-minute| 250 orders/min   | 1 minute  | Rolling window                 |
-| Per-hour  | 500 orders/hr    | 1 hour    | Rolling window                 |
-| Per-day   | 5000 orders/day  | 1 day     | Midnight IST reset             |
+| Per-hour  | 1000 orders/hr   | 1 hour    | Rolling window                 |
+| Per-day   | 7000 orders/day  | 1 day     | Midnight IST reset             |
 
 **These limits include:** Place + Modify + Cancel. Each operation counts toward all tiers.
 
@@ -276,10 +276,10 @@ DHAN_RATE_LIMITS = {
     "market_data_quote": {"requests": 5, "period": 1},     # 5/sec
     "historical": {"requests": 5, "period": 1},            # 5/sec
     "orders_read": {"requests": 10, "period": 1},          # 10/sec
-    "orders_write_sec": {"requests": 25, "period": 1},     # 25/sec
+    "orders_write_sec": {"requests": 10, "period": 1},      # 10/sec
     "orders_write_min": {"requests": 250, "period": 60},   # 250/min
-    "orders_write_hr": {"requests": 500, "period": 3600},  # 500/hr
-    "orders_write_day": {"requests": 5000, "period": 86400},# 5000/day
+    "orders_write_hr": {"requests": 1000, "period": 3600}, # 1000/hr
+    "orders_write_day": {"requests": 7000, "period": 86400},# 7000/day
 }
 
 rate_limiter = RateLimiter(broker="dhan", limits=DHAN_RATE_LIMITS)
@@ -314,13 +314,29 @@ async def retry_with_backoff(
 
 | Broker        | Order Limit (per sec) | Order Limit (per day) | Data Limit (per sec) |
 |---------------|----------------------|----------------------|---------------------|
-| **Dhan**      | 25                   | 5,000                | 10                  |
+| **Dhan**      | 10                   | 7,000                | 10                  |
 | Zerodha Kite  | 10                   | 1,000 (modify/cancel)| 10                  |
 | Angel SmartAPI| 1                    | Not specified        | 1                   |
 | Upstox        | 10                   | 10,000               | 30                  |
 
-**Key takeaway:** Dhan has generous per-second limits (25/sec) but a moderate daily cap (5000/day).
-The multi-tier system (sec/min/hr/day) is unique to Dhan.
+**Key takeaway:** Dhan has a 7000/day cap which is generous. The multi-tier system (10/sec, 250/min, 1000/hr, 7000/day) is unique to Dhan among Indian brokers.
+
+---
+
+## Known API Response Gotcha
+
+### `availabelBalance` Typo in Fund Limits
+
+The `GET /v2/fundlimit` response contains a permanently misspelled field:
+
+```json
+{
+    "availabelBalance": 150000.00,   // TYPO: missing second 'l' — this is intentional in the API
+    ...
+}
+```
+
+**Important:** This is a known bug in the Dhan API that has persisted since launch. You MUST use the exact misspelled field name `availabelBalance` in all code. Do NOT "fix" the typo — the corrected spelling `availableBalance` will return `None`/`KeyError`.
 
 ---
 

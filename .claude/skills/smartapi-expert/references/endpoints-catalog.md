@@ -623,22 +623,165 @@ POST /rest/secure/angelbroking/gtt/v1/ruleList
 }
 ```
 
-### Modify/Delete GTT Rule
+### Get GTT Rule Details
 
 ```
-POST /rest/secure/angelbroking/gtt/v1/modifyRule
+GET /rest/secure/angelbroking/gtt/v1/ruleDetails?id={gtt_rule_id}
+```
+
+**Response Data:**
+```json
+{
+  "data": {
+    "id": "GTT123456",
+    "status": "ACTIVE",
+    "tradingsymbol": "SBIN-EQ",
+    "symboltoken": "3045",
+    "exchange": "NSE",
+    "transactiontype": "BUY",
+    "producttype": "DELIVERY",
+    "price": "500.00",
+    "qty": "10",
+    "triggerprice": "490.00",
+    "timeperiod": "365",
+    "createdon": "2025-02-01 09:15:00",
+    "updatedon": "2025-02-01 09:15:00"
+  }
+}
+```
+
+### Modify GTT Rule
+
+```
+PUT /rest/secure/angelbroking/gtt/v1/modifyRule
+```
+
+**Body:** Same fields as createRule plus `id` (the GTT rule ID to modify).
+
+### Cancel GTT Rule
+
+```
 POST /rest/secure/angelbroking/gtt/v1/cancelRule
 ```
+
+**Body:**
+```json
+{
+  "id": "GTT123456",
+  "symboltoken": "3045",
+  "exchange": "NSE"
+}
+```
+
+**GTT Rule Statuses:** `NEW`, `ACTIVE`, `SENTTOEXCHANGE`, `FORALL`, `CANCELLED`, `EXECUTED`
+
+See [gtt-orders.md](./gtt-orders.md) for complete GTT reference and AlgoChanakya integration notes.
+
+---
+
+## Option Chain
+
+### Get Option Chain
+
+```
+GET /rest/secure/angelbroking/marketData/v1/optionChain?name={underlying}&expirydate={date}
+```
+
+**Query Parameters:**
+
+| Parameter | Required | Example |
+|-----------|----------|---------|
+| `name` | Yes | `NIFTY`, `BANKNIFTY`, `FINNIFTY`, `SENSEX` |
+| `expirydate` | Yes | `27FEB2025` (DDMMMYYYY format) |
+
+**Response Data (prices in RUPEES):**
+```json
+{
+  "data": {
+    "fetched": [
+      {
+        "strikePrice": "22000",
+        "expiryDate": "27FEB2025",
+        "PE": {
+          "token": "45678",
+          "symbol": "NIFTY25FEB22000PE",
+          "ltp": "122.50",
+          "volume": "45000",
+          "oi": "1250000",
+          "impliedVolatility": "18.5",
+          "delta": "-0.35",
+          "gamma": "0.0025",
+          "theta": "-12.50",
+          "vega": "8.75"
+        },
+        "CE": {
+          "token": "45679",
+          "symbol": "NIFTY25FEB22000CE",
+          "ltp": "325.00",
+          "volume": "32000",
+          "oi": "980000",
+          "impliedVolatility": "17.8",
+          "delta": "0.65",
+          "gamma": "0.0025",
+          "theta": "-14.20",
+          "vega": "9.10"
+        }
+      }
+    ]
+  }
+}
+```
+
+**Note:** Option Chain REST prices are in **RUPEES** (unlike WebSocket which is paise).
+
+See [option-chain.md](./option-chain.md) for complete Greeks reference and supported underlyings.
+
+---
+
+## Order Update WebSocket
+
+**URL:** `wss://tns.angelone.in/smart-order-update`
+
+This is separate from the market data WebSocket. It streams real-time order status updates.
+
+**Auth:** Use `feedToken` from login response.
+
+**Connection message:**
+```json
+{
+  "task": "connect",
+  "channel": "",
+  "token": "{feedToken}",
+  "user": "{client_id}",
+  "acctid": "{client_id}"
+}
+```
+
+**Order update message format:**
+```json
+{
+  "type": "order_feed",
+  "orderid": "240915000123456",
+  "orderstatus": "complete",
+  "tradingsymbol": "SBIN-EQ",
+  "filledshares": "10",
+  "averageprice": "499.85"
+}
+```
+
+See [webhook.md](./webhook.md) for complete connection setup, all message fields, and REST polling alternative.
 
 ---
 
 ## Rate Limits by Endpoint
 
-| Endpoint Category | Rate Limit |
-|-------------------|-----------|
-| All REST endpoints | 1 request/second (shared) |
-| Order placement | 10 orders/second |
-| Historical data | 1 request/second |
-| Instrument master download | Cache for 12+ hours |
+| Endpoint Category | Rate Limit | Notes |
+|-------------------|-----------|-------|
+| All REST endpoints | 1 request/second (shared) | Per API key |
+| Order placement | **20 orders/second** | Increased from 10 in Feb 2025 |
+| Historical data | 1 request/second | Shared with general limit |
+| Instrument master download | Cache for 12+ hours | ~50MB file |
+| Option Chain | 1 request/second | Shared with general limit |
+| GTT operations | 1 request/second | Shared with general limit |
 
-**AlgoChanakya rate_limiter.py:** `"smartapi": 1` (1 req/sec global)
+**AlgoChanakya rate_limiter.py:** `"smartapi": 1` (1 req/sec global REST limit). The 20 orders/sec is broker-side enforcement; AlgoChanakya adapter does not need per-order throttling.

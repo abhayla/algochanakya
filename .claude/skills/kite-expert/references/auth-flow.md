@@ -240,6 +240,38 @@ KITE_REDIRECT_URL=http://localhost:8001/api/auth/zerodha/callback  # dev
 | `InputException: Missing api_key` | Auth header format wrong | Use `token api_key:access_token` not `Bearer` |
 | Token works in morning, fails at night | Normal expiry | Expected behavior, re-auth next day |
 
+## Sandbox / Test Environment
+
+Kite Connect provides a sandbox environment for development and testing without placing real orders.
+
+### Sandbox Setup
+
+- **Sandbox docs:** https://kite.trade/docs/connect/v3/#sandbox
+- Obtain a sandbox API key from the [Kite Developer Console](https://developers.kite.trade/)
+- The sandbox simulates authentication and order flows
+- Market data endpoints may return static/simulated data in sandbox mode
+
+### Sandbox vs Production
+
+| Feature | Sandbox | Production |
+|---------|---------|------------|
+| Base URL | Check developer console for sandbox URL | `https://api.kite.trade` |
+| Auth flow | Same OAuth steps | Same OAuth steps |
+| Orders | Simulated (no real trades) | Real orders |
+| Market data | Static/simulated | Live exchange data |
+| WebSocket | May be limited | Full KiteTicker |
+
+### AlgoChanakya Sandbox Configuration
+
+```bash
+# backend/.env (sandbox)
+KITE_API_KEY=your_sandbox_api_key
+KITE_API_SECRET=your_sandbox_api_secret
+KITE_REDIRECT_URL=http://localhost:8001/api/auth/zerodha/callback
+```
+
+No code changes are required to switch between sandbox and production — only the API key/secret changes.
+
 ## Security Notes
 
 - Store `api_secret` in environment variables only (never in code or DB)

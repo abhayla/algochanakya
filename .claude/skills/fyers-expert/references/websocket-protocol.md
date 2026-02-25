@@ -1,21 +1,24 @@
 # Fyers WebSocket Protocol
 
-Complete WebSocket reference for Fyers API v3 dual WebSocket system.
+Complete WebSocket reference for Fyers API v3 five-socket system (SDK: fyers-apiv3, released November 2023).
 
-## Dual WebSocket Architecture
+## Five Socket Architecture (v3)
 
-Fyers uses **two independent WebSocket connections** -- unique among Indian brokers:
+Fyers v3 provides **five independent WebSocket socket types** -- the most extensive among Indian brokers:
 
-| Socket | SDK Class | Purpose | Data Format |
-|--------|-----------|---------|-------------|
-| **FyersDataSocket** | `data_ws.FyersDataSocket` | Market data ticks | JSON |
-| **FyersOrderSocket** | `order_ws.FyersOrderSocket` | Order status updates | JSON |
+| Socket | SDK Class | Purpose | Data Format | Notes |
+|--------|-----------|---------|-------------|-------|
+| **FyersDataSocket** | `data_ws.FyersDataSocket` | Market data ticks | JSON | 5,000 symbols/connection |
+| **FyersOrderSocket** | `order_ws.FyersOrderSocket` | Order status updates | JSON | All order lifecycle events |
+| **FyersPositionSocket** | `positions_ws.FyersPositionSocket` | Real-time P&L updates | JSON | New in v3 |
+| **FyersTradeSocket** | `trades_ws.FyersTradeSocket` | Trade execution updates | JSON | New in v3 |
+| **FyersGeneralSocket** | `general_ws.FyersGeneralSocket` | General notifications | JSON | Alerts, misc |
 
 ## Connection Limits
 
 | Limit | Value | Comparison |
 |-------|-------|------------|
-| Max symbols | **200** per connection | SmartAPI: 3000, Kite: 3000 |
+| Max symbols (Data WS) | **5,000** per connection | SmartAPI: 3000, Kite: 3000 |
 | Max connections | **1** per socket type | SmartAPI: 3, Kite: 3 |
 | Message format | **JSON** (not binary) | SmartAPI/Kite: binary |
 | Price unit | **RUPEES** | SmartAPI/Kite: PAISE |
@@ -164,7 +167,107 @@ order_socket.connect()  # Blocking call - run in thread
 
 ---
 
+## FyersPositionSocket (Real-Time P&L)
+
+New in Fyers v3. Provides real-time position and P&L updates without polling.
+
+### Connection Example
+
+```python
+from fyers_apiv3.FyersWebsocket import positions_ws
+
+def on_position_update(message):
+    print(f"Position P&L update: {message}")
+
+def on_error(message):
+    print(f"Position WS Error: {message}")
+
+position_socket = positions_ws.FyersPositionSocket(
+    access_token=f"{app_id}:{access_token}",
+    write_to_file=False,
+    on_position_update=on_position_update,
+    on_error=on_error,
+    on_close=lambda m: print(f"Closed: {m}"),
+    on_open=lambda: print("Position WS Connected")
+)
+position_socket.connect()
+```
+
+### Position Update Message (approximate structure)
+
+```json
+{
+  "symbol": "NSE:NIFTY2522725000CE",
+  "netQty": 25,
+  "buyAvg": 148.50,
+  "ltp": 150.25,
+  "pl": 43.75,
+  "unrealized_profit": 43.75,
+  "realized_profit": 0.0
+}
+```
+
+**Note:** FyersPositionSocket is **NOT currently implemented** in AlgoChanakya's ticker adapter. Only FyersDataSocket is used.
+
+---
+
+## FyersTradeSocket (Trade Execution Updates)
+
+New in Fyers v3. Fires on trade execution (fills), providing execution details.
+
+### Connection Example
+
+```python
+from fyers_apiv3.FyersWebsocket import trades_ws
+
+def on_trade_update(message):
+    print(f"Trade executed: {message}")
+
+trade_socket = trades_ws.FyersTradeSocket(
+    access_token=f"{app_id}:{access_token}",
+    write_to_file=False,
+    on_trade_update=on_trade_update,
+    on_error=lambda m: print(f"Trade WS Error: {m}"),
+    on_open=lambda: print("Trade WS Connected")
+)
+trade_socket.connect()
+```
+
+**Note:** FyersTradeSocket is **NOT currently implemented** in AlgoChanakya.
+
+---
+
+## FyersGeneralSocket (General Notifications)
+
+Provides general platform notifications and alerts.
+
+### Connection Example
+
+```python
+from fyers_apiv3.FyersWebsocket import general_ws
+
+def on_general_update(message):
+    print(f"General notification: {message}")
+
+general_socket = general_ws.FyersGeneralSocket(
+    access_token=f"{app_id}:{access_token}",
+    write_to_file=False,
+    on_general_update=on_general_update,
+    on_error=lambda m: print(f"General WS Error: {m}"),
+    on_open=lambda: print("General WS Connected")
+)
+general_socket.connect()
+```
+
+**Note:** FyersGeneralSocket is **NOT currently implemented** in AlgoChanakya.
+
+---
+
 ## AlgoChanakya Integration
+
+### Current Status: Only FyersDataSocket Implemented
+
+AlgoChanakya currently uses only `FyersDataSocket` for market data ticks. The other four socket types are not yet integrated.
 
 ### Adapter Pattern (TickerServiceBase)
 
@@ -231,7 +334,7 @@ class FyersTickerAdapter(TickerServiceBase):
 | Connection refused | Invalid `{app_id}:{access_token}` | Re-authenticate |
 | Disconnect at midnight | Token expiry (midnight IST) | Get new token |
 | No data after subscribe | Invalid symbol / missing prefix | Verify `NSE:` prefix |
-| Silent subscription fail | >200 symbols | Stay under 200 limit |
+| Silent subscription fail | Symbol not in instrument master | Re-download instrument CSV |
 | SDK crash | Wrong version | Use `fyers-apiv3` not v2 |
 | Thread deadlock | `keep_running()` blocks | Run in daemon thread |
 
@@ -240,7 +343,8 @@ class FyersTickerAdapter(TickerServiceBase):
 | Feature | Fyers | SmartAPI | Kite |
 |---------|-------|---------|------|
 | Protocol | JSON (SDK) | Binary (raw WS) | Binary (raw WS) |
-| Max symbols | 200 | 3000 | 3000 |
+| Max symbols | **5,000** | 3,000 | 3,000 |
 | Price unit | RUPEES | PAISE | PAISE |
-| Order updates | Dedicated WS | REST polling | Postback URL |
+| Socket types | **5** (Data/Order/Position/Trade/General) | 1 | 1 + postback |
+| Order updates | Dedicated WS socket | REST polling | Postback URL |
 | Depth levels | 5 (DepthUpdate) | 5 (Snap mode) | 5 (Full mode) |

@@ -259,6 +259,14 @@ GET /instruments/historical/{instrument_token}/{interval}?from={from}&to={to}&co
 | `60minute` | 1-hour |
 | `day` | Daily |
 
+**Date Range Limits:**
+
+| Interval | Max Days per Request |
+|----------|---------------------|
+| `minute` | **60 days** |
+| `3minute` - `60minute` | Varies (check docs) |
+| `day` | Up to 10 years |
+
 **Response - Prices in RUPEES:**
 ```json
 {
@@ -272,6 +280,8 @@ GET /instruments/historical/{instrument_token}/{interval}?from={from}&to={to}&co
 ```
 
 **Array format:** `[timestamp, open, high, low, close, volume, oi(optional)]`
+
+**Historical Data Coverage:** Up to 10 years of intraday data. Included in ₹500/month Connect subscription since Feb 2025 — no separate charge.
 
 ---
 
@@ -298,6 +308,8 @@ tick_size, lot_size, instrument_type, segment, exchange
 ```
 
 **File Size:** ~80 MB for all exchanges. Cache for 24 hours.
+
+**Note:** BSE instruments are in a **separate CSV** (`GET /instruments/BSE`). Download both NSE and BSE if needed.
 
 ---
 
@@ -514,6 +526,8 @@ GET /portfolio/holdings
 
 ## GTT (Good Till Triggered)
 
+GTT orders fire automatically when a price condition is met. Validity up to 1 year. See [gtt-orders.md](./gtt-orders.md) for comprehensive documentation.
+
 ### Create GTT Trigger
 
 ```
@@ -521,23 +535,92 @@ POST /gtt/triggers
 Content-Type: application/x-www-form-urlencoded
 ```
 
-**Body:**
+**Body (single type):**
 ```
-type=single&condition={"exchange":"NSE","tradingsymbol":"RELIANCE","trigger_values":[2400.0],"last_price":2550.0}&orders=[{"exchange":"NSE","tradingsymbol":"RELIANCE","transaction_type":"BUY","quantity":10,"order_type":"LIMIT","product":"CNC","price":2400.0}]
+type=single
+condition={"exchange":"NSE","tradingsymbol":"RELIANCE","trigger_values":[2400.0],"last_price":2550.0}
+orders=[{"exchange":"NSE","tradingsymbol":"RELIANCE","transaction_type":"BUY","quantity":10,"order_type":"LIMIT","product":"CNC","price":2400.0}]
 ```
 
-### Get GTT Triggers
+**Response:**
+```json
+{
+  "data": {
+    "trigger_id": 123456
+  }
+}
+```
+
+### List GTT Triggers
 
 ```
 GET /gtt/triggers
 ```
 
-### Get/Modify/Delete GTT
+**Response:**
+```json
+{
+  "data": [
+    {
+      "id": 123456,
+      "type": "single",
+      "status": "active",
+      "created_at": "2025-02-27T10:00:00+05:30",
+      "updated_at": "2025-02-27T10:00:00+05:30",
+      "expires_at": "2026-02-27T10:00:00+05:30",
+      "condition": {
+        "exchange": "NSE",
+        "tradingsymbol": "RELIANCE",
+        "trigger_values": [2400.0],
+        "last_price": 2550.0
+      },
+      "orders": [
+        {
+          "exchange": "NSE",
+          "tradingsymbol": "RELIANCE",
+          "transaction_type": "BUY",
+          "quantity": 10,
+          "order_type": "LIMIT",
+          "product": "CNC",
+          "price": 2400.0
+        }
+      ],
+      "orders_metadata": []
+    }
+  ]
+}
+```
+
+### Get Specific GTT Trigger
 
 ```
 GET /gtt/triggers/{trigger_id}
+```
+
+Returns single GTT object (same schema as list item above).
+
+### Modify GTT Trigger
+
+```
 PUT /gtt/triggers/{trigger_id}
+Content-Type: application/x-www-form-urlencoded
+```
+
+**Body:** Same as Create GTT (full replacement, not partial update).
+
+### Delete GTT Trigger
+
+```
 DELETE /gtt/triggers/{trigger_id}
+```
+
+**Response:**
+```json
+{
+  "data": {
+    "trigger_id": 123456
+  }
+}
 ```
 
 ---
@@ -558,11 +641,10 @@ Creates multiple child orders from a parent.
 
 | Endpoint | Rate Limit |
 |----------|-----------|
-| All endpoints (default) | 3 req/sec |
-| All endpoints (premium) | 10 req/sec |
+| All endpoints (general) | **10 req/sec** |
 | Order placement | 10 orders/sec |
 | Quote (REST) | 1 req/sec |
-| Historical | 3 req/sec |
+| Historical (minute interval) | **max 60 days per request** |
 | Instruments download | Once/day |
 
-**AlgoChanakya rate_limiter.py:** `"kite": 3` (3 req/sec)
+**AlgoChanakya rate_limiter.py:** Currently set to `"kite": 3` — this is **INCORRECT**. Should be `"kite": 10`. See [maintenance-log.md](./maintenance-log.md).

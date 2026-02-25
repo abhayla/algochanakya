@@ -1,12 +1,14 @@
 # Fyers Endpoints Catalog
 
-Complete REST API endpoint reference for Fyers API v3.
+Complete REST API endpoint reference for Fyers API v3 (SDK: fyers-apiv3, released November 2023).
 
 **Base URL:** `https://api-t1.fyers.in/api/v3`
 
 **Auth Header:** `Authorization: {app_id}:{access_token}` (colon-separated, NOT Bearer)
 
 **Response Envelope:** `{ "s": "ok"|"error", "code": 200|-1, "message": "", "data": {...} }`
+
+**Daily Limit:** 100,000 requests/day (all REST combined)
 
 ---
 
@@ -20,6 +22,7 @@ Complete REST API endpoint reference for Fyers API v3.
 | Depth | GET | `/api/v3/depth?symbol={sym}` | Single symbol full depth |
 | Quotes | POST | `/api/v3/quotes` | Multiple quotes (max 50) |
 | Historical | GET | `/api/v3/history` | OHLCV candles |
+| Option Chain | GET | `/api/v3/optionchain` | Put/call chain with Greeks |
 | Place Order | POST | `/api/v3/orders/sync` | Synchronous order |
 | Place Order | POST | `/api/v3/orders/async` | Asynchronous order |
 | Modify | PUT | `/api/v3/orders/{id}` | Modify pending order |
@@ -79,6 +82,18 @@ GET /api/v3/history?symbol={sym}&resolution={res}&range_from={epoch}&range_to={e
 | 15-30 min | 90 days | D/W/M | Unlimited |
 
 **Response:** `{ "candles": [[timestamp, open, high, low, close, volume], ...] }` -- prices in **RUPEES**.
+
+---
+
+## Option Chain
+
+```
+GET /api/v3/optionchain?symbol=NSE:NIFTY50-INDEX&strikecount=10
+```
+
+Returns put/call chain with Greeks (delta, theta, gamma, vega, rho, vanna, charm). MCX not supported.
+
+See [option-chain.md](./option-chain.md) for complete request/response format and Greeks reference.
 
 ---
 
@@ -186,5 +201,6 @@ Cache for 12+ hours. Download daily before market open.
 |----------|-------|----------|-------|
 | General REST | 10 req/sec | Historical | 1 req/sec |
 | Order placement | 10 orders/sec | Quotes batch | 10 req/sec (50 symbols max) |
+| **Daily total** | **100,000 req/day** | | |
 
 **AlgoChanakya:** `rate_limiter.py` sets `"fyers": 10`.

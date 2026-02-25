@@ -3,7 +3,7 @@ name: dhan-expert
 description: Use when implementing Dhan adapter, debugging Dhan API errors, understanding Dhan security_id format, or auditing code calling Dhan API. Dhan API expert for AlgoChanakya.
 metadata:
   author: AlgoChanakya
-  version: "2.0"
+  version: "2.5"
   last_verified: "2026-02-25"
 ---
 
@@ -18,6 +18,9 @@ Dhan offers a modern REST API with unique features: **200-level market depth** (
 - Understanding Dhan's security_id format (numeric-only, no string symbols)
 - Working with Little Endian binary WebSocket (unique `struct.unpack('<...')`)
 - Understanding 20-depth and 200-depth market data
+- Working with Forever Orders (GTT) via `/v2/forever/orders`
+- Working with Dhan Option Chain API (`/v2/optionchain`)
+- Configuring Postback (webhook) or Live Order Update WebSocket
 - Comparing Dhan capabilities with other brokers
 - Auditing code that calls Dhan API for correctness
 
@@ -34,10 +37,11 @@ Dhan offers a modern REST API with unique features: **200-level market depth** (
 |----------|-------|
 | **Official Docs** | https://dhanhq.co/docs/v2/ |
 | **API Version** | v2 |
-| **Python SDK** | `dhanhq` (`pip install dhanhq`) |
+| **Python SDK** | `dhanhq` v2.1.0 (`pip install dhanhq`) |
 | **Pricing** | Trading API: FREE \| Data API: FREE (with 25 F&O trades/mo) OR ₹499/mo |
 | **REST Base URL** | `https://api.dhan.co/v2` |
-| **WebSocket URL** | `wss://api-feed.dhan.co` |
+| **WebSocket URL (Market Data)** | `wss://api-feed.dhan.co` |
+| **WebSocket URL (Order Updates)** | `wss://api-order-update.dhan.co` |
 | **Auth Method** | API access token (from web dashboard) |
 | **Token Validity** | Until manually revoked or regenerated |
 
@@ -70,7 +74,7 @@ See [auth-flow.md](./references/auth-flow.md) for complete details.
 | Category | Method | Endpoint | Notes |
 |----------|--------|----------|-------|
 | **Profile** | GET | `/v2/clients/{client_id}` | User details |
-| **Margins** | GET | `/v2/fundlimit` | Fund limits |
+| **Margins** | GET | `/v2/fundlimit` | Fund limits — note `availabelBalance` typo |
 | **Quote** | POST | `/v2/marketfeed/ltp` | LTP for instruments |
 | **OHLC** | POST | `/v2/marketfeed/ohlc` | OHLC data |
 | **Depth (20)** | POST | `/v2/marketfeed/quote` | 20-level depth |
@@ -82,6 +86,9 @@ See [auth-flow.md](./references/auth-flow.md) for complete details.
 | **Orders** | GET | `/v2/orders` | All orders |
 | **Positions** | GET | `/v2/positions` | Current positions |
 | **Holdings** | GET | `/v2/holdings` | Portfolio holdings |
+| **Forever Orders** | POST/GET/PUT/DELETE | `/v2/forever/orders` | GTT orders — NOT yet in AlgoChanakya |
+| **Option Chain** | POST | `/v2/optionchain` | Option chain with Greeks — NOT yet in AlgoChanakya |
+| **Expiry List** | GET | `/v2/expirylist` | Expiry dates — NOT yet in AlgoChanakya |
 | **Instruments** | Download | CSV from Dhan website | Instrument master |
 
 See [endpoints-catalog.md](./references/endpoints-catalog.md) for complete schemas.
@@ -166,19 +173,55 @@ ws = websocket.WebSocketApp(
 
 See [websocket-protocol.md](./references/websocket-protocol.md) for byte offsets and parsing.
 
+## Forever Orders (GTT)
+
+Dhan's GTT equivalent is called **"Forever Orders"** — orders that persist until triggered or manually cancelled (up to 365 days). Supports two types: `SINGLE` (one trigger) and `OCO` (target + stop loss, one cancels other).
+
+**Endpoints:** POST/GET/PUT/DELETE `/v2/forever/orders`
+
+**AlgoChanakya status:** NOT yet implemented in `backend/app/services/brokers/dhan_order_adapter.py`. Current adapter supports standard orders only.
+
+See [gtt-orders.md](./references/gtt-orders.md) for full request/response schemas and OCO details.
+
+## Option Chain API
+
+Dhan provides a dedicated Option Chain API returning full strike list with Greeks (delta, gamma, theta, vega, IV).
+
+**Endpoints:**
+- `POST /v2/optionchain` — full option chain with Greeks
+- `GET /v2/expirylist` — available expiry dates for an underlying
+
+**AlgoChanakya status:** NOT yet integrated. AlgoChanakya currently uses SmartAPI for option chain data.
+
+See [option-chain.md](./references/option-chain.md) for request/response schemas and supported underlyings.
+
+## Postback / Webhook & Live Order Updates
+
+Dhan provides two mechanisms for real-time order notifications:
+
+1. **Postback (webhook):** Dhan sends HTTP POST to your configured URL on every order update (trade, rejection, cancellation). Configure in Dhan web portal (no code required for setup).
+
+2. **Live Order Update WebSocket:** `wss://api-order-update.dhan.co` — real-time WebSocket stream of order status changes.
+
+**AlgoChanakya status:** Neither is currently used. AlgoChanakya polls the REST order book for status updates.
+
+See [webhook.md](./references/webhook.md) for postback payload schema, WebSocket connection code, and integration notes.
+
 ## Rate Limits (Multi-Tier)
 
 | Resource | Limit | Window |
 |----------|-------|--------|
-| Order placement | **25/second** | Per second |
+| Order placement | **10/second** | Per second |
 | Order placement | **250/minute** | Per minute |
-| Order placement | **500/hour** | Per hour |
-| Order placement | **5000/day** | Per day |
+| Order placement | **1000/hour** | Per hour |
+| Order placement | **7000/day** | Per day |
 | REST API (general) | **10/second** | Per second |
 | WebSocket | Unlimited ticks | After subscription |
 | Historical data | **10/second** | Per second |
 
 **AlgoChanakya Configuration:** `rate_limiter.py` sets `"dhan": 10` (10 req/sec).
+
+**Note:** Place + Modify + Cancel operations each count against all four order tiers. Hit any tier and you get HTTP 429.
 
 ## Price Normalization
 
@@ -194,12 +237,15 @@ Dhan returns all prices in RUPEES. No paise conversion needed.
 
 | Component | Status | File |
 |-----------|--------|------|
-| Market Data Adapter | **✅ Implemented** | `backend/app/services/brokers/market_data/dhan_adapter.py` (813 lines) |
-| Order Execution Adapter | **✅ Implemented** | `backend/app/services/brokers/dhan_order_adapter.py` (446 lines) |
-| Ticker (WebSocket) Adapter | **✅ Implemented** | `backend/app/services/brokers/market_data/ticker/adapters/dhan.py` (575 lines) |
-| Auth Route | **✅ Implemented** | `backend/app/api/routes/dhan_auth.py` (173 lines) |
-| Frontend Settings | **✅ Implemented** | `frontend/src/components/settings/DhanSettings.vue` |
-| Tests | **✅ Complete** | `test_dhan_market_data_adapter.py` (743 lines), `test_dhan_ticker_adapter.py` (692 lines) |
+| Market Data Adapter | **Implemented** | `backend/app/services/brokers/market_data/dhan_adapter.py` (813 lines) |
+| Order Execution Adapter | **Implemented** | `backend/app/services/brokers/dhan_order_adapter.py` (446 lines) |
+| Ticker (WebSocket) Adapter | **Implemented** | `backend/app/services/brokers/market_data/ticker/adapters/dhan.py` (575 lines) |
+| Auth Route | **Implemented** | `backend/app/api/routes/dhan_auth.py` (173 lines) |
+| Frontend Settings | **Implemented** | `frontend/src/components/settings/DhanSettings.vue` |
+| Tests | **Complete** | `test_dhan_market_data_adapter.py` (743 lines), `test_dhan_ticker_adapter.py` (692 lines) |
+| Forever Orders (GTT) | **NOT implemented** | Planned: `dhan_order_adapter.py` extension |
+| Option Chain | **NOT implemented** | Planned: separate integration |
+| Postback / Webhook | **NOT implemented** | Planned: `POST /api/webhooks/dhan/order-update` |
 
 ### Current Integration Pattern
 
@@ -227,13 +273,15 @@ order_id = await adapter.place_order(order_params)
 
 5. **200-Depth limit** - Only 1 instrument per connection. Need 5 connections for 5 instruments.
 
-6. **Multi-tier order limits** - Check all 4 limits (sec/min/hour/day). Can hit daily limit even within per-second rate limit.
+6. **Multi-tier order limits** - Check all 4 limits (10/sec, 250/min, 1000/hr, 7000/day). Can hit daily limit even within per-second rate limit.
 
 7. **Data API unlock requirement** - Must execute 25 F&O trades monthly to unlock free data access, otherwise ₹499/month subscription required.
 
 8. **Instrument CSV download** - Must download from Dhan website manually or via undocumented URL.
 
 9. **Exchange segment format** - Uses `NSE_FNO` not `NFO`. Different from Kite/SmartAPI naming.
+
+10. **`availabelBalance` typo** - The `GET /v2/fundlimit` response has a misspelled field: `availabelBalance` (missing second 'l'). This is a known bug in the Dhan API that has never been fixed. You MUST use the exact misspelled field name in code — do not "correct" it.
 
 ## Error Codes Quick Reference
 
@@ -265,12 +313,16 @@ See [error-codes.md](./references/error-codes.md) for complete error catalog.
 
 | Reference File | Last Verified | Check Frequency |
 |---|---|---|
-| skill.md | 2026-02-25 | Quarterly |
+| SKILL.md | 2026-02-25 | Quarterly |
 | endpoints-catalog.md | 2026-02-25 | Quarterly |
 | auth-flow.md | 2026-02-25 | Quarterly |
 | error-codes.md | 2026-02-25 | Quarterly |
 | websocket-protocol.md | 2026-02-25 | Quarterly |
 | symbol-format.md | 2026-02-25 | Quarterly |
+| gtt-orders.md | 2026-02-25 | Quarterly |
+| option-chain.md | 2026-02-25 | Quarterly |
+| webhook.md | 2026-02-25 | Quarterly |
+| maintenance-log.md | 2026-02-25 | Quarterly |
 
 ### Auto-Update Trigger Rules
 
@@ -282,6 +334,7 @@ See [error-codes.md](./references/error-codes.md) for complete error catalog.
 
 | Version | Date | Changes |
 |---|---|---|
+| 2.5 | 2026-02-25 | Added Forever Orders (GTT) section, Option Chain section, Postback/Webhook section, Live Order Update WebSocket, `availabelBalance` typo gotcha, corrected multi-tier rate limits (10/sec, 250/min, 1000/hr, 7000/day), expanded Maintenance section with all 9 reference files, added 3 new reference files |
 | 2.0 | 2026-02-25 | Implementation status corrected: all 3 adapters fully Implemented (was Planned), auth route + frontend + tests added to status table, maintenance section added |
 | 1.0 | 2026-02-16 | Initial creation |
 
@@ -292,4 +345,8 @@ See [error-codes.md](./references/error-codes.md) for complete error catalog.
 - [WebSocket Protocol](./references/websocket-protocol.md) - Little Endian binary protocol
 - [Error Codes](./references/error-codes.md) - Error code reference
 - [Symbol Format](./references/symbol-format.md) - security_id format
+- [Forever Orders (GTT)](./references/gtt-orders.md) - GTT/GTC order management
+- [Option Chain](./references/option-chain.md) - Option chain API with Greeks
+- [Webhook / Postback](./references/webhook.md) - Order update notifications
+- [Maintenance Log](./references/maintenance-log.md) - API change tracker and review history
 - [Comparison Matrix](../broker-shared/comparison-matrix.md) - Cross-broker comparison

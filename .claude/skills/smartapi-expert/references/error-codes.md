@@ -26,6 +26,7 @@ All SmartAPI errors follow the standard envelope:
 | `AG8005` | Account Locked | Too many failed attempts | No | Wait 30 min or contact Angel One |
 | `AG8006` | Invalid API Key | Wrong or deactivated API key | No | Check ANGEL_API_KEY in .env |
 | `AG8007` | API Key Expired | API key subscription ended | No | Renew API subscription |
+| `AG8008` | IP Not Registered | Server IP not whitelisted (Aug 2025+) | No | Register IP in Angel One dashboard |
 | `AB1012` | Session Expired | Token validity ended | No | Re-authenticate |
 | `AB1013` | Duplicate Session | Another session active | No | Logout other session first |
 
@@ -112,7 +113,7 @@ SmartAPI uses standard HTTP codes alongside error codes:
 | `200` | Success (check `status` field) | May have `errorcode` even with 200 |
 | `400` | Bad Request | `AB1004`, `AB1005` |
 | `401` | Unauthorized | `AG8001`, `AB1012` |
-| `403` | Forbidden | `AG8006`, `AG8007` |
+| `403` | Forbidden | `AG8006`, `AG8007`, `AG8008` (IP not registered) |
 | `429` | Too Many Requests | `AB1010` |
 | `500` | Internal Server Error | `AB1001` |
 
@@ -126,3 +127,4 @@ SmartAPI uses standard HTTP codes alongside error codes:
 4. **Rate limit errors** should trigger exponential backoff (1s, 2s, 4s)
 5. **Market data errors** during off-hours are expected (AB8051)
 6. **Order rejections** (AB2000) contain detailed reason in `message` field
+7. **HTTP 403 / AG8008** — almost always means IP not registered. Check Angel One developer dashboard and add the server's public IP to the whitelist. See [auth-flow.md - Static IP Registration](./auth-flow.md#static-ip-registration-required-since-aug-2025) for setup steps.

@@ -160,10 +160,21 @@ except kite_exc.GeneralException as e:
 | `NetworkException` (502/503) | Retry after 2s, 4s, 8s (max 3 retries) |
 | `GeneralException` | Retry after 5s (max 2 retries) |
 
+## GTT-Specific Errors
+
+GTT errors map to standard exception classes:
+
+| Exception | Cause | Fix |
+|-----------|-------|-----|
+| `InputException` | Invalid GTT type, bad trigger values, or price out of range | Check `type` is `single` or `two-leg`; verify trigger values are near LTP |
+| `TokenException` | Expired access token | Re-authenticate via OAuth |
+| `GeneralException` | GTT creation failed at exchange level | Check margin, product type compatibility (primarily for equity CNC/MIS) |
+| `InputException` | Modifying a non-active GTT | GTT must be in `active` status to modify |
+
 ## Common Debugging Tips
 
 1. **"Incorrect api_key or access_token"** - Most common error. Token expires daily ~6 AM. Must re-do OAuth.
 2. **Check auth header format** - Must be `token api_key:access_token` (not `Bearer`)
 3. **Order rejections** have detailed reasons in `message` - always log full response
-4. **Rate limit errors** indicate code is not using rate_limiter - fix the calling code
+4. **Rate limit errors** indicate code is not using rate_limiter - fix the calling code. Note: correct rate limit is **10 req/sec**, not 3.
 5. **During market close** - Order and position endpoints may return empty data or errors

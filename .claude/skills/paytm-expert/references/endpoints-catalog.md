@@ -106,6 +106,54 @@ headers = {"x-jwt-token": token, "Content-Type": "application/json", "Accept": "
 | GET | `/data/v1/scrip/download/csv` | `read_access_token` | Full instrument master CSV |
 
 > Download daily. Columns: security_id, exchange, segment, symbol, series, expiry, strike, option_type, lot_size, tick_size, isin, display_name.
+> **BSE F&O (Added 2025):** BSE F&O instruments (SENSEX, BANKEX options) are now included in the script master CSV following Paytm's 2025 expansion.
+
+### Option Chain
+
+| Method | Endpoint | Token | Description |
+|--------|----------|-------|-------------|
+| GET | `/data/v1/option/chain` | `read_access_token` | Option chain with Greeks for an underlying |
+
+```python
+# GET /data/v1/option/chain?security_id=13&exchange=NSE&expiry_date=2025-02-27
+# Note: Verify exact endpoint path against current Paytm docs — paths have changed before.
+# Response includes: strike_price, CE/PE ltp, volume, OI, IV, delta, gamma, theta, vega
+# Greeks powered by Heckyl Technologies (underlying data vendor)
+```
+
+> **NOT implemented** in AlgoChanakya. AlgoChanakya uses SmartAPI for option chain data.
+> See [option-chain.md](./option-chain.md) for full details.
+
+### GTT Orders
+
+> **MATURITY WARNING:** GTT endpoints are underdocumented. Paytm Money has not formally
+> published full GTT API specs. Treat these as tentative and test thoroughly.
+
+| Method | Endpoint | Token | Description |
+|--------|----------|-------|-------------|
+| POST | `/api/create-gtt` | `access_token` | Create GTT order |
+| GET | `/api/get-gtt` | `access_token` | List GTT orders |
+| PUT | `/api/modify-gtt` | `access_token` | Modify existing GTT |
+| DELETE | `/api/delete-gtt` | `access_token` | Cancel GTT order |
+
+```python
+# POST /api/create-gtt  (tentative schema — verify against current docs)
+{
+    "security_id": "2885",
+    "exchange": "NSE",
+    "transaction_type": "B",   # B=Buy, S=Sell
+    "order_type": "RL",        # RL=Regular Limit
+    "quantity": 5,
+    "price": 2505.0,
+    "trigger_price": 2500.0,
+    "product": "D",            # D=Delivery
+    "gtt_validity_days": 365   # Max 365 days
+}
+# => {"gtt_id": "...", "status": "CREATED"}
+```
+
+> **NOT implemented** in AlgoChanakya's Paytm adapter.
+> See [gtt-orders.md](./gtt-orders.md) for full details and implementation cautions.
 
 ## Rate Limits
 
