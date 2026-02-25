@@ -8,7 +8,7 @@ Rate Limits (per broker):
 - Kite: 10 requests/second
 - Upstox: 50 requests/second
 - Dhan: 10 requests/second
-- Fyers: 1 request/second
+- Fyers: 10 requests/second (general); 1 req/sec for historical data; 100K requests/day total (not enforced here)
 - Paytm: 10 requests/second
 """
 
@@ -36,7 +36,7 @@ class RateLimiter:
         "kite": 10,      # 10 req/sec
         "upstox": 50,    # 50 req/sec
         "dhan": 10,      # 10 req/sec
-        "fyers": 10,     # 10 req/sec
+        "fyers": 10,     # 10 req/sec general (historical: 1 req/sec — enforce separately; daily cap: 100K — not tracked here)
         "paytm": 10,     # 10 req/sec
     }
 
