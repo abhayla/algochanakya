@@ -1,6 +1,6 @@
 # Authentication Architecture
 
-AlgoChanakya uses OAuth 2.0 with Zerodha Kite Connect for broker authentication, combined with JWT tokens for session management.
+AlgoChanakya supports 6 broker authentication flows, each producing a unified JWT session token. The platform uses broker-specific OAuth/credential flows combined with JWT tokens for session management.
 
 ## OAuth Flow with Zerodha
 
@@ -174,15 +174,89 @@ Authorization: Bearer <token>
 
 Returns current user info.
 
+## Multi-Broker Authentication Summary
+
+All 6 brokers are supported. Each follows a different auth pattern but produces the same result: a JWT session token stored in localStorage.
+
+| Broker | Auth Type | Flow | Token Lifetime | Route File |
+|--------|-----------|------|----------------|------------|
+| **Zerodha (Kite)** | OAuth 2.0 | Redirect → callback → exchange token | ~24h access token | `auth.py` |
+| **AngelOne (SmartAPI)** | API Key + TOTP | POST credentials → auto-TOTP → token | ~8h session | `auth.py` |
+| **Upstox** | OAuth 2.0 | Redirect → callback → exchange token | ~1 year access token | `upstox_auth.py` |
+| **Fyers** | OAuth 2.0 | Redirect → callback → exchange token | ~24h access token | `fyers_auth.py` |
+| **Dhan** | Static Token | POST client_id + access_token | Until manually revoked | `dhan_auth.py` |
+| **Paytm Money** | OAuth 2.0 (3 JWTs) | Redirect → callback → 3 tokens (access, read, public) | Varies per token | `paytm_auth.py` |
+
+### Zerodha (Kite Connect) — OAuth 2.0
+
+Standard OAuth redirect flow. User authenticates on Kite login page, Zerodha redirects with `request_token`, backend exchanges for `access_token`.
+
+- **Login:** `GET /api/auth/zerodha/login` → returns Kite login URL
+- **Callback:** `GET /api/auth/zerodha/callback?request_token=xxx`
+- **Cost:** Kite Connect API costs ₹500/month
+
+### AngelOne (SmartAPI) — Auto-TOTP
+
+No browser redirect. Backend authenticates directly using stored credentials (client_id, password, TOTP secret). Auto-generates TOTP — no manual entry needed. Takes 20-25 seconds.
+
+- **Login:** `POST /api/auth/angelone/login` (35s timeout required!)
+- **Credentials:** Encrypted in `smartapi_credentials` table
+- **Cost:** FREE
+
+### Upstox — OAuth 2.0
+
+Standard OAuth redirect. Notable for very long-lived tokens (~1 year).
+
+- **Login:** `GET /api/auth/upstox/login` → returns Upstox OAuth URL
+- **Callback:** `GET /api/auth/upstox/callback?code=xxx`
+- **Disconnect:** `DELETE /api/auth/upstox/disconnect`
+- **Cost:** ₹499/month
+
+### Fyers — OAuth 2.0
+
+Standard OAuth redirect with authorization code exchange.
+
+- **Login:** `GET /api/auth/fyers/login` → returns Fyers OAuth URL
+- **Callback:** `GET /api/auth/fyers/callback?auth_code=xxx`
+- **Disconnect:** `DELETE /api/auth/fyers/disconnect`
+- **Cost:** FREE
+
+### Dhan — Static Token
+
+No OAuth flow. User provides their client ID and a static access token (generated from Dhan developer portal). Simplest auth flow.
+
+- **Login:** `POST /api/auth/dhan/login` with `{client_id, access_token}`
+- **Disconnect:** `DELETE /api/auth/dhan/disconnect`
+- **Cost:** FREE (Trading API) / conditional (Data API)
+
+### Paytm Money — OAuth 2.0 (3 JWTs)
+
+OAuth redirect similar to others, but returns 3 separate JWT tokens: access token (for trading), read token (for data), and public token (for market data).
+
+- **Login:** `GET /api/auth/paytm/login` → returns Paytm OAuth URL
+- **Callback:** `GET /api/auth/paytm/callback?requestToken=xxx`
+- **Public Token:** `GET /api/auth/paytm/public-token`
+- **Disconnect:** `DELETE /api/auth/paytm/disconnect`
+- **Cost:** FREE
+
+### Auth Fallback Chain
+
+When a broker token expires, the system follows this fallback: refresh token → OAuth re-login → API key/secret (last resort). The frontend auth store tracks per-broker loading states.
+
 ## Implementation Files
 
 | File | Purpose |
 |------|---------|
-| `backend/app/api/routes/auth.py` | OAuth endpoints |
+| `backend/app/api/routes/auth.py` | Core auth (Zerodha OAuth, AngelOne TOTP, logout, /me) |
+| `backend/app/api/routes/upstox_auth.py` | Upstox OAuth flow |
+| `backend/app/api/routes/fyers_auth.py` | Fyers OAuth flow |
+| `backend/app/api/routes/dhan_auth.py` | Dhan static token flow |
+| `backend/app/api/routes/paytm_auth.py` | Paytm 3-token OAuth flow |
 | `backend/app/utils/jwt.py` | JWT creation/verification |
 | `backend/app/utils/dependencies.py` | Auth dependencies |
-| `frontend/src/stores/auth.js` | Auth state management |
-| `frontend/src/services/api.js` | Axios interceptors |
+| `backend/app/utils/encryption.py` | Credential encryption (SmartAPI) |
+| `frontend/src/stores/auth.js` | Auth state management (all 6 brokers) |
+| `frontend/src/services/api.js` | Axios interceptors (401 handling) |
 
 ## Related Documentation
 

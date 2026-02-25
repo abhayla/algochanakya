@@ -10,7 +10,7 @@ For current roadmap and next steps, see [ROADMAP.md](ROADMAP.md).
 
 ## Multi-Broker Abstraction Implementation (All Phases Complete)
 
-**Reference:** [Broker Abstraction Architecture](architecture/broker-abstraction.md) | [ADR-002](decisions/002-broker-abstraction.md) | [ADR-003: Multi-Broker Ticker](decisions/003-multi-broker-ticker-architecture.md)
+**Reference:** [Broker Abstraction Architecture](architecture/broker-abstraction.md) | [ADR-002](decisions/002-broker-abstraction.md) | [TICKER-DESIGN-SPEC.md](decisions/TICKER-DESIGN-SPEC.md) (supersedes ADR-003)
 
 ### Phase 2: Market Data Abstraction ✅ COMPLETE
 

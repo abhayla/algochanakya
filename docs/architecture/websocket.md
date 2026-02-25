@@ -1,12 +1,47 @@
 # WebSocket Live Prices Architecture
 
-**Status:** ⚠️ **REDESIGN PROPOSED** - See [TICKER-DESIGN-SPEC.md](../decisions/TICKER-DESIGN-SPEC.md)
+**Status:** ⚠️ **SUPERSEDED** — Market data ticker architecture has been redesigned and implemented.
+
+> **For the current market data WebSocket architecture, see [TICKER-DESIGN-SPEC.md](../decisions/TICKER-DESIGN-SPEC.md).** This file is kept for historical context only.
+>
+> **For AutoPilot WebSocket (real-time strategy updates), see the [AutoPilot WebSocket](#autopilot-websocket) section below.**
+
+---
+
+## AutoPilot WebSocket
+
+The AutoPilot module has its own WebSocket system for real-time strategy updates, separate from the market data ticker.
+
+**Endpoint:** `ws://host/ws/autopilot?token=<jwt_token>`
+
+**Key files:**
+- `backend/app/websocket/routes.py` — WebSocket endpoint, JWT auth, message routing
+- `backend/app/websocket/manager.py` — Connection management, broadcasting, strategy subscriptions
+
+**Message types from server:**
+- `strategy_update` — Strategy status changes (active, paused, stopped)
+- `order_update` — Order placement/fill notifications
+- `position_update` — Position changes
+- `condition_trigger` — Entry/exit/adjustment condition triggered
+- `kill_switch` — Emergency kill switch activated
+- `heartbeat` — Keep-alive ping
+
+**Client messages:**
+- `ping` — Keepalive (server responds with pong)
+- `subscribe` — Subscribe to specific strategy: `{"type": "subscribe", "data": {"strategy_id": 123}}`
+- `unsubscribe` — Unsubscribe from strategy updates
+
+**Frontend composable:** `frontend/src/composables/autopilot/useWebSocket.js`
+
+---
+
+## Market Data WebSocket (Legacy — see TICKER-DESIGN-SPEC.md)
 
 AlgoChanakya streams live market data via WebSocket, using a **broker-agnostic architecture** that routes ticks from any supported broker (SmartAPI, Kite, Upstox, Dhan, Fyers, Paytm) to connected users.
 
-**Related**: [ADR-003 v2](../decisions/003-multi-broker-ticker-architecture.md) | [TICKER-DESIGN-SPEC.md](../decisions/TICKER-DESIGN-SPEC.md) | [API Reference](../api/multi-broker-ticker-api.md) | [Implementation Guide](./multi-broker-ticker-implementation.md)
+**Current implementation:** [TICKER-DESIGN-SPEC.md](../decisions/TICKER-DESIGN-SPEC.md) | [API Reference](../api/multi-broker-ticker-api.md)
 
-**Note:** This document describes the current proposal. A refined design is documented in TICKER-DESIGN-SPEC.md with key improvements: 5 components (not 6), credentials integrated into TickerPool, and websocket.py reduced to ~90 lines.
+**The content below describes the original proposal. The implemented design uses 5 components, credentials integrated into TickerPool, and `websocket.py` at 292 lines.**
 
 ---
 
