@@ -3,22 +3,22 @@ name: upstox-expert
 description: Use when implementing Upstox adapter, debugging Upstox API errors, understanding Upstox instrument_key format, or auditing code calling Upstox API. Upstox API expert for AlgoChanakya.
 metadata:
   author: AlgoChanakya
-  version: "1.0"
+  version: "2.0"
+  last_verified: "2026-02-25"
 ---
 
 # Upstox API Expert
 
-Upstox offers a modern API with OAuth 2.0 authentication, Protobuf-based WebSocket (MarketDataFeedV3), and a well-maintained Python SDK. API access costs **₹499/month** (₹499 + GST). It's a popular alternative to Kite Connect for both market data and order execution. Upstox is a planned broker for AlgoChanakya (adapter not yet implemented). Key differentiator: **extended token** for long-lived read-only access and **Protocol Buffers** for efficient WebSocket messaging.
+Upstox offers a modern API with OAuth 2.0 authentication, Protobuf-based WebSocket (MarketDataFeedV3 v3), and SDKs in 6 languages. API access is **FREE (₹0)** — pricing changed from ₹499/month to free in 2025. All 3 AlgoChanakya adapters (market data, order execution, ticker/WebSocket) are **fully implemented** with 1,883 lines of production code and 1,738 lines of tests. Key differentiators: **extended token** for long-lived read-only access, **Protocol Buffers** for efficient WebSocket messaging, and **real-time Greeks** via WebSocket (unique among Indian brokers). V3 API is current (v2 WebSocket discontinued Aug 22, 2025).
 
 ## When to Use
 
-- Implementing the Upstox market data or order execution adapter
-- Debugging Upstox API errors or OAuth flow issues
+- Implementing or debugging the Upstox market data, order, or ticker adapter
+- Debugging Upstox API errors, OAuth flow, or auth issues (UDAPI100050 is the most common)
 - Understanding Upstox instrument_key format (`NSE_FO|12345`)
-- Working with Protobuf-based WebSocket (MarketDataFeedV3)
+- Working with Protobuf-based WebSocket (MarketDataFeedV3 v3)
+- Using GTT Orders, Option Chain API, Webhooks, or Sandbox environment
 - Comparing Upstox capabilities with other brokers
-- Auditing code that calls Upstox API for correctness
-- Writing tests that mock Upstox API responses
 
 ## When NOT to Use
 
@@ -31,20 +31,25 @@ Upstox offers a modern API with OAuth 2.0 authentication, Protobuf-based WebSock
 
 | Property | Value |
 |----------|-------|
-| **Official Docs** | https://upstox.com/developer/api-documentation/ |
-| **API Version** | v2 |
+| **Official Docs** | https://upstox.com/developer/api-documentation/open-api |
+| **Community Forum** | https://community.upstox.com/ |
+| **Dev API Forum** | https://community.upstox.com/c/developer-api/15 |
+| **API Features & Pricing** | https://upstox.com/trading-api/ |
+| **API Version** | v2 / v3 (dual — v3 for orders, historical, quotes, WebSocket) |
 | **Python SDK** | `upstox-python-sdk` (`pip install upstox-python-sdk`) |
-| **Pricing** | **₹499/month** (₹499 + GST) for API access (market data + orders) |
-| **REST Base URL** | `https://api.upstox.com/v2` |
-| **WebSocket URL** | Authorized URL via REST endpoint |
+| **All SDKs** | Python, JavaScript, .NET, Java, C#, PHP |
+| **Pricing** | **FREE (₹0)** for all trading + data APIs. ₹10/order brokerage via API (till Mar 2026). |
+| **REST Base URL v2** | `https://api.upstox.com/v2` |
+| **REST Base URL v3** | `https://api.upstox.com/v3` |
+| **WebSocket URL** | Authorized URL via REST endpoint (v3 only — v2 discontinued Aug 2025) |
 | **Auth Method** | OAuth 2.0 (authorization_code grant) |
-| **Token Validity** | access_token: until ~6:30 AM next day |
+| **Token Validity** | access_token: until ~6:30 AM next day; extended_token: 1 year |
+| **Order Latency** | <45ms |
+| **Uptime SLA** | 99.9% |
 
 ## Authentication Flow
 
 Upstox uses standard **OAuth 2.0 authorization_code** flow with an optional **extended token** for long-lived access.
-
-### Step-by-Step Authentication
 
 ```
 1. Redirect user → https://api.upstox.com/v2/login/authorization/dialog
@@ -53,7 +58,7 @@ Upstox uses standard **OAuth 2.0 authorization_code** flow with an optional **ex
 3. Upstox redirects → {redirect_url}?code={authorization_code}
 4. POST /v2/login/authorization/token with code, client_id, client_secret, redirect_uri, grant_type
 5. Response: { access_token, extended_token (if requested) }
-6. Use access_token: Authorization: Bearer {access_token}
+6. Use: Authorization: Bearer {access_token}
 ```
 
 ### Token Types
@@ -61,23 +66,11 @@ Upstox uses standard **OAuth 2.0 authorization_code** flow with an optional **ex
 | Token | Purpose | Validity | Notes |
 |-------|---------|----------|-------|
 | `access_token` | Full API access | Until ~6:30 AM next day | Standard OAuth token |
-| `extended_token` | Read-only access | 1 year (renewable) | For multi-client apps, market data only |
+| `extended_token` | Read-only access | 1 year (renewable) | Long-lived, market data only |
 
-### Extended Token (Unique Feature)
+**Extended Token:** Valid 1 year, read-only (market data, instruments, portfolio view). Cannot place/modify/cancel orders. Ideal for market data adapter — no daily re-auth.
 
-The extended token allows **long-lived read-only access** without daily re-authentication:
-- Valid for 1 year
-- Read-only: market data, instruments, portfolio viewing
-- Cannot place/modify/cancel orders
-- Ideal for market data adapter (no daily login needed)
-
-### Auth Header
-
-```
-Authorization: Bearer {access_token}
-```
-
-See [auth-flow.md](./references/auth-flow.md) for complete request/response examples.
+See [auth-flow.md](./references/auth-flow.md) for complete request/response examples, sandbox tokens, IP whitelisting, and Access Token Flow (Beta).
 
 ## Key Endpoints Quick Reference
 
@@ -85,20 +78,33 @@ See [auth-flow.md](./references/auth-flow.md) for complete request/response exam
 |----------|--------|----------|-------|
 | **Auth** | POST | `/v2/login/authorization/token` | Exchange auth code |
 | **Profile** | GET | `/v2/user/profile` | User details |
-| **Margins** | GET | `/v2/user/get-funds-and-margin` | Fund details |
-| **Quote** | GET | `/v2/market-quote/quotes?instrument_key=` | Full quote |
+| **Funds** | GET | `/v2/user/get-funds-and-margin` | Fund details (equity+commodity combined Jul 2025) |
+| **Quote** | GET | `/v3/market-quote/quotes?instrument_key=` | Full quote (v3) |
 | **LTP** | GET | `/v2/market-quote/ltp?instrument_key=` | LTP only |
 | **OHLC** | GET | `/v2/market-quote/ohlc?instrument_key=` | OHLC data |
-| **Historical** | GET | `/v2/historical-candle/{instrument_key}/{interval}/{to_date}` | OHLCV |
-| **Intraday** | GET | `/v2/historical-candle/intraday/{instrument_key}/{interval}` | Today's candles |
-| **Instruments** | GET | `/v2/market-quote/instruments` | Instrument master |
-| **Place Order** | POST | `/v2/order/place` | Place order |
-| **Modify Order** | PUT | `/v2/order/modify` | Modify pending |
-| **Cancel Order** | DELETE | `/v2/order/cancel?order_id=` | Cancel pending |
+| **Historical** | GET | `/v3/historical-candle/{key}/{interval}/{to}/{from}` | OHLCV (v3, custom time units) |
+| **Intraday** | GET | `/v2/historical-candle/intraday/{key}/{interval}` | Today's candles |
+| **Instruments** | GET | `/v2/market-quote/instruments` | JSON format (CSV deprecated Apr 2024) |
+| **Place Order v3** | POST | `/v3/order/place` | With order slicing + latency tracking |
+| **Modify Order v3** | PUT | `/v3/order/modify` | Preferred over v2 |
+| **Cancel Order v3** | DELETE | `/v3/order/cancel` | Preferred over v2 |
 | **Orders** | GET | `/v2/order/retrieve-all` | All orders |
+| **Multi-Order Place** | POST | `/v2/order/multi/place` | Place multiple orders |
+| **Multi-Order Cancel** | DELETE | `/v2/order/multi/cancel` | Cancel all open |
+| **Multi-Order Exit** | POST | `/v2/order/multi/exit` | Exit all positions |
+| **GTT Place** | POST | `/v3/order/gtt/place` | GTT order (v3) |
+| **GTT Modify** | PUT | `/v3/order/gtt/modify` | Modify GTT |
+| **GTT Cancel** | DELETE | `/v3/order/gtt/cancel` | Cancel GTT |
+| **GTT Details** | GET | `/v3/order/gtt/details` | Get GTT list |
+| **Option Contracts** | GET | `/v2/option/contract` | Option contracts for expiry |
+| **Option Chain** | GET | `/v2/option/chain` | Full chain with Greeks + PoP |
 | **Positions** | GET | `/v2/portfolio/short-term-positions` | Positions |
 | **Holdings** | GET | `/v2/portfolio/long-term-holdings` | Holdings |
-| **WS Auth** | GET | `/v2/feed/market-data-feed/authorize` | Get authorized WS URL |
+| **Charges** | GET | `/v2/charges/brokerage` | Brokerage calculator |
+| **Trade P&L** | GET | `/v2/trade/profit-loss/metadata` | P&L metadata |
+| **Trade P&L Report** | GET | `/v2/trade/profit-loss/report` | Full P&L report |
+| **WS Auth** | GET | `/v2/feed/market-data-feed/authorize` | Get authorized WS URL (v3) |
+| **Portfolio WS Auth** | GET | `/v2/feed/portfolio-stream-feed/authorize` | Portfolio stream WS |
 
 See [endpoints-catalog.md](./references/endpoints-catalog.md) for complete schemas.
 
@@ -106,70 +112,31 @@ See [endpoints-catalog.md](./references/endpoints-catalog.md) for complete schem
 
 ### instrument_key Format
 
-Upstox uses `instrument_key` in the format: `{EXCHANGE}_{SEGMENT}|{instrument_token}`
-
-**Examples:**
+`{EXCHANGE}_{SEGMENT}|{instrument_token_or_name}`
 
 | Instrument | instrument_key | Notes |
 |-----------|---------------|-------|
-| NIFTY 50 Index | `NSE_INDEX\|Nifty 50` | Index uses name |
+| NIFTY 50 Index | `NSE_INDEX\|Nifty 50` | Indices use name |
 | NIFTY 25000 CE | `NSE_FO\|12345` | F&O uses token |
 | Reliance Equity | `NSE_EQ\|2885` | Equity uses token |
-| NIFTY Future | `NSE_FO\|67890` | Future uses token |
+| MCX Gold | `MCX_FO\|34567` | MCX token |
 
-### Exchange Segments
+**Segments:** `NSE_EQ`, `NSE_FO`, `NSE_INDEX`, `BSE_EQ`, `BSE_FO`, `BSE_INDEX`, `MCX_FO`
 
-| Segment | Description |
-|---------|-------------|
-| `NSE_EQ` | NSE Equity |
-| `NSE_FO` | NSE F&O |
-| `NSE_INDEX` | NSE Indices |
-| `BSE_EQ` | BSE Equity |
-| `BSE_FO` | BSE F&O |
-| `BSE_INDEX` | BSE Indices |
-| `MCX_FO` | MCX Commodities |
+**Note:** Instrument master is JSON only (CSV deprecated Apr 2024). Instruments carry a `weekly` boolean field for weekly options.
 
-### Canonical Conversion
-
-```python
-# Upstox instrument_key → Canonical (Kite)
-# Requires instrument master lookup (token-based)
-from app.services.brokers.market_data.token_manager import token_manager
-canonical = await token_manager.get_canonical_symbol(12345, "upstox")
-```
-
-See [symbol-format.md](./references/symbol-format.md) for complete format details.
+See [symbol-format.md](./references/symbol-format.md) for complete format details and conversion utilities.
 
 ## WebSocket Protocol (Protobuf)
 
-### MarketDataFeedV3
+### MarketDataFeedV3 (V3 ONLY — V2 discontinued Aug 22, 2025)
 
-Upstox uses **Protocol Buffers** for WebSocket messages - unique among Indian brokers.
+Connection flow:
+1. `GET /v2/feed/market-data-feed/authorize` → returns authorized WS URL
+2. Connect to URL (binary Protobuf)
+3. Subscribe with instrument keys and mode
 
-### Connection Flow
-
-1. Get authorized WS URL: `GET /v2/feed/market-data-feed/authorize`
-2. Connect to the returned URL
-3. Subscribe via binary Protobuf message
-
-### Subscription Request (Protobuf)
-
-```python
-import upstox_client
-from google.protobuf import json_format
-
-# Create subscription request
-request = {
-    "guid": "unique-id",
-    "method": "sub",
-    "data": {
-        "mode": "full",  # "ltpc", "full", or "option_greeks"
-        "instrumentKeys": ["NSE_FO|12345", "NSE_INDEX|Nifty 50"]
-    }
-}
-```
-
-### Modes
+### Subscription Modes
 
 | Mode | Description | Data Included |
 |------|-------------|---------------|
@@ -177,114 +144,254 @@ request = {
 | `full` | Full quote | OHLC, volume, OI, depth, bid/ask |
 | `option_greeks` | Greeks + quote | Full + delta, gamma, theta, vega, IV |
 
-### WebSocket Limits
+### Connection Limits
 
-| Limit | Value |
-|-------|-------|
-| Max instruments per connection | **Varies by plan** |
-| Max connections | **1 per access_token** |
-| Message format | **Protocol Buffers (binary)** |
-| Heartbeat | Automatic |
+| Plan | Max WS Connections | D30 Depth | Notes |
+|------|--------------------|-----------|-------|
+| Basic | 2 | No | Up to ~1500 instruments |
+| Plus | 5 | Yes (50/connection) | Plus subscription required |
 
-See [websocket-protocol.md](./references/websocket-protocol.md) for Protobuf schema and parsing.
+### Portfolio Stream WebSocket
+
+Stream portfolio updates (positions, holdings) in real-time:
+- Auth: `GET /v2/feed/portfolio-stream-feed/authorize`
+- Events: position updates, holding updates, order updates
+- **Known issue:** NXDOMAIN errors reported by community — retry with backoff
+
+See [websocket-protocol.md](./references/websocket-protocol.md) for Protobuf schema, parsing, and V2→V3 migration.
 
 ## Rate Limits
 
 | Endpoint Type | Limit | Notes |
 |---------------|-------|-------|
-| REST API (general) | **25 requests/second** | Per access_token |
-| Order placement | **25 orders/second** | Per user |
-| Historical data | **6 requests/second** | Separate limit |
-| WebSocket | **Unlimited ticks** | After subscription |
+| REST API (general) | **50 req/sec, 500/min, 2000/30min** | Per access_token |
+| Multi-Order APIs | **4 req/sec, 40/min, 160/30min** | Stricter limit |
+| Order placement | **50 orders/second** | Per user |
+| Historical data | **50 req/sec** | Same as general |
+| WebSocket | Unlimited ticks | After subscription |
 
-**AlgoChanakya Configuration:** `rate_limiter.py` sets `"upstox": 25` (25 req/sec).
+**AlgoChanakya Config:** Update `rate_limiter.py` `"upstox"` from `25` → `50` to match current limits.
 
 ## Price Normalization
 
 | Data Source | Price Unit | Action Required |
 |------------|------------|-----------------|
-| **REST API** (all endpoints) | **RUPEES** | No conversion |
-| **WebSocket** (all modes) | **RUPEES** | No conversion |
-| **Historical data** | **RUPEES** | No conversion |
+| REST API (all) | **RUPEES** | No conversion |
+| WebSocket (all modes) | **RUPEES** | No conversion |
+| Historical data | **RUPEES** | No conversion |
 
 **Upstox always returns prices in RUPEES.** No paise conversion needed (unlike SmartAPI and Kite WS).
 
-## AlgoChanakya Integration
-
-### Implementation Status
+## AlgoChanakya Implementation Status
 
 | Component | Status | File |
 |-----------|--------|------|
-| Market Data Adapter | **🚧 Planned** | Not yet created |
-| Order Execution Adapter | **🚧 Planned** | Not yet created |
-| Credentials Dataclass | **✅ Defined** | `market_data_base.py` (`UpstoxMarketDataCredentials`) |
-| Enum Registration | **✅ Defined** | `MarketDataBrokerType.UPSTOX` |
-| Rate Limiter Config | **✅ Set** | `rate_limiter.py`: `"upstox": 25` |
+| Market Data Adapter | **✅ Implemented** | `backend/app/services/brokers/market_data/upstox_adapter.py` (568 lines) |
+| Order Execution Adapter | **✅ Implemented** | `backend/app/services/brokers/upstox_order_adapter.py` (494 lines) |
+| Ticker (WebSocket) Adapter | **✅ Implemented** | `backend/app/services/brokers/market_data/ticker/adapters/upstox.py` (821 lines) |
+| Auth Route | **✅ Implemented** | `backend/app/api/routes/upstox_auth.py` (190 lines) |
+| Frontend Settings | **✅ Implemented** | `frontend/src/components/settings/UpstoxSettings.vue` |
+| Tests | **✅ Complete** | `test_upstox_ticker_adapter.py`, `test_upstox_market_data_adapter.py` (1,738 lines) |
+| GTT Orders | **🚧 Not Yet** | Adapter supports standard orders only |
+| Webhook Integration | **🚧 Not Yet** | Could enhance order status tracking |
 
-### Planned Integration
+### Current Integration Pattern
 
 ```python
-# Future: Market data via adapter
+# Market data via adapter (implemented)
 from app.services.brokers.market_data.factory import get_market_data_adapter
 adapter = get_market_data_adapter("upstox", credentials, db)
 quote = await adapter.get_quote(["NIFTY2522725000CE"])  # Returns UnifiedQuote
+
+# Order execution via adapter (implemented)
+from app.services.brokers.upstox_order_adapter import UpstoxOrderAdapter
+adapter = UpstoxOrderAdapter(access_token=token)
+order_id = await adapter.place_order(order_params)
 ```
+
+## Upstox Plans (Basic vs Plus)
+
+| Feature | Basic | Plus |
+|---------|-------|------|
+| Brokerage (API) | ₹20/order | ₹30/order |
+| WS Connections | 2 | 5 |
+| D30 Market Depth | No | Yes (50 instruments/connection) |
+| Price Alerts | 100 | 500 |
+| Watchlists | 10×100 | 20×200 |
+
+See [Upstox Plus page](https://upstox.com/plus/) for current pricing and benefits.
+
+## Brokerage & Charges
+
+- **API brokerage:** ₹10/order via API (promotional rate till Mar 2026; standard ₹20/order after)
+- **Equity intraday:** 0.05% (max ₹20)
+- **F&O:** Flat ₹20/order
+- **No demat charges** for Upstox
+
+See [Pricing](https://upstox.com/pricing/) and [Brokerage Calculator](https://upstox.com/calculator/brokerage-calculator/).
+
+## GTT Orders (Good Till Triggered)
+
+- **4 endpoints** (v3 API): Place, Modify, Cancel, Get Details
+- **Types:** SINGLE (1 rule) or MULTIPLE (2–3 rules, OCO-style)
+- **Rule types:** ENTRY, TARGET, STOPLOSS with ABOVE/BELOW/IMMEDIATE triggers
+- **Products:** I (Intraday/MIS), D (Delivery/CNC), MTF
+- **Trailing Stop Loss** (Beta, Jun 2025): Adjusts stop dynamically as price moves
+- **Error codes:** UDAPI1126–UDAPI1151
+
+See [gtt-orders.md](./references/gtt-orders.md) for complete schemas, examples, and all error codes.
+
+## Option Chain API
+
+- `GET /v2/option/contract` — get option contracts for a given underlying + expiry
+- `GET /v2/option/chain` — full put/call option chain with real-time data + Greeks
+- **Greeks available:** delta, gamma, theta, vega, IV, PoP (Probability of Profit)
+- **Market data:** ltp, volume, OI, prev_OI, bid/ask
+- **MCX:** Option Chain not available for MCX instruments
+
+See [option-chain.md](./references/option-chain.md) for complete response schemas.
+
+## Webhook
+
+- **Setup:** Configured in My Apps dashboard (no code, no auth required on receiver)
+- **Events:** Order Updates (default), GTT Updates (opt-in)
+- **Requirements:** Receiver must return 2XX within timeout; POST only
+- **Payload format:** snake_case fields (lowercase deprecated)
+
+See [webhook.md](./references/webhook.md) for payload formats and event types.
+
+## Sandbox Environment
+
+- **Available since:** Jan 2025
+- **App creation:** Create a "Sandbox" app in Upstox developer portal
+- **Token:** 30-day token generated from portal (no OAuth flow needed)
+- **Scope:** Order placement/modification/cancellation APIs only (no market data)
+- **URL:** Same base URL, sandbox app credentials
+- **Use for:** Testing order flows without real money
+
+## MCP Integration (Claude Desktop / VS Code)
+
+- **MCP URL:** `https://mcp.upstox.com/mcp`
+- **Scope:** Read-only (portfolio, market data, positions, holdings)
+- **Setup:** Add to Claude Desktop config or VS Code MCP settings
+- **Cannot:** Place orders or modify account settings via MCP
 
 ## Common Gotchas
 
-1. **₹499/month subscription required** - Unlike SmartAPI (free) or Paytm (free), Upstox charges ₹499 + GST monthly for API access. Not free despite early marketing.
+1. **API is FREE** — Old pricing ₹499/month no longer applies. Free for all trading + data APIs since 2025.
 
-2. **Protobuf dependency** - WebSocket requires `protobuf` package and compiled .proto schemas. Different from JSON or raw binary used by other brokers.
+2. **V2 WebSocket is discontinued** — As of Aug 22, 2025, `market-data-feed/v2` is offline. Only `v3` works. All Upstox docs now show v3.
 
-3. **instrument_key format** - Not a simple symbol string. Includes exchange segment and uses `|` separator. Must look up in instrument master.
+3. **IP whitelisting required** — If you get `403 Forbidden` on order placement, check that your server IP is whitelisted in the My Apps dashboard. Most common production issue.
 
-3. **Extended token is read-only** - Cannot place orders with extended token. Need full access_token for trading.
+4. **UDAPI100050** — Has dual meaning: (a) invalid instrument key format, AND (b) auth/order placement failure after re-login (community-reported). Re-authenticate if this appears on a valid instrument.
 
-4. **WS URL from REST** - Must call REST endpoint to get authorized WebSocket URL. Cannot hardcode WS URL.
+5. **CSV instruments deprecated** — Apr 2024, the CSV instrument master download was removed. Use `GET /v2/market-quote/instruments` (JSON) only.
 
-5. **One WS connection per token** - Unlike Kite/SmartAPI (3 connections), Upstox allows only 1 WebSocket connection per access_token.
+6. **Fund API changed Jul 2025** — `equity` object now contains both equity and commodity funds combined. Old code expecting separate `commodity` object will break.
 
-6. **Prices always in RUPEES** - No paise conversion needed (simpler than SmartAPI/Kite). Don't accidentally divide by 100.
+7. **Portfolio WS NXDOMAIN** — Community reports host resolution failures on `portfolio-stream-feed`. Implement retry with exponential backoff.
 
-7. **Historical data structure** - Returns candles in descending order (newest first). Other brokers return ascending.
+8. **Extended token is read-only** — Cannot place orders with extended token. Need full access_token for trading.
 
-8. **OAuth redirect** - Like Kite, requires user interaction. Cannot be automated like SmartAPI auto-TOTP.
+9. **WS URL from REST** — Must call REST to get authorized WebSocket URL. Cannot hardcode WS URL (expires with token).
 
-9. **Index instrument_key** - Indices use name string (`NSE_INDEX|Nifty 50`) not numeric token. Different from other instruments.
+10. **Protobuf dependency** — WebSocket requires `protobuf` package and .proto schemas. Different from JSON or raw binary used by other brokers.
 
-10. **Option Greeks mode** - Upstox is the only broker providing Greeks via WebSocket (delta, gamma, theta, vega). Useful for real-time Greek monitoring.
+11. **Historical data descending** — Returns candles newest first. Other brokers return ascending. Reverse before processing.
+
+12. **Index instrument_key** — Indices use name string (`NSE_INDEX|Nifty 50`) not numeric token. Don't mix with F&O format.
+
+13. **Pipe separator URL-encoding** — `|` must be URL-encoded as `%7C` in query parameters.
+
+14. **Zero brokerage ended Aug 2024** — New users get 90 days free brokerage, then standard rates apply.
+
+15. **Brokerage higher on Plus** — ₹30/order on Plus vs ₹20/order on Basic. Plus has other benefits (5 WS, D30) but higher per-order cost.
 
 ## Error Codes Quick Reference
 
-| HTTP Status | Error Type | Cause | Retryable |
+| HTTP Status | Error Code | Cause | Retryable |
 |-------------|-----------|-------|-----------|
-| `400` | `UDAPI100` | Bad request / invalid params | No |
-| `401` | `UDAPI100` | Invalid/expired token | No - re-auth |
-| `403` | `UDAPI100` | Insufficient permissions | No |
-| `429` | `UDAPI100` | Rate limit exceeded | Yes - backoff |
-| `500` | `UDAPI100` | Server error | Yes - retry |
+| `401` | `UDAPI100010` | Invalid token | No — re-auth |
+| `401` | `UDAPI100011` | Token expired | No — re-auth |
+| `401/400` | `UDAPI100050` | Invalid instrument key OR auth/order failure | Check both |
+| `403` | IP not whitelisted | Server IP not in app settings | No — whitelist IP |
+| `429` | `UDAPI100030` | Rate limit exceeded | Yes — backoff |
+| `400` | `UDAPI1126` | GTT: Invalid GTT order | No — fix params |
+| `400` | `UDAPI1151` | GTT: Trigger already fired | No |
+| `500` | `UDAPI100040` | Internal server error | Yes — retry |
 
-See [error-codes.md](./references/error-codes.md) for complete error catalog.
+See [error-codes.md](./references/error-codes.md) for complete error catalog including all GTT codes.
 
 ## Related Skills
 
-For cross-broker work, consult these complementary skills:
-
 | Skill | When to Use |
 |-------|-------------|
-| `/smartapi-expert` | Reference implementation — SmartAPI adapter is the model for new market data adapters |
-| `/kite-expert` | Order execution reference — Kite adapter is the model for new order adapters |
+| `/smartapi-expert` | Reference implementation — SmartAPI adapter is the model for new adapters |
+| `/kite-expert` | Order execution reference — Kite adapter is the model |
 | `/dhan-expert` | Compare unique WS features — Dhan has 200-depth, Upstox has Greeks via WS |
 | `/auto-verify` | After any Upstox adapter change — run verification immediately |
-| `/docs-maintainer` | After adapter changes — update feature registry, comparison matrix, CHANGELOG |
+| `/docs-maintainer` | After adapter changes — update feature registry, comparison matrix |
 
 **Cross-Broker Comparison:** See [comparison-matrix.md](../broker-shared/comparison-matrix.md) for pricing, rate limits, WebSocket capabilities, and symbol format differences across all 6 brokers.
 
+## Maintenance & Auto-Improvement
+
+### Freshness Tracking
+
+| Reference File | Last Verified | Source URL | Check Frequency |
+|---|---|---|---|
+| skill.md | 2026-02-25 | [Official Docs](https://upstox.com/developer/api-documentation/open-api) | Monthly |
+| endpoints-catalog.md | 2026-02-25 | [Official Docs](https://upstox.com/developer/api-documentation/open-api) | Monthly |
+| auth-flow.md | 2026-02-25 | Official Docs | Quarterly |
+| error-codes.md | 2026-02-25 | Official Docs + [Community](https://community.upstox.com/c/developer-api/15) | Monthly |
+| websocket-protocol.md | 2026-02-25 | Official Docs + [Announcements](https://upstox.com/developer/api-documentation/announcements/) | Monthly |
+| symbol-format.md | 2026-02-25 | Official Docs | Quarterly |
+| gtt-orders.md | 2026-02-25 | Official Docs | Quarterly |
+| option-chain.md | 2026-02-25 | Official Docs | Quarterly |
+| webhook.md | 2026-02-25 | Official Docs | Quarterly |
+| maintenance-log.md | 2026-02-25 | Official Docs + Community | Monthly |
+
+### Auto-Update Trigger Rules
+
+1. **Error-driven update**: If this skill is invoked 3+ times with FAILED/UNKNOWN outcome for the same error_type (tracked via `post_skill_learning.py` hook → `knowledge.db`), `reflect deep` mode should propose a skill update targeting the failing area.
+
+2. **Staleness alert**: If `last_verified` date for any reference file exceeds 90 days, the `health-check` skill should flag it. On next invocation, check the [Announcements page](https://upstox.com/developer/api-documentation/announcements/) for API changes.
+
+3. **Quarterly review**: Next scheduled review: **May 2026**. Check:
+   - [Upstox API Announcements](https://upstox.com/developer/api-documentation/announcements/) for new/deprecated endpoints
+   - [Developer API Forum](https://community.upstox.com/c/developer-api/15) for recurring issues
+   - [Community Home](https://community.upstox.com/) for trending pain points
+   - Upstox Python SDK (`pip show upstox-python-sdk`) for version bumps
+   - Rate limit changes, pricing changes, new features
+
+4. **Community monitoring**: When debugging Upstox issues, check the [Developer API Forum](https://community.upstox.com/c/developer-api/15) for known issues and workarounds before deep-diving.
+
+### Version Changelog
+
+| Version | Date | Changes |
+|---|---|---|
+| 2.0 | 2026-02-25 | Comprehensive overhaul: pricing FREE, v3 API, GTT/Option Chain/Webhook/Sandbox/MCP, implementation status updated to Implemented, rate limits corrected (50/sec), auto-improvement system added, 3 new reference files, 8 external URLs |
+| 1.0 | 2026-02-16 | Initial creation with broker skills batch |
+
+### Knowledge Base Integration
+
+This skill integrates with the AlgoChanakya learning system:
+- **Automatic**: `post_skill_learning.py` hook fires after every invocation → captures outcome to `knowledge.db` and `failure-index.json`
+- **On failure**: Error patterns are fingerprinted and stored. Fix strategies are ranked by success rate.
+- **Self-modification**: `reflect deep` mode can propose edits to this skill (with user approval) when gap analysis detects recurring failures.
+- **Cross-reference**: Upstox-specific error patterns in `knowledge.db` inform `fix-loop` and `test-fixer` skills.
+
 ## References
 
-- [Authentication Flow](./references/auth-flow.md) - OAuth 2.0 flow + extended token
-- [Endpoints Catalog](./references/endpoints-catalog.md) - All REST endpoints with schemas
-- [WebSocket Protocol](./references/websocket-protocol.md) - Protobuf-based MarketDataFeedV3
-- [Error Codes](./references/error-codes.md) - Complete error code reference
+- [Authentication Flow](./references/auth-flow.md) - OAuth 2.0 flow, extended token, IP whitelisting, sandbox
+- [Endpoints Catalog](./references/endpoints-catalog.md) - All REST endpoints with schemas (v2 + v3)
+- [WebSocket Protocol](./references/websocket-protocol.md) - Protobuf-based MarketDataFeedV3 v3, Portfolio WS
+- [Error Codes](./references/error-codes.md) - Complete error catalog including GTT codes
 - [Symbol Format](./references/symbol-format.md) - instrument_key format and conversion
+- [GTT Orders](./references/gtt-orders.md) - Good Till Triggered order reference
+- [Option Chain](./references/option-chain.md) - Option Chain API with Greeks + PoP
+- [Webhook](./references/webhook.md) - Webhook setup and payload formats
+- [Maintenance Log](./references/maintenance-log.md) - API change tracker, community issues
 - [Comparison Matrix](../broker-shared/comparison-matrix.md) - Cross-broker comparison
+- [Upstox Announcements](https://upstox.com/developer/api-documentation/announcements/) - Official API change log

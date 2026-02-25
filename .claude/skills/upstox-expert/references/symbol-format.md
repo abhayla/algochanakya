@@ -1,5 +1,7 @@
 # Upstox Symbol Format
 
+> Source: [Upstox API Docs](https://upstox.com/developer/api-documentation/open-api) | Last verified: 2026-02-25
+
 ## instrument_key Format
 
 Upstox uses `instrument_key` in the format: `{EXCHANGE}_{SEGMENT}|{identifier}`
@@ -34,33 +36,34 @@ Upstox uses `instrument_key` in the format: `{EXCHANGE}_{SEGMENT}|{identifier}`
 | `BSE_INDEX` | BSE Indices | Name string |
 | `MCX_FO` | MCX Commodities | Numeric token |
 
+---
+
 ## Instrument Master
 
-### Download
+### Download (JSON only — CSV deprecated Apr 2024)
 
-Upstox provides instruments via REST API:
 ```
-GET https://api.upstox.com/v2/market-quote/instruments
+GET https://api.upstox.com/v2/market-quote/instruments?exchange=NSE
 ```
 
-Or download full instrument file:
-```
-https://assets.upstox.com/market-quote/instruments/exchange/complete.csv.gz
-```
+> **Note:** The CSV instrument file download (previously at `assets.upstox.com`) was deprecated in April 2024. Use the JSON REST API endpoint instead.
 
 ### Key Fields
 
 | Field | Description |
 |-------|-------------|
 | `instrument_key` | Upstox unique key (used in all APIs) |
-| `trading_symbol` | Readable symbol |
+| `trading_symbol` | Readable symbol (e.g., NIFTY2522725000CE) |
 | `name` | Instrument name |
 | `exchange` | NSE, BSE, MCX |
 | `lot_size` | Contract lot size |
-| `instrument_type` | EQUITY, FUTIDX, OPTIDX, etc. |
-| `expiry` | Expiry date (ISO format) |
-| `strike` | Strike price (RUPEES) |
+| `instrument_type` | EQUITY, FUTIDX, OPTIDX, FUTSTK, OPTSTK, etc. |
+| `expiry` | Expiry date (ISO format: YYYY-MM-DD) |
+| `strike` | Strike price in RUPEES |
 | `option_type` | CE, PE |
+| `weekly` | Boolean — `true` for weekly expiry options |
+
+---
 
 ## Canonical Conversion
 
@@ -86,14 +89,18 @@ upstox_key = await token_manager.get_broker_token("NIFTY2522725000CE", "upstox")
 
 Upstox → Canonical conversion is **moderate complexity** because:
 1. instrument_key uses numeric tokens (not readable symbols)
-2. Must maintain mapping table (broker_instrument_tokens)
+2. Must maintain mapping table (`broker_instrument_tokens`)
 3. Index instrument_keys use names, not tokens
 4. Exchange segment encoding differs from Kite
 
+---
+
 ## Common Gotchas
 
-1. **Pipe separator** - `|` in instrument_key must be URL-encoded as `%7C` in query parameters
-2. **Index names have spaces** - `NSE_INDEX|Nifty 50` (with space, URL-encode)
-3. **Indices use names, instruments use tokens** - Don't mix them up
-4. **Token is string in API** - Even though numeric, pass as string
-5. **Strike in rupees** - Instrument master stores strikes in RUPEES (not paise)
+1. **Pipe separator** — `|` in instrument_key must be URL-encoded as `%7C` in query parameters
+2. **Index names have spaces** — `NSE_INDEX|Nifty 50` (with space — also URL-encode the space as `%20`)
+3. **Indices use names, instruments use tokens** — Don't mix them up
+4. **Token is string in API** — Even though numeric, pass as string in JSON
+5. **Strike in rupees** — Instrument master stores strikes in RUPEES (not paise)
+6. **CSV deprecated** — Do not use the old CSV download URL; it no longer exists
+7. **`weekly` field** — Boolean in instrument master; use to distinguish weekly vs monthly options
