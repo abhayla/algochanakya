@@ -127,7 +127,7 @@ describe('useWebSocket Composable', () => {
       const { connect, isConnected } = useWebSocket()
 
       connect()
-      await vi.runAllTimersAsync()
+      await vi.advanceTimersByTimeAsync(100)
 
       expect(isConnected.value).toBe(true)
     })
@@ -142,16 +142,16 @@ describe('useWebSocket Composable', () => {
     })
 
     it('does not reconnect if already connected', async () => {
-      const { connect } = useWebSocket()
+      const { connect, isConnected } = useWebSocket()
 
       connect()
-      await vi.runAllTimersAsync()
+      await vi.advanceTimersByTimeAsync(100)
 
       // Store reference to first WebSocket
       const firstWSCount = WebSocket.length
 
       connect()
-      await vi.runAllTimersAsync()
+      await vi.advanceTimersByTimeAsync(100)
 
       // Should not create a new connection
       expect(isConnected.value).toBe(true)
@@ -161,11 +161,11 @@ describe('useWebSocket Composable', () => {
       const { connect, disconnect, isConnected } = useWebSocket()
 
       connect()
-      await vi.runAllTimersAsync()
+      await vi.advanceTimersByTimeAsync(100)
       expect(isConnected.value).toBe(true)
 
       disconnect()
-      await vi.runAllTimersAsync()
+      await vi.advanceTimersByTimeAsync(100)
       expect(isConnected.value).toBe(false)
     })
   })
@@ -180,7 +180,7 @@ describe('useWebSocket Composable', () => {
       const { connect, connectionStatus } = useWebSocket()
 
       connect()
-      await vi.runAllTimersAsync()
+      await vi.advanceTimersByTimeAsync(100)
 
       expect(connectionStatus.value).toBe('connected')
     })
@@ -192,12 +192,14 @@ describe('useWebSocket Composable', () => {
     })
 
     it('returns reconnecting status during reconnection', async () => {
-      const { connect, reconnectAttempts, connectionStatus } = useWebSocket()
+      const { connect, disconnect, reconnectAttempts, connectionStatus } = useWebSocket()
 
       connect()
-      await vi.runAllTimersAsync()
+      await vi.advanceTimersByTimeAsync(100)
 
-      // Simulate disconnect with non-1000 code to trigger reconnect
+      // Disconnect first so isConnected is false, then simulate reconnect state
+      disconnect()
+      await vi.advanceTimersByTimeAsync(100)
       reconnectAttempts.value = 1
 
       expect(connectionStatus.value).toBe('reconnecting')
@@ -214,7 +216,7 @@ describe('useWebSocket Composable', () => {
       const { connect, send } = useWebSocket()
 
       connect()
-      await vi.runAllTimersAsync()
+      await vi.advanceTimersByTimeAsync(100)
 
       send('ping', {})
 
@@ -240,7 +242,7 @@ describe('useWebSocket Composable', () => {
       const { connect, subscribeToStrategy, send } = useWebSocket()
 
       connect()
-      await vi.runAllTimersAsync()
+      await vi.advanceTimersByTimeAsync(100)
 
       subscribeToStrategy(123)
 
@@ -251,7 +253,7 @@ describe('useWebSocket Composable', () => {
       const { connect, unsubscribeFromStrategy } = useWebSocket()
 
       connect()
-      await vi.runAllTimersAsync()
+      await vi.advanceTimersByTimeAsync(100)
 
       unsubscribeFromStrategy(123)
 
@@ -269,7 +271,7 @@ describe('useWebSocket Composable', () => {
       const { notifications, connect } = useWebSocket()
 
       connect()
-      await vi.runAllTimersAsync()
+      await vi.advanceTimersByTimeAsync(100)
 
       // Notifications are added internally via message handlers
       expect(notifications.value).toEqual([])
@@ -279,7 +281,7 @@ describe('useWebSocket Composable', () => {
       const { notifications, clearNotifications, connect } = useWebSocket()
 
       connect()
-      await vi.runAllTimersAsync()
+      await vi.advanceTimersByTimeAsync(100)
 
       // Add mock notifications directly
       notifications.value = [
@@ -294,7 +296,7 @@ describe('useWebSocket Composable', () => {
       const { notifications, removeNotification, connect } = useWebSocket()
 
       connect()
-      await vi.runAllTimersAsync()
+      await vi.advanceTimersByTimeAsync(100)
 
       notifications.value = [
         { id: 1, title: 'First' },
@@ -310,7 +312,7 @@ describe('useWebSocket Composable', () => {
       const { notifications, connect } = useWebSocket()
 
       connect()
-      await vi.runAllTimersAsync()
+      await vi.advanceTimersByTimeAsync(100)
 
       // Add more than max notifications
       const manyNotifications = Array.from({ length: 60 }, (_, i) => ({
@@ -334,7 +336,7 @@ describe('useWebSocket Composable', () => {
       const { connect, isConnected, reconnectAttempts } = useWebSocket()
 
       connect()
-      await vi.runAllTimersAsync()
+      await vi.advanceTimersByTimeAsync(100)
       expect(isConnected.value).toBe(true)
 
       disconnectAutopilotWebSocket()
@@ -384,7 +386,7 @@ describe('useWebSocket - Message Handlers', () => {
 
       const { connect, lastMessage } = useWebSocket()
       connect()
-      await vi.runAllTimersAsync()
+      await vi.advanceTimersByTimeAsync(100)
 
       // Simulate strategy update message would be handled internally
     })
@@ -395,7 +397,7 @@ describe('useWebSocket - Message Handlers', () => {
 
       const { connect } = useWebSocket()
       connect()
-      await vi.runAllTimersAsync()
+      await vi.advanceTimersByTimeAsync(100)
 
       // Message handlers update the store directly
     })
@@ -406,7 +408,7 @@ describe('useWebSocket - Message Handlers', () => {
       const { connect, notifications } = useWebSocket()
 
       connect()
-      await vi.runAllTimersAsync()
+      await vi.advanceTimersByTimeAsync(100)
 
       // Status change notification would be added via message handler
     })
@@ -415,7 +417,7 @@ describe('useWebSocket - Message Handlers', () => {
       const { connect } = useWebSocket()
 
       connect()
-      await vi.runAllTimersAsync()
+      await vi.advanceTimersByTimeAsync(100)
 
       // Dashboard refresh would be triggered via message handler
     })
@@ -426,7 +428,7 @@ describe('useWebSocket - Message Handlers', () => {
       const { connect, notifications } = useWebSocket()
 
       connect()
-      await vi.runAllTimersAsync()
+      await vi.advanceTimersByTimeAsync(100)
 
       // Order placed notification would be added via message handler
     })
@@ -435,7 +437,7 @@ describe('useWebSocket - Message Handlers', () => {
       const { connect, notifications } = useWebSocket()
 
       connect()
-      await vi.runAllTimersAsync()
+      await vi.advanceTimersByTimeAsync(100)
 
       // Order filled notification would be added via message handler
     })
@@ -444,7 +446,7 @@ describe('useWebSocket - Message Handlers', () => {
       const { connect, notifications } = useWebSocket()
 
       connect()
-      await vi.runAllTimersAsync()
+      await vi.advanceTimersByTimeAsync(100)
 
       // Order rejected notification would be added via message handler
     })
@@ -458,7 +460,7 @@ describe('useWebSocket - Message Handlers', () => {
 
       const { connect } = useWebSocket()
       connect()
-      await vi.runAllTimersAsync()
+      await vi.advanceTimersByTimeAsync(100)
 
       // P&L update would modify the store via message handler
     })
@@ -470,7 +472,7 @@ describe('useWebSocket - Message Handlers', () => {
 
       const { connect } = useWebSocket()
       connect()
-      await vi.runAllTimersAsync()
+      await vi.advanceTimersByTimeAsync(100)
 
       // Condition update would call updateBuilderStrategy
     })
@@ -479,7 +481,7 @@ describe('useWebSocket - Message Handlers', () => {
       const { connect, notifications } = useWebSocket()
 
       connect()
-      await vi.runAllTimersAsync()
+      await vi.advanceTimersByTimeAsync(100)
 
       // Conditions met notification would be added via message handler
     })
@@ -490,7 +492,7 @@ describe('useWebSocket - Message Handlers', () => {
       const { connect, notifications } = useWebSocket()
 
       connect()
-      await vi.runAllTimersAsync()
+      await vi.advanceTimersByTimeAsync(100)
 
       // Risk alert notification would be added via message handler
     })
@@ -502,7 +504,7 @@ describe('useWebSocket - Message Handlers', () => {
 
       const { connect } = useWebSocket()
       connect()
-      await vi.runAllTimersAsync()
+      await vi.advanceTimersByTimeAsync(100)
 
       // Market status would be logged via message handler
       consoleSpy.mockRestore()
@@ -531,7 +533,7 @@ describe('useWebSocket - Reconnection', () => {
     const { reconnectAttempts, connect } = useWebSocket()
 
     connect()
-    await vi.runAllTimersAsync()
+    await vi.advanceTimersByTimeAsync(100)
 
     // Initial connection should reset attempts
     expect(reconnectAttempts.value).toBe(0)
@@ -578,7 +580,7 @@ describe('useWebSocket - Heartbeat', () => {
     const { connect } = useWebSocket()
 
     connect()
-    await vi.runAllTimersAsync()
+    await vi.advanceTimersByTimeAsync(100)
 
     // Advance time by 25 seconds (ping interval)
     await vi.advanceTimersByTimeAsync(25000)
@@ -590,10 +592,10 @@ describe('useWebSocket - Heartbeat', () => {
     const { connect, disconnect } = useWebSocket()
 
     connect()
-    await vi.runAllTimersAsync()
+    await vi.advanceTimersByTimeAsync(100)
 
     disconnect()
-    await vi.runAllTimersAsync()
+    await vi.advanceTimersByTimeAsync(100)
 
     // Ping interval should be cleared
   })
@@ -602,7 +604,7 @@ describe('useWebSocket - Heartbeat', () => {
     const { connect, lastMessage } = useWebSocket()
 
     connect()
-    await vi.runAllTimersAsync()
+    await vi.advanceTimersByTimeAsync(100)
 
     // Pong response should be handled silently
   })
@@ -611,7 +613,7 @@ describe('useWebSocket - Heartbeat', () => {
     const { connect, lastMessage } = useWebSocket()
 
     connect()
-    await vi.runAllTimersAsync()
+    await vi.advanceTimersByTimeAsync(100)
 
     // Server heartbeat should be handled silently
   })
@@ -639,7 +641,7 @@ describe('useWebSocket - Error Handling', () => {
 
     const { connect } = useWebSocket()
     connect()
-    await vi.runAllTimersAsync()
+    await vi.advanceTimersByTimeAsync(100)
 
     // Error would be logged via handleError
     consoleSpy.mockRestore()
@@ -650,7 +652,7 @@ describe('useWebSocket - Error Handling', () => {
 
     const { connect } = useWebSocket()
     connect()
-    await vi.runAllTimersAsync()
+    await vi.advanceTimersByTimeAsync(100)
 
     // Invalid JSON would trigger error in handleMessage
     consoleSpy.mockRestore()
@@ -660,7 +662,7 @@ describe('useWebSocket - Error Handling', () => {
     const { connect, notifications } = useWebSocket()
 
     connect()
-    await vi.runAllTimersAsync()
+    await vi.advanceTimersByTimeAsync(100)
 
     // Server error notification would be added via message handler
   })
@@ -670,7 +672,7 @@ describe('useWebSocket - Error Handling', () => {
 
     const { connect } = useWebSocket()
     connect()
-    await vi.runAllTimersAsync()
+    await vi.advanceTimersByTimeAsync(100)
 
     // Unknown message types would be logged
     consoleSpy.mockRestore()
@@ -683,13 +685,18 @@ describe('useWebSocket - Error Handling', () => {
 // =============================================================================
 
 describe('useWebSocket - Lifecycle', () => {
+  let originalWebSocket
+
   beforeEach(() => {
     setActivePinia(createPinia())
     localStorage.store = { access_token: 'test_token' }
     vi.useFakeTimers()
+    originalWebSocket = global.WebSocket
+    global.WebSocket = MockWebSocket
   })
 
   afterEach(() => {
+    global.WebSocket = originalWebSocket
     vi.useRealTimers()
     disconnectAutopilotWebSocket()
   })
@@ -714,7 +721,7 @@ describe('useWebSocket - Lifecycle', () => {
     const { connect, isConnected } = useWebSocket()
 
     connect()
-    await vi.runAllTimersAsync()
+    await vi.advanceTimersByTimeAsync(100)
 
     // onUnmounted does not disconnect - connection persists
     expect(isConnected.value).toBe(true)
@@ -744,7 +751,7 @@ describe('useWebSocket - Custom Events', () => {
 
     const { connect } = useWebSocket()
     connect()
-    await vi.runAllTimersAsync()
+    await vi.advanceTimersByTimeAsync(100)
 
     // Custom event would be dispatched when addNotification is called
 
@@ -787,7 +794,7 @@ describe('useWebSocket - Integration Scenarios', () => {
     const { connect, lastMessage, notifications } = useWebSocket()
 
     connect()
-    await vi.runAllTimersAsync()
+    await vi.advanceTimersByTimeAsync(100)
 
     // Scenario: Strategy goes from waiting -> active -> completed
     // Each status change would be handled by message handlers
@@ -797,7 +804,7 @@ describe('useWebSocket - Integration Scenarios', () => {
     const { connect, notifications } = useWebSocket()
 
     connect()
-    await vi.runAllTimersAsync()
+    await vi.advanceTimersByTimeAsync(100)
 
     // Scenario: order_placed -> order_filled
     // Notifications would be added for each event
@@ -807,7 +814,7 @@ describe('useWebSocket - Integration Scenarios', () => {
     const { connect, notifications } = useWebSocket()
 
     connect()
-    await vi.runAllTimersAsync()
+    await vi.advanceTimersByTimeAsync(100)
 
     // Scenario: P&L update triggers risk alert
     // Risk alert notification would be shown
@@ -817,7 +824,7 @@ describe('useWebSocket - Integration Scenarios', () => {
     const { connect, lastMessage } = useWebSocket()
 
     connect()
-    await vi.runAllTimersAsync()
+    await vi.advanceTimersByTimeAsync(100)
 
     // Scenario: Multiple strategies receiving updates simultaneously
     // All updates should be processed correctly

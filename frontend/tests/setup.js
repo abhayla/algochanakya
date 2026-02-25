@@ -22,6 +22,31 @@ const localStorageMock = {
 }
 global.localStorage = localStorageMock
 
+// Mock WebSocket global (happy-dom may not expose WebSocket.OPEN static constant)
+if (typeof WebSocket === 'undefined') {
+  global.WebSocket = class MockWebSocket {
+    static CONNECTING = 0
+    static OPEN = 1
+    static CLOSING = 2
+    static CLOSED = 3
+    constructor(url) {
+      this.url = url
+      this.readyState = MockWebSocket.CONNECTING
+      this.onopen = null
+      this.onclose = null
+      this.onerror = null
+      this.onmessage = null
+    }
+    send() {}
+    close() { this.readyState = MockWebSocket.CLOSED }
+  }
+} else if (!WebSocket.OPEN) {
+  WebSocket.CONNECTING = 0
+  WebSocket.OPEN = 1
+  WebSocket.CLOSING = 2
+  WebSocket.CLOSED = 3
+}
+
 // Mock import.meta.env
 vi.stubGlobal('import.meta.env', {
   VITE_API_BASE_URL: 'http://localhost:8000',

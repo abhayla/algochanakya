@@ -165,11 +165,17 @@ describe('Positions Store - Getters', () => {
     const store = usePositionsStore()
     store.positions = mockPositions
 
+    // positionsByUnderlying returns Object.values(groups) — an array of group objects
     const groups = store.positionsByUnderlying
-    expect(groups).toHaveProperty('NIFTY')
-    expect(groups).toHaveProperty('BANKNIFTY')
-    expect(groups.NIFTY.positions).toHaveLength(2)
-    expect(groups.BANKNIFTY.positions).toHaveLength(1)
+    expect(Array.isArray(groups)).toBe(true)
+    expect(groups.length).toBe(2) // NIFTY and BANKNIFTY
+
+    const niftyGroup = groups.find(g => g.name === 'NIFTY')
+    const bankniftyGroup = groups.find(g => g.name === 'BANKNIFTY')
+    expect(niftyGroup).toBeDefined()
+    expect(bankniftyGroup).toBeDefined()
+    expect(niftyGroup.positions).toHaveLength(2)
+    expect(bankniftyGroup.positions).toHaveLength(1)
   })
 })
 
@@ -220,7 +226,11 @@ describe('Positions Store - Fetch Positions', () => {
 
     await store.fetchPositions()
 
-    expect(api.get).toHaveBeenCalledWith(expect.stringContaining('/api/positions'))
+    // fetchPositions calls api.get('/api/positions/annotated', { params: { position_type: 'day' } })
+    expect(api.get).toHaveBeenCalledWith(
+      '/api/positions/annotated',
+      expect.objectContaining({ params: expect.objectContaining({ position_type: 'day' }) })
+    )
   })
 })
 
