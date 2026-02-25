@@ -2,15 +2,15 @@
 
 Comprehensive comparison of all 6 brokers supported by AlgoChanakya.
 
-**Last Updated:** February 16, 2026 (verified against latest broker APIs and pricing)
+**Last Updated:** 2026-02-25 (updated to match all broker skill v2.5 overhauls)
 
 > **Broker Expert Skills:** For API-specific guidance (auth flows, error codes, WebSocket protocols, symbol formats), consult the dedicated broker expert skills:
-> - `/smartapi-expert` — Angel One SmartAPI (default market data, auto-TOTP, binary WS, paise pricing)
-> - `/kite-expert` — Zerodha Kite Connect (default orders, OAuth, canonical symbol format)
-> - `/upstox-expert` — Upstox (Protobuf WS, extended token, Option Greeks via WS)
-> - `/dhan-expert` — Dhan (static token auth, 200-level depth, Little Endian binary WS)
-> - `/fyers-expert` — Fyers (dual WS system, JSON format, paper trading, order update stream)
-> - `/paytm-expert` — Paytm Money (3-token OAuth, JSON WS, least mature API)
+> - `/smartapi-expert` — Angel One SmartAPI (default market data, auto-TOTP, binary WS, paise pricing, static IP required Aug 2025)
+> - `/kite-expert` — Zerodha Kite Connect (default orders, OAuth, canonical symbol format, 10/sec rate limit)
+> - `/upstox-expert` — Upstox (FREE, Protobuf WS, extended token, Option Greeks via WS, GTT, v3 API)
+> - `/dhan-expert` — Dhan (static token, 200-level depth, Little Endian binary WS, Forever Orders, `availabelBalance` typo)
+> - `/fyers-expert` — Fyers (FREE, 5-socket WS system, 5K symbols/conn, v3 SDK Nov 2023, daily 100K limit)
+> - `/paytm-expert` — Paytm Money (FREE, 3-token OAuth, JSON WS, least mature API, BSE F&O added 2025)
 
 ---
 
@@ -19,18 +19,22 @@ Comprehensive comparison of all 6 brokers supported by AlgoChanakya.
 | Broker | Market Data Cost | Order Execution Cost | Total Monthly Cost | Notes |
 |--------|-----------------|---------------------|-------------------|-------|
 | **SmartAPI** (Angel One) | **FREE** | **FREE** | **₹0** | Default data source |
-| **Kite Connect** (Zerodha) | ₹500/mo* | **FREE** | **₹0-500** | *Personal API free (orders only, no data) |
-| **Upstox** | **₹499/mo** | **₹499/mo** | **₹499** | API subscription required |
-| **Dhan** | **FREE**† | **FREE** | **₹0-499** | †25 F&O trades/mo OR ₹499/mo for data |
-| **Fyers** | **FREE** | **FREE** | **₹0** | v3.0.0 supports 5K symbols |
-| **Paytm Money** | **FREE** | **FREE** | **₹0** | Least mature |
+| **Kite Connect** (Zerodha) | ₹500/mo* | **FREE** | **₹0–500** | *Personal API free (orders only, no data) |
+| **Upstox** | **FREE** | **FREE** | **₹0** | Changed to FREE in 2025. ₹10/order API brokerage till Mar 2026. |
+| **Dhan** | **FREE**† | **FREE** | **₹0–499** | †25 F&O trades/mo OR ₹499/mo for Data API |
+| **Fyers** | **FREE** | **FREE** | **₹0** | v3 SDK (Nov 2023), 5K symbols/conn |
+| **Paytm Money** | **FREE** | **FREE** | **₹0** | Least mature. BSE F&O added 2025. |
 
 **AlgoChanakya Default:** SmartAPI (data) + Kite Personal API (orders) = ₹0/month
 
+**Corrections from previous version:**
+- **Upstox:** Was incorrectly listed as ₹499/month. API is now **FREE** (changed in 2025).
+- All 6 brokers are effectively ₹0 for API access.
+
 **Notes:**
 - **Kite Connect:** ₹500/month includes live market data + historical data (bundled since Feb 2025). Personal API is free but provides order execution only.
-- **Upstox:** Changed from free to ₹499/month subscription model. No longer free.
-- **Dhan:** Two-tier model - Trading APIs free, Data APIs require 25 F&O trades/month OR ₹499/month subscription.
+- **Upstox:** ₹10/order promotional API brokerage until Mar 2026, then standard ₹20/order applies. Plus plan (₹30/order) offers 5 WS connections + D30 depth.
+- **Dhan:** Two-tier model — Trading APIs free, Data APIs require 25 F&O trades/month OR ₹499/month subscription.
 
 ---
 
@@ -40,36 +44,54 @@ Comprehensive comparison of all 6 brokers supported by AlgoChanakya.
 |---------|---------|------|--------|------|-------|-------|
 | **Auth Type** | Client+PIN+TOTP | OAuth redirect | OAuth redirect | API token | OAuth redirect | OAuth redirect |
 | **Auto-Login** | **Yes** (auto-TOTP) | No (manual) | No (manual) | **Yes** (static token) | No (manual) | No (manual) |
-| **Token Validity** | ~24h | ~24h (until 6AM) | ~24h (until 6:30AM) | Until revoked | Until midnight | ~24h |
-| **Auto-Refresh** | **Yes** (refresh token) | **No** | Extended token (1yr) | N/A (long-lived) | **No** | **No** |
+| **Token Validity** | ~24h | ~24h (until 6AM) | ~24h (until ~6:30AM) or 1yr (extended) | Until revoked | Until **midnight IST** | ~24h |
+| **Auto-Refresh** | **Yes** (refresh token, 15d) | **No** | Extended token (1yr, read-only) | N/A (long-lived) | **No** | **No** |
 | **TOTP Required** | Yes (auto-generated) | Yes (manual on Zerodha) | Yes (manual) | No | Yes (manual) | Yes (manual) |
-| **Token Types** | 3 (jwt, feed, refresh) | 2 (access, public) | 2 (access, extended) | 1 (access) | 1 (access) | 3 (access, public, read) |
+| **Token Types** | 3 (jwt, feed, refresh) | 2 (access, public) | 2 (access, extended) | 1 (access) | 1 (access) | 3 (access, public_access, read_access) |
 | **Header Format** | `Bearer {jwt}` | `token api:access` | `Bearer {token}` | `access-token: {t}` | `{appid}:{token}` | `x-jwt-token: {t}` |
+| **IP Whitelist** | **Yes** (since Aug 2025) | No | **Yes** (app settings) | No | No | No |
 
 **Best for auto-login:** SmartAPI (auto-TOTP) or Dhan (static token)
+
+**Key gotchas:**
+- **SmartAPI:** Static IP registration required since Aug 2025 — 403 if not registered (up to 5 IPv4s)
+- **Upstox:** IP whitelisting in My Apps dashboard — 403 Forbidden if not configured
+- **Fyers:** `appIdHash` = SHA-256 of `app_id:app_secret` required for token exchange
+- **Kite:** No refresh token — user must re-OAuth daily after ~6 AM expiry
 
 ---
 
 ## 3. REST Rate Limits
 
-| Broker | General API | Order Placement | Historical Data | Quote API |
-|--------|-------------|-----------------|-----------------|-----------|
-| **SmartAPI** | **1/sec** | 10/sec | 1/sec | 1/sec |
-| **Kite** | 3/sec | 10/sec | 3/sec | 1/sec |
-| **Upstox** | **25/sec** | 25/sec | 6/sec | 25/sec |
-| **Dhan** | 10/sec | 25/sec (multi-tier) | 10/sec | 10/sec |
-| **Fyers** | 10/sec | 10/sec | **1/sec** | 10/sec |
-| **Paytm** | 10/sec | 10/sec | 5/sec | 10/sec |
+| Broker | General API | Order Placement | Historical Data | Notes |
+|--------|-------------|-----------------|-----------------|-------|
+| **SmartAPI** | **1/sec** | **20/sec** | 1/sec | Strictest REST; order limit increased from 10 in Feb 2025 |
+| **Kite** | **10/sec** | 10/sec | 10/sec (max 60 days/req for minute) | Was incorrectly 3/sec in old docs |
+| **Upstox** | **50/sec**, 500/min, 2000/30min | 50/sec | 50/sec | Multi-tier; multi-order APIs: 4/sec |
+| **Dhan** | 10/sec | 10/sec, **250/min**, **1000/hr**, **7000/day** | 10/sec | Multi-tier order limits — check all 4 |
+| **Fyers** | 10/sec | 10/sec | **1/sec** | Daily limit: **100,000 req/day** |
+| **Paytm** | 10/sec | 10/sec | 5/sec | - |
 
-**Fastest:** Upstox (25/sec) | **Slowest:** SmartAPI (1/sec)
+**Fastest:** Upstox (50/sec) | **Slowest REST:** SmartAPI (1/sec)
 
-### AlgoChanakya rate_limiter.py Configuration
+### AlgoChanakya rate_limiter.py — Current vs Correct
 
 ```python
+# CURRENT (some values incorrect):
+BROKER_LIMITS = {
+    "smartapi": 1,   # ✅ correct
+    "kite": 3,       # ❌ WRONG — should be 10
+    "upstox": 25,    # ❌ WRONG — should be 50
+    "dhan": 10,      # ✅ correct
+    "fyers": 10,     # ✅ correct
+    "paytm": 10,     # ✅ correct
+}
+
+# CORRECTED:
 BROKER_LIMITS = {
     "smartapi": 1,   # 1 req/sec
-    "kite": 3,       # 3 req/sec
-    "upstox": 25,    # 25 req/sec
+    "kite": 10,      # 10 req/sec (was 3 — incorrect)
+    "upstox": 50,    # 50 req/sec (was 25 — incorrect)
     "dhan": 10,      # 10 req/sec
     "fyers": 10,     # 10 req/sec
     "paytm": 10,     # 10 req/sec
@@ -82,34 +104,46 @@ BROKER_LIMITS = {
 
 | Feature | SmartAPI | Kite | Upstox | Dhan | Fyers | Paytm |
 |---------|---------|------|--------|------|-------|-------|
-| **Max Tokens/Conn** | 3000 | 3000 | Plan-dependent | 100 (Ticker) | **5,000** (v3.0.0) | 200 |
-| **Max Connections** | 3 | 3 | 1 | 5 | 1 | 1 |
-| **Message Format** | Custom binary | Custom binary | **Protobuf** | Little Endian binary | **JSON** | JSON |
+| **Max Tokens/Conn** | 3000 | 3000 | Basic:~1500, Plus:more | 100 (Ticker), 50 (Quote) | **5,000** | 200 |
+| **Max Connections** | 3 | 3 | Basic:2, Plus:5 | **5** | 1 per socket type | 1 |
+| **Message Format** | Custom binary | Custom binary | **Protobuf** | **Little Endian** binary | **JSON** | JSON |
 | **Price Unit** | **PAISE** | **PAISE** | RUPEES | RUPEES | RUPEES | RUPEES |
-| **Auth Method** | feed_token + query | access_token + query | REST → URL | Header | SDK managed | public_access_token |
 | **5-Level Depth** | Yes (Snap mode) | Yes (Full mode) | Yes (Full mode) | Yes (Quote mode) | Yes (DepthUpdate) | Yes (Full mode) |
 | **20-Level Depth** | No | No | No | **Yes** | No | No |
 | **200-Level Depth** | No | No | No | **Yes** (1 inst/conn) | No | No |
-| **Option Greeks** | No | No | **Yes** | No | No | No |
-| **Order Updates WS** | No | No | No | No | **Yes** (separate) | No |
-| **Dual WS System** | No | No | No | No | **Yes** (Data+Order) | No |
+| **D30 Depth** | No | No | **Yes** (Plus, 50/conn) | No | No | No |
+| **Option Greeks** | No | No | **Yes** (option_greeks mode) | No | No | No |
+| **Order Updates WS** | **Yes** (separate URL) | No | No | **Yes** (separate URL) | **Yes** (FyersOrderSocket) | No |
+| **Position Updates WS** | No | No | **Yes** (Portfolio WS) | No | **Yes** (FyersPositionSocket) | No |
+| **Trade Updates WS** | No | No | No | No | **Yes** (FyersTradeSocket) | No |
+| **WS Socket Types** | 2 (data + order) | 1 | 2 (market + portfolio) | 2 (market + order) | **5** | 1 |
 
-**Best for depth:** Dhan (200-level) | **Best for Greeks:** Upstox | **Best capacity:** SmartAPI/Kite (3000 tokens)
+**Best for depth:** Dhan (200-level, unique in India)
+**Best for Greeks:** Upstox (option_greeks WS mode)
+**Best capacity:** Fyers (5,000 tokens/conn)
+**Best WS ecosystem:** Fyers (5 socket types)
+**Unique binary format:** Dhan — only Little Endian broker (use `struct.unpack('<...')`)
 
 ---
 
 ## 5. Symbol Format
 
-| Broker | Format | Options Example | Conversion to Canonical |
-|--------|--------|----------------|------------------------|
+| Broker | Format | Options Example | Conversion Complexity |
+|--------|--------|----------------|----------------------|
 | **SmartAPI** | `{SYM}{DDMONYY}{STRIKE}{CE\|PE}` | `NIFTY27FEB2525000CE` | Moderate (reformat date) |
 | **Kite** | `{SYM}{YY}{M}{DD}{STRIKE}{CE\|PE}` | `NIFTY2522725000CE` | **Identity** (IS canonical) |
-| **Upstox** | `{EXCH}_{SEG}\|{token}` | `NSE_FO\|12345` | High (token lookup) |
-| **Dhan** | `{security_id}` (numeric) | `12345` | High (full ID lookup) |
+| **Upstox** | `{EXCH}_{SEG}\|{token}` | `NSE_FO\|12345` | High (token lookup, `\|` URL-encode as `%7C`) |
+| **Dhan** | `{security_id}` (numeric only) | `12345` + segment `NSE_FNO` | High (full ID lookup) |
 | **Fyers** | `{EXCH}:{SYMBOL}` | `NSE:NIFTY2522725000CE` | **Low** (strip prefix) |
 | **Paytm** | `{security_id}` + exchange | `12345` + `NSE` | High (full ID lookup) |
 
-**Easiest conversion:** Fyers (strip prefix) → Kite (identity) | **Hardest:** Dhan/Upstox/Paytm (numeric IDs)
+**Easiest conversion:** Fyers (strip `:` prefix) → Kite (identity)
+**Hardest:** Dhan, Upstox, Paytm (numeric IDs requiring instrument master lookup)
+
+**Special format notes:**
+- **Fyers equities:** Need `-EQ` suffix (`NSE:RELIANCE-EQ`). Indices need `-INDEX` suffix (`NSE:NIFTY50-INDEX`).
+- **Upstox indices:** Use name string, not token (`NSE_INDEX|Nifty 50`).
+- **Dhan segment codes:** `NSE_FNO` (not `NFO`), `IDX_I` for indices.
 
 ---
 
@@ -121,8 +155,9 @@ BROKER_LIMITS = {
 | **REST Historical** | **PAISE** | RUPEES | RUPEES | RUPEES | RUPEES | RUPEES |
 | **WebSocket** | **PAISE** | **PAISE** | RUPEES | RUPEES | RUPEES | RUPEES |
 | **Instrument Master** | **PAISE** (strikes) | RUPEES | RUPEES | RUPEES | RUPEES | RUPEES |
+| **Option Chain** | RUPEES | N/A | RUPEES | RUPEES | RUPEES | RUPEES |
 
-**Require paise→rupees conversion:** SmartAPI (WS, historical, strikes), Kite (WS only)
+**Require paise→rupees conversion:** SmartAPI (WS, historical, instrument strikes), Kite (WS only)
 **No conversion needed:** Upstox, Dhan, Fyers, Paytm (all RUPEES everywhere)
 
 ---
@@ -133,12 +168,13 @@ BROKER_LIMITS = {
 |---------|---------|------|--------|------|-------|-------|
 | **Min Interval** | 1 min | 1 min | 1 min | 1 min | 1 min | 1 min |
 | **Max Interval** | Daily | Daily | Monthly | Daily | Daily | Daily |
-| **Max Candles/Req** | ~2000 | ~2000 | ~2000 | ~2000 | ~2000 | ~1000 |
-| **Max Date Range** | Varies by interval | Varies | Varies | Varies | Varies | Limited |
+| **Max Range (minute)** | Varies | **60 days/req** | Varies | Varies | Varies | Limited |
+| **Years Available** | Varies | **10 years** (bundled Feb 2025) | Varies | Varies | Varies | Limited |
+| **Rate Limit** | 1/sec | 10/sec | 50/sec | 10/sec | **1/sec** | 5/sec |
 | **OI Included** | Yes | Yes (optional) | Yes | Yes | Yes | Limited |
 | **Sort Order** | Ascending | Ascending | **Descending** | Ascending | Ascending | Ascending |
 
-**Note:** Upstox returns candles in **descending** order (newest first). All others ascending.
+**Note:** Upstox returns candles in **descending** order (newest first). All others ascending. Reverse before processing.
 
 ---
 
@@ -146,33 +182,41 @@ BROKER_LIMITS = {
 
 | Feature | SmartAPI | Kite | Upstox | Dhan | Fyers | Paytm |
 |---------|---------|------|--------|------|-------|-------|
-| **GTT Orders** | Yes | Yes | No | Yes | Yes | No |
-| **Basket Orders** | No | Yes (Iceberg) | No | No | Yes | No |
+| **GTT Orders** | Yes (API) | Yes (API) | Yes (API, v3) | Yes ("Forever Orders") | Partial (API unclear, WS broken) | Yes (API, sparse docs) |
+| **Option Chain API** | Yes (with Greeks) | No (batch quotes only, no Greeks) | Yes (with Greeks + PoP) | Yes (with Greeks) | Yes (with Greeks incl. Rho/Vanna/Charm) | Yes (Heckyl Greeks) |
+| **Basket/Iceberg Orders** | No | Yes (Iceberg) | No | No | Yes | No |
 | **AMO Orders** | Yes | Yes | Yes | Yes | Yes | Yes |
 | **Bracket Orders** | Yes (ROBO) | Yes (CO) | Yes (CO/OC) | Yes | Yes | No |
 | **Cover Orders** | No | Yes | Yes | Yes | Yes | No |
-| **Margin Calculator** | Yes | Yes (separate API) | Yes | Yes | Yes | Limited |
-| **Paper Trading** | No | No | No | No | **Yes** | No |
-| **Extended Token** | No | No | **Yes** (1yr) | N/A | No | No |
-| **Auto-TOTP** | **Yes** | No | No | N/A | No | No |
+| **Margin Calculator** | Yes | Yes | Yes | Yes | Yes | Limited |
+| **Paper/Virtual Trading** | No | No | **Yes** (Sandbox, Jan 2025) | No | **Yes** (built-in) | No |
+| **Extended/Long Token** | No | No | **Yes** (1yr, read-only) | N/A (permanent) | No | No |
+| **Auto-TOTP Login** | **Yes** | No | No | N/A | No | No |
 | **Option Greeks WS** | No | No | **Yes** | No | No | No |
-| **200-Depth** | No | No | No | **Yes** | No | No |
-| **Order Update WS** | No | No | No | No | **Yes** | No |
+| **200-Level Depth** | No | No | No | **Yes** | No | No |
+| **HTTP Webhooks** | No | No | **Yes** (order POST) | **Yes** (Postback) | No | No |
+| **Order Update WS** | **Yes** | No | No | **Yes** | **Yes** (OrderSocket) | No |
+| **MCP Integration** | No | No | **Yes** (read-only) | No | No | No |
+| **BSE F&O** | Yes | Yes | Yes | Yes | Yes | **Added 2025** |
+
+**GTT implementations in AlgoChanakya:** None yet (all 6 adapters use standard orders only)
+**Option chain in AlgoChanakya:** SmartAPI only (platform default)
 
 ---
 
 ## 9. Python SDK
 
-| Broker | Package | Install | Quality | Maintenance |
-|--------|---------|---------|---------|-------------|
-| **SmartAPI** | `smartapi-python` | `pip install smartapi-python` | Good | Active |
-| **Kite** | `kiteconnect` | `pip install kiteconnect` | **Excellent** | Active |
-| **Upstox** | `upstox-python-sdk` | `pip install upstox-python-sdk` | Good | Active |
-| **Dhan** | `dhanhq` | `pip install dhanhq` | Good | Active |
-| **Fyers** | `fyers-apiv3` | `pip install fyers-apiv3` | Good | Active |
-| **Paytm** | `pyPMClient` | `pip install pyPMClient` | **Low** | Sporadic |
+| Broker | Package | Version | Quality | Maintenance | Notes |
+|--------|---------|---------|---------|-------------|-------|
+| **SmartAPI** | `smartapi-python` | v1.5.5 | Good | Active | Feb 2025 update |
+| **Kite** | `kiteconnect` | v5.0.1 | **Excellent** | Active | Most mature, typed exceptions |
+| **Upstox** | `upstox-python-sdk` | Latest | Good | Active | 6 SDKs (Python/JS/.NET/Java/C#/PHP) |
+| **Dhan** | `dhanhq` | v2.1.0 | Good | Active | - |
+| **Fyers** | `fyers-apiv3` | v3.1.7 | Good | Active | Released Nov 2023 |
+| **Paytm** | `pyPMClient` | Unknown | **Low** | **Sporadic** (last Jul 2024) | May need raw HTTP calls |
 
-**Best SDK:** Kite (kiteconnect) - most mature, best documented, typed exceptions
+**Best SDK:** Kite (`kiteconnect`) — most mature, best documented, typed exceptions
+**Worst SDK:** Paytm (`pyPMClient`) — low maintenance, may need workarounds
 
 ---
 
@@ -182,26 +226,28 @@ BROKER_LIMITS = {
 |----------|---------|------|--------|------|-------|-------|
 | **NSE** (Cash) | Yes | Yes | Yes | Yes | Yes | Yes |
 | **BSE** (Cash) | Yes | Yes | Yes | Yes | Yes | Yes |
-| **NFO** (F&O) | Yes | Yes | Yes | Yes | Yes | Limited |
-| **BFO** (BSE F&O) | Yes | Yes | Yes | Yes | Yes | No |
+| **NFO** (NSE F&O) | Yes | Yes | Yes | Yes | Yes | Yes |
+| **BFO** (BSE F&O) | Yes | Yes | Yes | Yes | Yes | **Yes (added 2025)** |
 | **MCX** (Commodity) | Yes | Yes | Yes | Yes | Yes | No |
 | **CDS** (Currency) | Yes | Yes | Yes | Yes | Yes | No |
 
 **Full exchange support:** SmartAPI, Kite, Upstox, Dhan, Fyers
-**Limited:** Paytm (NSE, BSE, NFO only, limited F&O coverage)
+**Limited:** Paytm (NSE/BSE/NFO/BFO, no MCX/CDS; limited F&O coverage)
 
 ---
 
 ## 11. AlgoChanakya Implementation Status
 
-| Broker | Market Data Adapter | Order Adapter | Ticker | Symbol Converter | Factory |
-|--------|-------------------|---------------|--------|-----------------|---------|
-| **SmartAPI** | **✅ Complete** | 🚧 Planned | ✅ Legacy | ✅ Complete | ✅ Registered |
-| **Kite** | **✅ Complete** | **✅ Complete** | ✅ Legacy | ✅ Identity | ✅ Registered |
-| **Upstox** | 🚧 Planned | 🚧 Planned | - | - | Enum defined |
-| **Dhan** | 🚧 Planned | 🚧 Planned | - | - | Enum defined |
-| **Fyers** | 🚧 Planned | 🚧 Planned | - | - | Enum defined |
-| **Paytm** | 🚧 Planned | 🚧 Planned | - | - | Enum defined |
+| Broker | Market Data | Order Adapter | Ticker (WS) | Auth Route | Frontend | Tests |
+|--------|------------|---------------|-------------|------------|----------|-------|
+| **SmartAPI** | ✅ 584 lines | ✅ 428 lines | ✅ 353 lines | ✅ 410 lines | ✅ | ✅ 510 lines |
+| **Kite** | ✅ 422 lines | ✅ kite_adapter | ✅ 313 lines | ✅ auth.py | ✅ | ✅ 598 lines |
+| **Upstox** | ✅ 568 lines | ✅ 494 lines | ✅ 821 lines | ✅ 190 lines | ✅ | ✅ 1,738 lines |
+| **Dhan** | ✅ 813 lines | ✅ 446 lines | ✅ 575 lines | ✅ 173 lines | ✅ | ✅ 1,435 lines |
+| **Fyers** | ✅ 695 lines | ✅ 467 lines | ✅ 410 lines | ✅ 201 lines | ✅ | ✅ 1,424 lines |
+| **Paytm** | ✅ 581 lines | ✅ 437 lines | ✅ 618 lines | ✅ 246 lines | ✅ | ✅ 1,423 lines |
+
+**All 6 brokers are fully implemented.** (Previous version incorrectly showed Upstox/Dhan/Fyers/Paytm as "Planned".)
 
 ### Key Codebase Files
 
@@ -212,8 +258,7 @@ BROKER_LIMITS = {
 | `backend/app/services/brokers/kite_adapter.py` | Kite order execution |
 | `backend/app/services/brokers/market_data/market_data_base.py` | MarketDataBrokerAdapter, credentials, enums |
 | `backend/app/services/brokers/market_data/factory.py` | Market data factory |
-| `backend/app/services/brokers/market_data/smartapi_adapter.py` | SmartAPI market data |
-| `backend/app/services/brokers/market_data/kite_adapter.py` | Kite market data |
+| `backend/app/services/brokers/market_data/smartapi_adapter.py` | SmartAPI market data (584 lines) |
 | `backend/app/services/brokers/market_data/rate_limiter.py` | Rate limits (all 6 brokers) |
 | `backend/app/services/brokers/market_data/symbol_converter.py` | Symbol conversion |
 | `backend/app/services/brokers/market_data/token_manager.py` | Token mapping |
@@ -221,14 +266,14 @@ BROKER_LIMITS = {
 
 ### Broker Expert Skill Quick Reference
 
-| Broker | Expert Skill | Key Gotchas |
+| Broker | Expert Skill | Top Gotchas |
 |--------|-------------|-------------|
-| **SmartAPI** | `/smartapi-expert` | Auto-TOTP auth, 1 req/sec rate limit, paise→rupees conversion (WS + historical) |
-| **Kite** | `/kite-expert` | OAuth (no auto-refresh), symbol format IS canonical, auth header: `token api:access` |
-| **Upstox** | `/upstox-expert` | Protobuf WS (not JSON/binary), `instrument_key` format (`EXCH_SEG|token`), descending historical |
-| **Dhan** | `/dhan-expert` | Static token (no OAuth), numeric `security_id`, 100 tokens/conn WS limit |
-| **Fyers** | `/fyers-expert` | Dual WS (data + orders), `appIdHash` auth, exchange-prefixed symbols (`NSE:SYMBOL`) |
-| **Paytm** | `/paytm-expert` | 3-token system, numeric IDs, least mature SDK (`pyPMClient`), limited F&O |
+| **SmartAPI** | `/smartapi-expert` | Static IP required (Aug 2025); paise conversion (WS + historical); auto-TOTP; 1 req/sec |
+| **Kite** | `/kite-expert` | Rate limit is **10/sec** (not 3); symbol IS canonical; no webhooks; no option chain API |
+| **Upstox** | `/upstox-expert` | IP whitelist required; V2 WS discontinued Aug 2025; Protobuf; UDAPI100050 dual meaning |
+| **Dhan** | `/dhan-expert` | `availabelBalance` typo (exact spelling required); Little Endian WS; numeric security_ids |
+| **Fyers** | `/fyers-expert` | v3 SDK Nov 2023; 5 socket types; GTT WS events broken (Feb 2026); midnight token expiry |
+| **Paytm** | `/paytm-expert` | 3 token types (wrong token = silent fail); least mature; no webhooks; BSE F&O added 2025 |
 
 ---
 
@@ -238,42 +283,51 @@ BROKER_LIMITS = {
 
 | Use Case | Recommended | Reason |
 |----------|-------------|--------|
-| **Free market data** | SmartAPI, Fyers, or Paytm | All completely free (Upstox now ₹499/mo) |
-| **Free orders** | Any (all free) | SmartAPI + Kite personal API |
-| **Lowest latency** | Kite (3/s) or Upstox (25/s) | Highest rate limits |
-| **Best documentation** | Kite | Most mature API |
+| **Free market data** | Any (all free) | SmartAPI, Upstox, Fyers, Paytm, Dhan* all ₹0 |
+| **Free orders** | Any (all free) | SmartAPI + Kite Personal API default |
+| **Highest REST rate limit** | Upstox | 50/sec (vs Kite 10, others 10) |
+| **Best documentation** | Kite | Most mature API, best SDK |
 | **Auto-login (no interaction)** | SmartAPI or Dhan | Auto-TOTP / static token |
-| **Deep market depth** | Dhan | 200-level depth (unique) |
-| **Real-time Greeks** | Upstox | Option Greeks via WS (₹499/mo) |
-| **Highest symbol capacity** | Fyers | 5,000 symbols/conn (v3.0.0) |
-| **Order update stream** | Fyers | Dedicated order WebSocket |
-| **Widest exchange support** | SmartAPI/Kite/Upstox/Dhan/Fyers | All support 6 exchanges |
-| **Multi-client apps** | Upstox | Extended token (1yr, read-only, ₹499/mo) |
+| **Deep market depth** | Dhan | 200-level depth (unique in India) |
+| **Real-time Greeks via WS** | Upstox | `option_greeks` WS mode |
+| **Highest WS symbol capacity** | Fyers | 5,000 symbols/conn |
+| **Order update stream** | Fyers or Dhan | FyersOrderSocket / Dhan order WS |
+| **Most WS socket types** | Fyers | 5 types (Data/Order/Position/Trade/General) |
+| **Multi-client/server apps** | Upstox | Extended token (1yr read-only) |
+| **Paper/virtual trading** | Fyers or Upstox | Fyers built-in, Upstox sandbox (Jan 2025) |
+| **Widest exchange support** | SmartAPI/Kite/Upstox/Dhan/Fyers | 6 exchanges each |
 
 ### AlgoChanakya Default Setup
 
 ```
-Market Data:  SmartAPI (FREE, auto-TOTP, no daily login)
+Market Data:  SmartAPI (FREE, auto-TOTP, no daily login, platform default)
 Orders:       Kite Personal API (FREE, orders only since March 2025)
 Total Cost:   ₹0/month
 
-Note: Kite Personal API provides order execution only (no market data).
-      For Kite market data, need ₹500/month Connect subscription.
+Failover chain (market data): SmartAPI → Dhan → Fyers → Paytm → Upstox → Kite
 ```
 
 ---
 
-## 13. Quick Decision Table
+## 13. Corrections from Previous Version (Feb 16, 2026 → Feb 25, 2026)
 
-**"Which broker should I implement next?"**
-
-| Priority | Broker | Rationale |
-|----------|--------|-----------|
-| 1 (done) | SmartAPI + Kite | Default setup, real adapters exist |
-| 2 (next) | **Upstox** | Most popular free alternative, Protobuf WS, Greeks |
-| 3 | **Dhan** | 200-depth unique feature, static token |
-| 4 | **Fyers** | Dual WS, virtual trading, low conversion complexity |
-| 5 (last) | **Paytm** | Least mature, limited features |
+| Section | Old (Wrong) | New (Correct) |
+|---------|-------------|---------------|
+| Upstox pricing | ₹499/month | **FREE (₹0)** |
+| Kite rate limit | 3/sec | **10/sec** |
+| Upstox rate limit | 25/sec | **50/sec, 500/min, 2000/30min** |
+| Dhan order rate limits | 25/sec | **10/sec, 250/min, 1000/hr, 7000/day** |
+| SmartAPI order rate | 10/sec | **20/sec** (Feb 2025) |
+| Fyers WS symbols | 200 | **5,000** |
+| Fyers WS sockets | 2 (dual) | **5** (Data/Order/Position/Trade/General) |
+| Fyers v3 release | Feb 3, 2026 | **November 2023** |
+| Implementation status | Upstox/Dhan/Fyers/Paytm = Planned | **All 6 fully implemented** |
+| SmartAPI static IP | Not mentioned | **Required since Aug 2025** |
+| Dhan `availabelBalance` | Not mentioned | **Known typo — use exact spelling** |
+| Paytm BSE F&O | No | **Added 2025** |
+| GTT support | Incomplete | **Updated per broker** |
+| Option chain | Incomplete | **Updated per broker** |
+| Webhooks | Incomplete | **Updated per broker** |
 
 ---
 
@@ -283,6 +337,6 @@ Note: Kite Personal API provides order execution only (no market data).
 |----------|-------------|
 | [Broker Abstraction Architecture](../../../../docs/architecture/broker-abstraction.md) | Complete multi-broker technical design (dual system: market data + orders) |
 | [ADR-002: Multi-Broker Abstraction](../../../../docs/decisions/002-broker-abstraction.md) | Decision rationale for broker abstraction pattern |
-| [ADR-003: Multi-Broker Ticker](../../../../docs/decisions/003-multi-broker-ticker-architecture.md) | Ticker refactoring architecture (WebSocket unification) |
-| [CLAUDE.md - Multi-Broker Architecture](../../../../CLAUDE.md#core-purpose-multi-broker-architecture) | Project-level broker architecture overview and implementation status |
+| [TICKER-DESIGN-SPEC.md](../../../../docs/decisions/TICKER-DESIGN-SPEC.md) | Multi-broker ticker architecture (5-component design) |
+| [CLAUDE.md - Multi-Broker Architecture](../../../../CLAUDE.md#core-purpose-multi-broker-architecture) | Project-level broker architecture overview |
 | [Implementation Checklist](../../../../docs/IMPLEMENTATION-CHECKLIST.md) | Current phase status and remaining tasks |
