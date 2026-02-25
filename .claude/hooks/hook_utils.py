@@ -138,6 +138,7 @@ def init_workflow_state(command_name: str) -> Dict[str, Any]:
     state = {
         "sessionId": session_id,
         "activeCommand": command_name,
+        "mode": "full",  # "full" = 7-step TDD, "fast-track" = skip test-first for trivial fixes
         "lastActivity": datetime.now().isoformat(),
         "steps": {
             "step1_requirements": {

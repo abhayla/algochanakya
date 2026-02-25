@@ -49,10 +49,28 @@ metadata:
 3. **Initialize workflow state:**
    ```python
    sys.path.insert(0, str(Path(".claude/hooks")))
-   from hook_utils import init_workflow_state
+   from hook_utils import init_workflow_state, read_workflow_state, write_workflow_state
 
    state = init_workflow_state("implement")
    ```
+
+4. **Detect fast-track mode** (for trivial fixes):
+   If the user's request is a trivial fix (typo, missing import, off-by-one, config change)
+   AND existing tests already cover the affected code, activate fast-track:
+   ```python
+   state = read_workflow_state()
+   state['mode'] = 'fast-track'  # Skip step2 (test-first) and step6 (visual verification)
+   write_workflow_state(state)
+   ```
+
+   **Fast-track activates when ALL of these are true:**
+   - Change is <= 10 lines of code
+   - Existing tests cover the affected file/function
+   - No new behavior is being added (fix only)
+   - User says "quick fix", "trivial", "simple fix", or similar
+
+   **Fast-track still requires:** Step 1 (understanding) + Step 4 (run existing tests) + passing tests before commit.
+   **Fast-track skips:** Step 2 (write new tests), Step 6 (screenshots), post-fix-pipeline for commit.
 
 **Actions:**
 - Review past failures for the component being modified

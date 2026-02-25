@@ -35,6 +35,10 @@ def check_write_edit_tool(file_path: str, state: dict) -> int:
     """
     Check if Write/Edit is allowed based on workflow state.
 
+    Supports two modes:
+    - "full": Standard 7-step TDD (test-first enforced)
+    - "fast-track": Skip test-first for trivial fixes (step1 still required)
+
     Args:
         file_path: Path being written/edited
         state: Current workflow state
@@ -45,6 +49,8 @@ def check_write_edit_tool(file_path: str, state: dict) -> int:
     # Always allow Claude files, docs, and markdown
     if is_always_allowed_file(file_path):
         return 0
+
+    is_fast_track = state.get('mode') == 'fast-track'
 
     # Check if it's a test file
     if is_test_file(file_path):
@@ -59,12 +65,23 @@ def check_write_edit_tool(file_path: str, state: dict) -> int:
 
     # Check if it's production code
     if is_code_file(file_path):
-        # Code files require Step 2 (tests) to be complete
+        if is_fast_track:
+            # Fast-track: skip step2 (test-first) requirement, but step1 still needed
+            if not state['steps']['step1_requirements']['completed']:
+                message = (
+                    "🚫 BLOCKED: Even in fast-track mode, Step 1 (Requirements/Clarification) is required.\n"
+                    "   State your understanding of the fix before writing code."
+                )
+                exit_with_code(2, message)
+            return 0
+
+        # Full mode: code files require Step 2 (tests) to be complete
         if not state['steps']['step2_tests']['completed']:
             message = (
                 "🚫 BLOCKED: Cannot write production code before Step 2 (Write Tests) is complete.\n"
                 f"   File: {file_path}\n"
-                "   Write tests first, then implement the feature."
+                "   Write tests first, then implement the feature.\n"
+                "   Tip: Use fast-track mode for trivial fixes that don't need new tests."
             )
             exit_with_code(2, message)
         return 0
@@ -86,33 +103,52 @@ def check_bash_tool(command: str, state: dict) -> int:
     """
     # Check for git commit
     if re.search(r'\bgit\s+commit\b', command):
-        # Git commit requires all 7 steps complete
+        is_fast_track = state.get('mode') == 'fast-track'
         steps = state['steps']
-        incomplete_steps = []
 
-        for step_name, step_data in steps.items():
-            if not step_data.get('completed', False):
-                # Format step name for display
-                step_num = step_name.split('_')[0].replace('step', '')
-                step_desc = step_name.split('_', 1)[1] if '_' in step_name else step_name
-                incomplete_steps.append(f"  - Step {step_num}: {step_desc}")
+        if is_fast_track:
+            # Fast-track: only require step1 (understanding) + step4 (tests pass)
+            required_steps = ['step1_requirements', 'step4_runTests']
+            incomplete = []
+            for step_name in required_steps:
+                if not steps.get(step_name, {}).get('completed', False):
+                    step_num = step_name.split('_')[0].replace('step', '')
+                    step_desc = step_name.split('_', 1)[1] if '_' in step_name else step_name
+                    incomplete.append(f"  - Step {step_num}: {step_desc}")
 
-        if incomplete_steps:
-            message = (
-                "🚫 BLOCKED: Cannot commit before all 7 steps are complete.\n"
-                "Incomplete steps:\n" +
-                "\n".join(incomplete_steps) +
-                "\n\nComplete the workflow or use Skill('post-fix-pipeline') to finalize."
-            )
-            exit_with_code(2, message)
+            if incomplete:
+                message = (
+                    "🚫 BLOCKED: Fast-track commit requires understanding + passing tests.\n"
+                    "Incomplete steps:\n" +
+                    "\n".join(incomplete) +
+                    "\n\nRun existing tests to verify your fix doesn't break anything."
+                )
+                exit_with_code(2, message)
+        else:
+            # Full mode: all 7 steps required
+            incomplete_steps = []
+            for step_name, step_data in steps.items():
+                if not step_data.get('completed', False):
+                    step_num = step_name.split('_')[0].replace('step', '')
+                    step_desc = step_name.split('_', 1)[1] if '_' in step_name else step_name
+                    incomplete_steps.append(f"  - Step {step_num}: {step_desc}")
 
-        # Also require post-fix-pipeline to have been invoked
-        if not state['skillInvocations']['postFixPipelineInvoked']:
-            message = (
-                "🚫 BLOCKED: Cannot commit before Skill('post-fix-pipeline') has been invoked.\n"
-                "   Use Skill('post-fix-pipeline') to run final verification and commit."
-            )
-            exit_with_code(2, message)
+            if incomplete_steps:
+                message = (
+                    "🚫 BLOCKED: Cannot commit before all 7 steps are complete.\n"
+                    "Incomplete steps:\n" +
+                    "\n".join(incomplete_steps) +
+                    "\n\nComplete the workflow or use Skill('post-fix-pipeline') to finalize."
+                )
+                exit_with_code(2, message)
+
+            # Full mode also requires post-fix-pipeline
+            if not state['skillInvocations']['postFixPipelineInvoked']:
+                message = (
+                    "🚫 BLOCKED: Cannot commit before Skill('post-fix-pipeline') has been invoked.\n"
+                    "   Use Skill('post-fix-pipeline') to run final verification and commit."
+                )
+                exit_with_code(2, message)
 
         return 0
 

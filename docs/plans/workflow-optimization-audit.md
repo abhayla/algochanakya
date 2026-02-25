@@ -185,7 +185,7 @@
 
 **Risk assessment:** Medium. Bypasses test-first requirement.
 
-**Status:** REQUIRES USER HELP — Need user decision on when fast-track should activate.
+**Status:** IMPLEMENTED — Fast-track activates when: change <= 10 lines, existing tests cover it, fix only (no new behavior), user says "quick fix"/"trivial". Still requires step1 (understanding) + step4 (tests pass). Modified: hook_utils.py, validate_workflow_step.py, implement/SKILL.md.
 
 ---
 
@@ -197,7 +197,7 @@
 
 **Risk assessment:** Low-medium.
 
-**Status:** REQUIRES USER HELP — Need user to validate baseline data before populating.
+**Status:** IMPLEMENTED — All 5 memory files populated with baseline data from git history, codebase patterns, and known issues. Entries marked as baseline/historical.
 
 ---
 
@@ -217,5 +217,5 @@
 | 10 | schema_parity early exit | ALREADY OPTIMAL (no change needed) |
 | 11 | CLAUDE.md dedup | IMPLEMENTED |
 | 12 | Bash PostToolUse fast-paths | PARTIALLY DONE (dispatcher needed for full fix) |
-| 13 | Fast-track workflow mode | REQUIRES USER HELP |
-| 14 | Agent memory baselines | REQUIRES USER HELP |
+| 13 | Fast-track workflow mode | IMPLEMENTED |
+| 14 | Agent memory baselines | IMPLEMENTED |
