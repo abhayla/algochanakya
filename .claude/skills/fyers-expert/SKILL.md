@@ -3,16 +3,17 @@ name: fyers-expert
 description: Use when implementing Fyers adapter, debugging Fyers API errors, understanding Fyers dual WebSocket system, or auditing code calling Fyers API. Fyers API expert for AlgoChanakya.
 metadata:
   author: AlgoChanakya
-  version: "1.0"
+  version: "2.0"
+  last_verified: "2026-02-25"
 ---
 
 # Fyers API Expert
 
-Fyers offers a **FREE** API with a unique **dual WebSocket system** (FyersDataSocket for market data + FyersOrderSocket for order updates), OAuth authentication with a distinctive `appid:accesstoken` header format. **API v3.0.0** (released Feb 3, 2026) supports up to **5,000 symbols** per WebSocket connection (massive upgrade from 200) and includes a dedicated Position Socket for real-time P&L updates. It's a planned broker for AlgoChanakya. Key differentiator: two separate WebSocket connections and exchange-prefixed symbol format (`NSE:SYMBOL`).
+Fyers offers a **FREE** API with a unique **dual WebSocket system** (FyersDataSocket for market data + FyersOrderSocket for order updates), OAuth authentication with a distinctive `appid:accesstoken` header format. **API v3.0.0** (released Feb 3, 2026) supports up to **5,000 symbols** per WebSocket connection (massive upgrade from 200) and includes a dedicated Position Socket for real-time P&L updates. All 3 AlgoChanakya adapters (market data, order execution, ticker/WebSocket) are **fully implemented**. Key differentiator: two separate WebSocket connections and exchange-prefixed symbol format (`NSE:SYMBOL`).
 
 ## When to Use
 
-- Implementing the Fyers market data or order execution adapter
+- Implementing or debugging the Fyers market data, order, or ticker adapter
 - Debugging Fyers API errors or OAuth flow issues
 - Understanding Fyers symbol format (`NSE:NIFTY2522725000CE`)
 - Working with dual WebSocket system (Data + Order sockets)
@@ -149,7 +150,6 @@ Fyers uses **two independent WebSocket connections** - unique among Indian broke
 from fyers_apiv3.FyersWebsocket import data_ws
 
 def on_message(message):
-    # message is dict with price data
     print(f"LTP: {message['ltp']}")
 
 data_ws = data_ws.FyersDataSocket(
@@ -217,8 +217,6 @@ Fyers returns all prices in RUPEES. No paise conversion needed.
 Fyers offers **built-in virtual trading** mode:
 
 ```python
-# Enable virtual trading by using virtual trading API endpoint
-# Or set paper_trade=True in SDK configuration
 fyers = fyersModel.FyersModel(
     client_id=app_id,
     token=access_token,
@@ -228,17 +226,30 @@ fyers = fyersModel.FyersModel(
 # Virtual trading uses same API, different endpoint prefix
 ```
 
-## AlgoChanakya Integration
-
-### Implementation Status
+## AlgoChanakya Implementation Status
 
 | Component | Status | File |
 |-----------|--------|------|
-| Market Data Adapter | **🚧 Planned** | Not yet created |
-| Order Execution Adapter | **🚧 Planned** | Not yet created |
-| Credentials Dataclass | **✅ Defined** | `market_data_base.py` (`FyersMarketDataCredentials`) |
-| Enum Registration | **✅ Defined** | `MarketDataBrokerType.FYERS` |
-| Rate Limiter Config | **✅ Set** | `rate_limiter.py`: `"fyers": 10` |
+| Market Data Adapter | **✅ Implemented** | `backend/app/services/brokers/market_data/fyers_adapter.py` (695 lines) |
+| Order Execution Adapter | **✅ Implemented** | `backend/app/services/brokers/fyers_order_adapter.py` (467 lines) |
+| Ticker (WebSocket) Adapter | **✅ Implemented** | `backend/app/services/brokers/market_data/ticker/adapters/fyers.py` (410 lines) |
+| Auth Route | **✅ Implemented** | `backend/app/api/routes/fyers_auth.py` (201 lines) |
+| Frontend Settings | **✅ Implemented** | `frontend/src/components/settings/FyersSettings.vue` |
+| Tests | **✅ Complete** | `test_fyers_market_data_adapter.py` (706 lines), `test_fyers_ticker_adapter.py` (718 lines) |
+
+### Current Integration Pattern
+
+```python
+# Market data via adapter
+from app.services.brokers.market_data.factory import get_market_data_adapter
+adapter = get_market_data_adapter("fyers", credentials, db)
+quote = await adapter.get_quote(["NIFTY2522725000CE"])  # Returns UnifiedQuote
+
+# Order execution via adapter
+from app.services.brokers.fyers_order_adapter import FyersOrderAdapter
+adapter = FyersOrderAdapter(app_id=app_id, access_token=token)
+order_id = await adapter.place_order(order_params)
+```
 
 ## Common Gotchas
 
@@ -250,19 +261,19 @@ fyers = fyersModel.FyersModel(
 
 4. **Dual WebSocket** - Must manage TWO WebSocket connections for full functionality. Data and order sockets are independent.
 
-4. **Index symbol suffix** - Indices need `-INDEX` suffix: `NSE:NIFTY50-INDEX`, not `NSE:NIFTY50`.
+5. **Index symbol suffix** - Indices need `-INDEX` suffix: `NSE:NIFTY50-INDEX`, not `NSE:NIFTY50`.
 
-5. **Equity suffix** - Equities need `-EQ` suffix: `NSE:RELIANCE-EQ`, not `NSE:RELIANCE`.
+6. **Equity suffix** - Equities need `-EQ` suffix: `NSE:RELIANCE-EQ`, not `NSE:RELIANCE`.
 
-6. **Historical rate limit** - Only 1 req/sec for historical data. Strictest among all endpoints.
+7. **Historical rate limit** - Only 1 req/sec for historical data. Strictest among all endpoints.
 
-7. **Virtual trading** - Same API, different mode. Don't accidentally use virtual mode in production.
+8. **Virtual trading** - Same API, different mode. Don't accidentally use virtual mode in production.
 
-8. **Token expiry at midnight** - Unlike other brokers (~6 AM), Fyers tokens expire at midnight IST.
+9. **Token expiry at midnight** - Unlike other brokers (~6 AM), Fyers tokens expire at midnight IST.
 
-9. **appIdHash for auth** - Token exchange requires SHA-256 hash of `app_id:app_secret`. Don't confuse with access token.
+10. **appIdHash for auth** - Token exchange requires SHA-256 hash of `app_id:app_secret`. Don't confuse with access token.
 
-10. **SDK version** - Use `fyers-apiv3` (v3), not older `fyers-apiv2`. V2 is deprecated.
+11. **SDK version** - Use `fyers-apiv3` (v3), not older `fyers-apiv2`. V2 is deprecated.
 
 ## Error Codes Quick Reference
 
@@ -279,8 +290,6 @@ See [error-codes.md](./references/error-codes.md) for complete error catalog.
 
 ## Related Skills
 
-For cross-broker work, consult these complementary skills:
-
 | Skill | When to Use |
 |-------|-------------|
 | `/upstox-expert` | Both free modern APIs — compare WS approaches (Fyers: JSON dual-WS, Upstox: Protobuf) |
@@ -290,6 +299,32 @@ For cross-broker work, consult these complementary skills:
 | `/docs-maintainer` | After adapter changes — update feature registry, comparison matrix, CHANGELOG |
 
 **Cross-Broker Comparison:** See [comparison-matrix.md](../broker-shared/comparison-matrix.md) for pricing, rate limits, WebSocket capabilities, and symbol format differences across all 6 brokers.
+
+## Maintenance & Auto-Improvement
+
+### Freshness Tracking
+
+| Reference File | Last Verified | Check Frequency |
+|---|---|---|
+| skill.md | 2026-02-25 | Quarterly |
+| endpoints-catalog.md | 2026-02-25 | Quarterly |
+| auth-flow.md | 2026-02-25 | Quarterly |
+| error-codes.md | 2026-02-25 | Quarterly |
+| websocket-protocol.md | 2026-02-25 | Quarterly |
+| symbol-format.md | 2026-02-25 | Quarterly |
+
+### Auto-Update Trigger Rules
+
+1. **Error-driven update**: If this skill is invoked 3+ times with FAILED/UNKNOWN outcome for the same error_type (tracked via `post_skill_learning.py` hook → `knowledge.db`), `reflect deep` mode should propose a skill update.
+2. **Staleness alert**: If `last_verified` exceeds 90 days, check https://myapi.fyers.in/docs/ for API changes.
+3. **Quarterly review**: Next scheduled review: **May 2026**. Watch for v3.x updates.
+
+### Version Changelog
+
+| Version | Date | Changes |
+|---|---|---|
+| 2.0 | 2026-02-25 | Implementation status corrected: all 3 adapters fully Implemented (was Planned), auth route + frontend + tests added to status table, maintenance section added |
+| 1.0 | 2026-02-16 | Initial creation |
 
 ## References
 

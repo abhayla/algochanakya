@@ -4,12 +4,13 @@ description: SmartAPI (Angel One) API expert. Consult for authentication, endpoi
   error codes, rate limits, symbol format, and adapter guidance for AlgoChanakya.
 metadata:
   author: AlgoChanakya
-  version: "1.0"
+  version: "2.0"
+  last_verified: "2026-02-25"
 ---
 
 # SmartAPI (Angel One) API Expert
 
-Angel One's SmartAPI is the **default market data provider** for AlgoChanakya, offering FREE real-time WebSocket prices, REST quotes, and historical OHLCV data. It uses auto-TOTP authentication (no manual TOTP entry). SmartAPI is also planned as a future order execution broker. AlgoChanakya currently uses SmartAPI for all market data and Zerodha Kite Connect for order execution, achieving a ₹0/month total API cost.
+Angel One's SmartAPI is the **default market data provider** for AlgoChanakya, offering FREE real-time WebSocket prices, REST quotes, and historical OHLCV data. It uses auto-TOTP authentication (no manual TOTP entry). An `AngelOneAdapter` for order execution is also now implemented. AlgoChanakya currently uses SmartAPI for all market data and Zerodha Kite Connect for order execution, achieving a ₹0/month total API cost. All AlgoChanakya adapters for SmartAPI are **fully implemented**.
 
 ## When to Use
 
@@ -131,7 +132,7 @@ SmartAPI uses a concatenated symbol format with instrument tokens from the instr
 - **URL:** `https://margincalculator.angelbroking.com/OpenAPI_File/files/OpenAPIScripMaster.json`
 - **Size:** ~50MB JSON file
 - **Cache Duration:** 12 hours in AlgoChanakya
-- **Format:** JSON array of objects with `token`, `symbol`, `name`, `expiry`, `strike`, `lotsize`, `instrumenttype`, `exch_seg`, `tick_size`
+- **Format:** JSON array with `token`, `symbol`, `name`, `expiry`, `strike`, `lotsize`, `instrumenttype`, `exch_seg`, `tick_size`
 
 ### Canonical Conversion (SmartAPI ↔ Kite)
 
@@ -239,22 +240,22 @@ ltp = raw_data.get('ltp', 0)  # BUG: still in paise!
 
 **Codebase Reference:** See `smartapi_adapter.py` lines 319-326 (historical) and lines 522-526 (quotes) for paise→rupees conversion.
 
-## AlgoChanakya Integration
-
-### Implementation Status
+## AlgoChanakya Implementation Status
 
 | Component | Status | File |
 |-----------|--------|------|
-| Market Data Adapter | **✅ Complete** | `backend/app/services/brokers/market_data/smartapi_adapter.py` |
-| Order Execution Adapter | **🚧 Planned** | Not yet created |
-| WebSocket Ticker | **✅ Legacy** | `backend/app/services/legacy/smartapi_ticker.py` |
-| Auth Service | **✅ Complete** | `backend/app/services/legacy/smartapi_auth.py` |
-| Historical Data | **✅ Complete** | `backend/app/services/legacy/smartapi_historical.py` |
-| Instrument Lookup | **✅ Complete** | `backend/app/services/legacy/smartapi_instruments.py` |
-| REST Market Data | **✅ Complete** | `backend/app/services/legacy/smartapi_market_data.py` |
-| Symbol Converter | **✅ Complete** | `backend/app/services/brokers/market_data/symbol_converter.py` |
-| Token Manager | **✅ Complete** | `backend/app/services/brokers/market_data/token_manager.py` |
-| Rate Limiter | **✅ Complete** | `backend/app/services/brokers/market_data/rate_limiter.py` |
+| Market Data Adapter | **✅ Implemented** | `backend/app/services/brokers/market_data/smartapi_adapter.py` (584 lines) |
+| Order Execution Adapter | **✅ Implemented** | `backend/app/services/brokers/angelone_adapter.py` (428 lines) |
+| Ticker (WebSocket) Adapter | **✅ Implemented** | `backend/app/services/brokers/market_data/ticker/adapters/smartapi.py` (353 lines) |
+| Auth Service | **✅ Implemented** | `backend/app/services/legacy/smartapi_auth.py` |
+| Historical Data | **✅ Implemented** | `backend/app/services/legacy/smartapi_historical.py` |
+| Instrument Lookup | **✅ Implemented** | `backend/app/services/legacy/smartapi_instruments.py` |
+| REST Market Data | **✅ Implemented** | `backend/app/services/legacy/smartapi_market_data.py` |
+| Auth Route | **✅ Implemented** | `backend/app/api/routes/smartapi.py` (410 lines) |
+| Frontend Settings | **✅ Implemented** | `frontend/src/components/settings/SmartAPISettings.vue` |
+| Symbol Converter | **✅ Implemented** | `backend/app/services/brokers/market_data/symbol_converter.py` |
+| Token Manager | **✅ Implemented** | `backend/app/services/brokers/market_data/token_manager.py` |
+| Tests | **✅ Complete** | `test_smartapi_ticker_adapter.py` (510 lines) |
 
 ### Credential Storage
 
@@ -322,17 +323,41 @@ See [error-codes.md](./references/error-codes.md) for complete error code catalo
 
 ## Related Skills
 
-For cross-broker work, consult these complementary skills:
-
 | Skill | When to Use |
 |-------|-------------|
 | `/kite-expert` | SmartAPI's default pair for order execution — compare auth flows, symbol formats, canonical conversion |
-| `/upstox-expert` | Free data alternative to SmartAPI — compare Protobuf vs binary WS, rate limits (25/s vs 1/s) |
+| `/upstox-expert` | Free data alternative to SmartAPI — compare Protobuf vs binary WS, rate limits (50/s vs 1/s) |
 | `/trading-constants-manager` | When adding SmartAPI instrument tokens or lot sizes to centralized constants |
 | `/auto-verify` | After any SmartAPI adapter change — run verification immediately |
 | `/docs-maintainer` | After adapter changes — update feature registry, CHANGELOG, broker abstraction docs |
 
 **Cross-Broker Comparison:** See [comparison-matrix.md](../broker-shared/comparison-matrix.md) for pricing, rate limits, WebSocket capabilities, and symbol format differences across all 6 brokers.
+
+## Maintenance & Auto-Improvement
+
+### Freshness Tracking
+
+| Reference File | Last Verified | Check Frequency |
+|---|---|---|
+| skill.md | 2026-02-25 | Quarterly |
+| endpoints-catalog.md | 2026-02-25 | Quarterly |
+| auth-flow.md | 2026-02-25 | Quarterly |
+| error-codes.md | 2026-02-25 | Quarterly |
+| websocket-protocol.md | 2026-02-25 | Quarterly |
+| symbol-format.md | 2026-02-25 | Quarterly |
+
+### Auto-Update Trigger Rules
+
+1. **Error-driven update**: If this skill is invoked 3+ times with FAILED/UNKNOWN outcome for the same error_type (tracked via `post_skill_learning.py` hook → `knowledge.db`), `reflect deep` mode should propose a skill update.
+2. **Staleness alert**: If `last_verified` exceeds 90 days, check https://smartapi.angelbroking.com/docs/ for API changes.
+3. **Quarterly review**: Next scheduled review: **May 2026**.
+
+### Version Changelog
+
+| Version | Date | Changes |
+|---|---|---|
+| 2.0 | 2026-02-25 | Implementation status corrected (all adapters Implemented), AngelOneAdapter added, ticker adapter row added, maintenance section added |
+| 1.0 | 2026-02-16 | Initial creation |
 
 ## References
 

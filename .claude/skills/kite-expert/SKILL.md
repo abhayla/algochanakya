@@ -3,12 +3,13 @@ name: kite-expert
 description: Use when implementing Kite adapter, debugging Kite API errors, understanding Kite symbol format (canonical), or auditing code calling Kite API. Kite Connect (Zerodha) API expert for AlgoChanakya.
 metadata:
   author: AlgoChanakya
-  version: "1.0"
+  version: "2.0"
+  last_verified: "2026-02-25"
 ---
 
 # Kite Connect (Zerodha) API Expert
 
-Zerodha's Kite Connect is used for **order execution** in AlgoChanakya. It provides a well-documented REST API and binary WebSocket (KiteTicker) for market data. Kite Connect costs ₹500/month for third-party apps (includes live market data + historical data since Feb 2025). Zerodha's Personal API is free (since March 2025) but provides order execution only—no market data access. AlgoChanakya uses Kite for orders and SmartAPI for market data (₹0/month total). **Kite symbol format IS the canonical format** used throughout AlgoChanakya - no symbol conversion needed.
+Zerodha's Kite Connect is used for **order execution** in AlgoChanakya. It provides a well-documented REST API and binary WebSocket (KiteTicker) for market data. Kite Connect costs ₹500/month for third-party apps (includes live market data + historical data since Feb 2025). Zerodha's Personal API is free (since March 2025) but provides order execution only—no market data access. AlgoChanakya uses Kite for orders and SmartAPI for market data (₹0/month total). **Kite symbol format IS the canonical format** used throughout AlgoChanakya - no symbol conversion needed. All AlgoChanakya adapters for Kite are **fully implemented**.
 
 ## When to Use
 
@@ -202,18 +203,18 @@ See [websocket-protocol.md](./references/websocket-protocol.md) for byte offsets
 
 **Note:** Unlike SmartAPI where REST historical returns paise, Kite REST always returns rupees. Only WebSocket uses paise.
 
-## AlgoChanakya Integration
-
-### Implementation Status
+## AlgoChanakya Implementation Status
 
 | Component | Status | File |
 |-----------|--------|------|
-| Order Execution Adapter | **✅ Complete** | `backend/app/services/brokers/kite_adapter.py` |
-| Market Data Adapter | **✅ Complete** | `backend/app/services/brokers/market_data/kite_adapter.py` |
-| WebSocket Ticker | **✅ Legacy** | `backend/app/services/legacy/kite_ticker.py` |
+| Order Execution Adapter | **✅ Implemented** | `backend/app/services/brokers/kite_adapter.py` |
+| Market Data Adapter | **✅ Implemented** | `backend/app/services/brokers/market_data/kite_adapter.py` (422 lines) |
+| Ticker (WebSocket) Adapter | **✅ Implemented** | `backend/app/services/brokers/market_data/ticker/adapters/kite.py` (313 lines) |
 | Order Service | **✅ Legacy** | `backend/app/services/legacy/kite_orders.py` |
-| OAuth Callback | **✅ Complete** | `backend/app/api/routes/auth.py` |
-| Factory Registration | **✅ Complete** | `backend/app/services/brokers/factory.py` |
+| OAuth Callback | **✅ Implemented** | `backend/app/api/routes/auth.py` |
+| Frontend Settings | **✅ Implemented** | `frontend/src/components/settings/KiteSettings.vue` |
+| Factory Registration | **✅ Implemented** | `backend/app/services/brokers/factory.py` |
+| Tests | **✅ Complete** | `test_kite_ticker_adapter.py` (598 lines) |
 
 ### Key Integration Points
 
@@ -249,21 +250,21 @@ quote = await data_adapter.get_quote(["NIFTY2522725000CE"])
 
 4. **Symbol format IS canonical** - Don't convert Kite symbols. They ARE the canonical format. `SymbolConverter.to_canonical(symbol, "kite")` is identity.
 
-3. **Auth header format** - `token api_key:access_token` (not `Bearer`). Common mistake: using Bearer prefix.
+5. **Auth header format** - `token api_key:access_token` (not `Bearer`). Common mistake: using Bearer prefix.
 
-4. **Checksum for session** - `POST /session/token` requires SHA-256 of `api_key + request_token + api_secret`. Missing or wrong checksum = silent failure.
+6. **Checksum for session** - `POST /session/token` requires SHA-256 of `api_key + request_token + api_secret`. Missing or wrong checksum = silent failure.
 
-5. **Instrument CSV is 80MB** - Download once, cache for 24h. Don't download on every request.
+7. **Instrument CSV is 80MB** - Download once, cache for 24h. Don't download on every request.
 
-6. **WebSocket prices in paise** - int32 paise. REST prices in rupees (float). Don't mix them.
+8. **WebSocket prices in paise** - int32 paise. REST prices in rupees (float). Don't mix them.
 
-7. **Order variety in URL** - `/orders/regular`, `/orders/amo`, `/orders/co`, `/orders/iceberg`. Variety is part of the URL, not the body.
+9. **Order variety in URL** - `/orders/regular`, `/orders/amo`, `/orders/co`, `/orders/iceberg`. Variety is part of the URL, not the body.
 
-8. **Exchange prefix in quotes** - Quote endpoint needs `i=NFO:NIFTY2522725000CE` format. Missing exchange prefix = 400 error.
+10. **Exchange prefix in quotes** - Quote endpoint needs `i=NFO:NIFTY2522725000CE` format. Missing exchange prefix = 400 error.
 
-9. **Rate limit is 3/sec** - Moderate. Use WebSocket for live data, REST only for on-demand queries.
+11. **Rate limit is 3/sec** - Moderate. Use WebSocket for live data, REST only for on-demand queries.
 
-10. **₹500/month subscription** - Kite Connect requires a paid subscription for third-party apps. Personal Kite API is free but limited.
+12. **₹500/month subscription** - Kite Connect requires a paid subscription for third-party apps. Personal Kite API is free but limited.
 
 ## Error Codes Quick Reference
 
@@ -280,17 +281,41 @@ See [error-codes.md](./references/error-codes.md) for complete error catalog.
 
 ## Related Skills
 
-For cross-broker work, consult these complementary skills:
-
 | Skill | When to Use |
 |-------|-------------|
 | `/smartapi-expert` | Kite's default pair for market data — compare paise handling, auto-TOTP vs OAuth, WS binary formats |
-| `/upstox-expert` | Next adapter to implement — compare Protobuf vs binary WS, extended token vs OAuth |
+| `/upstox-expert` | Both fully implemented — compare Protobuf vs binary WS, extended token vs OAuth |
 | `/trading-constants-manager` | Kite symbol format IS canonical — verify constants match when adding new instruments |
 | `/auto-verify` | After any Kite adapter change — run verification immediately |
 | `/docs-maintainer` | After adapter changes — update feature registry, CHANGELOG, broker abstraction docs |
 
 **Cross-Broker Comparison:** See [comparison-matrix.md](../broker-shared/comparison-matrix.md) for pricing, rate limits, WebSocket capabilities, and symbol format differences across all 6 brokers.
+
+## Maintenance & Auto-Improvement
+
+### Freshness Tracking
+
+| Reference File | Last Verified | Check Frequency |
+|---|---|---|
+| skill.md | 2026-02-25 | Quarterly |
+| endpoints-catalog.md | 2026-02-25 | Quarterly |
+| auth-flow.md | 2026-02-25 | Quarterly |
+| error-codes.md | 2026-02-25 | Quarterly |
+| websocket-protocol.md | 2026-02-25 | Quarterly |
+| symbol-format.md | 2026-02-25 | Quarterly |
+
+### Auto-Update Trigger Rules
+
+1. **Error-driven update**: If this skill is invoked 3+ times with FAILED/UNKNOWN outcome for the same error_type (tracked via `post_skill_learning.py` hook → `knowledge.db`), `reflect deep` mode should propose a skill update.
+2. **Staleness alert**: If `last_verified` exceeds 90 days, check https://kite.trade/docs/connect/v3/ for API changes.
+3. **Quarterly review**: Next scheduled review: **May 2026**.
+
+### Version Changelog
+
+| Version | Date | Changes |
+|---|---|---|
+| 2.0 | 2026-02-25 | Implementation status corrected (ticker adapter added, all adapters Implemented), updated Related Skills (removed outdated "next to implement" note), maintenance section added |
+| 1.0 | 2026-02-16 | Initial creation |
 
 ## References
 

@@ -3,16 +3,17 @@ name: dhan-expert
 description: Use when implementing Dhan adapter, debugging Dhan API errors, understanding Dhan security_id format, or auditing code calling Dhan API. Dhan API expert for AlgoChanakya.
 metadata:
   author: AlgoChanakya
-  version: "1.0"
+  version: "2.0"
+  last_verified: "2026-02-25"
 ---
 
 # Dhan API Expert
 
-Dhan offers a modern REST API with unique features: **200-level market depth** (unique in India), **Little Endian binary WebSocket**, and **security_id-based** instrument identification (numeric IDs only). Dhan has a **two-tier pricing model**: Trading APIs are FREE for all users, but Data APIs (market data WebSocket) require either executing 25 F&O trades/month OR paying ₹499/month subscription. It's a planned broker for AlgoChanakya. Key differentiator: deepest market depth data and multi-tier rate limiting system.
+Dhan offers a modern REST API with unique features: **200-level market depth** (unique in India), **Little Endian binary WebSocket**, and **security_id-based** instrument identification (numeric IDs only). Dhan has a **two-tier pricing model**: Trading APIs are FREE for all users, but Data APIs (market data WebSocket) require either executing 25 F&O trades/month OR paying ₹499/month subscription. All 3 AlgoChanakya adapters (market data, order execution, ticker/WebSocket) are **fully implemented**. Key differentiator: deepest market depth data and multi-tier rate limiting system.
 
 ## When to Use
 
-- Implementing the Dhan market data or order execution adapter
+- Implementing or debugging the Dhan market data, order, or ticker adapter
 - Debugging Dhan API errors or authentication issues
 - Understanding Dhan's security_id format (numeric-only, no string symbols)
 - Working with Little Endian binary WebSocket (unique `struct.unpack('<...')`)
@@ -189,17 +190,30 @@ See [websocket-protocol.md](./references/websocket-protocol.md) for byte offsets
 
 Dhan returns all prices in RUPEES. No paise conversion needed.
 
-## AlgoChanakya Integration
-
-### Implementation Status
+## AlgoChanakya Implementation Status
 
 | Component | Status | File |
 |-----------|--------|------|
-| Market Data Adapter | **🚧 Planned** | Not yet created |
-| Order Execution Adapter | **🚧 Planned** | Not yet created |
-| Credentials Dataclass | **✅ Defined** | `market_data_base.py` (`DhanMarketDataCredentials`) |
-| Enum Registration | **✅ Defined** | `MarketDataBrokerType.DHAN` |
-| Rate Limiter Config | **✅ Set** | `rate_limiter.py`: `"dhan": 10` |
+| Market Data Adapter | **✅ Implemented** | `backend/app/services/brokers/market_data/dhan_adapter.py` (813 lines) |
+| Order Execution Adapter | **✅ Implemented** | `backend/app/services/brokers/dhan_order_adapter.py` (446 lines) |
+| Ticker (WebSocket) Adapter | **✅ Implemented** | `backend/app/services/brokers/market_data/ticker/adapters/dhan.py` (575 lines) |
+| Auth Route | **✅ Implemented** | `backend/app/api/routes/dhan_auth.py` (173 lines) |
+| Frontend Settings | **✅ Implemented** | `frontend/src/components/settings/DhanSettings.vue` |
+| Tests | **✅ Complete** | `test_dhan_market_data_adapter.py` (743 lines), `test_dhan_ticker_adapter.py` (692 lines) |
+
+### Current Integration Pattern
+
+```python
+# Market data via adapter
+from app.services.brokers.market_data.factory import get_market_data_adapter
+adapter = get_market_data_adapter("dhan", credentials, db)
+quote = await adapter.get_quote(["NIFTY2522725000CE"])  # Returns UnifiedQuote
+
+# Order execution via adapter
+from app.services.brokers.dhan_order_adapter import DhanOrderAdapter
+adapter = DhanOrderAdapter(access_token=token, client_id=client_id)
+order_id = await adapter.place_order(order_params)
+```
 
 ## Common Gotchas
 
@@ -213,13 +227,13 @@ Dhan returns all prices in RUPEES. No paise conversion needed.
 
 5. **200-Depth limit** - Only 1 instrument per connection. Need 5 connections for 5 instruments.
 
-6. **Multi-tier order limits** - Check all 4 limits (sec/min/hour/day). Can hit daily limit even within rate limit.
+6. **Multi-tier order limits** - Check all 4 limits (sec/min/hour/day). Can hit daily limit even within per-second rate limit.
 
 7. **Data API unlock requirement** - Must execute 25 F&O trades monthly to unlock free data access, otherwise ₹499/month subscription required.
 
-7. **Instrument CSV download** - Must download from Dhan website manually or via undocumented URL.
+8. **Instrument CSV download** - Must download from Dhan website manually or via undocumented URL.
 
-8. **Exchange segment format** - Uses `NSE_FNO` not `NFO`. Different from Kite/SmartAPI naming.
+9. **Exchange segment format** - Uses `NSE_FNO` not `NFO`. Different from Kite/SmartAPI naming.
 
 ## Error Codes Quick Reference
 
@@ -235,17 +249,41 @@ See [error-codes.md](./references/error-codes.md) for complete error catalog.
 
 ## Related Skills
 
-For cross-broker work, consult these complementary skills:
-
 | Skill | When to Use |
 |-------|-------------|
-| `/upstox-expert` | Both modern free APIs — compare unique WS features (Dhan: 200-depth, Upstox: Greeks) |
+| `/upstox-expert` | Both modern free-tier APIs — compare unique WS features (Dhan: 200-depth, Upstox: Greeks) |
 | `/smartapi-expert` | Compare auth approaches — Dhan static token vs SmartAPI auto-TOTP |
 | `/fyers-expert` | Compare unique features — Fyers has dual WS + order updates, Dhan has deep depth |
 | `/auto-verify` | After any Dhan adapter change — run verification immediately |
 | `/docs-maintainer` | After adapter changes — update feature registry, comparison matrix, CHANGELOG |
 
 **Cross-Broker Comparison:** See [comparison-matrix.md](../broker-shared/comparison-matrix.md) for pricing, rate limits, WebSocket capabilities, and symbol format differences across all 6 brokers.
+
+## Maintenance & Auto-Improvement
+
+### Freshness Tracking
+
+| Reference File | Last Verified | Check Frequency |
+|---|---|---|
+| skill.md | 2026-02-25 | Quarterly |
+| endpoints-catalog.md | 2026-02-25 | Quarterly |
+| auth-flow.md | 2026-02-25 | Quarterly |
+| error-codes.md | 2026-02-25 | Quarterly |
+| websocket-protocol.md | 2026-02-25 | Quarterly |
+| symbol-format.md | 2026-02-25 | Quarterly |
+
+### Auto-Update Trigger Rules
+
+1. **Error-driven update**: If this skill is invoked 3+ times with FAILED/UNKNOWN outcome for the same error_type (tracked via `post_skill_learning.py` hook → `knowledge.db`), `reflect deep` mode should propose a skill update.
+2. **Staleness alert**: If `last_verified` exceeds 90 days, check https://dhanhq.co/docs/v2/ for API changes.
+3. **Quarterly review**: Next scheduled review: **May 2026**.
+
+### Version Changelog
+
+| Version | Date | Changes |
+|---|---|---|
+| 2.0 | 2026-02-25 | Implementation status corrected: all 3 adapters fully Implemented (was Planned), auth route + frontend + tests added to status table, maintenance section added |
+| 1.0 | 2026-02-16 | Initial creation |
 
 ## References
 
