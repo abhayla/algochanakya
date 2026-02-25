@@ -254,8 +254,9 @@ from app.services.brokers.market_data.rate_limiter import RateLimiter
 
 # Automatically enforced by adapters - no manual intervention needed
 # SmartAPI: 1 request per second
-# Kite: 3 requests per second
-# Upstox/Dhan/Fyers: 10 requests per second
+# Kite: 10 requests per second
+# Upstox: 50 requests per second
+# Dhan/Fyers/Paytm: 10 requests per second
 
 # Rate limiter is singleton per broker, handles concurrent requests automatically
 ```

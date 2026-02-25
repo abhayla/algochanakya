@@ -5,8 +5,8 @@ Implements per-broker rate limiting to avoid exceeding API limits.
 
 Rate Limits (per broker):
 - SmartAPI: 1 request/second (WebSocket: unlimited)
-- Kite: 3 requests/second (10/second with higher plan)
-- Upstox: 25 requests/second
+- Kite: 10 requests/second
+- Upstox: 50 requests/second
 - Dhan: 10 requests/second
 - Fyers: 1 request/second
 - Paytm: 10 requests/second
@@ -33,8 +33,8 @@ class RateLimiter:
     # Rate limits per broker (requests per second)
     BROKER_LIMITS = {
         "smartapi": 1,   # 1 req/sec
-        "kite": 3,       # 3 req/sec (default tier)
-        "upstox": 25,    # 25 req/sec
+        "kite": 10,      # 10 req/sec
+        "upstox": 50,    # 50 req/sec
         "dhan": 10,      # 10 req/sec
         "fyers": 10,     # 10 req/sec
         "paytm": 10,     # 10 req/sec
