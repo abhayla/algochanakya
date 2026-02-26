@@ -163,6 +163,10 @@ auto_detect_patterns:
     feature: broker-abstraction
   - pattern: "backend/app/services/brokers/market_data/*.py"
     feature: broker-abstraction
+  - pattern: "backend/tests/live/**"
+    feature: broker-abstraction
+  - pattern: "backend/tests/factories/**"
+    feature: broker-abstraction
   - pattern: "frontend/src/stores/aiConfig.js"
     feature: ai-configuration
 
@@ -392,6 +396,43 @@ features:
       - "docs/architecture/multi-broker-ticker-implementation.md"
       - "docs/api/multi-broker-ticker-api.md"
 
+  broker-abstraction:
+    name: "Broker Abstraction (Multi-Broker)"
+    docs_folder: "docs/architecture/"
+    description: "Broker-agnostic adapter layer for market data and order execution across all 6 brokers"
+    backend_files:
+      - "backend/app/services/brokers/base.py"
+      - "backend/app/services/brokers/factory.py"
+      - "backend/app/services/brokers/kite_adapter.py"
+      - "backend/app/services/brokers/market_data/**"
+      - "backend/app/models/smartapi_credentials.py"
+      - "backend/app/models/broker_instrument_tokens.py"
+    tests:
+      - "backend/tests/live/**"
+      - "backend/tests/backend/brokers/**"
+      - "tests/e2e/specs/broker-abstraction/**"
+      - "tests/e2e/specs/live/**"
+    additional_docs:
+      - "docs/architecture/broker-abstraction.md"
+      - "docs/decisions/002-broker-abstraction.md"
+
+  test-infrastructure:
+    name: "Test Infrastructure & Helpers"
+    description: "Shared test factories, fixtures, and helper utilities across all three test layers"
+    backend_files:
+      - "backend/tests/factories/ticks.py"
+      - "backend/tests/factories/strategies.py"
+      - "backend/tests/factories/broker.py"
+      - "backend/tests/live/constants.py"
+      - "backend/tests/live/conftest.py"
+    frontend_files:
+      - "frontend/tests/helpers/test-setup.js"
+      - "frontend/tests/helpers/factories.js"
+    e2e_files:
+      - "tests/e2e/helpers/assertions.js"
+    docs:
+      - "docs/testing/README.md"
+
   multi-broker-ticker:
     name: "Multi-Broker Ticker System"
     docs_folder: "docs/features/websocket/"
@@ -575,10 +616,11 @@ unassigned: []
 # METADATA
 # ============================================================================
 
-version: "1.3.0"
-last_updated: "2026-02-13"
+version: "1.4.0"
+last_updated: "2026-02-26"
 maintained_by: "docs-maintainer skill"
 changelog:
+  - "1.4.0 (2026-02-26): Added broker-abstraction feature entry, test-infrastructure feature, live test auto-detect patterns, factory auto-detect patterns"
   - "1.3.0 (2026-02-13): Fixed stale paths (legacy/ prefix), added multi-broker-ticker feature, added ADR-003 references, added market data adapter patterns"
   - "1.2.0 (2026-01-14): Added broker-abstraction and documentation sections"
   - "1.1.0 (2025-12-24): Initial comprehensive registry"

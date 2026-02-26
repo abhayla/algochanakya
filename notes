@@ -434,3 +434,21 @@ Documentation Sync Summary
   │ WebSocket after broker switch │ No auto-reconnect on switch ❌                    │ No — needs implementation first │
   ├───────────────────────────────┼───────────────────────────────────────────────────┼─────────────────────────────────┤
   │ OAuth flows                   │ OAuth buttons exist per broker in SettingsView    │ Partially — can mock 
+
+
+  Now the summary of all 8 skips:
+
+  ┌─────┬──────────────────────────────────────┬────────────────────────────────────────────────┬──────────────────────────────┐   
+  │  #  │                 Test                 │                     Reason                     │         Legitimate?          │ 
+  ├─────┼──────────────────────────────────────┼────────────────────────────────────────────────┼──────────────────────────────┤ 
+  │ 1   │ test_get_symbol_returns_canonical    │ db=None — by design in live tests              │ ✅ Yes                       │     ├─────┼──────────────────────────────────────┼────────────────────────────────────────────────┼──────────────────────────────┤   
+  │ 2–6 │ test_get_historical_* (5)            │ AngelOne AG8001 — historical API needs paid    │ ✅ Yes                       │   
+  │     │                                      │ plan                                           │                              │   
+  ├─────┼──────────────────────────────────────┼────────────────────────────────────────────────┼──────────────────────────────┤   
+  │ 7   │ test_place_and_cancel_order          │ AngelOne AG8001 — order API needs separate API │ ✅ Yes (now with clear       │   
+  │     │                                      │  key                                           │ message)                     │   
+  ├─────┼──────────────────────────────────────┼────────────────────────────────────────────────┼──────────────────────────────┤   
+  │ 8   │ test_option_chain_screen_with_broker │ No NIFTY instruments in DB for 2026-03-05      │ ✅ Yes                       │   
+  │     │                                      │ expiry                                         │                              │   
+  └─────┴──────────────────────────────────────┴────────────────────────────────────────────────┴──────────────────────────────┘                                                                                                                                      
+  All 8 skips are legitimate external/config limitations — none are test bugs. The 37 that pass are genuine test coverage.

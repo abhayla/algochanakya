@@ -83,17 +83,22 @@ class SmartAPIHistorical:
 
     CACHE_PREFIX = "smartapi:historical:"
 
-    def __init__(self, api_key: str, jwt_token: str, redis_client: Optional[redis.Redis] = None):
+    def __init__(self, api_key: str, jwt_token: str = None, redis_client: Optional[redis.Redis] = None):
         """
         Initialize historical data service.
 
         Args:
-            api_key: AngelOne API key
-            jwt_token: JWT token from authentication
+            api_key: AngelOne API key for historical data (ANGEL_HIST_API_KEY).
+                     The JWT must be generated with THIS key — passing a JWT from
+                     a different key causes AG8001.
+            jwt_token: JWT token. If None, SmartAPIHistorical will perform its own
+                       fresh login using client credentials from settings when first
+                       needed. This is the correct behaviour when api_key differs
+                       from the market-data key that produced the caller's JWT.
             redis_client: Optional Redis client for caching
         """
         self.api_key = api_key
-        self.jwt_token = jwt_token
+        self.jwt_token = jwt_token  # May be None — see _get_api()
         self._api: Optional[SmartConnect] = None
         self._instruments = get_smartapi_instruments()
         self._redis = redis_client
@@ -108,10 +113,39 @@ class SmartAPIHistorical:
         return self._redis
 
     def _get_api(self) -> SmartConnect:
-        """Get or create SmartConnect instance."""
-        if self._api is None:
-            self._api = SmartConnect(api_key=self.api_key)
+        """
+        Get or create SmartConnect instance, authenticated with self.api_key.
+
+        If jwt_token was provided at construction AND it was generated with the
+        same api_key, reuse it (fast path). Otherwise perform a fresh login so
+        the JWT is bound to self.api_key — mixing JWTs across keys causes AG8001.
+        """
+        if self._api is not None:
+            return self._api
+
+        self._api = SmartConnect(api_key=self.api_key)
+
+        if self.jwt_token:
+            # Caller provided a JWT — use it directly (assumes key matches)
             self._api.setAccessToken(self.jwt_token)
+        else:
+            # No JWT provided — do a fresh login with this key's credentials.
+            # Required when ANGEL_HIST_API_KEY differs from ANGEL_API_KEY.
+            import pyotp
+            totp = pyotp.TOTP(settings.ANGEL_TOTP_SECRET).now()
+            session = self._api.generateSession(
+                settings.ANGEL_CLIENT_ID,
+                settings.ANGEL_PIN,
+                totp,
+            )
+            if not session or not session.get('status'):
+                raise SmartAPIHistoricalError(
+                    f"[SmartAPI Historical] Login failed with ANGEL_HIST_API_KEY: "
+                    f"{session.get('message') if session else 'No response'}"
+                )
+            self.jwt_token = session['data']['jwtToken']
+            logger.info("[SmartAPI Historical] Fresh login successful with ANGEL_HIST_API_KEY")
+
         return self._api
 
     def _make_cache_key(
@@ -463,6 +497,10 @@ def create_historical_service(
 
 
 def get_historical_api_key() -> str:
-    """Get the API key for historical data."""
+    """Get the API key for historical data (ANGEL_HIST_API_KEY in backend/.env)."""
     from app.config import settings
-    return settings.ANGEL_API_KEY_HISTORICAL or settings.ANGEL_API_KEY
+    return (
+        settings.ANGEL_HIST_API_KEY          # Primary: dedicated historical API key
+        or settings.ANGEL_API_KEY_HISTORICAL  # Legacy alias (kept for backward compat)
+        or settings.ANGEL_API_KEY             # Fallback: market data key
+    )

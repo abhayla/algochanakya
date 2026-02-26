@@ -32,6 +32,10 @@ class Settings(BaseSettings):
     ANGEL_TRADE_API_KEY: str = ""  # For trading API
     ANGEL_TRADE_API_SECRET: str = ""  # Secret for trading API
     ANGEL_API_KEY_HISTORICAL: str = ""  # Alias for ANGEL_HIST_API_KEY (legacy)
+    # Platform AngelOne account (backs the platform-default market data feed)
+    ANGEL_CLIENT_ID: str = ""
+    ANGEL_PIN: str = ""
+    ANGEL_TOTP_SECRET: str = ""
 
     # Dhan (Platform Fallback #2 — static token, never expires)
     DHAN_CLIENT_ID: str = ""

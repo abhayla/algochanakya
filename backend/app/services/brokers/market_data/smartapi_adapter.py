@@ -74,9 +74,16 @@ class SmartAPIMarketDataAdapter(MarketDataBrokerAdapter):
             api_key=api_key,
             jwt_token=credentials.jwt_token
         )
+        # Historical data uses a separate API key (ANGEL_HIST_API_KEY).
+        # The JWT is BOUND to the key used for login — passing credentials.jwt_token
+        # (which was generated with ANGEL_API_KEY) to an instance using ANGEL_HIST_API_KEY
+        # causes AG8001. When the keys differ, pass jwt_token=None so SmartAPIHistorical
+        # performs its own fresh login with the hist key.
+        hist_api_key = getattr(settings, 'ANGEL_HIST_API_KEY', None) or api_key
+        hist_jwt = credentials.jwt_token if hist_api_key == api_key else None
         self._historical = SmartAPIHistorical(
-            api_key=api_key,
-            jwt_token=credentials.jwt_token
+            api_key=hist_api_key,
+            jwt_token=hist_jwt
         )
         self._instruments = get_smartapi_instruments()  # Use singleton for 12-hour cache
 
@@ -265,6 +272,17 @@ class SmartAPIMarketDataAdapter(MarketDataBrokerAdapter):
     # HISTORICAL DATA
     # ═══════════════════════════════════════════════════════════════════════
 
+    # Map SmartAPI bare index names to SmartAPI token + exchange for historical calls
+    _INDEX_HISTORICAL_MAP = {
+        "NIFTY":            {"exchange": "NSE", "token": "99926000"},
+        "NIFTY 50":         {"exchange": "NSE", "token": "99926000"},
+        "NIFTY BANK":       {"exchange": "NSE", "token": "99926009"},
+        "BANKNIFTY":        {"exchange": "NSE", "token": "99926009"},
+        "NIFTY FIN SERVICE":{"exchange": "NSE", "token": "99926037"},
+        "FINNIFTY":         {"exchange": "NSE", "token": "99926037"},
+        "SENSEX":           {"exchange": "BSE", "token": "99919000"},
+    }
+
     async def get_historical(
         self,
         symbol: str,
@@ -276,7 +294,7 @@ class SmartAPIMarketDataAdapter(MarketDataBrokerAdapter):
         Get historical OHLCV data.
 
         Args:
-            symbol: Canonical symbol (Kite format)
+            symbol: Canonical symbol (Kite format) or bare index name
             from_date: Start date
             to_date: End date
             interval: "1min", "5min", "15min", "hour", "day"
@@ -285,11 +303,6 @@ class SmartAPIMarketDataAdapter(MarketDataBrokerAdapter):
             List of OHLCV candles (prices in RUPEES)
         """
         try:
-            # Convert canonical symbol to SmartAPI token
-            token = await self._token_manager.get_token(symbol)
-            if not token:
-                raise InvalidSymbolError(symbol, "smartapi")
-
             # Map interval to SmartAPI format
             interval_map = {
                 "1min": "ONE_MINUTE",
@@ -300,24 +313,43 @@ class SmartAPIMarketDataAdapter(MarketDataBrokerAdapter):
             }
             smartapi_interval = interval_map.get(interval, "ONE_DAY")
 
+            # Check if symbol is a well-known index (handle without DB lookup)
+            index_info = self._INDEX_HISTORICAL_MAP.get(symbol.upper())
+            if index_info:
+                token = index_info["token"]
+                exchange = index_info["exchange"]
+            else:
+                # Convert canonical symbol to SmartAPI token via token manager
+                token = await self._token_manager.get_token(symbol)
+                if not token:
+                    raise InvalidSymbolError(symbol, "smartapi")
+                token = str(token)
+                exchange = "NFO"  # Non-index symbols are on NFO
+
             # Get historical data from SmartAPI
-            candles_data = await self._historical.get_historical(
-                token=str(token),
-                exchange="NFO",  # TODO: Detect from symbol
-                from_date=from_date,
-                to_date=to_date,
-                interval=smartapi_interval
+            # get_candles() expects date strings in "YYYY-MM-DD HH:MM" format
+            from_date_str = from_date.strftime("%Y-%m-%d 09:15")
+            to_date_str = to_date.strftime("%Y-%m-%d 15:30")
+            candles_data = await self._historical.get_candles(
+                exchange=exchange,
+                symbol_token=token,
+                interval=smartapi_interval,
+                from_date=from_date_str,
+                to_date=to_date_str,
             )
 
             # Convert to OHLCVCandle
+            # REST historical API returns prices in RUPEES (not paise) for indices
+            # and in PAISE for NFO instruments — check exchange
+            paise_divisor = Decimal("100") if exchange == "NFO" else Decimal("1")
             candles = []
             for candle in candles_data:
                 candles.append(OHLCVCandle(
                     timestamp=datetime.fromisoformat(candle["timestamp"]),
-                    open=Decimal(str(candle["open"])) / 100,  # PAISE to RUPEES
-                    high=Decimal(str(candle["high"])) / 100,
-                    low=Decimal(str(candle["low"])) / 100,
-                    close=Decimal(str(candle["close"])) / 100,
+                    open=Decimal(str(candle["open"])) / paise_divisor,
+                    high=Decimal(str(candle["high"])) / paise_divisor,
+                    low=Decimal(str(candle["low"])) / paise_divisor,
+                    close=Decimal(str(candle["close"])) / paise_divisor,
                     volume=candle["volume"],
                     oi=candle.get("oi"),
                     raw_response=candle

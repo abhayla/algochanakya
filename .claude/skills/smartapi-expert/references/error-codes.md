@@ -19,7 +19,7 @@ All SmartAPI errors follow the standard envelope:
 
 | Code | Message | Cause | Retryable | Resolution |
 |------|---------|-------|-----------|------------|
-| `AG8001` | Invalid Token | JWT expired or malformed | No | Re-authenticate (login) |
+| `AG8001` | Invalid Token | JWT expired, malformed, **wrong API key for endpoint**, or **endpoint subscription not enabled** | No | See AG8001 multi-cause table below |
 | `AG8002` | Invalid Client Code | Wrong client ID | No | Verify client_id in credentials |
 | `AG8003` | Invalid TOTP | TOTP expired or wrong | Yes | Regenerate TOTP, check clock sync |
 | `AG8004` | Invalid Password | Wrong PIN | No | Verify password |
@@ -29,6 +29,32 @@ All SmartAPI errors follow the standard envelope:
 | `AG8008` | IP Not Registered | Server IP not whitelisted (Aug 2025+) | No | Register IP in Angel One dashboard |
 | `AB1012` | Session Expired | Token validity ended | No | Re-authenticate |
 | `AB1013` | Duplicate Session | Another session active | No | Logout other session first |
+
+### AG8001 Multi-Cause Diagnosis Table
+
+`AG8001` is returned for **multiple distinct root causes** — the error message is always "Invalid Token" regardless:
+
+| Root Cause | How to Identify | Resolution |
+|-----------|-----------------|------------|
+| JWT expired (most common) | Token was issued >24h ago | Re-authenticate, get new JWT |
+| JWT generated with different API key | You auth'd with key A but POST uses `X-PrivateKey: key_B` | Use the **same** API key for auth and requests |
+| **Server IP not whitelisted for this app** | `generateSession` succeeds but `placeOrder`/`getCandleData` return AG8001 | Add server IP to the **specific app's** IP Whitelist in portal (not just the market data app) |
+| API endpoint subscription not enabled | Even fresh JWT + correct key → AG8001 on specific endpoint | Enable the feature in Angel One developer console |
+| JWT token format issue | Token is truncated or corrupted | Re-authenticate |
+
+**Critical: JWT is bound to the API key used for login.** The `X-PrivateKey` header in REST requests must match the API key used when generating the JWT via `loginByPassword`. Mixing keys (e.g., authenticate with `ANGEL_API_KEY` then call historical endpoint with `ANGEL_HIST_API_KEY` header) causes AG8001.
+
+**IP Whitelist is per-app** (not global): Since August 2025, each API app has its own IP whitelist. If you have 3 apps (market, hist, trade) you must whitelist the server IP in **all 3 apps** separately. A common mistake is whitelisting for the market data app only — the hist and trade apps will still get AG8001. Go to https://smartapi.angelbroking.com/ → My Apps → click each app → IP Whitelist → add server IP.
+
+**Diagnosing IP vs key issue**: If `generateSession` succeeds but order/historical endpoints return AG8001, it's almost certainly an IP whitelist issue for that specific app. The login endpoint is not IP-restricted, but data/order endpoints are.
+
+**Historical Data API subscription**: `getCandleData` requires "Historical Data" access to be enabled in the Angel One developer console for the API key:
+1. Log in at https://smartapi.angelbroking.com/
+2. Go to **My Apps** → select the app with `ANGEL_HIST_API_KEY`
+3. Enable **Historical Data** in the API Access section
+4. Also ensure the API plan includes historical data access
+
+**Order API subscription**: `placeOrder`, `cancelOrder`, `orderBook`, `position`, `rmsLimit`, `getProfile` require order execution permissions enabled for the API key (`ANGEL_TRADE_API_KEY`).
 
 ## Rate Limiting Errors
 

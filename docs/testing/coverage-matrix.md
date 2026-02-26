@@ -1,6 +1,6 @@
 # AlgoChanakya Test Coverage Matrix
 
-Last Updated: 2025-12-08
+Last Updated: 2026-02-26
 
 ## Legend
 - Implemented and passing
@@ -77,15 +77,32 @@ Last Updated: 2025-12-08
 | Deploy strategy | Yes | Yes | Yes | Yes | Partial |
 | Compare strategies | Pending | Pending | Pending | Pending | Pending |
 
+## Live Broker Tests (real broker APIs, `@live` marker)
+
+| Test Area | Brokers Covered | Skip Behavior |
+|-----------|----------------|---------------|
+| WebSocket ticker | Zerodha, AngelOne, Upstox, Dhan, Fyers, Paytm | Skip if credentials absent |
+| Market data (quote/LTP/historical) | All 6 | Skip if credentials absent |
+| Authentication flows | All 6 | Skip if credentials absent |
+| Order execution | All 6 | Skip if credentials absent |
+| Option chain | All 6 | Skip if credentials absent |
+| Instrument search | All 6 | Skip if credentials absent |
+| Screens API | All 6 | Skip if credentials absent |
+
+Run with: `pytest tests/live/ -m live -v` (from `backend/`). See `docs/testing/README.md` for full details.
+
 ## Test Statistics
+
+> **Note:** Test counts change frequently. Run the commands in `docs/testing/README.md` for current numbers.
 
 | Category | Total | Passing | Failing | Skipped | Coverage |
 |----------|-------|---------|---------|---------|----------|
 | Backend Unit | 16 | 16 | 0 | 0 | 85% |
 | Backend API | 42 | 42 | 0 | 0 | 88% |
 | Backend Integration | 15 | 15 | 0 | 0 | 75% |
+| Backend Live (`@live`) | 7 files (parameterized x6 brokers) | Varies by credentials | 0 | Varies | N/A (real APIs) |
 | Frontend E2E | 240+ | 240+ | 0 | 0 | 85% |
-| **Total** | **313+** | **313+** | **0** | **0** | **85%** |
+| **Total (excl. live)** | **313+** | **313+** | **0** | **0** | **85%** |
 
 ## Priority Test Gaps
 
@@ -114,6 +131,27 @@ backend/tests/
   test_strategy_validation.py   # 15 tests - Validation tests
   test_strategy_integration.py  # 5 tests - Integration tests
   conftest.py                   # Fixtures and Allure hooks
+
+backend/tests/live/             # Live broker tests (@live marker)
+  test_live_websocket_ticker.py
+  test_live_market_data.py
+  test_live_authentication.py
+  test_live_order_execution.py
+  test_live_option_chain.py
+  test_live_instrument_search.py
+  test_live_screens_api.py
+
+backend/tests/factories/        # Shared test data builders
+  ticks.py
+  strategies.py
+  broker.py
+```
+
+### Frontend Unit Helpers
+```
+frontend/tests/helpers/
+  test-setup.js   # Pinia/localStorage/env setup
+  factories.js    # Mock data factories
 ```
 
 ### Frontend E2E
@@ -126,6 +164,10 @@ tests/e2e/specs/
   optionchain/     # 5 spec files
   strategy/        # 5 spec files
   strategylibrary/ # 5 spec files (160+ tests)
+  live/            # Live broker E2E tests
   integration/     # Integration specs
   legacy/          # Legacy spec files
+
+tests/e2e/helpers/
+  assertions.js   # Shared Playwright assertion utilities
 ```

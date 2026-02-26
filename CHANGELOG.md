@@ -8,6 +8,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Live Broker Test Suite** (`backend/tests/live/`) — real broker API tests (no mocks), parameterized across all 6 brokers (Zerodha/Kite, AngelOne/SmartAPI, Upstox, Dhan, Fyers, Paytm)
+  - `test_live_websocket_ticker.py` — WebSocket ticker connection, subscription, and tick delivery per broker
+  - `test_live_market_data.py` — live quote, LTP, and historical OHLCV per broker
+  - `test_live_authentication.py` — broker OAuth/token flows against real endpoints
+  - `test_live_order_execution.py` — order placement, modification, and cancellation per broker
+  - `test_live_option_chain.py` — option chain fetch and Greeks validation per broker
+  - `test_live_instrument_search.py` — instrument search and symbol lookup per broker
+  - `test_live_screens_api.py` — backend API endpoints used by each screen (positions, watchlist, option chain)
+  - `conftest.py` / `constants.py` — shared live test configuration, credential loading, and skip logic
+  - Tests skip cleanly with an informative message when credentials are absent from `backend/.env`
+  - New `@live` pytest marker added to `backend/pytest.ini`
+- **E2E Live Broker Test** (`tests/e2e/specs/live/live.broker-screens.spec.js`) — switches broker in settings UI and asserts live prices appear on each screen
+- **Backend Test Factories** (`backend/tests/factories/`) — reusable test data builders replacing duplicated mock fixtures
+  - `ticks.py` — `NormalizedTick` and raw tick payload builders
+  - `strategies.py` — AutoPilot strategy and leg data builders
+  - `broker.py` — broker credential and connection object builders
+- **Frontend Test Helpers** (`frontend/tests/helpers/`) — standardized setup utilities for Vitest
+  - `test-setup.js` — Pinia initialisation helpers, localStorage mock setup, `import.meta.env` stubs
+  - `factories.js` — reusable mock data factories for stores and composables
+- **E2E Assertion Helpers** (`tests/e2e/helpers/assertions.js`) — shared Playwright assertion utilities (price assertions, WebSocket wait helpers, broker-agnostic checks)
+
 - **OHLC Endpoint for Market-Closed Fallback** - New `/api/orders/ohlc` and `/api/orders/quote` endpoints for fetching index prices when market is closed. Frontend automatically falls back to OHLC data when quote API fails outside market hours.
 - **AI + AutoPilot Integration** (Week 3 - AutoPilot AI)
   - AI Config integration with AutoPilot StrategyMonitor and OrderExecutor

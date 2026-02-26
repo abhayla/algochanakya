@@ -301,6 +301,73 @@ backend/tests/backend/
   test_strategy_integration.py   # Full flows, concurrent requests
 ```
 
+### Live Broker Tests (pytest — real APIs)
+
+```
+backend/tests/live/
+  __init__.py
+  constants.py                        # Broker credential keys, index tokens, test constants
+  conftest.py                         # Fixtures: credential loading, skip logic, broker parametrize
+  test_live_websocket_ticker.py       # WebSocket connection, subscription, tick delivery
+  test_live_market_data.py            # Quote, LTP, historical OHLCV per broker
+  test_live_authentication.py         # OAuth / token flows against real broker endpoints
+  test_live_order_execution.py        # Order place, modify, cancel per broker
+  test_live_option_chain.py           # Option chain fetch and Greeks validation
+  test_live_instrument_search.py      # Instrument search and symbol lookup
+  test_live_screens_api.py            # Backend API endpoints used by each screen
+```
+
+**Purpose:** Validate the full broker abstraction layer against real broker APIs with zero mocks. Tests are parameterized across all 6 brokers (Zerodha/Kite, AngelOne/SmartAPI, Upstox, Dhan, Fyers, Paytm).
+
+**Credential requirements:** Tests read credentials from `backend/.env`. Any broker whose credentials are absent is automatically skipped with a descriptive message — no test failures occur due to missing credentials.
+
+```bash
+# Run all live tests (from backend/)
+pytest tests/live/ -m live -v
+
+# Run live tests excluding slow ones (e.g. historical data fetches)
+pytest tests/live/ -m "live and not slow" -v
+
+# Run live tests for a single broker
+pytest tests/live/ -m live -v -k "zerodha"
+
+# Run a single live test file
+pytest tests/live/test_live_websocket_ticker.py -v
+```
+
+**Marker:** `@pytest.mark.live` — registered in `backend/pytest.ini`. Excluded from the default `pytest tests/ -v` run unless `-m live` is specified.
+
+### Backend Test Factories
+
+```
+backend/tests/factories/
+  __init__.py
+  ticks.py       # NormalizedTick and raw tick payload builders
+  strategies.py  # AutoPilot strategy and leg data builders
+  broker.py      # Broker credential and connection object builders
+```
+
+Reusable test-data builders. Import directly in pytest fixtures to replace duplicated inline mock data across test files.
+
+### Frontend Test Helpers
+
+```
+frontend/tests/helpers/
+  test-setup.js  # Pinia init, localStorage mock, import.meta.env stubs
+  factories.js   # Mock data factories for stores and composables
+```
+
+Use `test-setup.js` helpers in `beforeEach` instead of repeating `setActivePinia(createPinia())` boilerplate. `factories.js` provides consistent mock objects so store tests share the same data shapes.
+
+### E2E Assertion Helpers
+
+```
+tests/e2e/helpers/
+  assertions.js  # Shared Playwright assertions: price checks, WS waits, broker-agnostic checks
+```
+
+Import from `assertions.js` in spec files to avoid duplicating assertion logic. Keeps specs focused on the scenario rather than the mechanics of checking prices or waiting for WebSocket messages.
+
 ### API Testing (Postman)
 
 ```

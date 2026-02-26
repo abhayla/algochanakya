@@ -34,9 +34,9 @@ npm run test                                           # Watch mode
 # Dev ports: Backend=8001, Frontend=5173 | Production: Backend=8000, Frontend=3004
 ```
 
-**After code changes** (Claude Code skills, not shell commands):
-- `Skill(skill="auto-verify")` — verify changes work
-- `Skill(skill="test-fixer")` — fix failing tests
+**After code changes** (Claude Code skills — invoke via Skill tool, not shell):
+- `auto-verify` — verify changes work
+- `test-fixer` — fix failing tests
 
 ## 🚨 Most Common Mistakes (Fix These First!)
 
@@ -95,10 +95,8 @@ See **[docs/ROADMAP.md](docs/ROADMAP.md)** for active work, completed features, 
 
 ### 1. Auto-Verification After Code Changes
 
-After **ANY** code change (bug fix, feature, refactor):
-```bash
-Skill(skill="auto-verify")
-```
+After **ANY** code change (bug fix, feature, refactor), invoke the `auto-verify` skill.
+
 **Skip only for:** Docs-only, comments-only, or when user says "skip verification".
 
 ### 2. Check Current Work First
@@ -295,7 +293,7 @@ See [backend/CLAUDE.md](backend/CLAUDE.md#database-patterns) for models, routes,
 
 ## Proactive Skills
 
-These skills should be invoked automatically at the right time:
+These skills must be invoked automatically (via the Skill tool) at the right time:
 - **`auto-verify`** — after ANY code change
 - **`docs-maintainer`** — after code changes that affect docs
 - **`learning-engine`** — after fix completions and test outcomes

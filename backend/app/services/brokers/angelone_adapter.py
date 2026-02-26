@@ -112,19 +112,58 @@ class AngelOneAdapter(BrokerAdapter):
         )
 
     async def initialize(self) -> bool:
-        """Initialize SmartConnect client with the existing access token."""
+        """
+        Initialize SmartConnect client.
+
+        JWT binding rule: a JWT returned by loginByPassword with X-PrivateKey=KEY_A
+        is bound to KEY_A.  Using it with a different key returns AG8001.
+
+        Strategy:
+        - If access_token is provided, assume the caller has already ensured the JWT
+          matches this api_key (e.g. the test fixture pre-authenticates with trade key
+          and passes both together).  Reuse without re-login.
+        - If access_token is absent, perform a fresh login with this api_key so the
+          resulting JWT is correctly bound to it.
+
+        This avoids a second consecutive login when the fixture already provides the
+        trade-key JWT, preventing AngelOne's per-minute login rate limit errors.
+        """
         try:
             from SmartApi import SmartConnect  # type: ignore
+            from app.config import settings
 
-            api_key = self.api_key
-            if not api_key:
-                from app.config import settings
-                api_key = getattr(settings, "SMARTAPI_API_KEY", "")
+            api_key = self.api_key or (
+                getattr(settings, "ANGEL_TRADE_API_KEY", "")
+                or getattr(settings, "ANGEL_API_KEY", "")
+            )
 
             self.client = SmartConnect(api_key=api_key)
-            # Set the pre-obtained access token (no re-login needed)
-            self.client.access_token = self.access_token
-            self.client.feed_token = None  # feed token not needed for order execution
+
+            if self.access_token:
+                # Caller provided a JWT — trust that it matches this api_key and reuse.
+                self.client.access_token = self.access_token
+                self.client.feed_token = None
+                self._log_info("initialize", "Reusing provided access_token")
+            else:
+                # No JWT — perform a fresh login so the JWT is bound to this api_key.
+                import pyotp
+                totp = pyotp.TOTP(settings.ANGEL_TOTP_SECRET).now()
+                session = self.client.generateSession(
+                    settings.ANGEL_CLIENT_ID,
+                    settings.ANGEL_PIN,
+                    totp,
+                )
+                if not session or not session.get('status'):
+                    self._log_error(
+                        "initialize",
+                        Exception(f"Fresh login failed: "
+                                  f"{session.get('message') if session else 'No response'}")
+                    )
+                    return False
+                self.access_token = session['data']['jwtToken']
+                self.client.feed_token = None
+                self._log_info("initialize", f"Fresh login successful with api_key={api_key[:4]}...")
+
             self._initialized = True
             self._log_info("initialize", "SmartConnect client initialized")
             return True

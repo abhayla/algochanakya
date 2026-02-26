@@ -274,6 +274,86 @@ Both dev and production environments need their IPs registered:
 - Production server IP (`103.118.16.189` or similar) → register for production API key
 - If using separate API keys per environment, each key needs its own whitelist
 
+**CRITICAL: IP whitelist is per-app, not global.** AlgoChanakya uses 3 separate apps (`AlgoChanakyaLive`, `AlgoChanakyaHist`, `AlgoChanakyaTrade`). You must whitelist the server IP in **all 3 apps** separately:
+- `AlgoChanakyaLive` (ANGEL_API_KEY) → add server IP → for live quotes + WebSocket
+- `AlgoChanakyaHist` (ANGEL_HIST_API_KEY) → add server IP → for `getCandleData`
+- `AlgoChanakyaTrade` (ANGEL_TRADE_API_KEY) → add server IP → for `placeOrder`, `cancelOrder`, etc.
+
+Symptom of missing IP in one app: `generateSession` succeeds (login is not IP-restricted) but data/order endpoints return AG8001 or HTTP 403. If historical or order endpoints fail but market data works, the hist/trade app is missing the IP whitelist entry.
+
+## AngelOne 3-API-Key Architecture (AlgoChanakya)
+
+AngelOne provides **separate API keys** for different data domains. AlgoChanakya uses 3 distinct keys:
+
+| `.env` Variable | Purpose | Endpoints Used |
+|----------------|---------|----------------|
+| `ANGEL_API_KEY` | Live market data (WebSocket ticks, live quotes) | `ltpData`, `getMarketData`, SmartConnect WebSocket |
+| `ANGEL_HIST_API_KEY` | Historical candle data | `getCandleData` ONLY |
+| `ANGEL_TRADE_API_KEY` | Order execution | `placeOrder`, `cancelOrder`, `orderBook`, `position`, `rmsLimit`, `getProfile` |
+
+### Critical Rule: JWT is Bound to the API Key Used for Login
+
+When you call `loginByPassword` with `X-PrivateKey: KEY_A`, the returned JWT is **tied to KEY_A**. Any subsequent request using that JWT must also set `X-PrivateKey: KEY_A`. Using the JWT from one key with a different key's `X-PrivateKey` header returns **AG8001 Invalid Token**.
+
+```python
+# CORRECT — authenticate with hist key, use hist key for all historical calls
+hist_client = SmartConnect(api_key=ANGEL_HIST_API_KEY)
+session = hist_client.generateSession(client_id, pin, totp)
+hist_jwt = session['data']['jwtToken']
+# Now getCandleData calls use hist_client (X-PrivateKey = ANGEL_HIST_API_KEY)
+
+# WRONG — authenticate with market key, then call historical with hist key
+market_client = SmartConnect(api_key=ANGEL_API_KEY)
+session = market_client.generateSession(client_id, pin, totp)
+market_jwt = session['data']['jwtToken']
+# getCandleData with hist_client + market_jwt → AG8001 (key mismatch)
+```
+
+### AlgoChanakya Implementation
+
+- `SmartAPIMarketDataAdapter.__init__()` → uses `ANGEL_API_KEY` for `SmartAPIMarketData` (live quotes)
+- `SmartAPIMarketDataAdapter.__init__()` → uses `ANGEL_HIST_API_KEY` for `SmartAPIHistorical`
+- `AngelOneAdapter.initialize()` → uses `ANGEL_TRADE_API_KEY` for order execution
+- `conftest.py` `angelone_credentials` → exposes `api_key`, `hist_api_key`, `trade_api_key`
+
+## SmartAPI App Types (CRITICAL for AG8001 on historical/order endpoints)
+
+AngelOne has **4 app types** when creating an app. The type determines which endpoints the API key can access. **This is the root cause of AG8001 on getCandleData and placeOrder.**
+
+| App Type | getCandleData | placeOrder/cancelOrder | Live quotes/WebSocket |
+|----------|:---:|:---:|:---:|
+| **Market Feeds API** | ❌ | ❌ | ✅ |
+| **Historical Data API** | ✅ | ❌ | ❌ |
+| **Publisher API** | ❌ | ✅ (embedded) | ❌ |
+| **Trading API** | ✅ | ✅ | ✅ |
+
+**Trading API** is the **only type that grants all 3 capabilities** in a single API key.
+
+### Recommended App Setup for AlgoChanakya
+
+Create **1 app of type "Trading API"** to get a single API key that covers everything:
+- Historical data (`getCandleData`)
+- Order execution (`placeOrder`, `cancelOrder`, `orderBook`, `position`, `rmsLimit`)
+- Live market data (WebSocket, `ltpData`, `getMarketData`)
+
+Or create **2 separate apps** matching the current AlgoChanakya `.env` separation:
+- `ANGEL_API_KEY` → **Market Feeds API** app (live quotes + WebSocket)
+- `ANGEL_HIST_API_KEY` → **Historical Data API** app (getCandleData)
+- `ANGEL_TRADE_API_KEY` → **Trading API** app (orders)
+
+### How to Create / Change an App Type
+
+1. Log in at https://smartapi.angelbroking.com/
+2. Click your profile → **My Apps**
+3. To create new: click **+ Create App** → choose app type → fill App Name, Redirect URL, Client ID
+4. **You CANNOT change the type of an existing app** — you must create a new app with the correct type and use its API key
+5. After creation, copy the new API key and update `ANGEL_HIST_API_KEY` or `ANGEL_TRADE_API_KEY` in `backend/.env`
+6. Register the server's IP in the new app's IP Whitelist (required since Aug 2025)
+
+### Diagnosing Which App Type Your Existing Keys Are
+
+There is no API to query app type. Go to https://smartapi.angelbroking.com/ → My Apps → the app type is shown on each app card. If `ANGEL_HIST_API_KEY` belongs to a "Market Feeds API" app, it **cannot** call getCandleData.
+
 ## Security Notes
 
 - Never log or expose tokens in console/responses

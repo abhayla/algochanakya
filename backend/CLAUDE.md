@@ -18,7 +18,10 @@ pytest tests/ -v --cov=app     # With coverage
 pytest tests/ -m unit -v       # Unit tests only
 pytest tests/ -m "not slow" -v # Skip slow tests
 pytest tests/test_file.py::test_function -v  # Single test function
-# Markers: @unit, @api, @integration, @slow
+pytest tests/live/ -m live -v                # Run live broker tests (needs real credentials in .env)
+pytest tests/live/ -m "live and not slow" -v # Live tests excluding slow ones (e.g. historical fetches)
+# Markers: @unit, @api, @integration, @slow, @live
+# @live — hits real broker APIs; skips cleanly when credentials are missing from .env
 ```
 
 ---
@@ -44,7 +47,7 @@ pytest tests/test_file.py::test_function -v  # Single test function
 - `app/services/brokers/factory.py` - `get_broker_adapter()` factory
 - `app/services/brokers/kite_adapter.py` - Zerodha order execution adapter
 
-**Market Data Abstraction (Phase 2 Complete):**
+**Market Data Abstraction (Phase 4 Complete — Feb 2026):**
 - `app/services/brokers/market_data/market_data_base.py` - `MarketDataBrokerAdapter` interface
 - `app/services/brokers/market_data/ticker_base.py` - `TickerServiceBase` interface
 - `app/services/brokers/market_data/factory.py` - `get_market_data_adapter()` factory
@@ -160,7 +163,7 @@ See `app/services/brokers/base.py` and `app/services/brokers/market_data/market_
 - Adapters: All 6 brokers implemented — `ticker/adapters/{smartapi,kite,dhan,fyers,paytm,upstox}.py`
 - NormalizedTick uses `Decimal` (not `float`) for price precision
 - `websocket.py` refactored from 494 lines → 292 lines (broker-agnostic)
-- Broker tests passing (run `grep -r "def test_" backend/tests/backend/brokers/ --include="*.py" | wc -l` for current count)
+- Broker tests passing (see `backend/tests/backend/brokers/` for current coverage)
 - **Docs:** [TICKER-DESIGN-SPEC.md](../docs/decisions/TICKER-DESIGN-SPEC.md) | [API Reference](../docs/api/multi-broker-ticker-api.md) | [Documentation Index](../docs/decisions/ticker-documentation-index.md)
 
 **Phase 6: Broker Abstraction E2E Tests — COMPLETE (Feb 2026):**
