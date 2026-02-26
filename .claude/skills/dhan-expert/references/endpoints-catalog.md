@@ -555,13 +555,102 @@ Modify a forever order.
 
 Cancel a forever order.
 
-### GET /forever/orders
+### GET /forever/all
 
 Get all forever orders.
 
+```
+GET https://api.dhan.co/v2/forever/all
+```
+
 ---
 
-## 10. EDIS (Electronic Delivery Instruction Slip)
+## 10. Super Orders
+
+Super Orders combine entry + target + stop-loss in one API call (bracket-order style).
+
+**IP whitelisting required for all write operations.**
+
+### POST /super/orders
+
+Place a super order.
+
+```
+POST https://api.dhan.co/v2/super/orders
+```
+
+**Key fields:** `correlationId`, `transactionType`, `exchangeSegment`, `productType`, `orderType`, `securityId`, `quantity`, `price`, `targetPrice`, `stopLossPrice`, `trailingJump` (optional).
+
+**Response:** `{ "orderId": "...", "orderStatus": "TRANSIT" }`
+
+### PUT /super/orders/{order_id}/{leg_name}
+
+Modify a super order leg. `leg_name` values: `ENTRY_LEG`, `TARGET_LEG`, `STOP_LOSS_LEG`.
+
+```
+PUT https://api.dhan.co/v2/super/orders/{order_id}/ENTRY_LEG
+```
+
+### DELETE /super/orders/{order_id}/{leg_name}
+
+Cancel a super order leg.
+
+### GET /super/orders
+
+List all super orders.
+
+**AlgoChanakya status:** NOT yet implemented. See [super-order.md](./super-order.md) for full schema.
+
+---
+
+## 11. Trader's Control
+
+Risk management APIs — session-scoped (reset at midnight IST).
+
+### POST /killswitch?killSwitchStatus=ACTIVATE
+
+Disable all trading for the remainder of the day.
+
+**PREREQUISITE:** All positions must be closed and no pending orders before calling ACTIVATE.
+
+```
+POST https://api.dhan.co/v2/killswitch?killSwitchStatus=ACTIVATE
+```
+
+No request body. Status is a query parameter: `ACTIVATE` or `DEACTIVATE`.
+
+### GET /killswitch
+
+Get current kill switch status. Returns `"ACTIVATE"` or `"DEACTIVATE"`.
+
+### POST /pnlExit
+
+Configure automatic position exit when profit or loss threshold is hit.
+
+```json
+{
+  "profitValue": 5000.00,
+  "lossValue": 2000.00,
+  "productType": ["INTRADAY", "DELIVERY"],
+  "enableKillSwitch": true
+}
+```
+
+**WARNING:** If `profitValue` is below current unrealized P&L at call time, exit triggers immediately.
+
+### DELETE /pnlExit
+
+Stop P&L exit monitoring.
+
+### GET /pnlExit
+
+Get current P&L exit configuration and status.
+
+**AlgoChanakya status:** NOT yet integrated. See [traders-control.md](./traders-control.md) for details.
+
+---
+
+## 13. EDIS (Electronic Delivery Instruction Slip)
 
 ### POST /edis/form
 
@@ -581,7 +670,7 @@ GET https://api.dhan.co/v2/edis/inquiry
 
 ---
 
-## 11. Option Chain
+## 14. Option Chain
 
 ### GET /v2/expirylist
 
@@ -631,7 +720,7 @@ POST https://api.dhan.co/v2/optionchain
 
 ---
 
-## 12. WebSockets
+## 15. WebSockets
 
 ### Market Data WebSocket
 
@@ -648,12 +737,18 @@ See [websocket-protocol.md](./websocket-protocol.md) for subscription format and
 Real-time JSON WebSocket stream for order status updates. Authentication via JSON message on connect.
 
 ```python
-# Auth message sent after connection
+# Auth message sent immediately after connection (MsgCode: 42 is hardcoded — do not change)
 auth_msg = {
-    "access-token": access_token,
-    "dhan-client-id": client_id
+    "LoginReq": {
+        "MsgCode": 42,
+        "ClientId": client_id,
+        "Token": access_token,
+    },
+    "UserType": "SELF"
 }
 ```
+
+**Note:** WebSocket uses **short enum codes** in responses: `B`/`S` (not `BUY`/`SELL`), `LMT`/`MKT`, `C`/`I`/`M` for product types.
 
 **Response format:** JSON with `orderId`, `orderStatus`, and full order details.
 
@@ -685,16 +780,29 @@ auth_msg = {
 | Holdings         | GET    | `/holdings`                     | All holdings                   |
 | Trades           | GET    | `/trades`                       | All trades today               |
 | Trades           | GET    | `/trades/{order_id}`            | Trades for order               |
-| Forever Orders   | POST   | `/forever/orders`               | Create GTT/GTC order (NOT in AlgoChanakya) |
-| Forever Orders   | PUT    | `/forever/orders/{id}`          | Modify forever order           |
-| Forever Orders   | DELETE | `/forever/orders/{id}`          | Cancel forever order           |
-| Forever Orders   | GET    | `/forever/orders`               | List forever orders            |
+| Forever Orders   | POST   | `/forever/orders` ⚠️IP          | Create GTT/GTC order (NOT in AlgoChanakya) |
+| Forever Orders   | PUT    | `/forever/orders/{id}` ⚠️IP     | Modify forever order           |
+| Forever Orders   | DELETE | `/forever/orders/{id}` ⚠️IP     | Cancel forever order           |
+| Forever Orders   | GET    | `/forever/all`                  | List forever orders            |
+| Super Orders     | POST   | `/super/orders` ⚠️IP            | Place super order (NOT in AlgoChanakya) |
+| Super Orders     | PUT    | `/super/orders/{id}/{leg}` ⚠️IP | Modify super order leg         |
+| Super Orders     | DELETE | `/super/orders/{id}/{leg}` ⚠️IP | Cancel super order leg         |
+| Super Orders     | GET    | `/super/orders`                 | List super orders              |
+| Kill Switch      | POST   | `/killswitch?killSwitchStatus=` | Activate/deactivate kill switch (NOT in AlgoChanakya) |
+| Kill Switch      | GET    | `/killswitch`                   | Get kill switch status         |
+| P&L Exit         | POST   | `/pnlExit`                      | Configure P&L-based exit (NOT in AlgoChanakya) |
+| P&L Exit         | DELETE | `/pnlExit`                      | Stop P&L exit                  |
+| P&L Exit         | GET    | `/pnlExit`                      | Get P&L exit status            |
 | Option Chain     | POST   | `/optionchain`                  | Option chain with Greeks (NOT in AlgoChanakya) |
 | Option Chain     | GET    | `/expirylist`                   | Expiry dates for underlying    |
 | EDIS             | POST   | `/edis/form`                    | Generate EDIS form             |
 | EDIS             | GET    | `/edis/inquiry`                 | Check EDIS status              |
 | WebSocket (data) | WS     | `wss://api-feed.dhan.co`        | Market data binary stream      |
 | WebSocket (orders) | WS   | `wss://api-order-update.dhan.co`| Live order updates (NOT in AlgoChanakya) |
+
+---
+
+**Legend:** `⚠️IP` = Static IP whitelisting required. Configure in Dhan developer portal.
 
 ---
 

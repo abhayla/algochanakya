@@ -3,13 +3,13 @@ name: dhan-expert
 description: Use when implementing Dhan adapter, debugging Dhan API errors, understanding Dhan security_id format, or auditing code calling Dhan API. Dhan API expert for AlgoChanakya.
 metadata:
   author: AlgoChanakya
-  version: "2.5"
-  last_verified: "2026-02-25"
+  version: "2.6"
+  last_verified: "2026-02-26"
 ---
 
 # Dhan API Expert
 
-Dhan offers a modern REST API with unique features: **200-level market depth** (unique in India), **Little Endian binary WebSocket**, and **security_id-based** instrument identification (numeric IDs only). Dhan has a **two-tier pricing model**: Trading APIs are FREE for all users, but Data APIs (market data WebSocket) require either executing 25 F&O trades/month OR paying ₹499/month subscription. All 3 AlgoChanakya adapters (market data, order execution, ticker/WebSocket) are **fully implemented**. Key differentiator: deepest market depth data and multi-tier rate limiting system.
+Dhan offers a modern REST API with unique features: **200-level market depth** (unique in India), **Little Endian binary WebSocket**, and **security_id-based** instrument identification (numeric IDs only). Dhan has a **two-tier pricing model**: Trading APIs are FREE for all users, but Data APIs (market data WebSocket) require either executing 25 F&O trades/month OR paying ₹499/month subscription. All 3 AlgoChanakya adapters (market data, order execution, ticker/WebSocket) are **fully implemented**. Key differentiator: deepest market depth data, multi-tier rate limiting, Super Order (bracket), Kill Switch, and P&L-based auto-exit built into the API.
 
 ## When to Use
 
@@ -19,6 +19,8 @@ Dhan offers a modern REST API with unique features: **200-level market depth** (
 - Working with Little Endian binary WebSocket (unique `struct.unpack('<...')`)
 - Understanding 20-depth and 200-depth market data
 - Working with Forever Orders (GTT) via `/v2/forever/orders`
+- Working with Super Orders (bracket orders with entry + target + SL)
+- Working with Trader's Control (Kill Switch, P&L-based auto-exit)
 - Working with Dhan Option Chain API (`/v2/optionchain`)
 - Configuring Postback (webhook) or Live Order Update WebSocket
 - Comparing Dhan capabilities with other brokers
@@ -73,23 +75,29 @@ See [auth-flow.md](./references/auth-flow.md) for complete details.
 
 | Category | Method | Endpoint | Notes |
 |----------|--------|----------|-------|
-| **Profile** | GET | `/v2/clients/{client_id}` | User details |
+| **Profile** | GET | `/v2/profile` | User details |
 | **Margins** | GET | `/v2/fundlimit` | Fund limits — note `availabelBalance` typo |
-| **Quote** | POST | `/v2/marketfeed/ltp` | LTP for instruments |
+| **Margin Calc** | POST | `/v2/margincalculator` | Margin for single order |
+| **Quote** | POST | `/v2/marketfeed/ltp` | LTP for instruments (max 1000) |
 | **OHLC** | POST | `/v2/marketfeed/ohlc` | OHLC data |
 | **Depth (20)** | POST | `/v2/marketfeed/quote` | 20-level depth |
-| **Historical** | GET | `/v2/charts/historical` | OHLCV candles |
-| **Intraday** | GET | `/v2/charts/intraday` | Today's candles |
-| **Place Order** | POST | `/v2/orders` | Place order |
-| **Modify Order** | PUT | `/v2/orders/{order_id}` | Modify pending |
-| **Cancel Order** | DELETE | `/v2/orders/{order_id}` | Cancel pending |
+| **Historical** | POST | `/v2/charts/historical` | OHLCV candles (daily, back to inception) |
+| **Intraday** | POST | `/v2/charts/intraday` | Minute candles (1/5/15/25/60m, max 90 days) |
+| **Place Order** | POST | `/v2/orders` | Place order — requires static IP whitelist |
+| **Modify Order** | PUT | `/v2/orders/{order_id}` | Modify pending — requires static IP whitelist |
+| **Cancel Order** | DELETE | `/v2/orders/{order_id}` | Cancel pending — requires static IP whitelist |
+| **Slice Order** | POST | `/v2/orders/slicing` | Auto-slice for freeze quantity limit |
 | **Orders** | GET | `/v2/orders` | All orders |
+| **Trades** | GET | `/v2/trades` | All trades today |
 | **Positions** | GET | `/v2/positions` | Current positions |
 | **Holdings** | GET | `/v2/holdings` | Portfolio holdings |
+| **Super Order** | POST/PUT/DELETE/GET | `/v2/super/orders` | Bracket orders (entry+target+SL) — NOT yet in AlgoChanakya |
 | **Forever Orders** | POST/GET/PUT/DELETE | `/v2/forever/orders` | GTT orders — NOT yet in AlgoChanakya |
+| **Kill Switch** | POST/GET | `/v2/killswitch` | Disable all trading — NOT yet in AlgoChanakya |
+| **P&L Exit** | POST/DELETE/GET | `/v2/pnlExit` | Auto-exit on P&L threshold — NOT yet in AlgoChanakya |
 | **Option Chain** | POST | `/v2/optionchain` | Option chain with Greeks — NOT yet in AlgoChanakya |
 | **Expiry List** | GET | `/v2/expirylist` | Expiry dates — NOT yet in AlgoChanakya |
-| **Instruments** | Download | CSV from Dhan website | Instrument master |
+| **Instruments** | Download | `https://images.dhan.co/api-data/api-scrip-master.csv` | Instrument master CSV |
 
 See [endpoints-catalog.md](./references/endpoints-catalog.md) for complete schemas.
 
@@ -141,16 +149,21 @@ See [symbol-format.md](./references/symbol-format.md) for instrument CSV format.
 
 Dhan is the **only Indian broker** using Little Endian byte order (`struct.unpack('<...')`). All others use Big Endian.
 
-### Connection
+### Connection URL (v2)
 
-```python
-import websocket
-ws = websocket.WebSocketApp(
-    "wss://api-feed.dhan.co",
-    header={"access-token": access_token},
-    on_message=on_message
-)
 ```
+wss://api-feed.dhan.co?version=2&token={access_token}&clientId={client_id}&authType=2
+```
+
+Auth is via **query parameters** in the URL (not headers). `authType=2` is the default.
+
+### Heartbeat
+
+Server sends a **ping every 10 seconds**. Client must respond with pong (handled automatically by most WebSocket libraries). Connection drops after **40 seconds** of no response.
+
+### Graceful Disconnect
+
+Send `{"RequestCode": 12}` to cleanly close the connection before disconnecting.
 
 ### Subscription Modes
 
@@ -159,25 +172,85 @@ ws = websocket.WebSocketApp(
 | **Ticker** | LTP + change | ~20 bytes |
 | **Quote** | OHLC + volume + OI + 20-depth | ~500 bytes |
 | **Full** | All quote data + timestamps | ~700 bytes |
-| **20-Depth** | 20-level market depth | Default for Quote mode |
 | **200-Depth** | 200-level depth | **1 instrument/connection** (unique in India) |
 
 ### WebSocket Limits
 
 | Limit | Value |
 |-------|-------|
-| Max instruments per connection | **100** (Ticker), **50** (Quote), **1** (200-Depth) |
-| Max connections | **5** |
+| Max instruments per connection | **5000** total; 100 per subscription JSON message (Ticker/Quote), **1** (200-Depth) |
+| Max connections | **5** (exceeding 5 disconnects the oldest) |
 | Message format | Little Endian binary |
 | 200-Depth limit | **1 instrument per connection** |
 
 See [websocket-protocol.md](./references/websocket-protocol.md) for byte offsets and parsing.
 
+## Super Orders
+
+Dhan's **Super Order** combines entry + target + stop-loss into a single API call with optional trailing stop-loss. Different from Forever Orders — Super Orders execute within the same trading session.
+
+**Endpoints:** POST/PUT/DELETE/GET `/v2/super/orders`
+
+**Key fields:** `price` (entry), `targetPrice`, `stopLossPrice`, `trailingJump` (pass `0` to disable trailing).
+
+**Leg names for modify/cancel:** `ENTRY_LEG`, `TARGET_LEG`, `STOP_LOSS_LEG`
+
+**Constraints:**
+- All 4 endpoints require **static IP whitelisting**
+- Product types: `CNC`, `INTRADAY`, `MARGIN`, `MTF` (not CO/BO)
+- Once entry is `TRADED`, only target/SL prices and trail are modifiable
+- Cancelling a leg prevents re-adding it; cancelling the order ID cancels all legs
+- `CLOSED` status = entry + one exit leg fully executed
+
+**AlgoChanakya status:** NOT yet implemented. Planned for AutoPilot bracket order support.
+
+See [super-order.md](./references/super-order.md) for full request/response schemas.
+
+## Trader's Control (Kill Switch & P&L Exit)
+
+Dhan provides two risk management APIs under the "Trader's Control" category:
+
+### Kill Switch
+
+Disables ALL trading for the current day. **Prerequisite:** All positions closed and no pending orders.
+
+```
+POST /v2/killswitch?killSwitchStatus=ACTIVATE   # Disable all trading
+POST /v2/killswitch?killSwitchStatus=DEACTIVATE # Re-enable trading
+GET  /v2/killswitch                              # Check current status
+```
+
+**Important:** You MUST close all positions and cancel all orders BEFORE calling `ACTIVATE`. Attempting to activate with open positions/orders will fail.
+
+### P&L Exit
+
+Automatically exits all positions when a profit or loss threshold is hit.
+
+```
+POST   /v2/pnlExit    # Configure thresholds
+DELETE /v2/pnlExit    # Stop P&L exit
+GET    /v2/pnlExit    # Get current configuration
+```
+
+**Key fields:** `profitValue`, `lossValue`, `productType` (array: `["INTRADAY", "DELIVERY"]`), `enableKillSwitch` (boolean — auto-activates kill switch when threshold hit).
+
+**Warning:** If `profitValue` is set below current unrealized profit, exit triggers immediately.
+
+**Duration:** Active only for the current trading day; resets at session end.
+
+**AlgoChanakya status:** NOT yet integrated. Planned for AutoPilot risk management.
+
+See [traders-control.md](./references/traders-control.md) for full schemas and integration notes.
+
 ## Forever Orders (GTT)
 
 Dhan's GTT equivalent is called **"Forever Orders"** — orders that persist until triggered or manually cancelled (up to 365 days). Supports two types: `SINGLE` (one trigger) and `OCO` (target + stop loss, one cancels other).
 
-**Endpoints:** POST/GET/PUT/DELETE `/v2/forever/orders`
+**Endpoints:** POST/GET/PUT/DELETE `/v2/forever/orders`  — all require **static IP whitelisting**
+
+**Required fields:** `dhanClientId`, `orderFlag` (`SINGLE`/`OCO`), `transactionType`, `exchangeSegment`, `productType` (`CNC`/`MTF` only), `orderType`, `validity`, `securityId`, `quantity`, `price`, `triggerPrice`
+
+**OCO extra fields:** `price1`, `triggerPrice1`, `quantity1`
 
 **AlgoChanakya status:** NOT yet implemented in `backend/app/services/brokers/dhan_order_adapter.py`. Current adapter supports standard orders only.
 
@@ -209,19 +282,17 @@ See [webhook.md](./references/webhook.md) for postback payload schema, WebSocket
 
 ## Rate Limits (Multi-Tier)
 
-| Resource | Limit | Window |
-|----------|-------|--------|
-| Order placement | **10/second** | Per second |
-| Order placement | **250/minute** | Per minute |
-| Order placement | **1000/hour** | Per hour |
-| Order placement | **7000/day** | Per day |
-| REST API (general) | **10/second** | Per second |
-| WebSocket | Unlimited ticks | After subscription |
-| Historical data | **10/second** | Per second |
+| Resource | Per Second | Per Minute | Per Hour | Per Day |
+|----------|-----------|-----------|---------|---------|
+| **Order APIs** (place/modify/cancel) | **10** | **250** | **1,000** | **7,000** |
+| **Data APIs** (historical, option chain) | **5** | — | — | **100,000** |
+| **Quote APIs** (LTP/OHLC/quote REST) | **1** | — | — | — |
+| **Non-Trading APIs** (profile, positions, orders-read) | **20** | — | — | — |
+| **Option Chain** | 1 per 3 seconds (unique underlying) | — | — | — |
 
-**AlgoChanakya Configuration:** `rate_limiter.py` sets `"dhan": 10` (10 req/sec).
+**AlgoChanakya Configuration:** `rate_limiter.py` sets `"dhan": 10` (10 req/sec for orders).
 
-**Note:** Place + Modify + Cancel operations each count against all four order tiers. Hit any tier and you get HTTP 429.
+**Note:** Place + Modify + Cancel each count against ALL four order tiers. Hit any one tier → HTTP 429. Max 25 modifications per order total.
 
 ## Price Normalization
 
@@ -263,7 +334,7 @@ order_id = await adapter.place_order(order_params)
 
 ## Common Gotchas
 
-1. **Two-tier pricing model** - Trading APIs are FREE, but Data APIs (market data) require 25 F&O trades/month OR ₹499/month subscription. Common confusion point.
+1. **Two-tier pricing model** - Trading APIs are FREE, but Data APIs (market data WebSocket) require 25 F&O trades/month OR ₹499/month subscription. Common confusion point.
 
 2. **Little Endian binary** - Use `struct.unpack('<...')` NOT `'>'`. This is unique among Indian brokers.
 
@@ -271,17 +342,35 @@ order_id = await adapter.place_order(order_params)
 
 4. **Auth header format** - `access-token: {token}` (hyphenated, lowercase). Not `Authorization: Bearer`.
 
-5. **200-Depth limit** - Only 1 instrument per connection. Need 5 connections for 5 instruments.
+5. **WebSocket auth via URL params** - Market data WS auth is in query string (`?version=2&token=...&clientId=...&authType=2`), NOT in headers. The Live Order Update WS uses a JSON auth message (`MsgCode: 42`).
 
-6. **Multi-tier order limits** - Check all 4 limits (10/sec, 250/min, 1000/hr, 7000/day). Can hit daily limit even within per-second rate limit.
+6. **WebSocket heartbeat** - Server pings every 10 seconds. Client must respond (most libs handle automatically). Connection drops after 40 seconds of no response.
 
-7. **Data API unlock requirement** - Must execute 25 F&O trades monthly to unlock free data access, otherwise ₹499/month subscription required.
+7. **5000 instruments per WS connection** - Total per connection. Per-subscription-message limit is 100 (Ticker/Quote) but total cap is 5000. Exceeding 5 total connections disconnects the oldest.
 
-8. **Instrument CSV download** - Must download from Dhan website manually or via undocumented URL.
+8. **200-Depth limit** - Only 1 instrument per connection. Need 5 connections for 5 instruments.
 
-9. **Exchange segment format** - Uses `NSE_FNO` not `NFO`. Different from Kite/SmartAPI naming.
+9. **Multi-tier order limits** - Check ALL 4 limits (10/sec, 250/min, 1000/hr, 7000/day). Also max 25 modifications per order.
 
-10. **`availabelBalance` typo** - The `GET /v2/fundlimit` response has a misspelled field: `availabelBalance` (missing second 'l'). This is a known bug in the Dhan API that has never been fixed. You MUST use the exact misspelled field name in code — do not "correct" it.
+10. **Static IP whitelisting** - Required for ALL order write operations: `/v2/orders` (POST/PUT/DELETE), `/v2/super/orders` (all 4 methods), `/v2/forever/orders` (create/modify/delete). GET (read) endpoints do NOT require IP whitelisting.
+
+11. **Kill Switch prerequisite** - Cannot activate unless ALL positions are closed and NO pending orders exist. Call sequence: cancel orders → close positions → activate kill switch.
+
+12. **P&L Exit immediate trigger** - Setting `profitValue` below current unrealized P&L triggers exit immediately on the API call.
+
+13. **Data API unlock requirement** - Must execute 25 F&O trades monthly to unlock free data access, otherwise ₹499/month subscription required.
+
+14. **Instrument CSV download** - `https://images.dhan.co/api-data/api-scrip-master.csv` — download daily before market open (~8:30 AM IST).
+
+15. **Exchange segment format** - Uses `NSE_FNO` not `NFO`. Different from Kite/SmartAPI naming.
+
+16. **`availabelBalance` typo** - The `GET /v2/fundlimit` response has a misspelled field: `availabelBalance` (missing second 'l'). This is a known bug that has never been fixed. You MUST use the exact misspelled field name in code.
+
+17. **Historical intraday 90-day limit** - `/v2/charts/intraday` only allows polling 90 days at a time (up to 5 years total, but request max = 90 days).
+
+18. **Option Chain OI lag** - OI data updates slower than LTP. This is why the rate limit is 1 unique request per 3 seconds.
+
+19. **Super Order vs Forever Order** - Super Order = bracket order, same session. Forever Order = GTT, persists until triggered or cancelled (up to 365 days).
 
 ## Error Codes Quick Reference
 
@@ -313,16 +402,18 @@ See [error-codes.md](./references/error-codes.md) for complete error catalog.
 
 | Reference File | Last Verified | Check Frequency |
 |---|---|---|
-| SKILL.md | 2026-02-25 | Quarterly |
-| endpoints-catalog.md | 2026-02-25 | Quarterly |
+| SKILL.md | 2026-02-26 | Quarterly |
+| endpoints-catalog.md | 2026-02-26 | Quarterly |
 | auth-flow.md | 2026-02-25 | Quarterly |
 | error-codes.md | 2026-02-25 | Quarterly |
-| websocket-protocol.md | 2026-02-25 | Quarterly |
+| websocket-protocol.md | 2026-02-26 | Quarterly |
 | symbol-format.md | 2026-02-25 | Quarterly |
-| gtt-orders.md | 2026-02-25 | Quarterly |
-| option-chain.md | 2026-02-25 | Quarterly |
-| webhook.md | 2026-02-25 | Quarterly |
-| maintenance-log.md | 2026-02-25 | Quarterly |
+| gtt-orders.md | 2026-02-26 | Quarterly |
+| option-chain.md | 2026-02-26 | Quarterly |
+| webhook.md | 2026-02-26 | Quarterly |
+| super-order.md | 2026-02-26 | Quarterly |
+| traders-control.md | 2026-02-26 | Quarterly |
+| maintenance-log.md | 2026-02-26 | Quarterly |
 
 ### Auto-Update Trigger Rules
 
@@ -334,6 +425,7 @@ See [error-codes.md](./references/error-codes.md) for complete error catalog.
 
 | Version | Date | Changes |
 |---|---|---|
+| 2.6 | 2026-02-26 | Added Super Order section + `super-order.md` reference, Trader's Control section + `traders-control.md` reference; corrected WS connection URL (query params, not headers), added heartbeat/disconnect details, corrected 5000 instruments/connection limit; corrected rate limits to 4-tier table (Order/Data/Quote/Non-Trading); added 9 new gotchas; updated `gtt-orders.md`, `webhook.md`, `option-chain.md`, `websocket-protocol.md`, `endpoints-catalog.md` |
 | 2.5 | 2026-02-25 | Added Forever Orders (GTT) section, Option Chain section, Postback/Webhook section, Live Order Update WebSocket, `availabelBalance` typo gotcha, corrected multi-tier rate limits (10/sec, 250/min, 1000/hr, 7000/day), expanded Maintenance section with all 9 reference files, added 3 new reference files |
 | 2.0 | 2026-02-25 | Implementation status corrected: all 3 adapters fully Implemented (was Planned), auth route + frontend + tests added to status table, maintenance section added |
 | 1.0 | 2026-02-16 | Initial creation |
@@ -345,6 +437,8 @@ See [error-codes.md](./references/error-codes.md) for complete error catalog.
 - [WebSocket Protocol](./references/websocket-protocol.md) - Little Endian binary protocol
 - [Error Codes](./references/error-codes.md) - Error code reference
 - [Symbol Format](./references/symbol-format.md) - security_id format
+- [Super Order](./references/super-order.md) - Bracket order (entry + target + SL + trail)
+- [Trader's Control](./references/traders-control.md) - Kill Switch and P&L Exit APIs
 - [Forever Orders (GTT)](./references/gtt-orders.md) - GTT/GTC order management
 - [Option Chain](./references/option-chain.md) - Option chain API with Greeks
 - [Webhook / Postback](./references/webhook.md) - Order update notifications

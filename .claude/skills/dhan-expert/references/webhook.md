@@ -72,37 +72,74 @@ No code required for setup — Dhan calls your URL automatically.
 
 Alternative to postback — real-time WebSocket stream of order updates.
 
+### Authentication (Individual / SELF)
+
+The auth message uses `MsgCode: 42` (hardcoded) and `UserType: "SELF"`:
+
 ```python
-import websocket
+import websockets
 import json
 
-def on_open(ws):
-    auth_msg = {
-        "access-token": access_token,
-        "dhan-client-id": client_id
-    }
-    ws.send(json.dumps(auth_msg))
+async def connect_order_updates(access_token: str, client_id: str):
+    async with websockets.connect("wss://api-order-update.dhan.co") as ws:
+        # Send auth immediately after connecting
+        auth_msg = {
+            "LoginReq": {
+                "MsgCode": 42,            # Always 42 — do not change
+                "ClientId": client_id,
+                "Token": access_token,
+            },
+            "UserType": "SELF"
+        }
+        await ws.send(json.dumps(auth_msg))
 
-def on_message(ws, message):
-    data = json.loads(message)
-    order_id = data.get("orderId")
-    status = data.get("orderStatus")
-    print(f"Order {order_id}: {status}")
-
-ws = websocket.WebSocketApp(
-    "wss://api-order-update.dhan.co",
-    on_open=on_open,
-    on_message=on_message
-)
-ws.run_forever()
+        # Receive order update messages
+        async for message in ws:
+            data = json.loads(message)
+            if data.get("type") == "order_alert":
+                order = data["Data"]
+                print(f"Order {order['OrderNo']}: {order['Status']}")
 ```
+
+### Authentication (Partner — all users' orders)
+
+```python
+auth_msg = {
+    "LoginReq": {"MsgCode": 42, "ClientId": "partner_id"},
+    "UserType": "PARTNER",
+    "Secret": "partner_secret"
+}
+```
+
+### Order Update Message Fields
+
+Key fields in `Data` object of `order_alert` messages:
+
+| Field | Description |
+|-------|-------------|
+| `OrderNo` | Dhan order reference |
+| `ExchOrderNo` | Exchange order reference |
+| `Status` | `TRANSIT`, `PENDING`, `REJECTED`, `CANCELLED`, `TRADED`, `EXPIRED` |
+| `TxnType` | `B` = Buy, `S` = Sell (short codes, not `BUY`/`SELL`) |
+| `OrderType` | `LMT`, `MKT`, `SL`, `SLM` (short codes) |
+| `Product` | `C`=CNC, `I`=Intraday, `M`=Margin, `F`=MTF, `V`=CO, `B`=BO |
+| `TradedPrice` | Execution price |
+| `TradedQty` | Filled quantity |
+| `RemainingQuantity` | Unfilled quantity |
+| `LegNo` | Multi-leg: `1`=Entry, `2`=Stop Loss, `3`=Target |
+| `Remarks` | `"Super Order"` if part of a super order |
+| `CorrelationId` | User tracking ID |
+| `StrikePrice`, `ExpiryDate`, `OptType` | F&O fields |
+
+**Note:** The WebSocket uses **short enum codes** (`B`/`S`, `LMT`/`MKT`, `C`/`I`) — different from the REST API which uses full strings (`BUY`/`SELL`, `LIMIT`/`MARKET`, `CNC`/`INTRADAY`).
 
 ## Postback Requirements
 
-- Endpoint must be **publicly accessible** (not localhost)
+- Endpoint must be **publicly accessible** — localhost (`127.0.0.1`) and `localhost` URLs are rejected
 - Must return **2XX response** within timeout
 - Dhan retries if your endpoint returns non-2XX
-- No authentication required on your endpoint (Dhan calls it directly)
+- No signature/HMAC authentication on your endpoint (Dhan calls it directly without verification)
+- Configure the Postback URL at `web.dhan.co` during access token generation
 
 ## AlgoChanakya Integration
 

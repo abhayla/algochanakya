@@ -13,6 +13,8 @@
 | 2024-06-01 | Expiry list API added | GET /v2/expirylist | Yes (v2.5) |
 | 2024-09-01 | Live Order Update WebSocket | wss://api-order-update.dhan.co | Yes (v2.5) |
 | 2024-01-01 | Forever Orders (GTT) added | /v2/forever/orders | Yes (v2.5) |
+| 2024-01-01 | Super Orders added | /v2/super/orders (entry+target+SL in one call) | Yes (v2.6) |
+| 2024-01-01 | Trader's Control added | /v2/killswitch + /v2/pnlExit risk management APIs | Yes (v2.6) |
 
 ### Known Bugs/Issues
 
@@ -34,6 +36,7 @@
 
 | Date | Reviewer | Changes |
 |------|----------|---------|
+| 2026-02-26 | Claude | v2.6: Added Super Order (new reference), Trader's Control (new reference), corrected WS auth to MsgCode:42, fixed forever GET to /forever/all, added IP whitelist indicators, corrected WS URL to query-param auth, fixed heartbeat details (10s/40s), expanded rate limits to 5 categories, 9 new gotchas |
 | 2026-02-25 | Claude | v2.5: Forever Orders, Option Chain, Postback/WebSocket, availabelBalance typo, corrected rate limits |
 | 2026-02-25 | Claude | v2.0: Implementation status corrections |
 | 2026-02-16 | Claude | v1.0: Initial creation |

@@ -1,19 +1,19 @@
 # Dhan Forever Orders (GTT) Reference
 
-> Source: Dhan API v2 Docs (https://dhanhq.co/docs/v2/) | Last verified: 2026-02-25
+> Source: Dhan API v2 Docs (https://dhanhq.co/docs/v2/forever/) | Last verified: 2026-02-26
 
 ## Overview
 
 Dhan's GTT equivalent is called **"Forever Orders"** — orders that persist until triggered or manually cancelled (up to 365 days).
 
-## Endpoints
+## Endpoints (all require static IP whitelisting for write operations)
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/v2/forever/orders` | Create forever order |
-| GET | `/v2/forever/orders` | List all forever orders |
-| PUT | `/v2/forever/orders` | Modify forever order |
-| DELETE | `/v2/forever/orders` | Cancel forever order |
+| Method | Endpoint | Description | IP Whitelist? |
+|--------|----------|-------------|---------------|
+| POST | `/v2/forever/orders` | Create forever order | Yes |
+| GET | `/v2/forever/all` | List all forever orders | No |
+| PUT | `/v2/forever/orders/{order-id}` | Modify forever order | Yes |
+| DELETE | `/v2/forever/orders/{order-id}` | Cancel forever order | Yes |
 
 ## Forever Order Types
 
@@ -26,31 +26,54 @@ Dhan's GTT equivalent is called **"Forever Orders"** — orders that persist unt
 
 **POST** `/v2/forever/orders`
 
-### Request Body
+### Request Body (SINGLE)
 ```json
 {
   "dhanClientId": "1000000003",
+  "correlationId": "my-gtt-001",
   "orderFlag": "SINGLE",
   "transactionType": "BUY",
   "exchangeSegment": "NSE_EQ",
   "productType": "CNC",
   "orderType": "LIMIT",
   "validity": "DAY",
-  "tradingSymbol": "RELIANCE",
   "securityId": "2885",
   "quantity": 5,
   "disclosedQuantity": 0,
   "price": 2505.0,
   "triggerPrice": 2500.0,
   "price1": 0.0,
-  "triggerPrice1": 0.0
+  "triggerPrice1": 0.0,
+  "quantity1": 0
 }
 ```
 
+### Field Reference
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `dhanClientId` | string | Yes | User ID |
+| `correlationId` | string | No | Tracking ID (max 30 chars, alphanumeric + spaces/underscores/hyphens) |
+| `orderFlag` | string | Yes | `SINGLE` or `OCO` |
+| `transactionType` | string | Yes | `BUY` or `SELL` |
+| `exchangeSegment` | string | Yes | `NSE_EQ`, `BSE_EQ`, `NSE_FNO`, `BSE_FNO` |
+| `productType` | string | Yes | `CNC` or `MTF` only (not INTRADAY/MARGIN) |
+| `orderType` | string | Yes | `LIMIT`, `MARKET` |
+| `validity` | string | Yes | `DAY`, `IOC` |
+| `securityId` | string | Yes | Instrument ID |
+| `quantity` | int | Yes | Order quantity |
+| `disclosedQuantity` | int | No | Must be >30% of qty if used |
+| `price` | float | Yes | Order price for leg 1 |
+| `triggerPrice` | float | Yes | Trigger price for leg 1 |
+| `price1` | float | OCO only | Order price for leg 2 |
+| `triggerPrice1` | float | OCO only | Trigger price for leg 2 |
+| `quantity1` | int | OCO only | Quantity for leg 2 |
+
 ### For OCO (Two-leg)
 - Set `orderFlag: "OCO"`
-- `price` + `triggerPrice` = first leg (e.g., target)
-- `price1` + `triggerPrice1` = second leg (e.g., stop-loss)
+- Leg 1 (`price` + `triggerPrice`) = first condition (e.g., target)
+- Leg 2 (`price1` + `triggerPrice1` + `quantity1`) = second condition (e.g., stop-loss)
+- When one leg triggers, the other is automatically cancelled
 
 ## Response
 ```json

@@ -6,6 +6,10 @@
 
 Dhan provides a dedicated Option Chain API with market data and Greeks for index options.
 
+## Rate Limit
+
+**1 unique request every 3 seconds** per distinct underlying instrument. OI data updates slower than LTP — this conservative throttling is intentional.
+
 ## Endpoints
 
 | Method | Endpoint | Description |

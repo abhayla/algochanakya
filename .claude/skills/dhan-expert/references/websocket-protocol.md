@@ -14,12 +14,14 @@ among Indian brokers -- most others (Zerodha Kite, Angel SmartAPI) use big-endia
 
 | Property            | Value                                    |
 |---------------------|------------------------------------------|
-| WebSocket URL       | `wss://api-feed.dhan.co`                 |
+| WebSocket URL (v2)  | `wss://api-feed.dhan.co?version=2&token={access_token}&clientId={client_id}&authType=2` |
 | Protocol            | Binary (little-endian) + JSON control    |
-| Max Connections      | 5 concurrent connections per user        |
-| Heartbeat           | Ping/Pong (standard WebSocket)           |
+| Max Connections     | 5 concurrent connections per user (exceeding 5 disconnects oldest) |
+| Max Instruments     | 5000 per connection (100 per subscription JSON message) |
+| Heartbeat           | Server pings every **10 seconds**; connection drops after **40 seconds** of no response |
 | Reconnection        | Client-managed; no auto-reconnect        |
-| Authentication      | Via JSON subscription message            |
+| Authentication      | Via **query parameters** in the URL (`token=`, `clientId=`, `authType=2`) |
+| Graceful Disconnect | Send `{"RequestCode": 12}` to cleanly close |
 
 ---
 
@@ -41,16 +43,24 @@ connection for each instrument requiring 200-depth data.
 
 ## Connection Flow
 
-### Step 1: Establish WebSocket Connection
+### Step 1: Establish WebSocket Connection (v2 Auth via URL)
+
+Auth is done via **query parameters** in the URL — NOT headers:
 
 ```python
 import websockets
 import json
 import struct
 
-WS_URL = "wss://api-feed.dhan.co"
-
-async def connect():
+async def connect(access_token: str, client_id: str):
+    # v2: auth via query params in URL
+    WS_URL = (
+        f"wss://api-feed.dhan.co"
+        f"?version=2"
+        f"&token={access_token}"
+        f"&clientId={client_id}"
+        f"&authType=2"
+    )
     async with websockets.connect(WS_URL) as ws:
         # Step 2: Subscribe
         await subscribe(ws)
