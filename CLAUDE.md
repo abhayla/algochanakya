@@ -16,10 +16,20 @@ git status && git log --oneline -5
 cd backend && venv\Scripts\activate && python run.py  # Port 8001
 cd frontend && npm run dev                             # Port 5173
 
-# Run tests
+# Run tests — E2E (from project root)
 npm test                                               # All E2E tests
-npx playwright test path/to/spec                       # Single E2E test
-cd backend && pytest tests/module/test_file.py::test_func -v  # Single backend test
+npm run test:specs:positions                           # Single screen
+npx playwright test path/to/spec                       # Single file
+npx playwright test --grep "test name"                 # Single test by name
+
+# Run tests — Backend (from backend/)
+pytest tests/ -v                                       # All backend tests
+pytest tests/backend/options/test_pnl_calculator.py -v # Single file
+pytest tests/backend/ai/test_market_regime.py::TestRegimeClassifier::test_bullish_regime -v  # Single test
+
+# Run tests — Frontend unit (from frontend/)
+npm run test:run                                       # Run once
+npm run test                                           # Watch mode
 
 # Dev ports: Backend=8001, Frontend=5173 | Production: Backend=8000, Frontend=3004
 ```
@@ -35,6 +45,7 @@ cd backend && pytest tests/module/test_file.py::test_func -v  # Single backend t
 3. **Touching production:** NEVER modify `C:\Apps\algochanakya` - only work in dev folder
 4. **Missing alembic import:** New models must be imported in `backend/alembic/env.py`
 5. **Direct broker API usage:** Always use adapters from `app.services.brokers/`, never import `KiteConnect` or `SmartAPI` directly
+6. **Broker name mismatch:** DB stores `'zerodha'`/`'angelone'` but BrokerType enum uses `'kite'`/`'angel'` — use the broker name mapping utility when converting
 
 ---
 
@@ -202,9 +213,13 @@ alembic revision --autogenerate -m "description" && alembic upgrade head
 
 ## Project Overview
 
-Multi-broker options trading platform for Indian markets. **Tech Stack:** FastAPI + Vue 3 + PostgreSQL + Redis + Playwright + pytest. AutoPilot automated trading (26 services). AI-powered regime detection.
+Multi-broker options trading platform for Indian markets. **Tech Stack:** FastAPI + Vue 3 + PostgreSQL + Redis + Playwright + pytest + Vitest. AutoPilot automated trading (26 services). AI-powered regime detection (35 AI services).
+
+**Three test layers:** Backend unit/integration (pytest, `backend/tests/backend/{module}/`), Frontend unit (Vitest, `frontend/tests/{stores,components,composables}/`), E2E (Playwright, `tests/e2e/specs/{screen}/`).
 
 **Details:** [backend/CLAUDE.md](backend/CLAUDE.md) | [docs/README.md](docs/README.md)
+
+**Root directory note:** The many `tmpclaude-*` directories are temporary working dirs created by Claude Code hooks — they are gitignored and can be ignored.
 
 ---
 
@@ -268,8 +283,12 @@ See [backend/CLAUDE.md](backend/CLAUDE.md#database-patterns) for models, routes,
 
 ## Testing
 
-**E2E rules:** See [E2E Test Rules](docs/testing/e2e-test-rules.md) (SSOT) for complete guidelines. Quick summary: `data-testid` only, import from `auth.fixture.js`, use `authenticatedPage`.
+**E2E rules:** See [E2E Test Rules](docs/testing/e2e-test-rules.md) (SSOT) for complete guidelines. Quick summary: `data-testid` only, import from `auth.fixture.js`, use `authenticatedPage` fixture. Test files follow `{screen}.{happy|edge|visual|api|audit}.spec.js` naming.
+
 **Backend test markers:** `@unit`, `@api`, `@integration`, `@slow` — see [backend/CLAUDE.md](backend/CLAUDE.md#development-commands)
+
+**Frontend unit tests (Vitest):** Environment is `happy-dom`. Global setup in `frontend/tests/setup.js` provides localStorage mock, WebSocket mock, and `import.meta.env` stubs. Mock stores with `vi.mock('@/stores/...')` and use `setActivePinia(createPinia())` in `beforeEach`.
+
 **Test docs:** [docs/testing/README.md](docs/testing/README.md)
 
 ---
