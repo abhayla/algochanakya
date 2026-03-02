@@ -258,8 +258,9 @@ test.describe('MyScreen - Visual @visual', () => {
 
 ```javascript
 import { test, expect } from '@playwright/test';
+import { getApiBase } from '../../helpers/config.helper.js';
 
-const API_BASE = process.env.API_BASE || 'http://localhost:8000';
+const API_BASE = getApiBase();
 
 test.describe('MyScreen API @api', () => {
   let authToken;

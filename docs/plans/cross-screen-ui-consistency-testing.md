@@ -208,7 +208,7 @@ test.describe('Cross-Screen UI Consistency @audit', () => {
 
     for (const screen of SCREENS) {
       await authenticatedPage.goto(screen.path);
-      await authenticatedPage.waitForLoadState('networkidle');
+      await authenticatedPage.waitForLoadState('domcontentloaded');
 
       const styles = await audit.collectElementStyles('buttons', ELEMENT_SELECTORS.buttons);
       results.push({ screen: screen.name, styles });

@@ -114,7 +114,7 @@ python run.py
 
 Then in another terminal:
 ```bash
-curl -X POST http://localhost:8000/api/instruments/refresh \
+curl -X POST http://localhost:8001/api/instruments/refresh \
   -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
 
@@ -125,7 +125,7 @@ cd backend
 python run.py
 ```
 
-Backend will run at: http://localhost:8000
+Backend will run at: http://localhost:8001
 
 ### Step 4: Start Frontend Server
 
@@ -151,7 +151,7 @@ Frontend will run at: http://localhost:5174
 
 ## WebSocket Flow
 
-1. **Connection**: Frontend connects to `ws://localhost:8000/ws/ticks?token=JWT`
+1. **Connection**: Frontend connects to `ws://localhost:8001/ws/ticks?token=JWT`
 2. **Authentication**: Server validates JWT token
 3. **Kite Connect**: Server connects to Kite WebSocket with broker access token
 4. **Subscribe**: Frontend sends `{"action": "subscribe", "tokens": [256265]}`
@@ -185,8 +185,8 @@ KITE_API_SECRET=99q72gnpothxdsi3jo0o789dvyt6rco3
 
 ### Frontend (.env)
 ```env
-VITE_API_BASE_URL=http://localhost:8000
-VITE_WS_URL=localhost:8000  # WebSocket URL (without protocol)
+VITE_API_BASE_URL=http://localhost:8001
+VITE_WS_URL=localhost:8001  # WebSocket URL (without protocol)
 ```
 
 ## Known Limitations & Future Enhancements

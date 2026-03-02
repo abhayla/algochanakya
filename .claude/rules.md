@@ -174,7 +174,7 @@ const positions = await positionsApi.getAll()
 ✅ **Allowed in tests:**
 ```javascript
 // E2E tests can import from both layers
-import { test, expect } from '../../config/auth.fixture.js'
+import { test, expect } from '../../fixtures/auth.fixture.js'
 import { authenticatedPage } from '@/test/fixtures'
 ```
 
@@ -461,7 +461,7 @@ import { test, expect } from '@playwright/test'
 
 ✅ **Correct:**
 ```javascript
-import { test, expect } from '../../config/auth.fixture.js'
+import { test, expect } from '../../fixtures/auth.fixture.js'
 ```
 
 **3. Use `authenticatedPage` fixture for authenticated tests**

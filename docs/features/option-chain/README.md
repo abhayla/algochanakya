@@ -69,7 +69,7 @@ Displays real-time option chain data for NIFTY, BANKNIFTY, and FINNIFTY with OI,
 ## Testing
 
 ```bash
-npm run test:optionchain
+npm run test:specs:optionchain
 ```
 
 ## Related

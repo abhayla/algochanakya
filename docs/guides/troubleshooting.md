@@ -342,7 +342,7 @@ pm2 restart algochanakya-frontend
 - Content extends beyond viewport
 
 **Solution:**
-1. Run overflow test: `npm run test:overflow`
+1. Run overflow test: `npm run test:audit`
 2. Check for elements with fixed widths
 3. Use `overflow-x-hidden` on container
 4. Ensure Tailwind classes use responsive breakpoints

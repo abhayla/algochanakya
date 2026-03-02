@@ -33,7 +33,7 @@ The script automatically captures screenshots of:
 ## Prerequisites
 
 ### 1. Services Running
-- Backend API: `http://localhost:8000`
+- Backend API: `http://localhost:8001`
 - Frontend: `http://localhost:5173`
 
 ### 2. Authentication Token
@@ -101,7 +101,7 @@ docs/assets/screenshots/
 **Solution:** Ensure backend and frontend are running
 ```bash
 # Check backend
-curl http://localhost:8000/api/health
+curl http://localhost:8001/api/health
 
 # Check frontend
 curl http://localhost:5173

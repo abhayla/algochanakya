@@ -275,62 +275,56 @@ npm install -D allure-playwright allure-commandline
 **playwright.config.js:**
 
 ```javascript
-import { defineConfig, devices } from '@playwright/test';
+import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests/e2e/specs',
-  fullyParallel: true,
+  fullyParallel: false,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
-  
-  // Multiple reporters
+  retries: process.env.CI ? 1 : 0,
+  workers: process.env.CI ? 2 : 4,
+
+  // Reporters: heavy ones (JSON, JUnit, Allure) only in CI
   reporter: [
     ['list'],
     ['html', { open: 'never', outputFolder: 'playwright-report' }],
-    ['json', { outputFile: 'test-results/results.json' }],
-    ['junit', { outputFile: 'test-results/junit.xml' }],
-    ['allure-playwright', { 
-      outputFolder: 'allure-results',
-      suiteTitle: true,
-      categories: [
-        {
-          name: 'Outdated tests',
-          messageRegex: '.*FileNotFound.*'
-        },
-        {
-          name: 'Product defects',
-          messageRegex: '.*AssertionError.*'
+    ...(process.env.CI ? [
+      ['json', { outputFile: 'test-results/results.json' }],
+      ['junit', { outputFile: 'test-results/junit.xml' }],
+      ['allure-playwright', {
+        outputFolder: 'allure-results',
+        suiteTitle: true,
+        categories: [
+          {
+            name: 'Outdated tests',
+            messageRegex: '.*FileNotFound.*'
+          },
+          {
+            name: 'Product defects',
+            messageRegex: '.*AssertionError.*'
+          }
+        ],
+        environmentInfo: {
+          Project: 'AlgoChanakya',
+          Framework: 'Vue.js 3',
+          Browser: 'Chromium'
         }
-      ],
-      environmentInfo: {
-        Project: 'AlgoChanakya',
-        Framework: 'Vue.js 3',
-        Browser: 'Chromium'
-      }
-    }]
+      }]
+    ] : []),
   ],
-  
+
   use: {
     baseURL: process.env.BASE_URL || 'http://localhost:5173',
+    storageState: './tests/config/.auth-state.json',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
   },
 
   projects: [
-    {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
-    },
-    {
-      name: 'firefox',
-      use: { ...devices['Desktop Firefox'] },
-    },
-    {
-      name: 'mobile',
-      use: { ...devices['iPhone 13'] },
-    },
+    { name: 'setup', testMatch: /global-setup\.spec\.js/ },
+    { name: 'chromium', dependencies: ['setup'], testIgnore: /.*\.isolated\.spec\.js/ },
+    { name: 'isolated', testMatch: /.*\.isolated\.spec\.js/, use: { storageState: undefined } },
   ],
 
   webServer: {

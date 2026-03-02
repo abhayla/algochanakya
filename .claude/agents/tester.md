@@ -377,10 +377,9 @@ agent_result = Task(
 3. **Common issues:**
    - SmartAPI token expires every 8h (auto-refresh in place)
    - Playwright tests slower with headless: false (default)
-   - Some legacy tests have 180s-600s timeouts
 
 4. **Test config:**
-   - playwright.config.js: 30s default timeout, 2 workers, auth state reuse
+   - playwright.config.js: 30s default timeout, 4 local / 2 CI workers, auth state reuse
    - pytest.ini: Async support, markers defined
    - vitest.config.js: Vue plugin, path aliases
 

@@ -590,7 +590,7 @@ npx playwright test tests/e2e/specs/positions/positions.happy.spec.js --headed
 **With Retries (Handle Flaky Tests):**
 ```bash
 # Retry failed tests up to 2 times
-npx playwright test tests/e2e/specs/positions/positions.happy.spec.js --retries=2
+npx playwright test tests/e2e/specs/positions/positions.happy.spec.js --retries=1
 ```
 
 **Specific Browser:**

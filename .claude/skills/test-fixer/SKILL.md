@@ -271,7 +271,7 @@ await myPage.clickFirstItem(); // May fail if still loading
 
 // RIGHT - Wait for page load
 await myPage.navigate();
-await myPage.waitForPageLoad(); // Waits for networkidle + buffer
+await myPage.waitForPageLoad(); // Waits for domcontentloaded + buffer
 await expect(myPage.firstItem).toBeVisible();
 await myPage.clickFirstItem();
 ```

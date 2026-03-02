@@ -35,7 +35,7 @@ alembic upgrade head
 python run.py
 ```
 
-Server runs at: http://localhost:8000
+Server runs at: http://localhost:8001
 
 ## Project Structure
 
@@ -118,9 +118,9 @@ Create `.env` from `.env.example`:
 
 ## API Documentation
 
-- **Swagger UI**: http://localhost:8000/docs
-- **ReDoc**: http://localhost:8000/redoc
-- **OpenAPI JSON**: http://localhost:8000/openapi.json
+- **Swagger UI**: http://localhost:8001/docs
+- **ReDoc**: http://localhost:8001/redoc
+- **OpenAPI JSON**: http://localhost:8001/openapi.json
 
 ## Key API Endpoints
 
@@ -160,8 +160,8 @@ Create `.env` from `.env.example`:
 npm test
 
 # Or specific tests
-npm run test:api
-npm run test:positions
+npm run test:api:new
+npm run test:specs:positions
 ```
 
 ## Documentation

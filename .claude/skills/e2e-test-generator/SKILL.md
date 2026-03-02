@@ -220,8 +220,9 @@ test.describe('MyScreen - Visual @visual', () => {
 **API Test Template:**
 ```javascript
 import { test, expect } from '@playwright/test'; // Note: Use @playwright/test for API tests
+import { getApiBase } from '../../helpers/config.helper.js';
 
-const API_BASE = process.env.API_BASE || 'http://localhost:8000';
+const API_BASE = getApiBase();
 
 test.describe('MyScreen API @api', () => {
   test('GET endpoint returns data', async ({ request }) => {

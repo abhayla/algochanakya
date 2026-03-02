@@ -10,9 +10,9 @@ All Page Objects in AlgoChanakya extend `BasePage` class which provides common m
 ### Navigation
 | Method | Description |
 |--------|-------------|
-| `navigate()` | Navigate to `this.url` and wait for networkidle |
+| `navigate()` | Navigate to `this.url` and wait for domcontentloaded |
 | `goto(url)` | Navigate to specific URL |
-| `waitForLoad()` | Wait for networkidle + 500ms Vue rendering buffer |
+| `waitForLoad()` | Wait for domcontentloaded + 500ms Vue rendering buffer |
 | `waitForUrl(path)` | Wait for URL to contain path |
 
 ### Selectors

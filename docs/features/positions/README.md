@@ -79,7 +79,7 @@ Real-time F&O positions display with MTM P/L, exit/add functionality, and portfo
 ## Testing
 
 ```bash
-npm run test:positions
+npm run test:specs:positions
 ```
 
 ## Related

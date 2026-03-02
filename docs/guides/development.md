@@ -85,8 +85,8 @@ cp .env.example .env
 Edit `frontend/.env`:
 
 ```env
-VITE_API_BASE_URL=http://localhost:8000
-VITE_WS_URL=localhost:8000
+VITE_API_BASE_URL=http://localhost:8001
+VITE_WS_URL=localhost:8001
 ```
 
 ### 6. Start Development Servers
@@ -112,9 +112,9 @@ npm run dev
 | Service | URL |
 |---------|-----|
 | Frontend | http://localhost:5173 |
-| Backend API | http://localhost:8000 |
-| API Docs (Swagger) | http://localhost:8000/docs |
-| API Docs (ReDoc) | http://localhost:8000/redoc |
+| Backend API | http://localhost:8001 |
+| API Docs (Swagger) | http://localhost:8001/docs |
+| API Docs (ReDoc) | http://localhost:8001/redoc |
 
 ## Verification
 
@@ -185,15 +185,15 @@ echo "VITE_API_BASE_URL=https://algochanakya.com" > .env.production
 npm run build
 ```
 
-> **CRITICAL**: Without `.env.production`, the build defaults to `http://localhost:8000` and API calls will fail in production!
+> **CRITICAL**: Without `.env.production`, the build defaults to `http://localhost:8001` (dev URL) and API calls will fail in production!
 
 ### Verify Production Build
 
 ```bash
 # Check which API URL is baked into the build
-grep -o "algochanakya.com\|localhost:8000" frontend/dist/assets/index-*.js | head -1
+grep -o "algochanakya.com\|localhost:8001" frontend/dist/assets/index-*.js | head -1
 
-# Should output: algochanakya.com (NOT localhost:8000)
+# Should output: algochanakya.com (NOT localhost:8001)
 ```
 
 ### Environment Files

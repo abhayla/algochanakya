@@ -17,7 +17,7 @@ cd frontend
 npm run dev
 
 # Terminal 3 - Check services
-curl http://localhost:8000/api/health  # Should return {"status": "healthy"}
+curl http://localhost:8001/api/health  # Should return {"status": "healthy"}
 curl http://localhost:5173              # Should return HTML
 ```
 
@@ -194,7 +194,7 @@ const WAIT_FOR_LOAD = 3000; // Increased from 2000ms
 
 **Check backend:**
 ```bash
-curl http://localhost:8000/api/health
+curl http://localhost:8001/api/health
 # Expected: {"status": "healthy"}
 ```
 

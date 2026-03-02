@@ -83,7 +83,7 @@ JWT_EXPIRY_HOURS=24
 # Kite Connect (Zerodha)
 KITE_API_KEY=dh9lojp9j9tnq3h4
 KITE_API_SECRET=99q72gnpothxdsi3jo0o789dvyt6rco3
-KITE_REDIRECT_URL=http://localhost:8000/api/auth/zerodha/callback
+KITE_REDIRECT_URL=http://localhost:8001/api/auth/zerodha/callback
 
 # Frontend
 FRONTEND_URL=http://localhost:5174

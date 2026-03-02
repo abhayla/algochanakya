@@ -90,7 +90,7 @@ explorer docs\assets\screenshots  # Windows
    ```
 
 2. **Ensure services are configured**:
-   - Backend on `http://localhost:8000`
+   - Backend on `http://localhost:8001`
    - Frontend on `http://localhost:5173`
 
 3. **Generate auth token**:
@@ -167,7 +167,7 @@ screenshot-capture.js
 │
 ├── 3. For Each Screen:
 │   ├── Navigate to URL
-│   ├── Wait for Page Load (networkidle)
+│   ├── Wait for Page Load (domcontentloaded)
 │   ├── Wait for Dynamic Content (2s)
 │   ├── Take Full-Page Screenshot
 │   └── Save to docs/assets/screenshots/
@@ -282,7 +282,7 @@ ls docs/assets/screenshots/autopilot-*.png | wc -l
 ### Issue 2: Services not running
 **Check:**
 ```bash
-curl http://localhost:8000/api/health  # Backend
+curl http://localhost:8001/api/health  # Backend
 curl http://localhost:5173              # Frontend
 ```
 

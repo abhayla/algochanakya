@@ -82,8 +82,7 @@ Multi-leg options strategy builder with P/L calculations, payoff chart visualiza
 ## Testing
 
 ```bash
-npm run test:strategy
-npm run test:iron-condor  # Iron Condor specific tests
+npm run test:specs:strategy
 ```
 
 ## Related

@@ -166,7 +166,7 @@ tests/e2e/specs/
   strategylibrary/ # 5 spec files (160+ tests)
   live/            # Live broker E2E tests
   integration/     # Integration specs
-  legacy/          # Legacy spec files
+
 
 tests/e2e/helpers/
   assertions.js   # Shared Playwright assertion utilities

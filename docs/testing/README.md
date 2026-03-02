@@ -36,7 +36,7 @@ grep -r "def test_\|async def test_" backend/tests/backend/brokers/ --include="*
 
 ### Frontend E2E Tests (Playwright)
 
-Tests organized by screen across `tests/e2e/specs/` directories: login, dashboard, positions, watchlist, optionchain, strategy, strategylibrary, autopilot, navigation, broker-abstraction, ai, ofo, audit, integration, header, and legacy.
+Tests organized by screen across `tests/e2e/specs/` directories: login, dashboard, positions, watchlist, optionchain, strategy, strategylibrary, autopilot, navigation, broker-abstraction, ai, ofo, audit, integration, and header.
 
 Test types per screen: happy path, edge cases, visual regression, API/WebSocket, and accessibility audits.
 
@@ -394,7 +394,7 @@ export class BasePage {
 
   async navigate(url) {
     await this.page.goto(url);
-    await this.page.waitForLoadState('networkidle');
+    await this.page.waitForLoadState('domcontentloaded');
   }
 
   async waitForSelector(selector, timeout = 10000) {
@@ -586,19 +586,19 @@ npm run generate:test -- --screen MyNewScreen --path /mynewscreen
 **Add to package.json:**
 ```json
 {
-  "test:login": "playwright test specs/login/",
-  "test:dashboard": "playwright test specs/dashboard/",
-  "test:watchlist": "playwright test specs/watchlist/",
-  "test:optionchain": "playwright test specs/optionchain/",
-  "test:strategy": "playwright test specs/strategy/",
-  "test:positions": "playwright test specs/positions/",
+  "test:specs:login": "playwright test tests/e2e/specs/login/",
+  "test:specs:dashboard": "playwright test tests/e2e/specs/dashboard/",
+  "test:specs:watchlist": "playwright test tests/e2e/specs/watchlist/",
+  "test:specs:optionchain": "playwright test tests/e2e/specs/optionchain/",
+  "test:specs:strategy": "playwright test tests/e2e/specs/strategy/",
+  "test:specs:positions": "playwright test tests/e2e/specs/positions/",
 
-  "test:happy": "playwright test --grep happy",
-  "test:edge": "playwright test --grep edge",
-  "test:visual": "playwright test --grep visual",
-  "test:api": "playwright test --grep api",
+  "test:happy": "playwright test --grep @happy",
+  "test:edge": "playwright test --grep @edge",
+  "test:visual": "playwright test --grep @visual",
+  "test:api:new": "playwright test --grep @api",
 
-  "test:visual:update": "playwright test --grep visual --update-snapshots",
+  "test:visual:update": "playwright test --grep @visual --update-snapshots",
 
   "generate:test": "node tests/e2e/scripts/generate-test.js"
 }
