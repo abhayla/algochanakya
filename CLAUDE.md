@@ -3,7 +3,7 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 **AlgoChanakya:** Multi-broker options trading platform (Indian markets)
-**Last Updated:** 2026-02-24
+**Last Updated:** 2026-03-02
 **Working Directory:** `C:\Abhay\VideCoding\algochanakya` (development)
 
 ## ⚡ Quick Reference Card
@@ -46,6 +46,13 @@ npm run test                                           # Watch mode
 4. **Missing alembic import:** New models must be imported in `backend/alembic/env.py`
 5. **Direct broker API usage:** Always use adapters from `app.services.brokers/`, never import `KiteConnect` or `SmartAPI` directly
 6. **Broker name mismatch:** DB stores `'zerodha'`/`'angelone'` but BrokerType enum uses `'kite'`/`'angel'` — use the broker name mapping utility when converting
+7. **AngelOne 3-key confusion → AG8001:** AngelOne uses 3 separate API keys in `backend/.env`. Using the wrong key for an endpoint returns `AG8001 Invalid Token`. See table:
+
+| `.env` Key | Purpose |
+|-----------|---------|
+| `ANGEL_API_KEY` | Live market data (WebSocket, quotes) |
+| `ANGEL_HIST_API_KEY` | Historical candle data only |
+| `ANGEL_TRADE_API_KEY` | Order execution only |
 
 ---
 
@@ -282,6 +289,10 @@ See [backend/CLAUDE.md](backend/CLAUDE.md#database-patterns) for models, routes,
 ## Testing
 
 **E2E rules:** See [E2E Test Rules](docs/testing/e2e-test-rules.md) (SSOT) for complete guidelines. Quick summary: `data-testid` only, import from `auth.fixture.js`, use `authenticatedPage` fixture. Test files follow `{screen}.{happy|edge|visual|api|audit}.spec.js` naming.
+
+**E2E auth model:** Auth token is injected via `storageState` in `playwright.config.js` (from `tests/config/.auth-state.json`, written by `global-setup.js`). The `authenticatedPage` fixture validates the token is live but does NOT navigate — each test's own `beforeEach` navigates to its screen. Isolated tests (`.isolated.spec.js`) skip `storageState` and get a fresh browser context.
+
+**Playwright workers/reporters:** 4 workers locally, 2 in CI (`process.env.CI`). Heavy reporters (JSON, JUnit, Allure) only run in CI to keep local runs fast.
 
 **Backend test markers:** `@unit`, `@api`, `@integration`, `@slow` — see [backend/CLAUDE.md](backend/CLAUDE.md#development-commands)
 
