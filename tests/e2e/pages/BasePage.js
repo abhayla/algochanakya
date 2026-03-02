@@ -15,33 +15,16 @@ export class BasePage {
   }
 
   /**
-   * Navigate to the page URL
-   * First ensures localStorage is set (storage state may not apply on direct URL navigation)
+   * Navigate to the page URL.
+   * storageState from playwright.config.js injects localStorage at context creation time,
+   * so direct navigation is safe — no need to visit home first.
    */
   async navigate() {
-    // First go to home to ensure storage state is applied
     const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-    await this.page.goto(baseUrl);
+    const targetUrl = this.url && this.url !== '/' ? baseUrl + this.url : baseUrl;
+    await this.page.goto(targetUrl);
+    // Use domcontentloaded — networkidle never fires with persistent WebSocket connections
     await this.page.waitForLoadState('domcontentloaded');
-
-    // Debug: Check localStorage
-    const token = await this.page.evaluate(() => localStorage.getItem('access_token'));
-    console.log('[BasePage] Token after home navigation:', token ? 'EXISTS' : 'MISSING');
-
-    // Now navigate to the target URL
-    if (this.url && this.url !== '/') {
-      await this.page.goto(baseUrl + this.url);
-      // Use domcontentloaded instead of networkidle
-      // networkidle doesn't work well with WebSocket connections (never becomes idle)
-      await this.page.waitForLoadState('domcontentloaded');
-
-      // Debug: Check localStorage after target navigation
-      const tokenAfter = await this.page.evaluate(() => localStorage.getItem('access_token'));
-      console.log('[BasePage] Token after target navigation:', tokenAfter ? 'EXISTS' : 'MISSING');
-      console.log('[BasePage] Current URL:', this.page.url());
-    } else {
-      await this.page.waitForLoadState('domcontentloaded');
-    }
   }
 
   /**
@@ -108,14 +91,11 @@ export class BasePage {
   }
 
   /**
-   * Wait for page to be fully loaded
-   * Note: We don't use 'networkidle' because WebSocket connections keep the network active
+   * Wait for page to be fully loaded.
+   * Note: We don't use 'networkidle' because WebSocket connections keep the network active.
    */
   async waitForLoad() {
-    // Wait for DOM to be ready and any initial data fetching to complete
     await this.page.waitForLoadState('domcontentloaded');
-    // Give Vue a moment to render after data arrives
-    await this.page.waitForTimeout(500);
   }
 
   /**

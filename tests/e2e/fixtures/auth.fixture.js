@@ -25,28 +25,25 @@ let tokenExpiry = null;
 
 export const authFixture = {
   /**
-   * Inject a valid auth token into localStorage (skip OAuth flow)
-   * Uses cached token if still valid
+   * Inject a valid auth token (storageState in playwright.config.js handles actual
+   * localStorage injection at context creation time). This validates the token is live.
+   * Uses cached token if still valid to avoid repeated API calls across workers.
    */
   async injectToken(page) {
-    // Check if we have a valid cached token
+    // Check if we have a valid cached token (avoids re-validation within session)
     if (cachedToken && tokenExpiry && Date.now() < tokenExpiry) {
-      await this._setTokenInPage(page, cachedToken);
       return cachedToken;
     }
-
-    // Need to get a valid token
+    // getValidToken validates the token internally — no second validation needed
     const token = await this.getValidToken(page);
-    await this._setTokenInPage(page, token);
     return token;
   },
 
   /**
-   * Validate token is active — storageState already injects localStorage into every
-   * browser context via playwright.config, so no page navigation is needed here.
-   * Each test's beforeEach navigates to its own screen URL anyway.
+   * Validate that the token is still active against the live API.
+   * storageState already injects localStorage — this is a liveness check only.
    */
-  async _setTokenInPage(page, token) {
+  async _validateTokenIsActive(page, token) {
     const isValid = await this.validateToken(page, token);
     if (!isValid) {
       console.warn('[Auth Fixture] Token validation failed - token may be expired');

@@ -63,7 +63,7 @@ test.describe('OAuth Full Flow - Automated @oauth', () => {
     }
 
     // Inject token and verify it works
-    await authFixture._setTokenInPage(page, storedToken);
+    await authFixture._validateTokenIsActive(page, storedToken);
 
     // Navigate to protected route
     await page.goto(FRONTEND_URL + '/dashboard');

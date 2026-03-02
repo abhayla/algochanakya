@@ -145,7 +145,7 @@ export async function loginOrReuse(page) {
   try {
     const token = await authFixture.getValidToken(page);
     console.log('Using existing valid token');
-    await authFixture._setTokenInPage(page, token);
+    await authFixture._validateTokenIsActive(page, token);
     return token;
   } catch (e) {
     // No valid token, perform fresh login
