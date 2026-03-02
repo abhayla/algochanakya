@@ -29,14 +29,14 @@ test.describe('Strategy Library - API Validation @api', () => {
     const data = await response.json();
 
     expect(Array.isArray(data)).toBe(true);
-    if (data.length > 0) {
-      const template = data[0];
-      expect(template).toHaveProperty('id');
-      expect(template).toHaveProperty('name');
-      expect(template).toHaveProperty('display_name');
-      expect(template).toHaveProperty('category');
-      expect(template).toHaveProperty('legs_config');
-    }
+    // Strategy templates are static data — there must always be at least one
+    expect(data.length).toBeGreaterThan(0);
+    const template = data[0];
+    expect(template).toHaveProperty('id');
+    expect(template).toHaveProperty('name');
+    expect(template).toHaveProperty('display_name');
+    expect(template).toHaveProperty('category');
+    expect(template).toHaveProperty('legs_config');
   });
 
   test('GET /api/strategy-library/templates with category filter', async ({ request }) => {

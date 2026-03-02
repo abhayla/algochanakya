@@ -68,6 +68,9 @@ test.describe('Positions - Happy Path @happy', () => {
 
     if (hasPositions) {
       await expect(positionsPage.summaryBar).toBeVisible();
+    } else {
+      // No positions — empty state must be visible (always assert something)
+      await expect(positionsPage.emptyState).toBeVisible();
     }
   });
 
@@ -79,6 +82,9 @@ test.describe('Positions - Happy Path @happy', () => {
       for (const header of headers) {
         await expect(positionsPage.table.getByText(header)).toBeVisible();
       }
+    } else {
+      // No positions — empty state must be visible (always assert something)
+      await expect(positionsPage.emptyState).toBeVisible();
     }
   });
 
@@ -86,11 +92,9 @@ test.describe('Positions - Happy Path @happy', () => {
     const hasPositions = await positionsPage.hasPositions();
 
     if (hasPositions) {
-      // Wait for live data to load
-      await authenticatedPage.waitForTimeout(2000);
-
       // Get all LTP cells in the positions table
       const ltpCells = authenticatedPage.locator('[data-testid^="positions-ltp-"]');
+      await ltpCells.first().waitFor({ state: 'visible', timeout: 5000 });
       const count = await ltpCells.count();
 
       if (count > 0) {
@@ -102,6 +106,9 @@ test.describe('Positions - Happy Path @happy', () => {
         // Test will fail if Kite broker token is expired
         expect(ltpValue).toBeGreaterThan(0);
       }
+    } else {
+      // No positions — empty state must be visible (always assert something)
+      await expect(positionsPage.emptyState).toBeVisible();
     }
   });
 
@@ -115,6 +122,9 @@ test.describe('Positions - Happy Path @happy', () => {
 
       await expect(exitButtons.first()).toBeVisible();
       await expect(addButtons.first()).toBeVisible();
+    } else {
+      // No positions — empty state must be visible (always assert something)
+      await expect(positionsPage.emptyState).toBeVisible();
     }
   });
 

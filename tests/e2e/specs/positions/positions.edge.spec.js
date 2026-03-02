@@ -81,6 +81,9 @@ test.describe('Positions - Edge Cases @edge', () => {
 
       // Modal should close
       await expect(positionsPage.exitModal).not.toBeVisible();
+    } else {
+      // No positions — empty state must be visible (always assert something)
+      await expect(positionsPage.emptyState).toBeVisible();
     }
   });
 
@@ -104,6 +107,9 @@ test.describe('Positions - Edge Cases @edge', () => {
 
       // Modal should close
       await expect(positionsPage.addModal).not.toBeVisible();
+    } else {
+      // No positions — empty state must be visible (always assert something)
+      await expect(positionsPage.emptyState).toBeVisible();
     }
   });
 
@@ -123,6 +129,9 @@ test.describe('Positions - Edge Cases @edge', () => {
 
       await expect(marketBtn).toBeVisible();
       await expect(limitBtn).toBeVisible();
+    } else {
+      // No positions — empty state must be visible (always assert something)
+      await expect(positionsPage.emptyState).toBeVisible();
     }
   });
 });

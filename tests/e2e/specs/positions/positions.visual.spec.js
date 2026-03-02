@@ -51,12 +51,17 @@ test.describe('Positions - Visual Regression @visual', () => {
       await authenticatedPage.setViewportSize(VIEWPORTS.desktop);
       const exitBtn = authenticatedPage.locator('[data-testid^="positions-exit-button-"]').first();
       await exitBtn.click();
-      await authenticatedPage.waitForTimeout(300);
+      await positionsPage.exitModal.waitFor({ state: 'visible', timeout: 5000 });
       await prepareForVisualTest(authenticatedPage);
       await expect(authenticatedPage).toHaveScreenshot(
         'positions-exit-modal.png',
         getVisualCompareOptions()
       );
+    } else {
+      // No positions — capture empty state baseline instead (always assert something)
+      await authenticatedPage.setViewportSize(VIEWPORTS.desktop);
+      await prepareForVisualTest(authenticatedPage);
+      await expect(positionsPage.emptyState).toBeVisible();
     }
   });
 });

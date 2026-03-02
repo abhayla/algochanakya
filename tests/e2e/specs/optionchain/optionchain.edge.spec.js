@@ -26,7 +26,7 @@ test.describe('Option Chain - Edge Cases @edge', () => {
     const hasTable = await optionChainPage.table.isVisible().catch(() => false);
     if (hasTable) {
       // Find a strike row
-      const strikeRow = await page.locator('[data-testid^="optionchain-strike-row-"]').first();
+      const strikeRow = page.locator('[data-testid^="optionchain-strike-row-"]').first();
       if (await strikeRow.isVisible()) {
         const testId = await strikeRow.getAttribute('data-testid');
         const strike = testId.replace('optionchain-strike-row-', '');
@@ -38,7 +38,13 @@ test.describe('Option Chain - Edge Cases @edge', () => {
         // Clear selection
         await optionChainPage.clearSelection();
         await optionChainPage.assertSelectedBarHidden();
+      } else {
+        // Table loaded but no strike rows — chain data is loading or expiry unavailable
+        await expect(optionChainPage.table).toBeVisible();
       }
+    } else {
+      // No table — page must still show a loading state or status indicator
+      await optionChainPage.assertPageVisible();
     }
   });
 
@@ -61,7 +67,13 @@ test.describe('Option Chain - Edge Cases @edge', () => {
         expect(count).toBe(2);
 
         await optionChainPage.clearSelection();
+      } else {
+        // Fewer than 2 strike rows — chain data is partial; page should still be stable
+        await optionChainPage.assertPageVisible();
       }
+    } else {
+      // No table — page must still be visible
+      await optionChainPage.assertPageVisible();
     }
   });
 
@@ -95,7 +107,7 @@ test.describe('Option Chain - Edge Cases @edge', () => {
     await optionChainPage.waitForChainLoad();
     const hasTable = await optionChainPage.table.isVisible().catch(() => false);
     if (hasTable) {
-      const strikeRow = await page.locator('[data-testid^="optionchain-strike-row-"]').first();
+      const strikeRow = page.locator('[data-testid^="optionchain-strike-row-"]').first();
       if (await strikeRow.isVisible()) {
         const testId = await strikeRow.getAttribute('data-testid');
         const strike = testId.replace('optionchain-strike-row-', '');
@@ -103,7 +115,13 @@ test.describe('Option Chain - Edge Cases @edge', () => {
         await optionChainPage.selectCE(strike);
         // Note: Selection might or might not persist after refresh depending on implementation
         await optionChainPage.assertPageVisible();
+      } else {
+        // Table loaded but no strike rows yet
+        await expect(optionChainPage.table).toBeVisible();
       }
+    } else {
+      // No table — page must still be visible
+      await optionChainPage.assertPageVisible();
     }
   });
 });
