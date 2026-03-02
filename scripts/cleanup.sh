@@ -46,7 +46,7 @@ rm_file() {
     DELETED_BYTES=$((DELETED_BYTES + size))
 }
 
-# Remove a directory tree. Counts approximate size first.
+# Remove a directory tree. Estimates size (avoids slow find for large dirs).
 rm_dir() {
     local d="$1"
     if [[ ! -d "$d" ]]; then
@@ -54,14 +54,12 @@ rm_dir() {
     fi
     local size
     size=$(du -sb "$d" 2>/dev/null | cut -f1 || echo 0)
-    local count
-    count=$(find "$d" -type f 2>/dev/null | wc -l || echo 0)
     if $DRY_RUN; then
-        log_dry "$d/ (${count} files, ~${size} bytes)"
+        log_dry "$d/ (~${size} bytes)"
     else
-        rm -rf -- "$d" && log_del "$d/ (${count} files)" || log_info "could not remove: $d/"
+        rm -rf -- "$d" && log_del "$d/" || log_info "could not remove: $d/"
     fi
-    DELETED_COUNT=$((DELETED_COUNT + count))
+    DELETED_COUNT=$((DELETED_COUNT + 1))
     DELETED_BYTES=$((DELETED_BYTES + size))
 }
 
