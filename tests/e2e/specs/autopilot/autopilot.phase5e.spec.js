@@ -23,7 +23,7 @@ test.describe('AutoPilot Phase 5E - Risk-Based Exits', () => {
   });
 
   test('shows gamma risk warning near expiry', async () => {
-    test.skip(); // Requires active strategy near expiry
+    test.skip('Phase 5e features not yet implemented'); // Requires active strategy near expiry
   });
 
   test('can enable ATR-based trailing stop', async () => {
@@ -39,16 +39,16 @@ test.describe('AutoPilot Phase 5E - Risk-Based Exits', () => {
 
       await expect(atrMultiplierInput).toHaveValue('2.0');
     } else {
-      test.skip();
+      test.skip('Phase 5e features not yet implemented');
     }
   });
 
   test('shows delta doubles alert', async () => {
-    test.skip(); // Requires active strategy with delta change
+    test.skip('Phase 5e features not yet implemented'); // Requires active strategy with delta change
   });
 
   test('shows daily delta change alert', async () => {
-    test.skip(); // Requires active strategy with delta history
+    test.skip('Phase 5e features not yet implemented'); // Requires active strategy with delta history
   });
 });
 
@@ -64,22 +64,22 @@ test.describe('AutoPilot Phase 5E - DTE-Aware Exits', () => {
   });
 
   test('shows DTE zone indicator', async () => {
-    test.skip(); // Requires active strategy
+    test.skip('Phase 5e features not yet implemented'); // Requires active strategy
   });
 
   test('zone changes as DTE decreases', async () => {
-    test.skip(); // Requires monitoring over time
+    test.skip('Phase 5e features not yet implemented'); // Requires monitoring over time
   });
 
   test('shows expiry week warning', async () => {
-    test.skip(); // Requires strategy in expiry week
+    test.skip('Phase 5e features not yet implemented'); // Requires strategy in expiry week
   });
 
   test('shows exit suggestion in last week', async () => {
-    test.skip(); // Requires strategy in expiry week with delta breach
+    test.skip('Phase 5e features not yet implemented'); // Requires strategy in expiry week with delta breach
   });
 
   test('shows gamma danger zone alert at 3 DTE', async () => {
-    test.skip(); // Requires strategy at 3 DTE
+    test.skip('Phase 5e features not yet implemented'); // Requires strategy at 3 DTE
   });
 });

@@ -199,6 +199,7 @@
                 { 'itm-pe': row.is_itm_pe && !row.is_atm }
               ]"
               :data-testid="'optionchain-strike-row-' + row.strike"
+              :data-atm-row="row.is_atm || undefined"
             >
               <!-- CE Add -->
               <td class="ce-col add-col">
@@ -226,18 +227,18 @@
               <td v-if="store.showGreeks" class="ce-col text-muted" :data-testid="'optionchain-ce-gamma-' + row.strike">{{ row.ce?.gamma?.toFixed(4) || '-' }}</td>
               <td v-if="store.showGreeks" class="ce-col text-muted" :data-testid="'optionchain-ce-theta-' + row.strike">{{ row.ce?.theta?.toFixed(2) || '-' }}</td>
               <td v-if="store.showGreeks" class="ce-col text-muted" :data-testid="'optionchain-ce-vega-' + row.strike">{{ row.ce?.vega?.toFixed(2) || '-' }}</td>
-              <td class="ce-col ltp-col" :class="{ 'itm': row.is_itm_ce }">{{ formatPrice(row.ce?.ltp) }}</td>
+              <td class="ce-col ltp-col" :class="{ 'itm': row.is_itm_ce }" data-testid="optionchain-ltp-cell">{{ formatPrice(row.ce?.ltp) }}</td>
               <td class="ce-col" :class="getChangeClass(row.ce?.change)">{{ formatPct(row.ce?.change_pct) }}</td>
 
               <!-- Strike -->
               <td class="strike-col">
                 <span class="strike-value">{{ row.strike }}</span>
-                <span v-if="row.is_atm" class="atm-badge">ATM</span>
+                <span v-if="row.is_atm" class="atm-badge" data-testid="optionchain-atm-badge">ATM</span>
               </td>
 
               <!-- PE Data -->
               <td class="pe-col" :class="getChangeClass(row.pe?.change)">{{ formatPct(row.pe?.change_pct) }}</td>
-              <td class="pe-col ltp-col" :class="{ 'itm': row.is_itm_pe }">{{ formatPrice(row.pe?.ltp) }}</td>
+              <td class="pe-col ltp-col" :class="{ 'itm': row.is_itm_pe }" data-testid="optionchain-ltp-cell">{{ formatPrice(row.pe?.ltp) }}</td>
               <td v-if="store.showGreeks" class="pe-col text-muted" :data-testid="'optionchain-pe-delta-' + row.strike">{{ row.pe?.delta?.toFixed(2) || '-' }}</td>
               <td v-if="store.showGreeks" class="pe-col text-muted" :data-testid="'optionchain-pe-gamma-' + row.strike">{{ row.pe?.gamma?.toFixed(4) || '-' }}</td>
               <td v-if="store.showGreeks" class="pe-col text-muted" :data-testid="'optionchain-pe-theta-' + row.strike">{{ row.pe?.theta?.toFixed(2) || '-' }}</td>

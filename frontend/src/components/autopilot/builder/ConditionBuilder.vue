@@ -79,6 +79,7 @@
                 <span
                   :class="['status-icon', getStatusClass(getConditionStatus(groupIndex, conditionIndex))]"
                   :title="`Condition ${getConditionStatus(groupIndex, conditionIndex)}`"
+                  data-testid="autopilot-condition-status-icon"
                 >
                   {{ getStatusIcon(getConditionStatus(groupIndex, conditionIndex)) }}
                 </span>
@@ -208,11 +209,11 @@
 
       <!-- Natural Language Summary -->
       <div v-if="showNaturalLanguage" class="natural-language-summary" data-testid="natural-language-summary">
-        <div class="summary-header">
+        <div class="summary-header" data-testid="autopilot-condition-summary-header">
           <i class="fas fa-comment-dots"></i>
           <span class="font-medium">Plain English Summary</span>
         </div>
-        <div class="summary-body">
+        <div class="summary-body" data-testid="autopilot-condition-summary-body">
           <p class="summary-text">{{ generateNaturalLanguage() }}</p>
         </div>
       </div>
@@ -236,23 +237,23 @@
           <span class="font-medium">Visual Flow</span>
         </div>
         <div class="tree-view-body">
-          <div class="tree-node tree-root">
-            <div class="tree-node-label">ENTRY POINT</div>
-            <div class="tree-children">
+          <div class="tree-node tree-root" data-testid="autopilot-condition-tree-root">
+            <div class="tree-node-label" data-testid="autopilot-condition-tree-node-label">ENTRY POINT</div>
+            <div class="tree-children" data-testid="autopilot-condition-tree-children">
               <div
                 v-for="(group, groupIndex) in localGroups"
                 :key="group.id"
                 class="tree-group"
               >
                 <!-- Group Node -->
-                <div class="tree-node tree-group-node">
-                  <div class="tree-node-label">
+                <div class="tree-node tree-group-node" :data-testid="'autopilot-condition-tree-group-' + groupIndex">
+                  <div class="tree-node-label" data-testid="autopilot-condition-tree-node-label">
                     GROUP {{ groupIndex + 1 }}
-                    <span class="tree-operator-badge" :class="getOperatorClass(group.operator)">
+                    <span class="tree-operator-badge" data-testid="autopilot-condition-tree-operator" :class="getOperatorClass(group.operator)">
                       {{ group.operator }}
                     </span>
                   </div>
-                  <div class="tree-children">
+                  <div class="tree-children" data-testid="autopilot-condition-tree-children">
                     <div
                       v-for="(condition, conditionIndex) in group.conditions.filter(c => c.variable && c.value)"
                       :key="condition.id"
@@ -260,6 +261,7 @@
                     >
                       <span
                         :class="['tree-status-icon', getStatusClass(getConditionStatus(groupIndex, conditionIndex))]"
+                        data-testid="autopilot-condition-tree-status-icon"
                       >
                         {{ getStatusIcon(getConditionStatus(groupIndex, conditionIndex)) }}
                       </span>

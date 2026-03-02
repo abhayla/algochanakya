@@ -102,7 +102,7 @@ test.describe('AutoPilot - SHORT-IRON-CONDOR-ADJUSTMENTS-Template', () => {
     await expect(strikeLadderModal).toBeVisible({ timeout: 5000 })
 
     // Wait for option chain to load - look for PE buttons to appear
-    const peButtons = strikeLadderModal.locator('button.select-pe')
+    const peButtons = strikeLadderModal.locator('[data-testid^="autopilot-ladder-select-pe-"]')
     await expect(peButtons.first()).toBeVisible({ timeout: 10000 })
 
     // Select far OTM PE strike (wing) - bottom of the list
@@ -160,7 +160,7 @@ test.describe('AutoPilot - SHORT-IRON-CONDOR-ADJUSTMENTS-Template', () => {
     await expect(strikeLadderModal).toBeVisible({ timeout: 5000 })
 
     // Wait for CE buttons to appear
-    const ceButtons = strikeLadderModal.locator('button.select-ce')
+    const ceButtons = strikeLadderModal.locator('[data-testid^="autopilot-ladder-select-ce-"]')
     await expect(ceButtons.first()).toBeVisible({ timeout: 10000 })
 
     // Select near OTM CE strike (short leg) - closer to ATM
@@ -590,7 +590,7 @@ test.describe('AutoPilot - SHORT-IRON-CONDOR-ADJUSTMENTS-Template', () => {
       // For legs 0-1 (PE legs), select PE buttons
       // For legs 2-3 (CE legs), select CE buttons
       if (i < 2) {
-        const peButtons = strikeLadderModal.locator('button.select-pe')
+        const peButtons = strikeLadderModal.locator('[data-testid^="autopilot-ladder-select-pe-"]')
         await expect(peButtons.first()).toBeVisible({ timeout: 10000 })
         const peCount = await peButtons.count()
         if (peCount > 0) {
@@ -599,7 +599,7 @@ test.describe('AutoPilot - SHORT-IRON-CONDOR-ADJUSTMENTS-Template', () => {
           await peButtons.nth(peIndex).click()
         }
       } else {
-        const ceButtons = strikeLadderModal.locator('button.select-ce')
+        const ceButtons = strikeLadderModal.locator('[data-testid^="autopilot-ladder-select-ce-"]')
         await expect(ceButtons.first()).toBeVisible({ timeout: 10000 })
         const ceCount = await ceButtons.count()
         if (ceCount > 0) {

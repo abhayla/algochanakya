@@ -77,7 +77,7 @@ const pnlColor = computed(() => totalPnL.value >= 0 ? '#10b981' : '#ef4444')
 </script>
 
 <template>
-  <div class="risk-panel">
+  <div class="risk-panel" data-testid="autopilot-risk-panel">
     <div class="panel-header">
       <h3 class="panel-title">Risk Overview</h3>
       <span class="update-time">{{ updateTime }}</span>
@@ -101,7 +101,7 @@ const pnlColor = computed(() => totalPnL.value >= 0 ? '#10b981' : '#ef4444')
     <!-- Actual Content -->
     <div v-else class="risk-metrics">
       <!-- Margin Usage -->
-      <div class="risk-metric">
+      <div class="risk-metric" data-testid="autopilot-risk-metric-margin">
         <div class="metric-header">
           <span class="metric-icon">💰</span>
           <div>
@@ -112,12 +112,12 @@ const pnlColor = computed(() => totalPnL.value >= 0 ? '#10b981' : '#ef4444')
                 <span class="tooltip-text">Percentage of available margin currently blocked for active strategies</span>
               </span>
             </div>
-            <div class="metric-value" :style="{ color: marginColor }">
+            <div class="metric-value" data-testid="autopilot-risk-margin-value" :style="{ color: marginColor }">
               {{ marginUsage }}%
             </div>
           </div>
         </div>
-        <div class="metric-bar">
+        <div class="metric-bar" data-testid="autopilot-risk-margin-bar">
           <div
             class="metric-bar-fill"
             :style="{ width: marginUsage + '%', background: marginColor }"
@@ -133,7 +133,7 @@ const pnlColor = computed(() => totalPnL.value >= 0 ? '#10b981' : '#ef4444')
       </div>
 
       <!-- Delta Exposure -->
-      <div class="risk-metric">
+      <div class="risk-metric" data-testid="autopilot-risk-metric-delta">
         <div class="metric-header">
           <span class="metric-icon">Δ</span>
           <div>
@@ -150,7 +150,7 @@ const pnlColor = computed(() => totalPnL.value >= 0 ? '#10b981' : '#ef4444')
           </div>
         </div>
         <div class="delta-gauge">
-          <div class="gauge-track">
+          <div class="gauge-track" data-testid="autopilot-risk-gauge-track">
             <div
               class="gauge-indicator"
               :style="{
@@ -177,7 +177,7 @@ const pnlColor = computed(() => totalPnL.value >= 0 ? '#10b981' : '#ef4444')
       </div>
 
       <!-- Total P&L -->
-      <div class="risk-metric">
+      <div class="risk-metric" data-testid="autopilot-risk-metric-pnl">
         <div class="metric-header">
           <span class="metric-icon">📊</span>
           <div>
@@ -193,7 +193,7 @@ const pnlColor = computed(() => totalPnL.value >= 0 ? '#10b981' : '#ef4444')
             </div>
           </div>
         </div>
-        <div class="pnl-breakdown">
+        <div class="pnl-breakdown" data-testid="autopilot-risk-pnl-breakdown">
           <div class="breakdown-item">
             <span class="breakdown-label">Realized:</span>
             <span class="breakdown-value" style="color: #10b981">
@@ -213,16 +213,16 @@ const pnlColor = computed(() => totalPnL.value >= 0 ? '#10b981' : '#ef4444')
       </div>
 
       <!-- Active Strategies Count -->
-      <div class="risk-metric compact">
-        <div class="compact-stat">
+      <div class="risk-metric compact" data-testid="autopilot-risk-metric-compact">
+        <div class="compact-stat" data-testid="autopilot-risk-compact-active">
           <span class="compact-label">Active Strategies</span>
           <span class="compact-value">{{ summary.active_strategies || 0 }}</span>
         </div>
-        <div class="compact-stat">
+        <div class="compact-stat" data-testid="autopilot-risk-compact-waiting">
           <span class="compact-label">Waiting</span>
           <span class="compact-value waiting">{{ summary.waiting_strategies || 0 }}</span>
         </div>
-        <div class="compact-stat">
+        <div class="compact-stat" data-testid="autopilot-risk-compact-positions">
           <span class="compact-label">Total Positions</span>
           <span class="compact-value">{{ summary.total_positions || 0 }}</span>
         </div>

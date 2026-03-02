@@ -76,7 +76,7 @@ test.describe('OFO to Strategy Builder - Step 2', () => {
       console.log('Legs:', JSON.stringify(gridData.legs))
 
       // Get displayed columns
-      const spotHeaders = await page.locator('.th-spot').allTextContents()
+      const spotHeaders = await page.locator('[data-testid="strategy-spot-column"]').allTextContents()
       console.log('\nDisplayed columns:', spotHeaders.length)
       console.log('Columns:', JSON.stringify(spotHeaders))
 

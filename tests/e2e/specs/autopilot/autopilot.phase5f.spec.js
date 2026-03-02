@@ -23,27 +23,27 @@ test.describe('AutoPilot Phase 5F - Break/Split Trade', () => {
   });
 
   test('shows break trade option in adjustments', async () => {
-    test.skip(); // Requires active strategy with losing leg
+    test.skip('Phase 5f features not yet implemented'); // Requires active strategy with losing leg
   });
 
   test('break trade wizard opens', async () => {
-    test.skip(); // Requires active strategy
+    test.skip('Phase 5f features not yet implemented'); // Requires active strategy
   });
 
   test('wizard shows exit cost calculation', async () => {
-    test.skip(); // Requires break trade wizard open
+    test.skip('Phase 5f features not yet implemented'); // Requires break trade wizard open
   });
 
   test('wizard shows recovery premium calculation', async () => {
-    test.skip(); // Requires break trade wizard open
+    test.skip('Phase 5f features not yet implemented'); // Requires break trade wizard open
   });
 
   test('wizard shows new strike suggestions', async () => {
-    test.skip(); // Requires break trade wizard open
+    test.skip('Phase 5f features not yet implemented'); // Requires break trade wizard open
   });
 
   test('can execute break trade', async () => {
-    test.skip(); // Requires break trade wizard open
+    test.skip('Phase 5f features not yet implemented'); // Requires break trade wizard open
   });
 });
 
@@ -59,15 +59,15 @@ test.describe('AutoPilot Phase 5F - Add to Opposite Side', () => {
   });
 
   test('shows add to opposite option', async () => {
-    test.skip(); // Requires active strategy
+    test.skip('Phase 5f features not yet implemented'); // Requires active strategy
   });
 
   test('calculates contracts to add', async () => {
-    test.skip(); // Requires active strategy
+    test.skip('Phase 5f features not yet implemented'); // Requires active strategy
   });
 
   test('can execute add to opposite', async () => {
-    test.skip(); // Requires active strategy
+    test.skip('Phase 5f features not yet implemented'); // Requires active strategy
   });
 });
 
@@ -83,15 +83,15 @@ test.describe('AutoPilot Phase 5F - Delta Neutral Rebalance', () => {
   });
 
   test('shows rebalance button when delta outside band', async () => {
-    test.skip(); // Requires active strategy with delta imbalance
+    test.skip('Phase 5f features not yet implemented'); // Requires active strategy with delta imbalance
   });
 
   test('shows rebalance options modal', async () => {
-    test.skip(); // Requires rebalance button click
+    test.skip('Phase 5f features not yet implemented'); // Requires rebalance button click
   });
 
   test('can execute delta neutral rebalance', async () => {
-    test.skip(); // Requires rebalance modal
+    test.skip('Phase 5f features not yet implemented'); // Requires rebalance modal
   });
 });
 
@@ -107,26 +107,26 @@ test.describe('AutoPilot Phase 5F - Shift Leg Modal', () => {
   });
 
   test('shift option appears on leg actions', async () => {
-    test.skip(); // Requires active strategy
+    test.skip('Phase 5f features not yet implemented'); // Requires active strategy
   });
 
   test('shift modal opens', async () => {
-    test.skip(); // Requires leg action click
+    test.skip('Phase 5f features not yet implemented'); // Requires leg action click
   });
 
   test('can select target strike', async () => {
-    test.skip(); // Requires shift modal open
+    test.skip('Phase 5f features not yet implemented'); // Requires shift modal open
   });
 
   test('can select target delta', async () => {
-    test.skip(); // Requires shift modal open
+    test.skip('Phase 5f features not yet implemented'); // Requires shift modal open
   });
 
   test('shows P&L impact preview', async () => {
-    test.skip(); // Requires shift modal open
+    test.skip('Phase 5f features not yet implemented'); // Requires shift modal open
   });
 
   test('can execute shift', async () => {
-    test.skip(); // Requires shift modal open
+    test.skip('Phase 5f features not yet implemented'); // Requires shift modal open
   });
 });

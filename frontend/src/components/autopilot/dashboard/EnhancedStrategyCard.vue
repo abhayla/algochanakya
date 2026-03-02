@@ -65,16 +65,16 @@ const exitStrategy = () => emit('exit', props.strategy.id)
 <template>
   <div class="strategy-card" @click="viewDetails">
     <!-- Header -->
-    <div class="card-header">
+    <div class="card-header" data-testid="autopilot-strategy-card-header">
       <div class="header-left">
-        <h3 class="strategy-name">{{ strategy.name }}</h3>
+        <h3 class="strategy-name" data-testid="autopilot-strategy-card-name">{{ strategy.name }}</h3>
         <div class="strategy-meta">
           <span class="underlying-badge">{{ strategy.underlying }}</span>
           <span class="lots-badge">{{ strategy.lots }} lots</span>
         </div>
       </div>
       <div class="header-right">
-        <span class="status-badge" :style="{ color: statusConfig.color, background: statusConfig.bg }">
+        <span class="status-badge" data-testid="autopilot-strategy-card-status" :style="{ color: statusConfig.color, background: statusConfig.bg }">
           {{ statusConfig.label }}
         </span>
       </div>
@@ -83,7 +83,7 @@ const exitStrategy = () => emit('exit', props.strategy.id)
     <!-- P&L Section -->
     <div class="pnl-section">
       <div class="pnl-label">P&L</div>
-      <div class="pnl-value" :style="{ color: pnlColor }">
+      <div class="pnl-value" data-testid="autopilot-strategy-card-pnl" :style="{ color: pnlColor }">
         {{ strategy.pnl >= 0 ? '+' : '' }}₹{{ strategy.pnl?.toFixed(2) || '0.00' }}
       </div>
       <div class="pnl-pct" :style="{ color: pnlColor }">
@@ -96,7 +96,7 @@ const exitStrategy = () => emit('exit', props.strategy.id)
       <!-- Delta Gauge -->
       <div class="metric-card">
         <div class="metric-label">Net Delta</div>
-        <div class="delta-gauge">
+        <div class="delta-gauge" data-testid="autopilot-strategy-card-delta-gauge">
           <div class="gauge-track">
             <div class="gauge-fill" :style="{
               width: Math.abs(deltaPercentage) + '%',
@@ -105,7 +105,7 @@ const exitStrategy = () => emit('exit', props.strategy.id)
             }"></div>
             <div class="gauge-center"></div>
           </div>
-          <div class="delta-value">{{ (strategy.net_delta || 0).toFixed(2) }}Δ</div>
+          <div class="delta-value" data-testid="autopilot-strategy-card-delta-value">{{ (strategy.net_delta || 0).toFixed(2) }}Δ</div>
         </div>
       </div>
 
@@ -122,7 +122,7 @@ const exitStrategy = () => emit('exit', props.strategy.id)
     </div>
 
     <!-- Quick Actions -->
-    <div class="card-actions" @click.stop>
+    <div class="card-actions" data-testid="autopilot-strategy-card-actions" @click.stop>
       <button
         v-if="strategy.status === 'active'"
         @click="pauseStrategy"

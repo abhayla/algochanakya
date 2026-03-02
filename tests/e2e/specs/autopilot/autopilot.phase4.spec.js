@@ -36,11 +36,11 @@ test.describe('AutoPilot Phase 4 - Risk Overview Panel', () => {
     await expect(dashboardPage.riskOverviewPanel).toBeVisible();
 
     // Check if margin usage components exist
-    const marginSection = dashboardPage.page.locator('.risk-panel .risk-metric').first();
+    const marginSection = dashboardPage.page.locator('[data-testid^="autopilot-risk-metric-"]').first();
     await expect(marginSection).toBeVisible();
 
     // Verify margin usage bar exists
-    const marginBar = dashboardPage.page.locator('.metric-bar');
+    const marginBar = dashboardPage.page.locator('[data-testid="autopilot-risk-margin-bar"]');
     if (await marginBar.count() > 0) {
       await expect(marginBar.first()).toBeVisible();
     }
@@ -50,12 +50,12 @@ test.describe('AutoPilot Phase 4 - Risk Overview Panel', () => {
     await expect(dashboardPage.riskOverviewPanel).toBeVisible();
 
     // Check for delta gauge section
-    const deltaSection = dashboardPage.page.locator('.risk-metric').filter({ hasText: 'Net Delta' });
+    const deltaSection = dashboardPage.page.locator('[data-testid="autopilot-risk-metric-delta"]');
     if (await deltaSection.count() > 0) {
       await expect(deltaSection).toBeVisible();
 
       // Verify delta gauge track exists
-      const gaugeTrack = dashboardPage.page.locator('.gauge-track');
+      const gaugeTrack = dashboardPage.page.locator('[data-testid="autopilot-risk-gauge-track"]');
       if (await gaugeTrack.count() > 0) {
         await expect(gaugeTrack.first()).toBeVisible();
       }
@@ -66,12 +66,12 @@ test.describe('AutoPilot Phase 4 - Risk Overview Panel', () => {
     await expect(dashboardPage.riskOverviewPanel).toBeVisible();
 
     // Check for P&L section
-    const pnlSection = dashboardPage.page.locator('.risk-metric').filter({ hasText: 'Total P&L' });
+    const pnlSection = dashboardPage.page.locator('[data-testid="autopilot-risk-metric-pnl"]');
     if (await pnlSection.count() > 0) {
       await expect(pnlSection).toBeVisible();
 
       // Check for realized/unrealized breakdown
-      const breakdown = dashboardPage.page.locator('.pnl-breakdown');
+      const breakdown = dashboardPage.page.locator('[data-testid="autopilot-risk-pnl-breakdown"]');
       if (await breakdown.count() > 0) {
         await expect(breakdown).toBeVisible();
       }
@@ -82,12 +82,12 @@ test.describe('AutoPilot Phase 4 - Risk Overview Panel', () => {
     await expect(dashboardPage.riskOverviewPanel).toBeVisible();
 
     // Check for compact stats
-    const compactStats = dashboardPage.page.locator('.risk-metric.compact');
+    const compactStats = dashboardPage.page.locator('[data-testid="autopilot-risk-metric-compact"]');
     if (await compactStats.count() > 0) {
       await expect(compactStats).toBeVisible();
 
       // Verify it has multiple stat items
-      const statItems = dashboardPage.page.locator('.compact-stat');
+      const statItems = dashboardPage.page.locator('[data-testid^="autopilot-risk-compact-"]');
       if (await statItems.count() > 0) {
         expect(await statItems.count()).toBeGreaterThanOrEqual(2);
       }
@@ -97,7 +97,7 @@ test.describe('AutoPilot Phase 4 - Risk Overview Panel', () => {
   test('margin usage percentage displays with color coding', async () => {
     await expect(dashboardPage.riskOverviewPanel).toBeVisible();
 
-    const marginValue = dashboardPage.page.locator('.metric-value').filter({ hasText: '%' }).first();
+    const marginValue = dashboardPage.page.locator('[data-testid="autopilot-risk-margin-value"]');
     if (await marginValue.count() > 0) {
       await expect(marginValue).toBeVisible();
 
@@ -129,12 +129,12 @@ test.describe('AutoPilot Phase 4 - Activity Timeline', () => {
   test('displays activity timeline header with event count', async () => {
     await expect(dashboardPage.activityTimeline).toBeVisible();
 
-    const header = dashboardPage.page.locator('.activity-timeline .timeline-header');
+    const header = dashboardPage.page.locator('[data-testid="autopilot-timeline-header"]');
     if (await header.count() > 0) {
       await expect(header).toBeVisible();
 
       // Check for event count badge
-      const eventCount = dashboardPage.page.locator('.timeline-count');
+      const eventCount = dashboardPage.page.locator('[data-testid="autopilot-timeline-count"]');
       if (await eventCount.count() > 0) {
         await expect(eventCount).toBeVisible();
       }
@@ -143,8 +143,8 @@ test.describe('AutoPilot Phase 4 - Activity Timeline', () => {
 
   test('displays empty state when no activities exist', async () => {
     // This test checks if empty state is shown correctly
-    const emptyState = dashboardPage.page.locator('.activity-timeline .empty-state');
-    const timelineItems = dashboardPage.page.locator('.timeline-item');
+    const emptyState = dashboardPage.page.locator('[data-testid="autopilot-timeline-empty-state"]');
+    const timelineItems = dashboardPage.page.locator('[data-testid^="autopilot-timeline-item-"]');
 
     const itemCount = await timelineItems.count();
     if (itemCount === 0) {
@@ -158,7 +158,7 @@ test.describe('AutoPilot Phase 4 - Activity Timeline', () => {
   test('displays activity items with icons and timestamps', async () => {
     await expect(dashboardPage.activityTimeline).toBeVisible();
 
-    const timelineItems = dashboardPage.page.locator('.timeline-item');
+    const timelineItems = dashboardPage.page.locator('[data-testid^="autopilot-timeline-item-"]');
     const itemCount = await timelineItems.count();
 
     if (itemCount > 0) {
@@ -166,15 +166,15 @@ test.describe('AutoPilot Phase 4 - Activity Timeline', () => {
       await expect(firstItem).toBeVisible();
 
       // Check for marker icon
-      const markerIcon = firstItem.locator('.marker-icon');
+      const markerIcon = firstItem.locator('[data-testid="autopilot-timeline-marker-icon"]');
       await expect(markerIcon).toBeVisible();
 
       // Check for event time
-      const eventTime = firstItem.locator('.event-time');
+      const eventTime = firstItem.locator('[data-testid="autopilot-timeline-event-time"]');
       await expect(eventTime).toBeVisible();
 
       // Check for event message
-      const eventMessage = firstItem.locator('.event-message');
+      const eventMessage = firstItem.locator('[data-testid="autopilot-timeline-event-message"]');
       await expect(eventMessage).toBeVisible();
     }
   });
@@ -182,12 +182,12 @@ test.describe('AutoPilot Phase 4 - Activity Timeline', () => {
   test('activity items have color-coded event types', async () => {
     await expect(dashboardPage.activityTimeline).toBeVisible();
 
-    const timelineItems = dashboardPage.page.locator('.timeline-item');
+    const timelineItems = dashboardPage.page.locator('[data-testid^="autopilot-timeline-item-"]');
     const itemCount = await timelineItems.count();
 
     if (itemCount > 0) {
       const firstItem = timelineItems.first();
-      const markerIcon = firstItem.locator('.marker-icon');
+      const markerIcon = firstItem.locator('[data-testid="autopilot-timeline-marker-icon"]');
 
       // Check if marker has background color
       const bgColor = await markerIcon.evaluate(el => window.getComputedStyle(el).background);
@@ -198,7 +198,7 @@ test.describe('AutoPilot Phase 4 - Activity Timeline', () => {
   test('displays "View All Activities" button when more than 10 items', async () => {
     await expect(dashboardPage.activityTimeline).toBeVisible();
 
-    const viewAllBtn = dashboardPage.page.locator('.view-all-btn');
+    const viewAllBtn = dashboardPage.page.locator('[data-testid="autopilot-timeline-view-all-btn"]');
 
     // Button should only be visible if there are more activities than max displayed
     if (await viewAllBtn.count() > 0) {
@@ -210,15 +210,15 @@ test.describe('AutoPilot Phase 4 - Activity Timeline', () => {
   test('timeline items display strategy name and underlying badges', async () => {
     await expect(dashboardPage.activityTimeline).toBeVisible();
 
-    const timelineItems = dashboardPage.page.locator('.timeline-item');
+    const timelineItems = dashboardPage.page.locator('[data-testid^="autopilot-timeline-item-"]');
     const itemCount = await timelineItems.count();
 
     if (itemCount > 0) {
-      const itemsWithMeta = await dashboardPage.page.locator('.event-meta').count();
+      const itemsWithMeta = await dashboardPage.page.locator('[data-testid="autopilot-timeline-event-meta"]').count();
 
       // At least some items should have strategy/underlying badges
       if (itemsWithMeta > 0) {
-        const firstMetaBadge = dashboardPage.page.locator('.meta-badge').first();
+        const firstMetaBadge = dashboardPage.page.locator('[data-testid="autopilot-timeline-meta-badge"]').first();
         await expect(firstMetaBadge).toBeVisible();
       }
     }
@@ -243,7 +243,7 @@ test.describe('AutoPilot Phase 4 - Enhanced Strategy Cards', () => {
     const strategyCards = await dashboardPage.strategyCards.count();
 
     if (strategyCards > 0) {
-      const strategyGrid = dashboardPage.page.locator('.strategy-grid');
+      const strategyGrid = dashboardPage.page.locator('[data-testid="autopilot-strategy-grid"]');
       await expect(strategyGrid).toBeVisible();
     }
   });
@@ -252,7 +252,7 @@ test.describe('AutoPilot Phase 4 - Enhanced Strategy Cards', () => {
     const strategyCards = await dashboardPage.strategyCards.count();
 
     if (strategyCards > 0) {
-      const strategyGrid = dashboardPage.page.locator('.strategy-grid');
+      const strategyGrid = dashboardPage.page.locator('[data-testid="autopilot-strategy-grid"]');
       await expect(strategyGrid).toBeVisible();
 
       // Check grid CSS
@@ -271,18 +271,18 @@ test.describe('AutoPilot Phase 4 - Enhanced Strategy Cards', () => {
       await expect(firstCard).toBeVisible();
 
       // Check for strategy header section
-      const header = firstCard.locator('.strategy-header');
+      const header = firstCard.locator('[data-testid="autopilot-strategy-card-header"]');
       if (await header.count() > 0) {
         await expect(header).toBeVisible();
 
         // Check for strategy name
-        const nameEl = firstCard.locator('.strategy-name');
+        const nameEl = firstCard.locator('[data-testid="autopilot-strategy-card-name"]');
         if (await nameEl.count() > 0) {
           await expect(nameEl).toBeVisible();
         }
 
         // Check for status badge
-        const statusBadge = firstCard.locator('.status-badge');
+        const statusBadge = firstCard.locator('[data-testid="autopilot-strategy-card-status"]');
         if (await statusBadge.count() > 0) {
           await expect(statusBadge).toBeVisible();
         }
@@ -295,7 +295,7 @@ test.describe('AutoPilot Phase 4 - Enhanced Strategy Cards', () => {
 
     if (strategyCards > 0) {
       const firstCard = dashboardPage.strategyCards.first();
-      const pnlValue = firstCard.locator('.pnl-value');
+      const pnlValue = firstCard.locator('[data-testid="autopilot-strategy-card-pnl"]');
 
       if (await pnlValue.count() > 0) {
         await expect(pnlValue).toBeVisible();
@@ -312,13 +312,13 @@ test.describe('AutoPilot Phase 4 - Enhanced Strategy Cards', () => {
 
     if (strategyCards > 0) {
       const firstCard = dashboardPage.strategyCards.first();
-      const deltaGauge = firstCard.locator('.delta-gauge');
+      const deltaGauge = firstCard.locator('[data-testid="autopilot-strategy-card-delta-gauge"]');
 
       if (await deltaGauge.count() > 0) {
         await expect(deltaGauge).toBeVisible();
 
         // Check for delta indicator
-        const indicator = deltaGauge.locator('.delta-indicator');
+        const indicator = deltaGauge.locator('[data-testid="autopilot-strategy-card-delta-value"]');
         if (await indicator.count() > 0) {
           await expect(indicator).toBeVisible();
         }
@@ -331,7 +331,7 @@ test.describe('AutoPilot Phase 4 - Enhanced Strategy Cards', () => {
 
     if (strategyCards > 0) {
       const firstCard = dashboardPage.strategyCards.first();
-      const actionButtons = firstCard.locator('.action-buttons');
+      const actionButtons = firstCard.locator('[data-testid="autopilot-strategy-card-actions"]');
 
       if (await actionButtons.count() > 0) {
         await expect(actionButtons).toBeVisible();
@@ -350,7 +350,7 @@ test.describe('AutoPilot Phase 4 - Enhanced Strategy Cards', () => {
       const firstCard = dashboardPage.strategyCards.first();
 
       // Look for entry rules or condition progress section
-      const progressSection = firstCard.locator('.entry-rules, .condition-progress');
+      const progressSection = firstCard.locator('[data-testid="autopilot-strategy-card-entry-progress"]');
       if (await progressSection.count() > 0) {
         await expect(progressSection).toBeVisible();
       }
@@ -392,11 +392,11 @@ test.describe('AutoPilot Phase 4 - Condition Builder Natural Language', () => {
   test('natural language summary has proper header and body', async () => {
     await expect(builderPage.naturalLanguageSummary).toBeVisible();
 
-    const header = builderPage.page.locator('.natural-language-summary .summary-header');
+    const header = builderPage.page.locator('[data-testid="autopilot-condition-summary-header"]');
     await expect(header).toBeVisible();
     await expect(header).toContainText('Plain English Summary');
 
-    const body = builderPage.page.locator('.natural-language-summary .summary-body');
+    const body = builderPage.page.locator('[data-testid="autopilot-condition-summary-body"]');
     await expect(body).toBeVisible();
   });
 
@@ -553,7 +553,7 @@ test.describe('AutoPilot Phase 4 - Condition Builder Tree View', () => {
     await expect(firstCondition).toBeVisible();
 
     // Check for status icon
-    const statusIcon = firstCondition.locator('.tree-status-icon');
+    const statusIcon = firstCondition.locator('[data-testid="autopilot-condition-tree-status-icon"]');
     if (await statusIcon.count() > 0) {
       await expect(statusIcon).toBeVisible();
     }
@@ -566,7 +566,7 @@ test.describe('AutoPilot Phase 4 - Condition Builder Tree View', () => {
 
     await builderPage.treeViewToggleButton.click();
 
-    const operatorBadge = builderPage.page.locator('.tree-operator-badge');
+    const operatorBadge = builderPage.page.locator('[data-testid="autopilot-condition-tree-operator"]');
     if (await operatorBadge.count() > 0) {
       await expect(operatorBadge.first()).toBeVisible();
       await expect(operatorBadge.first()).toContainText('AND');
@@ -581,7 +581,7 @@ test.describe('AutoPilot Phase 4 - Condition Builder Tree View', () => {
     // Check hierarchy: root → group → condition
     await expect(builderPage.treeRootNode).toBeVisible();
 
-    const children = builderPage.page.locator('.tree-children');
+    const children = builderPage.page.locator('[data-testid="autopilot-condition-tree-children"]');
     expect(await children.count()).toBeGreaterThan(0);
   });
 
@@ -591,14 +591,14 @@ test.describe('AutoPilot Phase 4 - Condition Builder Tree View', () => {
     await builderPage.treeViewToggleButton.click();
 
     // Check root node has blue gradient
-    const rootLabel = builderPage.page.locator('.tree-root .tree-node-label');
+    const rootLabel = builderPage.page.locator('[data-testid="autopilot-condition-tree-root"] [data-testid="autopilot-condition-tree-node-label"]');
     if (await rootLabel.count() > 0) {
       const bg = await rootLabel.evaluate(el => window.getComputedStyle(el).background);
       expect(bg).toBeTruthy();
     }
 
     // Check group node has purple gradient
-    const groupLabel = builderPage.page.locator('.tree-group-node .tree-node-label');
+    const groupLabel = builderPage.page.locator('[data-testid^="autopilot-condition-tree-group-"] [data-testid="autopilot-condition-tree-node-label"]');
     if (await groupLabel.count() > 0) {
       const bg = await groupLabel.evaluate(el => window.getComputedStyle(el).background);
       expect(bg).toBeTruthy();
@@ -634,7 +634,7 @@ test.describe('AutoPilot Phase 4 - Condition Evaluation Preview', () => {
   test('status indicators show different icons (✓, ✗, ○)', async () => {
     await builderPage.addCondition({ variable: 'TIME.CURRENT', value: '09:20' });
 
-    const statusIcons = builderPage.page.locator('.status-icon');
+    const statusIcons = builderPage.page.locator('[data-testid="autopilot-condition-status-icon"]');
     if (await statusIcons.count() > 0) {
       const firstIcon = statusIcons.first();
       await expect(firstIcon).toBeVisible();
@@ -647,7 +647,7 @@ test.describe('AutoPilot Phase 4 - Condition Evaluation Preview', () => {
   test('status indicators have color coding (green/red/gray)', async () => {
     await builderPage.addCondition({ variable: 'TIME.CURRENT', value: '09:20' });
 
-    const statusIcons = builderPage.page.locator('.status-icon');
+    const statusIcons = builderPage.page.locator('[data-testid="autopilot-condition-status-icon"]');
     if (await statusIcons.count() > 0) {
       const firstIcon = statusIcons.first();
 
@@ -662,7 +662,7 @@ test.describe('AutoPilot Phase 4 - Condition Evaluation Preview', () => {
 
     await builderPage.treeViewToggleButton.click();
 
-    const treeStatusIcons = builderPage.page.locator('.tree-status-icon');
+    const treeStatusIcons = builderPage.page.locator('[data-testid="autopilot-condition-tree-status-icon"]');
     if (await treeStatusIcons.count() > 0) {
       await expect(treeStatusIcons.first()).toBeVisible();
     }

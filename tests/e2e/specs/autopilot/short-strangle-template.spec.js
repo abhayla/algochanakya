@@ -104,7 +104,7 @@ test.describe('AutoPilot - SHORT-STRANGLE-ADJUSTMENTS-Template', () => {
     await expect(strikeLadderModal).toBeVisible({ timeout: 5000 })
 
     // Wait for option chain to load - look for CE buttons to appear
-    const ceButtons = strikeLadderModal.locator('button.select-ce')
+    const ceButtons = strikeLadderModal.locator('[data-testid^="autopilot-ladder-select-ce-"]')
     await expect(ceButtons.first()).toBeVisible({ timeout: 15000 }) // Wait up to 15s for chain to load
 
     // Find and click a CE button in the strike ladder (select OTM CE around 15-delta)
@@ -137,7 +137,7 @@ test.describe('AutoPilot - SHORT-STRANGLE-ADJUSTMENTS-Template', () => {
     await expect(strikeLadderModal).toBeVisible({ timeout: 5000 })
 
     // Wait for option chain to load - look for PE buttons to appear
-    const peButtons = strikeLadderModal.locator('button.select-pe')
+    const peButtons = strikeLadderModal.locator('[data-testid^="autopilot-ladder-select-pe-"]')
     await expect(peButtons.first()).toBeVisible({ timeout: 15000 }) // Wait up to 15s for chain to load
 
     // Find and click a PE button in the strike ladder (select OTM PE around 15-delta)
@@ -508,7 +508,7 @@ test.describe('AutoPilot - SHORT-STRANGLE-ADJUSTMENTS-Template', () => {
     await expect(strikeLadderModal).toBeVisible({ timeout: 5000 })
 
     // Wait for strikes to load and click first CE button
-    const ceButtons = strikeLadderModal.locator('button.select-ce')
+    const ceButtons = strikeLadderModal.locator('[data-testid^="autopilot-ladder-select-ce-"]')
     await expect(ceButtons.first()).toBeVisible({ timeout: 15000 })
     await ceButtons.first().click()
 

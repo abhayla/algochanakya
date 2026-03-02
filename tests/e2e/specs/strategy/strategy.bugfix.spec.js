@@ -24,7 +24,7 @@ test.describe('Strategy Builder - Bug Fixes @bugfix', () => {
     const legCount1 = await strategyPage.getLegCount();
     if (legCount1 === 0) {
       console.log('First leg failed to add, skipping test');
-      test.skip();
+      test.skip('Leg failed to add - skipping');
     }
 
     await strategyPage.addRow();
@@ -75,7 +75,7 @@ test.describe('Strategy Builder - Bug Fixes @bugfix', () => {
     const legCount = await strategyPage.getLegCount();
     if (legCount === 0) {
       console.log('Leg failed to add, skipping test');
-      test.skip();
+      test.skip('Leg failed to add - skipping');
     }
 
     // Wait for P/L calculation
@@ -117,7 +117,7 @@ test.describe('Strategy Builder - Bug Fixes @bugfix', () => {
     const legCount = await strategyPage.getLegCount();
     if (legCount === 0) {
       console.log('Leg failed to add, skipping test');
-      test.skip();
+      test.skip('Leg failed to add - skipping');
     }
 
     // Wait for P/L calculation (which should now fetch LTP from API if WebSocket unavailable)

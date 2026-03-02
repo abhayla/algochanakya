@@ -1,5 +1,5 @@
 <template>
-  <div class="strike-selector-compact">
+  <div class="strike-selector-compact" data-testid="autopilot-strike-selector">
     <!-- Main Row: Dropdown + Input + Preview + Ladder Button -->
     <div class="selector-row">
       <!-- Mode Dropdown -->
@@ -7,7 +7,7 @@
         v-model="localValue.mode"
         @change="onModeChange"
         class="mode-dropdown"
-        :data-testid="`strike-selector-mode-dropdown`"
+        data-testid="autopilot-strike-mode-dropdown"
       >
         <option value="fixed">Fixed Strike</option>
         <option value="atm_offset">ATM Offset</option>
@@ -101,9 +101,9 @@
       <slot name="ladder-icon"></slot>
 
       <!-- Preview (always visible) -->
-      <div class="preview-inline" v-if="preview && !loadingPreview">
+      <div class="preview-inline" data-testid="autopilot-strike-preview-inline" v-if="preview && !loadingPreview">
         <span class="arrow">→</span>
-        <span class="strike-value">{{ preview.strike }} {{ optionType }}</span>
+        <span class="strike-value" data-testid="autopilot-strike-value">{{ preview.strike }} {{ optionType }}</span>
         <span class="delta-value" v-if="preview.delta">({{ preview.delta }}Δ)</span>
       </div>
 
@@ -113,7 +113,7 @@
       </div>
 
       <!-- Error indicator -->
-      <div class="preview-error-inline" v-if="previewError">
+      <div class="preview-error-inline" data-testid="autopilot-strike-preview-error" v-if="previewError">
         <span class="error-text">{{ previewError }}</span>
       </div>
     </div>
@@ -132,6 +132,7 @@
           class="preset-chip"
           :class="{ 'active': localValue.target_delta === preset }"
           type="button"
+          data-testid="autopilot-strike-preset-chip"
         >
           {{ preset }}
         </button>
@@ -146,6 +147,7 @@
           class="preset-chip"
           :class="{ 'active': localValue.target_premium === preset }"
           type="button"
+          data-testid="autopilot-strike-preset-chip"
         >
           ₹{{ preset }}
         </button>
@@ -160,6 +162,7 @@
           class="preset-chip"
           :class="{ 'active': localValue.standard_deviations === preset }"
           type="button"
+          data-testid="autopilot-strike-preset-chip"
         >
           {{ preset }}σ
         </button>

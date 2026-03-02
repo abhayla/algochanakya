@@ -4,7 +4,7 @@
  * Tests all dropdown options on AutoPilot strategy builder
  */
 
-import { test, expect } from '../../fixtures/auth.fixture';
+import { test, expect } from '../../fixtures/auth.fixture.js';
 import { AutoPilotStrategyBuilderPage } from '../../pages/AutoPilotDashboardPage.js';
 
 test.describe('AutoPilot Dropdown Options', () => {
@@ -86,8 +86,8 @@ test.describe('AutoPilot Dropdown Options', () => {
     // Wait for the leg row to appear
     await builderPage.page.locator('[data-testid="autopilot-leg-row-0"]').waitFor({ state: 'visible' });
 
-    const strikeCell = builderPage.page.locator('td').filter({ has: builderPage.page.locator('.strike-selector-compact') }).first();
-    const modeDropdown = strikeCell.locator('select.mode-dropdown');
+    const strikeCell = builderPage.page.locator('td').filter({ has: builderPage.page.locator('[data-testid="autopilot-strike-selector"]') }).first();
+    const modeDropdown = strikeCell.locator('[data-testid="autopilot-strike-mode-dropdown"]');
 
     const strikeModes = [
       'atm_offset',

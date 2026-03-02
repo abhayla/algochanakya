@@ -52,7 +52,7 @@ test.describe('OFO to Strategy Builder - Full Flow', () => {
     await page.waitForLoadState('domcontentloaded')
 
     // Close dropdown by clicking on the backdrop overlay
-    const backdrop = page.locator('.dropdown-backdrop')
+    const backdrop = page.locator('[data-testid="ofo-dropdown-backdrop"]')
     if (await backdrop.isVisible()) {
       await backdrop.click()
       console.log('Clicked backdrop to close dropdown')
@@ -220,7 +220,7 @@ test.describe('OFO to Strategy Builder - Full Flow', () => {
         console.log('Legs:', JSON.stringify(gridData.legs))
 
         // Get displayed column headers
-        const spotHeaders = await page.locator('.th-spot').allTextContents()
+        const spotHeaders = await page.locator('[data-testid="strategy-spot-column"]').allTextContents()
         console.log('\nDisplayed Columns:')
         console.log('Column count:', spotHeaders.length)
         console.log('Columns:', JSON.stringify(spotHeaders))

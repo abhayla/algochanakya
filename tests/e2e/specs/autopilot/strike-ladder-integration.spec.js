@@ -49,7 +49,7 @@ test.describe('StrikeLadder Integration', () => {
     await expect(modal).toBeVisible()
 
     // Verify modal content
-    const modalTitle = authenticatedPage.locator('.modal-title')
+    const modalTitle = authenticatedPage.locator('[data-testid="autopilot-ladder-modal-title"]')
     await expect(modalTitle).toContainText('Strike Ladder - NIFTY')
 
     // Verify close button exists
@@ -162,7 +162,7 @@ test.describe('StrikeLadder Integration', () => {
     await authenticatedPage.waitForSelector('[data-testid="autopilot-strike-ladder-modal"]', { state: 'visible' })
 
     // Click on overlay (outside modal content)
-    await authenticatedPage.click('.modal-overlay', { position: { x: 10, y: 10 } })
+    await authenticatedPage.click('[data-testid="autopilot-strike-ladder-modal"]', { position: { x: 10, y: 10 } })
 
     // Verify modal is hidden
     await authenticatedPage.waitForSelector('[data-testid="autopilot-strike-ladder-modal"]', { state: 'hidden' })
@@ -202,7 +202,7 @@ test.describe('StrikeLadder Integration', () => {
       await authenticatedPage.waitForLoadState('domcontentloaded')
 
       // Verify correct underlying in modal title
-      const modalTitle = authenticatedPage.locator('.modal-title')
+      const modalTitle = authenticatedPage.locator('[data-testid="autopilot-ladder-modal-title"]')
       await expect(modalTitle).toContainText(`Strike Ladder - ${underlying}`)
 
       // Close modal

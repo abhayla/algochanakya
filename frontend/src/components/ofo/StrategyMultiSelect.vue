@@ -71,6 +71,7 @@
     <div
       v-if="isOpen"
       class="dropdown-backdrop"
+      data-testid="ofo-dropdown-backdrop"
       @click="closeDropdown"
     ></div>
   </div>

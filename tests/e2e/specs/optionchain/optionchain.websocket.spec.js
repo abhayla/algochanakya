@@ -137,7 +137,7 @@ test.describe('Option Chain - WebSocket @websocket', () => {
 
       // LTP columns should have numeric values
       const firstRow = rows[0];
-      const ltpCells = await firstRow.locator('.ltp-col').all();
+      const ltpCells = await firstRow.locator('[data-testid="optionchain-ltp-cell"]').all();
       expect(ltpCells.length).toBeGreaterThanOrEqual(2); // CE and PE LTP
     }
   });
@@ -211,8 +211,8 @@ test.describe('Option Chain - Live Price Updates @websocket', () => {
 
     if (hasTable) {
       // Look for ATM row (highlighted row) or ATM badge
-      const atmRow = optionChainPage.table.locator('.atm-row');
-      const atmBadge = optionChainPage.table.locator('.atm-badge');
+      const atmRow = optionChainPage.table.locator('[data-atm-row]');
+      const atmBadge = optionChainPage.table.locator('[data-testid="optionchain-atm-badge"]');
       const hasAtm = await atmRow.count() > 0 || await atmBadge.count() > 0;
       expect(hasAtm).toBe(true);
     }

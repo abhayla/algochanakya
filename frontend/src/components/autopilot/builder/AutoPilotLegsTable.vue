@@ -349,7 +349,7 @@ const formatExpectedMove = (position) => {
     <div v-if="showStrikeLadder" class="modal-overlay" data-testid="autopilot-strike-ladder-modal" @click.self="showStrikeLadder = false">
       <div class="modal-content-large">
         <div class="modal-header">
-          <h3 class="modal-title">Strike Ladder - {{ store.builder.strategy.underlying }}</h3>
+          <h3 class="modal-title" data-testid="autopilot-ladder-modal-title">Strike Ladder - {{ store.builder.strategy.underlying }}</h3>
           <button
             @click="showStrikeLadder = false"
             class="modal-close"

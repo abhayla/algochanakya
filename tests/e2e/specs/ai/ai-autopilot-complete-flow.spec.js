@@ -74,7 +74,7 @@ test.describe('AI AutoPilot - Complete Paper Trading Flow', () => {
 
       // Select strike (PE for legs 0-1, CE for legs 2-3)
       if (i < 2) {
-        const peButtons = strikeLadderModal.locator('button.select-pe')
+        const peButtons = strikeLadderModal.locator('[data-testid^="autopilot-ladder-select-pe-"]')
         await expect(peButtons.first()).toBeVisible({ timeout: 10000 })
         const peCount = await peButtons.count()
         if (peCount > 0) {
@@ -82,7 +82,7 @@ test.describe('AI AutoPilot - Complete Paper Trading Flow', () => {
           await peButtons.nth(peIndex).click()
         }
       } else {
-        const ceButtons = strikeLadderModal.locator('button.select-ce')
+        const ceButtons = strikeLadderModal.locator('[data-testid^="autopilot-ladder-select-ce-"]')
         await expect(ceButtons.first()).toBeVisible({ timeout: 10000 })
         const ceCount = await ceButtons.count()
         if (ceCount > 0) {

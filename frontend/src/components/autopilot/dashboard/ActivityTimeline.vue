@@ -125,8 +125,8 @@ const getEventConfig = (eventType) => {
 </script>
 
 <template>
-  <div class="activity-timeline">
-    <div class="timeline-header">
+  <div class="activity-timeline" data-testid="autopilot-activity-timeline">
+    <div class="timeline-header" data-testid="autopilot-timeline-header">
       <div class="header-left">
         <h3 class="timeline-title">Recent Activity</h3>
         <!-- Real-time Indicator -->
@@ -148,11 +148,11 @@ const getEventConfig = (eventType) => {
           <option value="alerts">Alerts</option>
           <option value="events">Events</option>
         </select>
-        <span class="timeline-count">{{ filteredActivities.length }} events</span>
+        <span class="timeline-count" data-testid="autopilot-timeline-count">{{ filteredActivities.length }} events</span>
       </div>
     </div>
 
-    <div v-if="(groupByStrategy ? Object.keys(displayedActivities).length === 0 : displayedActivities.length === 0)" class="empty-state">
+    <div v-if="(groupByStrategy ? Object.keys(displayedActivities).length === 0 : displayedActivities.length === 0)" class="empty-state" data-testid="autopilot-timeline-empty-state">
       <div class="empty-icon">📭</div>
       <p class="empty-text">No recent activity</p>
       <p class="empty-subtext">Activity will appear here when strategies start executing</p>
@@ -176,11 +176,13 @@ const getEventConfig = (eventType) => {
             v-for="(activity, index) in strategyActivities"
             :key="activity.id || index"
             class="timeline-item"
+            :data-testid="'autopilot-timeline-item-' + (activity.id || index)"
           >
             <!-- Icon and Line -->
             <div class="timeline-marker">
               <div
                 class="marker-icon"
+                data-testid="autopilot-timeline-marker-icon"
                 :style="{ background: getEventConfig(activity.event_type).color }"
               >
                 {{ getEventConfig(activity.event_type).icon }}
@@ -194,10 +196,10 @@ const getEventConfig = (eventType) => {
                 <span class="event-label" :style="{ color: getEventConfig(activity.event_type).color }">
                   {{ getEventConfig(activity.event_type).label }}
                 </span>
-                <span class="event-time">{{ formatTime(activity.timestamp || activity.created_at) }}</span>
+                <span class="event-time" data-testid="autopilot-timeline-event-time">{{ formatTime(activity.timestamp || activity.created_at) }}</span>
               </div>
 
-              <div class="event-message">{{ activity.message || activity.description }}</div>
+              <div class="event-message" data-testid="autopilot-timeline-event-message">{{ activity.message || activity.description }}</div>
 
               <!-- Order Details -->
               <div v-if="activity.order_details" class="event-details">
@@ -219,11 +221,13 @@ const getEventConfig = (eventType) => {
         v-for="(activity, index) in displayedActivities"
         :key="activity.id || index"
         class="timeline-item"
+        :data-testid="'autopilot-timeline-item-' + (activity.id || index)"
       >
         <!-- Icon and Line -->
         <div class="timeline-marker">
           <div
             class="marker-icon"
+            data-testid="autopilot-timeline-marker-icon"
             :style="{ background: getEventConfig(activity.event_type).color }"
           >
             {{ getEventConfig(activity.event_type).icon }}
@@ -237,14 +241,14 @@ const getEventConfig = (eventType) => {
             <span class="event-label" :style="{ color: getEventConfig(activity.event_type).color }">
               {{ getEventConfig(activity.event_type).label }}
             </span>
-            <span class="event-time">{{ formatTime(activity.timestamp || activity.created_at) }}</span>
+            <span class="event-time" data-testid="autopilot-timeline-event-time">{{ formatTime(activity.timestamp || activity.created_at) }}</span>
           </div>
 
-          <div class="event-message">{{ activity.message || activity.description }}</div>
+          <div class="event-message" data-testid="autopilot-timeline-event-message">{{ activity.message || activity.description }}</div>
 
           <!-- Strategy Name -->
-          <div v-if="activity.strategy_name" class="event-meta">
-            <span class="meta-badge">{{ activity.strategy_name }}</span>
+          <div v-if="activity.strategy_name" class="event-meta" data-testid="autopilot-timeline-event-meta">
+            <span class="meta-badge" data-testid="autopilot-timeline-meta-badge">{{ activity.strategy_name }}</span>
             <span v-if="activity.underlying" class="meta-badge secondary">
               {{ activity.underlying }}
             </span>
@@ -263,7 +267,7 @@ const getEventConfig = (eventType) => {
     </div>
 
     <div v-if="activities.length > maxItems" class="timeline-footer">
-      <button class="view-all-btn" @click="viewAllActivities">
+      <button class="view-all-btn" data-testid="autopilot-timeline-view-all-btn" @click="viewAllActivities">
         View All Activities ({{ activities.length }})
         <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>

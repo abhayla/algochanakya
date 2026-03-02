@@ -200,6 +200,7 @@
                   v-for="spot in displayedSpotPrices"
                   :key="spot"
                   :class="['th-spot', { 'th-current-spot': isCurrentSpot(spot) }]"
+                  data-testid="strategy-spot-column"
                 >
                   <div v-if="isCurrentSpot(spot)" class="spot-label">SPOT</div>
                   {{ formatSpotHeader(spot) }}

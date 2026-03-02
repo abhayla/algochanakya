@@ -281,14 +281,14 @@ test.describe('AutoPilot Strategies API', () => {
 
     // Skip if strategy limit reached
     if (!createResponse.ok()) {
-      test.skip();
+      test.skip('API endpoint returned no data');
       return;
     }
 
     const created = await createResponse.json();
     const strategyId = created.data?.id;
     if (!strategyId) {
-      test.skip();
+      test.skip('API endpoint returned no data');
       return;
     }
 
@@ -341,14 +341,14 @@ test.describe('AutoPilot Strategy Lifecycle API', () => {
 
     // Skip if strategy limit reached
     if (!createResponse.ok()) {
-      test.skip();
+      test.skip('API endpoint returned no data');
       return;
     }
 
     const created = await createResponse.json();
     const strategyId = created.data?.id;
     if (!strategyId) {
-      test.skip();
+      test.skip('API endpoint returned no data');
       return;
     }
 
@@ -390,14 +390,14 @@ test.describe('AutoPilot Strategy Lifecycle API', () => {
 
     // Skip if strategy limit reached
     if (!createResponse.ok()) {
-      test.skip();
+      test.skip('API endpoint returned no data');
       return;
     }
 
     const created = await createResponse.json();
     const strategyId = created.data?.id;
     if (!strategyId) {
-      test.skip();
+      test.skip('API endpoint returned no data');
       return;
     }
 
@@ -446,14 +446,14 @@ test.describe('AutoPilot Strategy Lifecycle API', () => {
 
     // Skip if strategy limit reached
     if (!createResponse.ok()) {
-      test.skip();
+      test.skip('API endpoint returned no data');
       return;
     }
 
     const created = await createResponse.json();
     const strategyId = created.data?.id;
     if (!strategyId) {
-      test.skip();
+      test.skip('API endpoint returned no data');
       return;
     }
 
@@ -516,14 +516,14 @@ test.describe('AutoPilot Strategy Lifecycle API', () => {
 
     // Skip if strategy limit reached
     if (!createResponse.ok()) {
-      test.skip();
+      test.skip('API endpoint returned no data');
       return;
     }
 
     const created = await createResponse.json();
     const strategyId = created.data?.id;
     if (!strategyId) {
-      test.skip();
+      test.skip('API endpoint returned no data');
       return;
     }
 

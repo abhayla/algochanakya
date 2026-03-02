@@ -66,6 +66,13 @@ export class OptionChainPage extends BasePage {
   get strikeFinderError() { return this.getByTestId('optionchain-strike-finder-error'); }
   get strikeFinderClose() { return this.getByTestId('optionchain-strike-finder-close'); }
 
+  // ATM row and badge
+  get atmRow() { return this.page.locator('[data-atm-row]'); }
+  get atmBadge() { return this.getByTestId('optionchain-atm-badge'); }
+
+  // LTP cells
+  get ltpCells() { return this.page.locator('[data-testid="optionchain-ltp-cell"]'); }
+
   // ============ Dynamic Selectors ============
 
   getStrikeRow(strike) {

@@ -275,19 +275,19 @@ export class AutoPilotDashboardPage extends BasePage {
   }
 
   get activityTimelineHeader() {
-    return this.page.locator('.activity-timeline .timeline-header');
+    return this.getByTestId('autopilot-timeline-header');
   }
 
   get activityEventCount() {
-    return this.page.locator('.activity-timeline .timeline-count');
+    return this.getByTestId('autopilot-timeline-count');
   }
 
   get activityEmptyState() {
-    return this.page.locator('.activity-timeline .empty-state');
+    return this.getByTestId('autopilot-timeline-empty-state');
   }
 
   get viewAllActivitiesButton() {
-    return this.page.locator('.activity-timeline .view-all-btn');
+    return this.getByTestId('autopilot-timeline-view-all-btn');
   }
 
   // ===========================================================================
@@ -295,7 +295,7 @@ export class AutoPilotDashboardPage extends BasePage {
   // ===========================================================================
 
   get strategyGrid() {
-    return this.page.locator('.strategy-grid');
+    return this.getByTestId('autopilot-strategy-grid');
   }
 
   getEnhancedStrategyCard(id) {
@@ -303,27 +303,27 @@ export class AutoPilotDashboardPage extends BasePage {
   }
 
   getStrategyCardHeader(id) {
-    return this.getEnhancedStrategyCard(id).locator('.strategy-header');
+    return this.getEnhancedStrategyCard(id).locator('[data-testid="autopilot-strategy-card-header"]');
   }
 
   getStrategyCardName(id) {
-    return this.getEnhancedStrategyCard(id).locator('.strategy-name');
+    return this.getEnhancedStrategyCard(id).locator('[data-testid="autopilot-strategy-card-name"]');
   }
 
   getStrategyCardStatus(id) {
-    return this.getEnhancedStrategyCard(id).locator('.status-badge');
+    return this.getEnhancedStrategyCard(id).locator('[data-testid="autopilot-strategy-card-status"]');
   }
 
   getStrategyCardPnl(id) {
-    return this.getEnhancedStrategyCard(id).locator('.pnl-value');
+    return this.getEnhancedStrategyCard(id).locator('[data-testid="autopilot-strategy-card-pnl"]');
   }
 
   getStrategyCardDeltaGauge(id) {
-    return this.getEnhancedStrategyCard(id).locator('.delta-gauge');
+    return this.getEnhancedStrategyCard(id).locator('[data-testid="autopilot-strategy-card-delta-gauge"]');
   }
 
   getStrategyCardActions(id) {
-    return this.getEnhancedStrategyCard(id).locator('.action-buttons');
+    return this.getEnhancedStrategyCard(id).locator('[data-testid="autopilot-strategy-card-actions"]');
   }
 
   getStrategyCardPauseButton(id) {
@@ -834,11 +834,11 @@ export class AutoPilotStrategyBuilderPage extends BasePage {
   }
 
   get treeRootNode() {
-    return this.page.locator('.tree-root');
+    return this.page.locator('[data-testid="autopilot-condition-tree-root"]');
   }
 
   get treeGroupNodes() {
-    return this.page.locator('.tree-group-node');
+    return this.page.locator('[data-testid^="autopilot-condition-tree-group-"]');
   }
 
   get treeConditionNodes() {

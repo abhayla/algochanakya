@@ -31,7 +31,7 @@ test.describe('AutoPilot Phase 5D - Profit-Based Exits', () => {
     if (await profitTargetSection.isVisible()) {
       await expect(profitTargetSection).toBeVisible();
     } else {
-      test.skip(); // Not yet implemented
+      test.skip('Phase 5d features not yet implemented'); // Not yet implemented
     }
   });
 
@@ -48,7 +48,7 @@ test.describe('AutoPilot Phase 5D - Profit-Based Exits', () => {
 
       await expect(profitTargetInput).toHaveValue('50');
     } else {
-      test.skip();
+      test.skip('Phase 5d features not yet implemented');
     }
   });
 
@@ -62,7 +62,7 @@ test.describe('AutoPilot Phase 5D - Profit-Based Exits', () => {
       await profitTargetInput.fill('25');
       await expect(profitTargetInput).toHaveValue('25');
     } else {
-      test.skip();
+      test.skip('Phase 5d features not yet implemented');
     }
   });
 
@@ -79,7 +79,7 @@ test.describe('AutoPilot Phase 5D - Profit-Based Exits', () => {
 
       await expect(premiumCapturedInput).toHaveValue('60');
     } else {
-      test.skip();
+      test.skip('Phase 5d features not yet implemented');
     }
   });
 
@@ -96,7 +96,7 @@ test.describe('AutoPilot Phase 5D - Profit-Based Exits', () => {
 
       await expect(returnOnMarginInput).toHaveValue('10');
     } else {
-      test.skip();
+      test.skip('Phase 5d features not yet implemented');
     }
   });
 });
@@ -127,7 +127,7 @@ test.describe('AutoPilot Phase 5D - Time-Based Exits', () => {
 
       await expect(dteExitInput).toHaveValue('21');
     } else {
-      test.skip();
+      test.skip('Phase 5d features not yet implemented');
     }
   });
 
@@ -144,7 +144,7 @@ test.describe('AutoPilot Phase 5D - Time-Based Exits', () => {
 
       await expect(daysInTradeInput).toHaveValue('14');
     } else {
-      test.skip();
+      test.skip('Phase 5d features not yet implemented');
     }
   });
 
@@ -157,7 +157,7 @@ test.describe('AutoPilot Phase 5D - Time-Based Exits', () => {
     if (await optimalExitSuggestion.isVisible()) {
       await expect(optimalExitSuggestion).toContainText(/optimal exit/i);
     } else {
-      test.skip();
+      test.skip('Phase 5d features not yet implemented');
     }
   });
 });

@@ -150,7 +150,7 @@ export class OFOPage extends BasePage {
 
   async closeStrategyDropdown() {
     // Click outside to close
-    await this.page.locator('.dropdown-backdrop').click();
+    await this.page.locator('[data-testid="ofo-dropdown-backdrop"]').click();
   }
 
   async toggleStrategy(strategyKey) {

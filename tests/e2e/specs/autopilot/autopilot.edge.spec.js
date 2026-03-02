@@ -661,8 +661,8 @@ test.describe('AutoPilot Strategy Types - Strike Auto-Population', () => {
       const strikeSelector = page.getByTestId(`autopilot-leg-strike-selector-${i}`)
 
       // Check for either valid preview OR error message
-      const preview = strikeSelector.locator('.preview-inline')
-      const previewError = strikeSelector.locator('.preview-error-inline')
+      const preview = strikeSelector.locator('[data-testid="autopilot-strike-preview-inline"]')
+      const previewError = strikeSelector.locator('[data-testid="autopilot-strike-preview-error"]')
 
       // Wait for either preview or error to appear
       await Promise.race([
@@ -678,7 +678,7 @@ test.describe('AutoPilot Strategy Types - Strike Auto-Population', () => {
 
       if (hasPreview) {
         // If preview is visible, verify it has valid strike data
-        const strikeValue = preview.locator('.strike-value')
+        const strikeValue = preview.locator('[data-testid="autopilot-strike-value"]')
         await expect(strikeValue).toBeVisible()
 
         const strikeText = await strikeValue.textContent()
@@ -751,8 +751,8 @@ test.describe('AutoPilot Strategy Types - Strike Auto-Population', () => {
       await expect(legRow).toBeVisible()
 
       const strikeSelector = page.getByTestId(`autopilot-leg-strike-selector-${i}`)
-      const preview = strikeSelector.locator('.preview-inline')
-      const previewError = strikeSelector.locator('.preview-error-inline')
+      const preview = strikeSelector.locator('[data-testid="autopilot-strike-preview-inline"]')
+      const previewError = strikeSelector.locator('[data-testid="autopilot-strike-preview-error"]')
 
       await Promise.race([
         preview.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {}),
@@ -765,7 +765,7 @@ test.describe('AutoPilot Strategy Types - Strike Auto-Population', () => {
       expect(hasPreview || hasError).toBeTruthy()
 
       if (hasPreview) {
-        const strikeValue = preview.locator('.strike-value')
+        const strikeValue = preview.locator('[data-testid="autopilot-strike-value"]')
         await expect(strikeValue).toBeVisible()
         const strikeText = await strikeValue.textContent()
         expect(strikeText).toBeTruthy()
@@ -826,8 +826,8 @@ test.describe('AutoPilot Strategy Types - Strike Auto-Population', () => {
       await expect(legRow).toBeVisible()
 
       const strikeSelector = page.getByTestId(`autopilot-leg-strike-selector-${i}`)
-      const preview = strikeSelector.locator('.preview-inline')
-      const previewError = strikeSelector.locator('.preview-error-inline')
+      const preview = strikeSelector.locator('[data-testid="autopilot-strike-preview-inline"]')
+      const previewError = strikeSelector.locator('[data-testid="autopilot-strike-preview-error"]')
 
       await Promise.race([
         preview.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {}),
@@ -840,7 +840,7 @@ test.describe('AutoPilot Strategy Types - Strike Auto-Population', () => {
       expect(hasPreview || hasError).toBeTruthy()
 
       if (hasPreview) {
-        const strikeValue = preview.locator('.strike-value')
+        const strikeValue = preview.locator('[data-testid="autopilot-strike-value"]')
         await expect(strikeValue).toBeVisible()
         const strikeText = await strikeValue.textContent()
         expect(strikeText).toBeTruthy()
@@ -901,8 +901,8 @@ test.describe('AutoPilot Strategy Types - Strike Auto-Population', () => {
       await expect(legRow).toBeVisible()
 
       const strikeSelector = page.getByTestId(`autopilot-leg-strike-selector-${i}`)
-      const preview = strikeSelector.locator('.preview-inline')
-      const previewError = strikeSelector.locator('.preview-error-inline')
+      const preview = strikeSelector.locator('[data-testid="autopilot-strike-preview-inline"]')
+      const previewError = strikeSelector.locator('[data-testid="autopilot-strike-preview-error"]')
 
       await Promise.race([
         preview.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {}),
@@ -915,7 +915,7 @@ test.describe('AutoPilot Strategy Types - Strike Auto-Population', () => {
       expect(hasPreview || hasError).toBeTruthy()
 
       if (hasPreview) {
-        const strikeValue = preview.locator('.strike-value')
+        const strikeValue = preview.locator('[data-testid="autopilot-strike-value"]')
         await expect(strikeValue).toBeVisible()
         const strikeText = await strikeValue.textContent()
         expect(strikeText).toBeTruthy()
@@ -976,8 +976,8 @@ test.describe('AutoPilot Strategy Types - Strike Auto-Population', () => {
       await expect(legRow).toBeVisible()
 
       const strikeSelector = page.getByTestId(`autopilot-leg-strike-selector-${i}`)
-      const preview = strikeSelector.locator('.preview-inline')
-      const previewError = strikeSelector.locator('.preview-error-inline')
+      const preview = strikeSelector.locator('[data-testid="autopilot-strike-preview-inline"]')
+      const previewError = strikeSelector.locator('[data-testid="autopilot-strike-preview-error"]')
 
       await Promise.race([
         preview.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {}),
@@ -990,7 +990,7 @@ test.describe('AutoPilot Strategy Types - Strike Auto-Population', () => {
       expect(hasPreview || hasError).toBeTruthy()
 
       if (hasPreview) {
-        const strikeValue = preview.locator('.strike-value')
+        const strikeValue = preview.locator('[data-testid="autopilot-strike-value"]')
         await expect(strikeValue).toBeVisible()
         const strikeText = await strikeValue.textContent()
         expect(strikeText).toBeTruthy()
@@ -1051,8 +1051,8 @@ test.describe('AutoPilot Strategy Types - Strike Auto-Population', () => {
       await expect(legRow).toBeVisible()
 
       const strikeSelector = page.getByTestId(`autopilot-leg-strike-selector-${i}`)
-      const preview = strikeSelector.locator('.preview-inline')
-      const previewError = strikeSelector.locator('.preview-error-inline')
+      const preview = strikeSelector.locator('[data-testid="autopilot-strike-preview-inline"]')
+      const previewError = strikeSelector.locator('[data-testid="autopilot-strike-preview-error"]')
 
       await Promise.race([
         preview.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {}),
@@ -1065,7 +1065,7 @@ test.describe('AutoPilot Strategy Types - Strike Auto-Population', () => {
       expect(hasPreview || hasError).toBeTruthy()
 
       if (hasPreview) {
-        const strikeValue = preview.locator('.strike-value')
+        const strikeValue = preview.locator('[data-testid="autopilot-strike-value"]')
         await expect(strikeValue).toBeVisible()
         const strikeText = await strikeValue.textContent()
         expect(strikeText).toBeTruthy()

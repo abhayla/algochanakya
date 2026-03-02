@@ -139,7 +139,7 @@ test.describe('AutoPilot Phase 5C - Expected Move Strike Selection', () => {
     if (await expectedMoveDisplay.isVisible()) {
       await expect(expectedMoveDisplay).toContainText(/expected move/i);
     } else {
-      test.skip(); // Not yet implemented
+      test.skip('Feature not yet implemented');
     }
   });
 
@@ -459,7 +459,7 @@ test.describe('AutoPilot Phase 5C - Entry Logic', () => {
       await expect(minDTEInput).toHaveValue('30');
       await expect(maxDTEInput).toHaveValue('45');
     } else {
-      test.skip(); // Not yet implemented
+      test.skip('Feature not yet implemented');
     }
   });
 
@@ -473,12 +473,12 @@ test.describe('AutoPilot Phase 5C - Entry Logic', () => {
       await deltaNeutralCheckbox.check();
       await expect(deltaNeutralCheckbox).toBeChecked();
     } else {
-      test.skip(); // Not yet implemented
+      test.skip('Feature not yet implemented');
     }
   });
 
   test('shows expected move at entry', async () => {
-    test.skip(); // Requires implementation
+    test.skip('Feature not yet implemented');
   });
 
   test('can add multiple condition groups with AND/OR', async () => {
@@ -499,7 +499,7 @@ test.describe('AutoPilot Phase 5C - Entry Logic', () => {
       await logicOperator.selectOption('AND');
       await expect(logicOperator).toHaveValue('AND');
     } else {
-      test.skip(); // Multi-condition logic not yet implemented
+      test.skip('Feature not yet implemented');
     }
   });
 });

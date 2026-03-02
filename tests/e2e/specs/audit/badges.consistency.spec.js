@@ -176,7 +176,7 @@ test.describe('Badge Consistency @audit', () => {
       await authenticatedPage.goto('/optionchain');
       await authenticatedPage.waitForLoadState('networkidle');
 
-      const ceTags = authenticatedPage.locator('.tag-ce, [class*="ce"]');
+      const ceTags = authenticatedPage.locator('[data-tag-type="CE"], [data-testid*="ce-tag"]');
       const count = await ceTags.count();
 
       if (count > 0) {
@@ -196,7 +196,7 @@ test.describe('Badge Consistency @audit', () => {
       await authenticatedPage.goto('/optionchain');
       await authenticatedPage.waitForLoadState('networkidle');
 
-      const peTags = authenticatedPage.locator('.tag-pe, [class*="pe"]');
+      const peTags = authenticatedPage.locator('[data-tag-type="PE"], [data-testid*="pe-tag"]');
       const count = await peTags.count();
 
       if (count > 0) {

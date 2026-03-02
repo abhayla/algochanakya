@@ -7,10 +7,10 @@
         </h3>
         <div class="spot-price-display">
           <span class="spot-label">Spot:</span>
-          <span v-if="loadingSpotPrice" class="spot-skeleton">
+          <span v-if="loadingSpotPrice" class="spot-skeleton" data-testid="autopilot-ladder-spot-skeleton">
             <span class="skeleton-box"></span>
           </span>
-          <span v-else class="spot-value">₹{{ formatPrice(spotPrice) }}</span>
+          <span v-else class="spot-value" data-testid="autopilot-ladder-spot-value">₹{{ formatPrice(spotPrice) }}</span>
         </div>
       </div>
       <div class="ladder-controls">
@@ -23,7 +23,7 @@
             <option value="0.15-0.35">0.15 - 0.35 Δ</option>
           </select>
         </label>
-        <label class="greeks-toggle">
+        <label class="greeks-toggle" data-testid="autopilot-ladder-greeks-toggle">
           <input type="checkbox" v-model="showGreeks" />
           <span>Show Greeks</span>
         </label>
@@ -45,7 +45,7 @@
     </div>
 
     <div v-else-if="filteredStrikes.length" class="ladder-table-container">
-      <table class="ladder-table" :class="{ 'show-greeks': showGreeks }">
+      <table class="ladder-table" data-testid="autopilot-ladder-table" :class="{ 'show-greeks': showGreeks }">
         <thead>
           <tr>
             <th class="text-right">CE Δ</th>
@@ -65,6 +65,7 @@
             v-for="strike in filteredStrikes"
             :key="strike.strike"
             class="strike-row"
+            :data-testid="strike.isATM ? 'autopilot-ladder-atm-row' : 'autopilot-ladder-row-' + strike.strike"
             :class="{
               'atm-row': strike.isATM,
               'itm-ce': strike.ce && strike.ce.isITM,
@@ -79,14 +80,14 @@
             </td>
 
             <!-- CE Theta (Greeks) -->
-            <td v-if="showGreeks" class="text-right greeks-cell">
+            <td v-if="showGreeks" class="text-right greeks-cell" data-testid="autopilot-ladder-greeks-cell">
               <span v-if="strike.ce" class="greeks-value" :class="{ 'negative': strike.ce.theta < 0 }">
                 {{ formatGreek(strike.ce.theta) }}
               </span>
             </td>
 
             <!-- CE IV (Greeks) -->
-            <td v-if="showGreeks" class="text-right greeks-cell">
+            <td v-if="showGreeks" class="text-right greeks-cell" data-testid="autopilot-ladder-greeks-cell">
               <span v-if="strike.ce" class="greeks-value">
                 {{ formatPercent(strike.ce.iv) }}
               </span>
@@ -103,7 +104,7 @@
             <td class="text-center strike-cell">
               <span class="strike-value">
                 {{ strike.strike }}
-                <span v-if="strike.isATM" class="atm-badge">ATM</span>
+                <span v-if="strike.isATM" class="atm-badge" data-testid="autopilot-ladder-atm-badge">ATM</span>
               </span>
             </td>
 
@@ -115,14 +116,14 @@
             </td>
 
             <!-- PE IV (Greeks) -->
-            <td v-if="showGreeks" class="text-left greeks-cell">
+            <td v-if="showGreeks" class="text-left greeks-cell" data-testid="autopilot-ladder-greeks-cell">
               <span v-if="strike.pe" class="greeks-value">
                 {{ formatPercent(strike.pe.iv) }}
               </span>
             </td>
 
             <!-- PE Theta (Greeks) -->
-            <td v-if="showGreeks" class="text-left greeks-cell">
+            <td v-if="showGreeks" class="text-left greeks-cell" data-testid="autopilot-ladder-greeks-cell">
               <span v-if="strike.pe" class="greeks-value" :class="{ 'negative': strike.pe.theta < 0 }">
                 {{ formatGreek(strike.pe.theta) }}
               </span>
@@ -142,6 +143,7 @@
                   v-if="strike.ce"
                   @click="selectStrike(strike.strike, 'CE', strike.ce)"
                   class="select-btn select-ce"
+                  :data-testid="'autopilot-ladder-select-ce-' + strike.strike"
                   :disabled="!strike.ce.ltp"
                 >
                   CE
@@ -150,6 +152,7 @@
                   v-if="strike.pe"
                   @click="selectStrike(strike.strike, 'PE', strike.pe)"
                   class="select-btn select-pe"
+                  :data-testid="'autopilot-ladder-select-pe-' + strike.strike"
                   :disabled="!strike.pe.ltp"
                 >
                   PE

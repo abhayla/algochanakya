@@ -58,12 +58,12 @@ test.describe('AutoPilot Phase 5B - Spot Distance Monitoring', () => {
   test('displays current spot distance in strategy detail', async () => {
     // This test requires an active strategy
     // Skip if no active strategies available
-    test.skip();
+    test.skip('Phase 5b features not yet implemented');
   });
 
   test('shows alert when spot within threshold', async () => {
     // This test requires market conditions where spot is near strike
-    test.skip();
+    test.skip('Phase 5b features not yet implemented');
   });
 });
 
@@ -80,15 +80,15 @@ test.describe('AutoPilot Phase 5B - Delta Bands', () => {
   });
 
   test('shows delta band gauge in strategy detail', async () => {
-    test.skip(); // Requires active strategy
+    test.skip('Phase 5b features not yet implemented'); // Requires active strategy
   });
 
   test('gauge shows current delta position', async () => {
-    test.skip(); // Requires active strategy
+    test.skip('Phase 5b features not yet implemented'); // Requires active strategy
   });
 
   test('gauge highlights when outside band', async () => {
-    test.skip(); // Requires active strategy with delta outside band
+    test.skip('Phase 5b features not yet implemented'); // Requires active strategy with delta outside band
   });
 
   test('can configure band limits in settings', async () => {
@@ -105,7 +105,7 @@ test.describe('AutoPilot Phase 5B - Delta Bands', () => {
       await expect(deltaBandUpperInput).toHaveValue('0.20');
       await expect(deltaBandLowerInput).toHaveValue('-0.20');
     } else {
-      test.skip(); // Settings not yet implemented
+      test.skip('Phase 5b features not yet implemented'); // Settings not yet implemented
     }
   });
 });
@@ -122,15 +122,15 @@ test.describe('AutoPilot Phase 5B - Premium Decay Tracking', () => {
   });
 
   test('shows premium captured % in strategy detail', async () => {
-    test.skip(); // Requires active strategy
+    test.skip('Phase 5b features not yet implemented'); // Requires active strategy
   });
 
   test('shows premium decay chart over time', async () => {
-    test.skip(); // Requires active strategy with history
+    test.skip('Phase 5b features not yet implemented'); // Requires active strategy with history
   });
 
   test('percentage updates in real-time', async () => {
-    test.skip(); // Requires live market data
+    test.skip('Phase 5b features not yet implemented'); // Requires live market data
   });
 });
 
@@ -146,11 +146,11 @@ test.describe('AutoPilot Phase 5B - Theta Burn Rate', () => {
   });
 
   test('shows theta burn rate in strategy detail', async () => {
-    test.skip(); // Requires active strategy
+    test.skip('Phase 5b features not yet implemented'); // Requires active strategy
   });
 
   test('shows expected vs actual theta decay', async () => {
-    test.skip(); // Requires active strategy with theta tracking
+    test.skip('Phase 5b features not yet implemented'); // Requires active strategy with theta tracking
   });
 });
 
@@ -166,11 +166,11 @@ test.describe('AutoPilot Phase 5B - Breakeven Alert', () => {
   });
 
   test('shows breakeven distance in strategy detail', async () => {
-    test.skip(); // Requires active strategy
+    test.skip('Phase 5b features not yet implemented'); // Requires active strategy
   });
 
   test('alert appears when spot near breakeven', async () => {
-    test.skip(); // Requires specific market conditions
+    test.skip('Phase 5b features not yet implemented'); // Requires specific market conditions
   });
 });
 
@@ -188,11 +188,11 @@ test.describe('AutoPilot Phase 5B - IV Rank Tracking', () => {
   });
 
   test('shows IV rank in strategy detail', async () => {
-    test.skip(); // Requires active strategy
+    test.skip('Phase 5b features not yet implemented'); // Requires active strategy
   });
 
   test('shows IV percentile in strategy detail', async () => {
-    test.skip(); // Requires active strategy
+    test.skip('Phase 5b features not yet implemented'); // Requires active strategy
   });
 
   test('IV.RANK appears in condition variables', async () => {

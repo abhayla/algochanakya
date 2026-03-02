@@ -289,11 +289,11 @@ export class StrategyBuilderPage extends BasePage {
 
   /**
    * Get the count of P/L spot price columns in the table header
-   * These are the columns with class "th-spot" that show P/L at different spot prices
+   * These are the columns with data-testid="strategy-spot-column" that show P/L at different spot prices
    * @returns {Promise<number>} Count of P/L columns
    */
   async getPnLColumnCount() {
-    const columns = await this.table.locator('th.th-spot').count();
+    const columns = await this.table.locator('[data-testid="strategy-spot-column"]').count();
     return columns;
   }
 
@@ -575,12 +575,12 @@ export class StrategyBuilderPage extends BasePage {
 
   async waitForPnLUpdate() {
     // Wait for P/L calculation to complete by checking for P/L columns
-    // The P/L grid columns (th.th-spot) appear after calculation
+    // The P/L grid columns (strategy-spot-column) appear after calculation
     await this.page.waitForLoadState('domcontentloaded'); // Brief delay for calculation to trigger
 
     // Wait for P/L grid columns to appear (max 10 seconds)
     try {
-      await this.table.locator('th.th-spot').first().waitFor({
+      await this.table.locator('[data-testid="strategy-spot-column"]').first().waitFor({
         state: 'visible',
         timeout: 10000
       });

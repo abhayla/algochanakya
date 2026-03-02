@@ -31,7 +31,7 @@ test.describe('AutoPilot - Roll Wizard (Happy Path)', () => {
     const buttonExists = await rollButton.count() > 0
 
     if (!buttonExists) {
-      test.skip()
+      test.skip('Roll wizard UI not yet implemented')
       return
     }
 
@@ -49,80 +49,80 @@ test.describe('AutoPilot - Roll Wizard (Happy Path)', () => {
   test('should display current positions', async ({ authenticatedPage }) => {
     // This test requires the wizard to be open with actual positions
     // Skipping for now as it depends on integration
-    test.skip()
+    test.skip('Roll wizard UI not yet implemented')
   })
 
   test('should show all three roll mode options', async ({ authenticatedPage }) => {
     // This test requires the wizard to be open
     // Skipping for now as it depends on integration
-    test.skip()
+    test.skip('Roll wizard UI not yet implemented')
   })
 
   test('should select next week same strikes mode', async ({ authenticatedPage }) => {
-    test.skip()
+    test.skip('Roll wizard UI not yet implemented')
   })
 
   test('should select same expiry new strikes mode', async ({ authenticatedPage }) => {
-    test.skip()
+    test.skip('Roll wizard UI not yet implemented')
   })
 
   test('should select next week new strikes mode', async ({ authenticatedPage }) => {
-    test.skip()
+    test.skip('Roll wizard UI not yet implemented')
   })
 
   test('should display target expiry selector when applicable', async ({ authenticatedPage }) => {
-    test.skip()
+    test.skip('Roll wizard UI not yet implemented')
   })
 
   test('should display strike selectors when applicable', async ({ authenticatedPage }) => {
-    test.skip()
+    test.skip('Roll wizard UI not yet implemented')
   })
 
   test('should fetch and display premium values', async ({ authenticatedPage }) => {
-    test.skip()
+    test.skip('Roll wizard UI not yet implemented')
   })
 
   test('should calculate net credit/debit', async ({ authenticatedPage }) => {
-    test.skip()
+    test.skip('Roll wizard UI not yet implemented')
   })
 
   test('should color code credit as green', async ({ authenticatedPage }) => {
-    test.skip()
+    test.skip('Roll wizard UI not yet implemented')
   })
 
   test('should color code debit as red', async ({ authenticatedPage }) => {
-    test.skip()
+    test.skip('Roll wizard UI not yet implemented')
   })
 
   test('should disable execute button until valid selection', async ({ authenticatedPage }) => {
-    test.skip()
+    test.skip('Roll wizard UI not yet implemented')
   })
 
   test('should enable execute button with valid selection', async ({ authenticatedPage }) => {
-    test.skip()
+    test.skip('Roll wizard UI not yet implemented')
   })
 
   test('should show loading state during roll execution', async ({ authenticatedPage }) => {
-    test.skip()
+    test.skip('Roll wizard UI not yet implemented')
   })
 
   test('should close wizard after successful roll', async ({ authenticatedPage }) => {
-    test.skip()
+    test.skip('Roll wizard UI not yet implemented')
   })
 
   test('should display error message on roll failure', async ({ authenticatedPage }) => {
-    test.skip()
+    test.skip('Roll wizard UI not yet implemented')
   })
 
   test('should close wizard when cancel button clicked', async ({ authenticatedPage }) => {
-    test.skip()
+    test.skip('Roll wizard UI not yet implemented')
   })
 
   test('should close wizard when clicking outside modal', async ({ authenticatedPage }) => {
-    test.skip()
+    test.skip('Roll wizard UI not yet implemented')
   })
 
   test('should show preview payoff button', async ({ authenticatedPage }) => {
-    test.skip()
+    test.skip('Roll wizard UI not yet implemented')
   })
 })
