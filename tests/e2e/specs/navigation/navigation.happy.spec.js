@@ -59,10 +59,11 @@ test.describe('Navigation Menu - AutoPilot Happy Path', () => {
 
   test('AutoPilot menu item shows active state when on AutoPilot page', async ({ authenticatedPage }) => {
     await authenticatedPage.goto('/autopilot');
-    await authenticatedPage.waitForLoadState('networkidle');
+    await authenticatedPage.waitForLoadState('domcontentloaded');
 
+    // Use aria-current="page" — semantic active indicator, not CSS class
     const autopilotNav = authenticatedPage.locator('[data-testid="kite-header-nav-autopilot"]');
-    await expect(autopilotNav).toHaveClass(/active/);
+    await expect(autopilotNav).toHaveAttribute('aria-current', 'page');
   });
 
   test('navigation menu order is correct', async ({ authenticatedPage }) => {

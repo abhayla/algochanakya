@@ -147,18 +147,18 @@ test.describe('AutoPilot Legs Configuration - Happy Path', () => {
     // Add a BUY leg
     await builderPage.addLeg({ action: 'BUY' });
 
-    // Verify row has buy styling
+    // Verify row has buy action attribute (stable semantic attr, not CSS class)
     const row = builderPage.getLegRow(0);
-    await expect(row).toHaveClass(/leg-buy/);
+    await expect(row).toHaveAttribute('data-leg-action', 'buy');
   });
 
   test('should show SELL leg with orange styling', async ({ authenticatedPage }) => {
     // Add a SELL leg
     await builderPage.addLeg({ action: 'SELL' });
 
-    // Verify row has sell styling
+    // Verify row has sell action attribute (stable semantic attr, not CSS class)
     const row = builderPage.getLegRow(0);
-    await expect(row).toHaveClass(/leg-sell/);
+    await expect(row).toHaveAttribute('data-leg-action', 'sell');
   });
 
   test('should display action bar with leg count', async ({ authenticatedPage }) => {

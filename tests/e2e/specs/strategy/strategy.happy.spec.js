@@ -137,15 +137,15 @@ test.describe('Strategy Builder - Happy Path @happy', () => {
 
   test('should switch underlying tabs', async () => {
     await strategyPage.selectUnderlying('BANKNIFTY');
-    await expect(strategyPage.bankniftyTab).toHaveClass(/active/);
+    await expect(strategyPage.bankniftyTab).toHaveAttribute('aria-selected', 'true');
   });
 
   test('should switch P/L mode', async () => {
     await strategyPage.setPnLMode('current');
-    await expect(strategyPage.pnlModeCurrent).toHaveClass(/active/);
+    await expect(strategyPage.pnlModeCurrent).toHaveAttribute('aria-selected', 'true');
 
     await strategyPage.setPnLMode('expiry');
-    await expect(strategyPage.pnlModeExpiry).toHaveClass(/active/);
+    await expect(strategyPage.pnlModeExpiry).toHaveAttribute('aria-selected', 'true');
   });
 
   test('should have no horizontal overflow', async () => {

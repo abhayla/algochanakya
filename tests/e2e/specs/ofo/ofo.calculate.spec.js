@@ -239,7 +239,7 @@ test.describe('OFO - Calculate Button Tests @calculate', () => {
   test('should calculate BANKNIFTY strategies', async ({ page }) => {
     // Switch to BANKNIFTY
     await ofoPage.selectUnderlying('BANKNIFTY');
-    await expect(ofoPage.bankniftyTab).toHaveClass(/active/);
+    await expect(ofoPage.bankniftyTab).toHaveAttribute('aria-selected', 'true');
 
     // Wait for expiries to load
     await page.waitForLoadState('domcontentloaded');
@@ -267,7 +267,7 @@ test.describe('OFO - Calculate Button Tests @calculate', () => {
   test('should calculate FINNIFTY strategies', async ({ page }) => {
     // Switch to FINNIFTY
     await ofoPage.selectUnderlying('FINNIFTY');
-    await expect(ofoPage.finniftyTab).toHaveClass(/active/);
+    await expect(ofoPage.finniftyTab).toHaveAttribute('aria-selected', 'true');
 
     // Wait for expiries to load
     await page.waitForLoadState('domcontentloaded');

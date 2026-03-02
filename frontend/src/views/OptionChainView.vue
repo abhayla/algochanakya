@@ -17,6 +17,7 @@
               :class="['tab-btn', { active: store.underlying === ul }]"
               @click="handleUnderlyingChange(ul)"
               :data-testid="'optionchain-underlying-' + ul.toLowerCase()"
+              :aria-selected="store.underlying === ul"
             >
               {{ ul }}
             </button>

@@ -613,15 +613,8 @@ export class StrategyBuilderPage extends BasePage {
    */
   async hasErrorBanner() {
     // Check for specific error banner patterns used in Strategy Builder
-    // Be more specific to avoid false positives from P/L cells or other elements
     const errorSelectors = [
-      '[data-testid="strategy-error"]',  // Primary error element
-      '.bg-red-100.border-red',  // Error banner with both classes
-      '.error-banner',
-      // More specific error alert patterns
-      '[class*="error-alert"]',
-      '[class*="alert-danger"]',
-      '[class*="alert"][class*="error"]'
+      '[data-testid="strategy-error"]',  // Primary error element (StrategyBuilderView.vue)
     ];
 
     for (const selector of errorSelectors) {
@@ -644,11 +637,7 @@ export class StrategyBuilderPage extends BasePage {
    */
   async getErrorBannerText() {
     const errorSelectors = [
-      '[data-testid="strategy-error"]',
-      '.bg-red-100.border-red',
-      '.error-banner',
-      '[class*="error-alert"]',
-      '[class*="alert-danger"]'
+      '[data-testid="strategy-error"]',  // Primary error element (StrategyBuilderView.vue)
     ];
 
     for (const selector of errorSelectors) {

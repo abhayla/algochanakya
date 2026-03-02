@@ -12,6 +12,7 @@
                 :class="['underlying-tab', { active: strategyStore.underlying === u }]"
                 @click="handleUnderlyingChange(u)"
                 :data-testid="'strategy-underlying-' + u.toLowerCase()"
+                :aria-selected="strategyStore.underlying === u"
               >
                 {{ u }}
               </button>
@@ -34,6 +35,7 @@
               :class="['mode-btn', { active: strategyStore.pnlMode === 'expiry' }]"
               @click="strategyStore.pnlMode !== 'expiry' && strategyStore.togglePnLMode()"
               data-testid="strategy-pnl-mode-expiry"
+              :aria-selected="strategyStore.pnlMode === 'expiry'"
             >
               At Expiry
             </button>
@@ -41,6 +43,7 @@
               :class="['mode-btn', { active: strategyStore.pnlMode === 'current' }]"
               @click="strategyStore.pnlMode !== 'current' && strategyStore.togglePnLMode()"
               data-testid="strategy-pnl-mode-current"
+              :aria-selected="strategyStore.pnlMode === 'current'"
             >
               Current
             </button>

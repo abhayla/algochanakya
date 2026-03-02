@@ -438,7 +438,7 @@ const getPnLClass = (value) => {
 </script>
 
 <template>
-  <tr :class="rowClass" :data-testid="`autopilot-leg-row-${index}`">
+  <tr :class="rowClass" :data-testid="`autopilot-leg-row-${index}`" :data-leg-action="props.leg.transaction_type?.toLowerCase()">
     <!-- Checkbox -->
     <td class="td-checkbox">
       <input

@@ -51,7 +51,8 @@ test.describe('Positions - Style & Accessibility Audit @audit', () => {
   });
 
   test('profit values use green color @audit', async ({ authenticatedPage }) => {
-    const profitElements = authenticatedPage.locator('.text-green-500, .text-green-600');
+    // Use data-pnl-polarity="positive" — stable semantic attribute, not CSS class
+    const profitElements = authenticatedPage.locator('[data-pnl-polarity="positive"]');
     const count = await profitElements.count();
 
     if (count > 0) {
@@ -60,11 +61,16 @@ test.describe('Positions - Style & Accessibility Audit @audit', () => {
       );
       // Should be some shade of green
       expect(color).toMatch(/rgb\(\d+,\s*\d+,\s*\d+\)/);
+    } else {
+      // No profit P&L elements visible — positions may all be at zero or not loaded
+      // Still assert that the page loaded correctly
+      await expect(authenticatedPage.locator('[data-testid="positions-container"], [data-testid="positions-empty-state"]').first()).toBeVisible();
     }
   });
 
   test('loss values use red color @audit', async ({ authenticatedPage }) => {
-    const lossElements = authenticatedPage.locator('.text-red-500, .text-red-600');
+    // Use data-pnl-polarity="negative" — stable semantic attribute, not CSS class
+    const lossElements = authenticatedPage.locator('[data-pnl-polarity="negative"]');
     const count = await lossElements.count();
 
     if (count > 0) {
@@ -73,6 +79,9 @@ test.describe('Positions - Style & Accessibility Audit @audit', () => {
       );
       // Should be some shade of red
       expect(color).toMatch(/rgb\(\d+,\s*\d+,\s*\d+\)/);
+    } else {
+      // No loss P&L elements visible — positions may all be at zero or not loaded
+      await expect(authenticatedPage.locator('[data-testid="positions-container"], [data-testid="positions-empty-state"]').first()).toBeVisible();
     }
   });
 

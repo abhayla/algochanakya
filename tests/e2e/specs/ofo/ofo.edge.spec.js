@@ -80,13 +80,13 @@ test.describe('OFO - Edge Cases @edge', () => {
 
     test('should switch between all underlyings', async () => {
       await ofoPage.selectUnderlying('NIFTY');
-      await expect(ofoPage.niftyTab).toHaveClass(/active/);
+      await expect(ofoPage.niftyTab).toHaveAttribute('aria-selected', 'true');
 
       await ofoPage.selectUnderlying('BANKNIFTY');
-      await expect(ofoPage.bankniftyTab).toHaveClass(/active/);
+      await expect(ofoPage.bankniftyTab).toHaveAttribute('aria-selected', 'true');
 
       await ofoPage.selectUnderlying('FINNIFTY');
-      await expect(ofoPage.finniftyTab).toHaveClass(/active/);
+      await expect(ofoPage.finniftyTab).toHaveAttribute('aria-selected', 'true');
     });
   });
 

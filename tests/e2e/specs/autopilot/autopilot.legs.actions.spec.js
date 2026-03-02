@@ -211,12 +211,13 @@ test.describe('AutoPilot Leg Actions - E2E', () => {
     const pnlDisplay = page.page.locator('[data-testid^="autopilot-leg-pnl"]').first();
     await expect(pnlDisplay).toBeVisible();
 
-    // Check for color coding (green for profit, red for loss)
+    // Check for P&L polarity indicator (stable semantic attr, not CSS class)
+    const polarity = await pnlDisplay.getAttribute('data-pnl-polarity');
     const pnlValue = await pnlDisplay.textContent();
-    if (pnlValue.includes('+') || parseFloat(pnlValue) > 0) {
-      await expect(pnlDisplay).toHaveClass(/green|profit|positive/);
-    } else if (pnlValue.includes('-') || parseFloat(pnlValue) < 0) {
-      await expect(pnlDisplay).toHaveClass(/red|loss|negative/);
+    if (pnlValue && (pnlValue.includes('+') || parseFloat(pnlValue) > 0)) {
+      expect(polarity).toBe('positive');
+    } else if (pnlValue && (pnlValue.includes('-') || parseFloat(pnlValue) < 0)) {
+      expect(polarity).toBe('negative');
     }
   });
 

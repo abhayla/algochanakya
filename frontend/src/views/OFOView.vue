@@ -16,6 +16,7 @@
               :class="['tab-btn', { active: store.underlying === ul }]"
               @click="handleUnderlyingChange(ul)"
               :data-testid="'ofo-underlying-' + ul.toLowerCase()"
+              :aria-selected="store.underlying === ul"
             >
               {{ ul }}
             </button>

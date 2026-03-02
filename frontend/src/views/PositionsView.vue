@@ -169,7 +169,8 @@
 
               <!-- P&L -->
               <td class="text-right">
-                <span :class="['pnl', pos.pnl >= 0 ? 'profit' : 'loss']">
+                <span :class="['pnl', pos.pnl >= 0 ? 'profit' : 'loss']"
+                  :data-pnl-polarity="pos.pnl >= 0 ? 'positive' : 'negative'">
                   {{ pos.pnl >= 0 ? '+' : '' }}{{ formatNumber(pos.pnl) }}
                 </span>
               </td>
@@ -240,7 +241,7 @@
         <div class="modal" data-testid="positions-exit-modal">
           <div class="modal-header">
             <h3>Exit Position</h3>
-            <button @click="store.closeExitModal()" class="modal-close">&times;</button>
+            <button @click="store.closeExitModal()" class="modal-close" data-testid="positions-exit-modal-close">&times;</button>
           </div>
 
           <div class="modal-body">
@@ -305,7 +306,7 @@
         <div class="modal" data-testid="positions-add-modal">
           <div class="modal-header">
             <h3>Add to Position</h3>
-            <button @click="store.closeAddModal()" class="modal-close">&times;</button>
+            <button @click="store.closeAddModal()" class="modal-close" data-testid="positions-add-modal-close">&times;</button>
           </div>
 
           <div class="modal-body">

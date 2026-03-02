@@ -76,7 +76,7 @@ test.describe('Positions - Edge Cases @edge', () => {
       await expect(positionsPage.exitModal).toBeVisible();
 
       // Close modal
-      const closeBtn = positionsPage.exitModal.locator('.modal-close');
+      const closeBtn = positionsPage.exitModal.locator('[data-testid="positions-exit-modal-close"]');
       await closeBtn.click();
 
       // Modal should close
@@ -102,7 +102,7 @@ test.describe('Positions - Edge Cases @edge', () => {
       await expect(positionsPage.addModal).toBeVisible();
 
       // Close modal
-      const closeBtn = positionsPage.addModal.locator('.modal-close');
+      const closeBtn = positionsPage.addModal.locator('[data-testid="positions-add-modal-close"]');
       await closeBtn.click();
 
       // Modal should close

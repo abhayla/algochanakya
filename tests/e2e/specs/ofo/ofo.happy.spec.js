@@ -37,7 +37,7 @@ test.describe('OFO - Happy Path @happy', () => {
 
     test('should highlight OFO as active in navigation', async ({ page }) => {
       const ofoNavItem = page.getByTestId('kite-header-nav-ofo');
-      await expect(ofoNavItem).toHaveClass(/active/);
+      await expect(ofoNavItem).toHaveAttribute('aria-current', 'page');
     });
 
     test('should display index prices in header', async ({ page }) => {
@@ -166,7 +166,7 @@ test.describe('OFO - Happy Path @happy', () => {
 
   test('should switch underlying tabs', async () => {
     await ofoPage.selectUnderlying('BANKNIFTY');
-    await expect(ofoPage.bankniftyTab).toHaveClass(/active/);
+    await expect(ofoPage.bankniftyTab).toHaveAttribute('aria-current', 'page');
   });
 
   test('should open strategy dropdown when clicked', async () => {

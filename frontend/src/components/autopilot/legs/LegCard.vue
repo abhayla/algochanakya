@@ -29,6 +29,7 @@
       <div
         class="metric-item pnl-item"
         :data-testid="`autopilot-leg-pnl-${leg.leg_id}`"
+        :data-pnl-polarity="unrealizedPnL >= 0 ? 'positive' : 'negative'"
       >
         <span class="metric-label">P&L</span>
         <span class="metric-value" :class="pnlClass">

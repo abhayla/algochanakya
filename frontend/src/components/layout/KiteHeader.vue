@@ -47,6 +47,7 @@
           :to="item.path"
           :class="['nav-item', { active: isActive(item.path) }]"
           :data-testid="`kite-header-nav-${item.path.slice(1)}`"
+          :aria-current="isActive(item.path) ? 'page' : undefined"
         >
           <!-- Robot icon for AutoPilot -->
           <svg

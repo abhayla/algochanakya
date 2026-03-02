@@ -62,7 +62,7 @@ test.describe('Option Chain - Happy Path @happy', () => {
 
   test('should switch underlying tabs', async () => {
     await optionChainPage.selectUnderlying('BANKNIFTY');
-    await expect(optionChainPage.bankniftyTab).toHaveClass(/active/);
+    await expect(optionChainPage.bankniftyTab).toHaveAttribute('aria-selected', 'true');
   });
 
   test('should have no horizontal overflow', async () => {
