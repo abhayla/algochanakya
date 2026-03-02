@@ -12,7 +12,7 @@
  * The token is saved to tests/config/.auth-token for reuse.
  */
 
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../../fixtures/auth.fixture.js';
 import { kiteLogin, loginOrReuse, hasCredentials } from '../../helpers/kite-login.helper.js';
 import { authFixture } from '../../fixtures/auth.fixture.js';
 

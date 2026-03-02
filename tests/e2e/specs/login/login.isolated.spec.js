@@ -6,7 +6,7 @@
  * Tag: @isolated
  */
 
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../../fixtures/auth.fixture.js';
 import { LoginPage } from '../../pages/LoginPage.js';
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';

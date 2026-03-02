@@ -4,7 +4,7 @@
  * Tests for API endpoint responses and data integrity.
  */
 
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../../fixtures/auth.fixture.js';
 
 const API_BASE = process.env.API_BASE || 'http://localhost:8001';
 

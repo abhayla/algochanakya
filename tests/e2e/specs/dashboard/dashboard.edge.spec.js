@@ -4,7 +4,7 @@
  * Tests for error states, edge cases, and boundary conditions.
  */
 
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../../fixtures/auth.fixture.js';
 import { DashboardPage } from '../../pages/DashboardPage.js';
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';

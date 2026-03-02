@@ -5,7 +5,7 @@
  * Tag: @audit
  */
 
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../../fixtures/auth.fixture.js';
 import { LoginPage } from '../../pages/LoginPage.js';
 import { StyleAudit, DESIGN_TOKENS } from '../../helpers/style-audit.helper.js';
 

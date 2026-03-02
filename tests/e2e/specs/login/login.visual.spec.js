@@ -4,7 +4,7 @@
  * Screenshot comparisons for UI consistency.
  */
 
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../../fixtures/auth.fixture.js';
 import { LoginPage } from '../../pages/LoginPage.js';
 import { prepareForVisualTest, getVisualCompareOptions, VIEWPORTS } from '../../helpers/visual.helper.js';
 
