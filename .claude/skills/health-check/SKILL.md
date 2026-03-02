@@ -25,7 +25,7 @@ Proactive codebase health scanning that identifies potential issues before they 
 
 ---
 
-## 7-Step Health Scan
+## 8-Step Health Scan
 
 ### 1. Stale Import Scan
 
@@ -50,14 +50,14 @@ grep -r "from app.services.greeks_calculator import" --include="*.py" . || echo 
 
 **Output:**
 ```
-[1/7] Stale Import Scan
+[1/8] Stale Import Scan
   ✓ No stale imports found
 ```
 
 Or:
 
 ```
-[1/7] Stale Import Scan
+[1/8] Stale Import Scan
   ⚠ 2 stale imports detected:
     - backend/app/api/routes/autopilot.py:15
       from app.services.kill_switch import KillSwitch
@@ -91,14 +91,14 @@ git diff --name-only HEAD~10..HEAD > /tmp/changed_files.txt
 
 **Output:**
 ```
-[2/7] Missing Test Coverage
+[2/8] Missing Test Coverage
   ✓ All changed files have recent test coverage
 ```
 
 Or:
 
 ```
-[2/7] Missing Test Coverage
+[2/8] Missing Test Coverage
   ⚠ 2 files changed without test updates:
     - frontend/src/views/StrategyBuilderView.vue (changed 3 days ago)
       Expected test: tests/e2e/specs/strategy/strategy.happy.spec.js (last updated 12 days ago)
@@ -124,7 +124,7 @@ cursor = conn.execute(
     'SELECT file_path, risk_score, error_count, revert_count FROM file_risk_scores WHERE risk_score > 0.5 ORDER BY risk_score DESC LIMIT 10'
 )
 
-print('[3/7] File Risk Report')
+print('[3/8] File Risk Report')
 rows = cursor.fetchall()
 if rows:
     print(f'  ⚠ {len(rows)} high-risk files detected:')
@@ -144,7 +144,7 @@ conn.close()
 
 **Output:**
 ```
-[3/7] File Risk Report
+[3/8] File Risk Report
   ⚠ 3 high-risk files detected:
     - backend/app/services/autopilot/suggestion_engine.py (risk: 0.85, errors: 8, reverts: 2)
     - tests/e2e/specs/positions/exit.spec.js (risk: 0.72, errors: 6, reverts: 1)
@@ -174,7 +174,7 @@ cursor = conn.execute(
        LIMIT 5'''
 )
 
-print('[4/7] Unresolved Error Patterns')
+print('[4/8] Unresolved Error Patterns')
 rows = cursor.fetchall()
 if rows:
     print(f'  ⚠ {len(rows)} recurring unresolved errors:')
@@ -190,7 +190,7 @@ conn.close()
 
 **Output:**
 ```
-[4/7] Unresolved Error Patterns
+[4/8] Unresolved Error Patterns
   ⚠ 2 recurring unresolved errors:
     - ImportError: cannot import name 'X' from 'X'
       Fingerprint: abc123def456, Seen 3 times, Never resolved
@@ -222,7 +222,7 @@ cursor = conn.execute(
        LIMIT 5'''
 )
 
-print('[5/7] Strategy Effectiveness Review')
+print('[5/8] Strategy Effectiveness Review')
 rows = cursor.fetchall()
 if rows:
     print(f'  ⚠ {len(rows)} ineffective strategies (score < 0.2):')
@@ -238,7 +238,7 @@ conn.close()
 
 **Output:**
 ```
-[5/7] Strategy Effectiveness Review
+[5/8] Strategy Effectiveness Review
   ⚠ 2 ineffective strategies (score < 0.2):
     - Fix Circular Import (ImportError)
       Score: 0.15, Success: 1/8 attempts
@@ -264,7 +264,7 @@ from db_helper import synthesize_rules, get_connection
 # Run synthesis check
 new_rules = synthesize_rules(min_confidence=0.7, min_evidence=5)
 
-print('[6/7] Synthesized Rules Check')
+print('[6/8] Synthesized Rules Check')
 if new_rules:
     print(f'  ✨ {len(new_rules)} new rules synthesized:')
     for rule in new_rules:
@@ -283,7 +283,7 @@ conn.close()
 
 **Output:**
 ```
-[6/7] Synthesized Rules Check
+[6/8] Synthesized Rules Check
   ✨ 2 new rules synthesized:
     - Auto: Update Stale Selector (83.3% confidence, 10 evidence)
     - Auto: Fix Missing Import (87.5% confidence, 7 evidence)
@@ -294,7 +294,7 @@ conn.close()
 
 ---
 
-### 7. Git Health Check
+### 7. Git Health Check (Step 7 of 8)
 
 **Purpose:** Check for uncommitted changes, stale branches, and large files.
 
@@ -315,7 +315,7 @@ git rev-list --objects --all | \
 
 **Output:**
 ```
-[7/7] Git Health Check
+[7/8] Git Health Check
   ⚠ 3 uncommitted files:
     - backend/app/services/autopilot/suggestion_engine.py (modified)
     - frontend/src/stores/strategy.js (modified)
@@ -331,6 +331,34 @@ git rev-list --objects --all | \
 
 ---
 
+### 8. data-testid Coverage Audit
+
+**Purpose:** Detect Vue components with buttons, inputs, or selects missing `data-testid` attributes, before they become untestable in E2E.
+
+**Process:**
+```bash
+node tests/e2e/scripts/audit-testids.js --fail-below=70
+```
+
+**Output:**
+```
+[8/8] data-testid Coverage Audit
+  Overall: 64% coverage (threshold: 70%) — ⚠ BELOW THRESHOLD
+
+  🔴 HIGH (61 files) — buttons/inputs/selects missing data-testid:
+    - frontend/src/views/PositionsView.vue [35%] — 16 missing
+    - frontend/src/components/autopilot/adjustments/ShiftLegModal.vue [0%] — 15 missing
+    - frontend/src/views/StrategyBuilderView.vue [64%] — 12 missing
+
+  🟡 MEDIUM (2 files) — clickable divs missing data-testid
+
+  ✅ 26 files fully covered
+
+  Recommendation: Add data-testid to HIGH priority files first (buttons/inputs/selects)
+```
+
+---
+
 ## Complete Health Report Format
 
 ```
@@ -340,13 +368,14 @@ git rev-list --objects --all | \
 Date: 2026-02-13 14:23:45
 Scan Duration: 3.2 seconds
 
-[1/7] Stale Import Scan               ✓ Clean
-[2/7] Missing Test Coverage            ⚠ 2 issues
-[3/7] File Risk Report                 ⚠ 3 high-risk files
-[4/7] Unresolved Error Patterns        ⚠ 2 patterns
-[5/7] Strategy Effectiveness           ⚠ 2 ineffective
-[6/7] Synthesized Rules Check          ✨ 2 new rules
-[7/7] Git Health                       ⚠ 3 uncommitted files
+[1/8] Stale Import Scan               ✓ Clean
+[2/8] Missing Test Coverage            ⚠ 2 issues
+[3/8] File Risk Report                 ⚠ 3 high-risk files
+[4/8] Unresolved Error Patterns        ⚠ 2 patterns
+[5/8] Strategy Effectiveness           ⚠ 2 ineffective
+[6/8] Synthesized Rules Check          ✨ 2 new rules
+[7/8] Git Health                       ⚠ 3 uncommitted files
+[8/8] data-testid Coverage             ⚠ 64% (below 70% threshold)
 
 ==============================================
 Summary: 5 warnings, 2 clean, 2 new rules

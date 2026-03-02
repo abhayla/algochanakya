@@ -8,7 +8,8 @@ This document defines the centralized rules for writing E2E tests in AlgoChanaky
 
 | Rule | Description |
 |------|-------------|
-| **data-testid ONLY** | Use `data-testid` attributes exclusively - no CSS classes, tags, or text selectors |
+| **data-testid ONLY** | Use `data-testid` attributes exclusively — no CSS classes, tags, text selectors, or `getByText()` |
+| **Semantic attributes** | Use `aria-selected`, `aria-current`, `data-pnl-polarity`, `data-leg-action` for state assertions |
 | **Naming convention** | `[screen]-[component]-[element]` (e.g., `positions-exit-button-NIFTY`) |
 | **Via POM** | All selectors must go through Page Object methods using `getByTestId()` |
 
@@ -17,9 +18,11 @@ This document defines the centralized rules for writing E2E tests in AlgoChanaky
 ```javascript
 // Never use CSS classes
 await page.locator('.success-state').click();
+await expect(el).toHaveClass(/active/);
 
 // Never use text selectors
 await page.locator('button:has-text("Deploy")').click();
+await page.getByText('Submit');
 
 // Never use tag selectors
 await page.locator('.lots-control button').first();
@@ -35,6 +38,11 @@ await page.locator('div.modal > button:first-child');
 await strategyLibraryPage.deploySuccess.click();
 await strategyLibraryPage.getWizardRecommendationDeploy(0).click();
 await strategyLibraryPage.deployLotsMinus.click();
+
+// Use semantic attributes for state assertions
+await expect(tabButton).toHaveAttribute('aria-selected', 'true');
+await expect(navItem).toHaveAttribute('aria-current', 'page');
+await expect(pnlCell).toHaveAttribute('data-pnl-polarity', 'positive');
 ```
 
 ---
@@ -46,7 +54,8 @@ await strategyLibraryPage.deployLotsMinus.click();
 | **Import from auth.fixture.js** | Not from `@playwright/test` |
 | **Use `authenticatedPage`** | For all authenticated tests |
 | **Use `auditablePage`** | For accessibility/style audit tests |
-| **Token injection** | Auth handled via fixture, not manual login |
+| **Use `styleAudit`** | For CSS/style checking |
+| **Token injection** | Auth handled via fixture + `storageState`, not manual login |
 
 ### Correct Import
 
@@ -65,6 +74,7 @@ import { test, expect } from '@playwright/test';
 | Rule | Description |
 |------|-------------|
 | **Extend BasePage** | All page objects inherit from `BasePage.js` |
+| **Named exports** | Use `export class MyPage` (not `export default class`) |
 | **Structure** | Getters → Actions → Assertions |
 | **`this.url` property** | Required on every page object |
 | **No inline assertions** | Page objects return locators/data, tests do assertions |
@@ -74,7 +84,7 @@ import { test, expect } from '@playwright/test';
 ```javascript
 import { BasePage } from './BasePage.js';
 
-export default class MyPage extends BasePage {
+export class MyPage extends BasePage {
   constructor(page) {
     super(page);
     this.url = '/mypage';  // Required
@@ -127,6 +137,13 @@ export default class MyPage extends BasePage {
 }
 ```
 
+### Importing in Specs
+
+```javascript
+// Named export — always use destructured import
+import { MyPage } from '../../pages/MyPage.js';
+```
+
 ---
 
 ## 4. Test File Structure
@@ -136,68 +153,170 @@ export default class MyPage extends BasePage {
 | `.happy.spec.js` | Normal/success flows | `authenticatedPage` |
 | `.edge.spec.js` | Error/boundary cases | `authenticatedPage` |
 | `.visual.spec.js` | Screenshot regression | `authenticatedPage` |
-| `.api.spec.js` | API validation | `authenticatedPage` |
+| `.api.spec.js` | API validation | `authenticatedPage` or `{ request }` |
 | `.websocket.spec.js` | Live data streaming | `authenticatedPage` |
+| `.deploy.spec.js` | Deploy/activation flows | `authenticatedPage` |
 | `.audit.spec.js` | Accessibility/CSS | `auditablePage` |
-| `.isolated.spec.js` | No auth needed | None |
+| `.isolated.spec.js` | No auth needed | None (fresh context) |
 
 ### Directory Structure
 
 ```
 tests/e2e/
 ├── fixtures/
-│   └── auth.fixture.js          # Token injection, authenticatedPage/auditablePage
+│   └── auth.fixture.js          # Token injection, authenticatedPage/auditablePage/styleAudit
 ├── helpers/
+│   ├── auth.helper.js           # Token acquisition and validation
+│   ├── config.helper.js         # FRONTEND_URL, API_BASE, WS_BASE constants (single source)
+│   ├── kite-login.helper.js     # Kite OAuth login flow
+│   ├── market-status.helper.js  # NSE market open/closed detection
 │   ├── style-audit.helper.js    # A11y/CSS validation
-│   └── visual.helper.js         # Screenshot masking
+│   ├── visual.helper.js         # Screenshot masking
+│   └── wait-helpers.js          # Event-driven wait replacements (no waitForTimeout)
 ├── pages/
 │   ├── BasePage.js              # Common methods, all pages inherit
-│   ├── LoginPage.js
+│   ├── AutoPilotDashboardPage.js
+│   ├── BrokerSettingsPage.js
 │   ├── DashboardPage.js
-│   ├── PositionsPage.js
-│   ├── WatchlistPage.js
+│   ├── KiteHeaderPage.js
+│   ├── LoginPage.js
+│   ├── OFOPage.js
 │   ├── OptionChainPage.js
+│   ├── PositionsPage.js
 │   ├── StrategyBuilderPage.js
-│   └── StrategyLibraryPage.js
+│   ├── StrategyLibraryPage.js
+│   └── WatchlistPage.js
 └── specs/
-    ├── login/
-    │   ├── login.happy.spec.js
-    │   ├── login.edge.spec.js
-    │   └── login.visual.spec.js
+    ├── ai/
+    ├── audit/
+    ├── auth/
+    ├── autopilot/
+    ├── broker-abstraction/
     ├── dashboard/
-    │   └── ...
+    ├── header/
+    ├── integration/
+    ├── live/
+    ├── login/
+    ├── navigation/
+    ├── ofo/
+    ├── optionchain/
     ├── positions/
-    │   └── ...
-    └── strategylibrary/
-        ├── strategylibrary.happy.spec.js
-        ├── strategylibrary.edge.spec.js
-        ├── strategylibrary.api.spec.js
-        └── strategylibrary.visual.spec.js
+    ├── strategy/
+    ├── strategylibrary/
+    └── watchlist/
 ```
 
 ---
 
 ## 5. Configuration Rules
 
-| Rule | Value |
-|------|-------|
-| **Single worker** | `workers: 1` |
-| **No parallel** | `fullyParallel: false` |
-| **Maximized browser** | `--start-maximized` |
-| **Auth state reuse** | `.auth-state.json` |
-| **Timeout** | 180 seconds |
+| Setting | Value | Notes |
+|---------|-------|-------|
+| **Workers (local)** | `4` | Parallel execution with `fullyParallel: true` |
+| **Workers (CI)** | `2` | Reduced for stability |
+| **Retries (local)** | `0` | No retries locally |
+| **Retries (CI)** | `1` | `process.env.CI ? 1 : 0` |
+| **Timeout** | `30 seconds` | Per-test timeout |
+| **Expect timeout** | `10 seconds` | For live broker data assertions |
+| **Viewport** | `1280×800` | Fixed viewport |
+| **Headless (local)** | `false` | Headed browser locally |
+| **Headless (CI)** | `false` | Headed in CI too (Xvfb handles display) |
+| **Auth state** | `./tests/config/.auth-state.json` | Reused from `globalSetup` |
 
-These settings are in `playwright.config.js` and should not be changed.
+These settings are in `playwright.config.js`. Do not change workers, retries, or headless settings without a team decision.
+
+**Two test projects:**
+- `chromium` — standard tests with saved auth state; ignores `*.isolated.spec.js`
+- `isolated` — matches only `*.isolated.spec.js`; fresh browser context, no auth state
 
 ---
 
-## 6. Test Template
+## 6. URL Configuration
+
+**Never hardcode URLs.** Import from the config helper:
+
+```javascript
+import { FRONTEND_URL, API_BASE, WS_BASE } from '../helpers/config.helper.js';
+
+// FRONTEND_URL = 'http://localhost:5173' (or FRONTEND_URL env var)
+// API_BASE     = 'http://localhost:8001' (dev backend — NOT 8000 which is production)
+// WS_BASE      = 'ws://localhost:8001'
+```
+
+**Critical:** Port `8001` is dev. Port `8000` is production. Never hardcode `localhost:8000` in tests.
+
+---
+
+## 7. Wait Strategy Rules
+
+**Never use `waitForTimeout`.** It is the #1 source of test flakiness.
+
+```javascript
+// WRONG — arbitrary sleep, brittle
+await page.waitForTimeout(2000);
+
+// WRONG — networkidle never fires when WebSocket is open
+await page.waitForLoadState('networkidle');
+```
+
+Use event-driven waits from `wait-helpers.js`:
+
+```javascript
+import {
+  waitForApiResponse,      // Wait for a network response matching a URL pattern
+  waitForDataInTestId,     // Wait until a testid becomes non-empty
+  waitForTestIdPrefix,     // Wait for N+ elements with testid prefix
+  waitForSearchResults,    // Wait for search/filter dropdown
+  waitForWebSocket,        // Wait for WebSocket connection
+  waitForEitherTestId,     // Wait for either data OR empty-state
+  waitForModal,            // Wait for modal to appear
+  waitForDropdownOptions,  // Wait for dropdown options to load
+} from '../helpers/wait-helpers.js';
+
+// Prefer locator.waitFor() for single elements:
+await myPage.someElement.waitFor({ state: 'visible', timeout: 5000 });
+
+// Use waitForLoadState('domcontentloaded') instead of 'networkidle'
+await page.waitForLoadState('domcontentloaded');
+```
+
+---
+
+## 8. Real Data Strategy (No Mocks)
+
+Tests always use **real broker data**. Never mock API responses.
+
+Use `market-status.helper.js` to write market-aware assertions:
+
+```javascript
+import { assertDataOrEmptyState } from '../helpers/market-status.helper.js';
+
+// Every test must assert SOMETHING regardless of market state
+// DON'T do this (silent skip — zero assertions if no data):
+if (hasPositions) {
+  await expect(table).toBeVisible();
+}
+
+// DO this (always asserts):
+if (hasPositions) {
+  await expect(table).toBeVisible();
+} else {
+  await expect(emptyState).toBeVisible();
+}
+
+// Or use the helper:
+await assertDataOrEmptyState(page, 'positions-table', 'positions-empty-state', expect);
+```
+
+---
+
+## 9. Test Template
 
 ```javascript
 import { test, expect } from '../../fixtures/auth.fixture.js';
-import MyPage from '../../pages/MyPage.js';
+import { MyPage } from '../../pages/MyPage.js';
 
-test.describe('Feature Name @happy', () => {
+test.describe('Feature Name', () => {
   let myPage;
 
   test.beforeEach(async ({ authenticatedPage }) => {
@@ -212,48 +331,51 @@ test.describe('Feature Name @happy', () => {
     // Act - Perform the action
     await myPage.clickSubmit();
 
-    // Assert - Verify the result
+    // Assert - Verify the result (always at least one assertion)
     await expect(myPage.successMessage).toBeVisible();
     await expect(myPage.successMessage).toContainText('Success');
-  });
-
-  test('should handle another scenario', async ({ authenticatedPage }) => {
-    // Test implementation
   });
 });
 ```
 
 ---
 
-## 7. Key Files Reference
+## 10. Key Files Reference
 
 | File | Purpose |
 |------|---------|
-| `tests/e2e/fixtures/auth.fixture.js` | Token injection, authenticatedPage/auditablePage |
+| `tests/e2e/fixtures/auth.fixture.js` | Token injection, `authenticatedPage`/`auditablePage`/`styleAudit` fixtures |
 | `tests/e2e/pages/BasePage.js` | Common methods, all pages inherit |
+| `tests/e2e/helpers/config.helper.js` | `FRONTEND_URL`, `API_BASE`, `WS_BASE` — single source of truth for URLs |
+| `tests/e2e/helpers/wait-helpers.js` | Event-driven waits replacing `waitForTimeout` |
+| `tests/e2e/helpers/market-status.helper.js` | NSE market open/closed detection, `assertDataOrEmptyState` |
 | `tests/e2e/helpers/style-audit.helper.js` | A11y/CSS validation |
 | `tests/e2e/helpers/visual.helper.js` | Screenshot masking |
-| `tests/e2e/global-setup.js` | One-time login with TOTP |
-| `playwright.config.js` | Config - single worker, maximized, auth state |
+| `tests/e2e/global-setup.js` | One-time login with TOTP, populates `.auth-state.json` |
+| `playwright.config.js` | Config — 4 workers local, 2 CI, 30s timeout, 10s expect |
 
 ---
 
-## 8. Adding New Tests Checklist
+## 11. Adding New Tests Checklist
 
 When adding tests for a new feature:
 
 1. [ ] Add `data-testid` attributes to Vue component elements
-2. [ ] Add selectors to relevant Page Object (or create new POM)
-3. [ ] Import from `auth.fixture.js` (NOT `@playwright/test`)
-4. [ ] Use `authenticatedPage` fixture in tests
-5. [ ] Use POM methods for all interactions
-6. [ ] No CSS class or text selectors anywhere
-7. [ ] Follow naming: `[screen]-[component]-[element]`
-8. [ ] Organize tests by category (happy, edge, api, visual)
+2. [ ] Add `aria-selected`/`aria-current` to tab/nav elements for state assertions
+3. [ ] Add selectors to relevant Page Object (or create new POM with `export class`)
+4. [ ] Import from `auth.fixture.js` (NOT `@playwright/test`)
+5. [ ] Import URLs from `config.helper.js` (NOT hardcoded)
+6. [ ] Use `authenticatedPage` fixture in tests
+7. [ ] Use POM methods for all interactions
+8. [ ] No CSS class or text selectors anywhere
+9. [ ] No `waitForTimeout` — use `wait-helpers.js` or `locator.waitFor()`
+10. [ ] Every test must assert something (no silent skips)
+11. [ ] Follow naming: `[screen]-[component]-[element]`
+12. [ ] Organize tests by category (happy, edge, api, visual)
 
 ---
 
-## 9. data-testid Naming Examples
+## 12. data-testid Naming Examples
 
 ```
 Format: [screen]-[component]-[element]
@@ -265,6 +387,7 @@ Login Screen:
 Positions Screen:
   data-testid="positions-exit-button-NIFTY"
   data-testid="positions-exit-modal"
+  data-testid="positions-exit-modal-close"
   data-testid="positions-pnl-total"
 
 Option Chain:
@@ -286,16 +409,18 @@ Strategy Library:
 
 ---
 
-## 10. Common Mistakes to Avoid
+## 13. Common Mistakes to Avoid
 
-### 1. Using CSS Selectors
+### 1. Using CSS Selectors or Class Assertions
 
 ```javascript
 // WRONG
 await page.locator('.modal-overlay').click();
+await expect(el).toHaveClass(/active/);
 
 // RIGHT
 await myPage.modalOverlay.click();
+await expect(tabButton).toHaveAttribute('aria-selected', 'true');
 ```
 
 ### 2. Importing from Wrong Package
@@ -308,41 +433,61 @@ import { test, expect } from '@playwright/test';
 import { test, expect } from '../../fixtures/auth.fixture.js';
 ```
 
-### 3. Hardcoding Selectors in Tests
+### 3. Hardcoding URLs
 
 ```javascript
 // WRONG
-await page.locator('[data-testid="strategy-deploy-modal"]').click();
+const response = await fetch('http://localhost:8000/api/positions');
+const response = await fetch('http://localhost:8001/api/positions');
 
 // RIGHT
-await strategyLibraryPage.deployModal.click();
+import { API_BASE } from '../helpers/config.helper.js';
+const response = await fetch(`${API_BASE}/api/positions`);
 ```
 
-### 4. Not Using Page Object Methods
+### 4. Using waitForTimeout or networkidle
 
 ```javascript
 // WRONG
-await page.fill('[data-testid="deploy-lots"]', '2');
+await page.waitForTimeout(2000);
+await page.waitForLoadState('networkidle');
 
 // RIGHT
-await strategyLibraryPage.setDeployLots(2);
+await myPage.someElement.waitFor({ state: 'visible', timeout: 5000 });
+await page.waitForLoadState('domcontentloaded');
 ```
 
-### 5. Adding Assertions to Page Objects
+### 5. Silent Skips (Zero Assertions)
 
 ```javascript
-// WRONG (in Page Object)
-async verifySuccess() {
-  expect(this.successMessage).toBeVisible();  // Don't do this
+// WRONG — test passes with zero assertions when no data
+if (hasPositions) {
+  await expect(table).toBeVisible();
 }
 
-// RIGHT (in test file)
-await expect(myPage.successMessage).toBeVisible();
+// RIGHT — always asserts
+if (hasPositions) {
+  await expect(table).toBeVisible();
+} else {
+  await expect(emptyState).toBeVisible();
+}
+```
+
+### 6. Using Default Exports in POMs
+
+```javascript
+// WRONG
+export default class MyPage extends BasePage { ... }
+import MyPage from '../../pages/MyPage.js';
+
+// RIGHT
+export class MyPage extends BasePage { ... }
+import { MyPage } from '../../pages/MyPage.js';
 ```
 
 ---
 
-## 11. Running Tests
+## 14. Running Tests
 
 ```bash
 # Run all tests
@@ -351,6 +496,7 @@ npm test
 # Run by screen
 npm run test:specs:strategylibrary
 npm run test:specs:positions
+npm run test:specs:autopilot
 
 # Run by category
 npm run test:happy
@@ -362,6 +508,9 @@ npm run test:audit
 # Run single file
 npx playwright test tests/e2e/specs/strategylibrary/strategylibrary.happy.spec.js
 
+# Run single test by name
+npx playwright test --grep "should display positions table"
+
 # Debug mode
 npm run test:debug
 
@@ -371,13 +520,29 @@ npm run test:headed
 
 ---
 
-## 12. Adding data-testid to Vue Components
+## 15. Adding data-testid to Vue Components
 
 When adding testability to Vue components:
 
 ```vue
 <!-- Static elements -->
 <button data-testid="myscreen-submit-button">Submit</button>
+
+<!-- State via semantic attributes (not CSS class assertions) -->
+<button
+  v-for="tab in tabs"
+  :key="tab.id"
+  :data-testid="`myscreen-tab-${tab.id}`"
+  :aria-selected="activeTab === tab.id"
+  @click="activeTab = tab.id"
+>{{ tab.label }}</button>
+
+<!-- Navigation items -->
+<a
+  :data-testid="`nav-link-${item.id}`"
+  :aria-current="isActive(item.path) ? 'page' : undefined"
+  :href="item.path"
+>{{ item.label }}</a>
 
 <!-- Dynamic elements with IDs -->
 <div
@@ -387,6 +552,12 @@ When adding testability to Vue components:
 >
   {{ item.name }}
 </div>
+
+<!-- P&L polarity (use data attribute, not CSS class) -->
+<span
+  :data-testid="`myscreen-pnl-${item.id}`"
+  :data-pnl-polarity="item.pnl >= 0 ? 'positive' : 'negative'"
+>{{ formatPnl(item.pnl) }}</span>
 
 <!-- Form elements -->
 <input
@@ -402,6 +573,7 @@ When adding testability to Vue components:
   @click.self="closeModal"
 >
   <div class="modal-content" data-testid="myscreen-modal">
+    <button data-testid="myscreen-modal-close" @click="closeModal">×</button>
     <!-- modal content -->
   </div>
 </div>
