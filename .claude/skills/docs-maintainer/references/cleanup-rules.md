@@ -270,3 +270,116 @@ File found in docs/features/?
     ├─ Folder exists? → Rename to .bak
     └─ Folder missing? → Create folder, move file
 ```
+
+---
+
+## Automated Cleanup via Script
+
+**Script:** `scripts/cleanup.sh`
+
+**Purpose:** Bulk-delete gitignored artifact files that accumulate during active development — tmpclaude dirs, debug scripts, test artifacts, corrupted filenames, and screenshots.
+
+**When to run:**
+- Weekly during active development sprints
+- Before opening a PR (keeps the working tree clean)
+- After heavy test runs (allure-results, playwright-report accumulate quickly)
+- When disk usage seems high (32K+ files in allure-results alone is common)
+
+**Usage:**
+```bash
+bash scripts/cleanup.sh --dry-run   # Preview: shows what would be deleted
+bash scripts/cleanup.sh             # Execute: actually deletes files
+```
+
+**10 categories covered:**
+
+| # | Category | Method |
+|---|----------|--------|
+| 1 | Corrupted filenames (`{,`, `80%`, `nul`, Windows path artifacts) | Explicit names |
+| 2 | `tmpclaude-*` temporary working directories | Glob |
+| 3 | Root-level debug scripts (explicit list of known .cjs/.js files) | Explicit list |
+| 4 | Root-level `*.png` screenshots | Glob (always gitignored) |
+| 5 | Root-level `screenshots/` directory | Explicit name |
+| 6 | Root-level `*_REPORT.md` files | Glob |
+| 7 | Root-level log/output files | Explicit list |
+| 8 | Test artifact directories (`allure-results/`, `test-results/`, `playwright-report/`, `frontend/dist/`) | Explicit names |
+| 9 | Backend stale test/debug files | Explicit list |
+| 10 | `tests/e2e/screenshots/` debug captures | Explicit name |
+
+**What the script does NOT touch (intentional):**
+- `docs/assets/screenshots/` — proper documentation images
+- `tests/e2e/specs/*-snapshots/` — visual regression baselines (Playwright)
+- `.claude/` contents — skills, hooks, sessions, learning
+- `backend/logs/` — structured application logs
+- `frontend/src/` — source code
+- `C:\Apps\algochanakya` — production (script refuses to run there)
+- `notes` file at root — user-confirmed keep
+
+---
+
+## Prevention Rules
+
+Follow these rules to prevent artifact accumulation in the first place:
+
+| File type | Correct location | Never put in |
+|-----------|-----------------|-------------|
+| Debug/test scripts (`.cjs`, `.js`) | `scripts/testing/` or `scripts/debug/` | Project root |
+| Screenshots (debugging) | `tests/e2e/screenshots/` (gitignored) | Project root |
+| Screenshots (documentation) | `docs/assets/screenshots/` | Project root |
+| Visual regression baselines | `tests/e2e/specs/{screen}/*-snapshots/` | Anywhere else |
+| Backend test scripts | `backend/tests/` or `scripts/debug/` | `backend/` root |
+| Report markdown files | `docs/` subdirectory | Project root |
+| Log files | `backend/logs/` (structured) | Project root |
+| Backup files | Nowhere — delete immediately | Anywhere |
+
+**Filename hygiene:**
+- Never use shell special characters in filenames: `{`, `}`, `%`, `*`, `?`
+- Never name a file `nul` or `NUL` on Windows (reserved device name)
+- Verify new file types are in `.gitignore` before creating them at root level
+- Use `git check-ignore <file>` to confirm a file will be ignored
+
+---
+
+## .gitignore Gap Detection
+
+When adding new file categories, verify `.gitignore` covers them. Required patterns checklist:
+
+```
+# Test artifacts
+allure-results/
+backend/allure-results/
+test-results/
+playwright-report/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Temp dirs
+tmpclaude-*
+
+# Debug screenshots
+tests/e2e/screenshots/
+tests/screenshots/
+
+# Corrupted filenames
+{,
+80%
+NUL
+D?AbhayVibeCoding*
+C?AbhayVideCoding*
+
+# Backup files
+*.bak
+*.backup
+
+# Debug scripts (explicit entries or patterns like verify-*.cjs)
+```
+
+**How to verify a file will be ignored:**
+```bash
+git check-ignore -v path/to/file    # Shows which rule ignores it
+git status --porcelain              # Shows any untracked files that slipped through
+git ls-files --others --exclude-standard | head -20  # Sample untracked files
+```
+
+If `git status` shows unexpected untracked files, add them to `.gitignore` before committing.

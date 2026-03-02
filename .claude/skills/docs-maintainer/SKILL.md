@@ -428,6 +428,21 @@ Update schema documentation.
 
 This workflow handles file reorganization and detection of misplaced documentation/script files that should be moved to their proper locations.
 
+### 0. Run Automated Cleanup (Pre-Step)
+
+Before any manual file reorganization, run the cleanup script to bulk-delete gitignored artifacts:
+
+```bash
+bash scripts/cleanup.sh --dry-run   # Preview what will be deleted
+bash scripts/cleanup.sh             # Execute cleanup
+```
+
+This handles: tmpclaude dirs, debug scripts, test artifact dirs (allure-results/, playwright-report/), corrupted filenames, root-level screenshots, and stale backend files.
+
+See `references/cleanup-rules.md` § "Automated Cleanup via Script" for full details on the 10 categories and what is intentionally NOT touched.
+
+Skip this step only when the user explicitly requests docs reorganization without filesystem cleanup.
+
 ### 1. Scan for Orphaned Files
 
 Check for files that don't belong in their current location:
@@ -566,6 +581,27 @@ def detect_orphans():
     # 4. Check for temp/log files
     temp_files = glob('*.log') + glob('*-output.txt') + glob('*.pid')
     orphans.extend([('temp', f, '.gitignore') for f in temp_files])
+
+    # 5. Check for corrupted filenames (Windows shell expansion artifacts)
+    corrupted_patterns = ['{,', '80%', 'nul', 'NUL']
+    for name in corrupted_patterns:
+        if os.path.exists(name):
+            orphans.append(('corrupted', name, 'run: bash scripts/cleanup.sh'))
+    mangled = glob('D?AbhayVibeCoding*') + glob('C?AbhayVideCoding*')
+    orphans.extend([('corrupted', f, 'run: bash scripts/cleanup.sh') for f in mangled])
+
+    # 6. Check for tmpclaude working directories (Claude Code artifacts)
+    tmpclaude_dirs = glob('tmpclaude-*')
+    if tmpclaude_dirs:
+        orphans.append(('artifact', f'{len(tmpclaude_dirs)} tmpclaude-* dirs', 'run: bash scripts/cleanup.sh'))
+
+    # 7. Check for test artifact accumulation (trigger cleanup if large)
+    large_artifact_dirs = ['allure-results', 'test-results', 'playwright-report']
+    for d in large_artifact_dirs:
+        if os.path.isdir(d):
+            count = sum(1 for _ in os.scandir(d))
+            if count > 100:
+                orphans.append(('artifact', f'{d}/ ({count} entries)', 'run: bash scripts/cleanup.sh'))
 
     return orphans
 ```
