@@ -4,7 +4,7 @@ import { BasePage } from './BasePage.js';
  * Page Object for Option Chain screen
  * Path: /optionchain
  */
-export default class OptionChainPage extends BasePage {
+export class OptionChainPage extends BasePage {
   constructor(page) {
     super(page);
     this.url = '/optionchain';

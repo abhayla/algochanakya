@@ -4,7 +4,7 @@ import { BasePage } from './BasePage.js';
  * Page Object for Watchlist screen
  * Path: /watchlist
  */
-export default class WatchlistPage extends BasePage {
+export class WatchlistPage extends BasePage {
   constructor(page) {
     super(page);
     this.path = '/watchlist';

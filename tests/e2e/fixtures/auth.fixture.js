@@ -42,38 +42,14 @@ export const authFixture = {
   },
 
   /**
-   * Set token in page localStorage and reload
-   * Waits for auth to be fully initialized before returning
+   * Validate token is active — storageState already injects localStorage into every
+   * browser context via playwright.config, so no page navigation is needed here.
+   * Each test's beforeEach navigates to its own screen URL anyway.
    */
   async _setTokenInPage(page, token) {
-    await page.goto(FRONTEND_URL);
-    await page.evaluate((t) => {
-      localStorage.setItem('access_token', t);
-      localStorage.setItem('token', t);
-    }, token);
-    await page.reload();
-    await page.waitForLoadState('domcontentloaded');
-
-    // Wait for Vue router's auth check to complete
-    // The router guard calls checkAuth() which makes an API call to /api/auth/me
-    // We need this to finish before navigating to protected routes
-
-    // Navigate to dashboard (protected route) and wait for auth redirect to settle
-    await page.goto(FRONTEND_URL + '/dashboard');
-    await page.waitForLoadState('domcontentloaded');
-
-    // Wait a bit for any potential redirects to complete
-    await page.waitForTimeout(1000);
-
-    // Check if we stayed on dashboard or got redirected to login
-    const currentUrl = page.url();
-    if (currentUrl.includes('/login')) {
-      console.warn('[Auth Fixture] Redirected to login - token may be invalid');
-      // Try to validate the token via API to get more info
-      const isValid = await this.validateToken(page, token);
-      console.log('[Auth Fixture] Token API validation result:', isValid);
-    } else {
-      console.log('[Auth Fixture] Auth confirmed - on protected route:', currentUrl);
+    const isValid = await this.validateToken(page, token);
+    if (!isValid) {
+      console.warn('[Auth Fixture] Token validation failed - token may be expired');
     }
   },
 
@@ -200,34 +176,12 @@ export const test = base.extend({
 });
 
 /**
- * Cleanup page state between tests to prevent state pollution
- * Closes modals, dropdowns, and resets any open UI elements
+ * Cleanup page state between tests to prevent state pollution.
+ * Escape closes any open modal/dropdown without DOM iteration.
  */
 async function cleanupPageState(page) {
   try {
-    // Close any open modals by clicking close buttons
-    const closeSelectors = [
-      '[data-testid*="-close"]',
-      '[data-testid*="-modal"] button[aria-label="Close"]',
-      '[data-testid*="modal-close"]',
-      '.modal button[aria-label="Close"]',
-      '[role="dialog"] button[aria-label="Close"]',
-    ];
-
-    for (const selector of closeSelectors) {
-      const closeButtons = await page.locator(selector).all();
-      for (const btn of closeButtons) {
-        if (await btn.isVisible()) {
-          await btn.click().catch(() => {});
-        }
-      }
-    }
-
-    // Press Escape to close any remaining modals/dropdowns
     await page.keyboard.press('Escape').catch(() => {});
-
-    // Wait briefly for animations to complete
-    await page.waitForTimeout(100);
   } catch {
     // Ignore cleanup errors - they shouldn't fail tests
   }

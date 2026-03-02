@@ -9,7 +9,7 @@
  */
 
 import { test, expect } from '../../fixtures/auth.fixture.js';
-import StrategyLibraryPage from '../../pages/StrategyLibraryPage.js';
+import { StrategyLibraryPage } from '../../pages/StrategyLibraryPage.js';
 import { prepareForVisualTest, getVisualCompareOptions, VIEWPORTS } from '../../helpers/visual.helper.js';
 
 test.describe('Strategy Library - Visual Regression @visual', () => {

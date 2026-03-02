@@ -1,4 +1,4 @@
-import { test, expect } from '../fixtures/auth.fixture.js'
+import { test, expect } from '../../fixtures/auth.fixture.js'
 
 test.describe('OFO to Strategy Builder - Step 2', () => {
   test('Click Open in Builder and verify columns', async ({ authenticatedPage }) => {

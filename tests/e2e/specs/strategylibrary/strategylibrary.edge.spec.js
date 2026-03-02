@@ -9,7 +9,7 @@
  */
 
 import { test, expect } from '../../fixtures/auth.fixture.js';
-import StrategyLibraryPage from '../../pages/StrategyLibraryPage.js';
+import { StrategyLibraryPage } from '../../pages/StrategyLibraryPage.js';
 
 test.describe('Strategy Library - Edge Cases @edge', () => {
   let strategyLibraryPage;

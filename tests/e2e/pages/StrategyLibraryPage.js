@@ -13,7 +13,7 @@ import { BasePage } from './BasePage.js';
  * - Deploy modal
  * - Strategy comparison
  */
-export default class StrategyLibraryPage extends BasePage {
+export class StrategyLibraryPage extends BasePage {
   constructor(page) {
     super(page);
     this.url = '/strategies';

@@ -3,7 +3,7 @@
  * Tests all strategy types, exits, adjustments in paper trading mode
  */
 
-import { test, expect } from '../fixtures/auth.fixture.js';
+import { test, expect } from '../../fixtures/auth.fixture.js';
 
 test.describe('AI AutoPilot Comprehensive Testing', () => {
   test.describe.configure({ mode: 'serial' });

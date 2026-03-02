@@ -15,8 +15,8 @@
  */
 
 import { test, expect } from '../../fixtures/auth.fixture.js';
-import StrategyLibraryPage from '../../pages/StrategyLibraryPage.js';
-import StrategyBuilderPage from '../../pages/StrategyBuilderPage.js';
+import { StrategyLibraryPage } from '../../pages/StrategyLibraryPage.js';
+import { StrategyBuilderPage } from '../../pages/StrategyBuilderPage.js';
 import { STRATEGY_TEMPLATES, LOT_SIZES } from '../../fixtures/strategy-templates.fixture.js';
 
 const BULLISH_STRATEGIES = [

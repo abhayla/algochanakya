@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import WatchlistPage from '../../pages/WatchlistPage.js';
+import { WatchlistPage } from '../../pages/WatchlistPage.js';
 import { prepareForVisualTest, VIEWPORTS } from '../../helpers/visual.helper.js';
 
 /**

@@ -6,7 +6,7 @@
  */
 
 import { test, expect } from '../../fixtures/auth.fixture.js';
-import StrategyBuilderPage from '../../pages/StrategyBuilderPage.js';
+import { StrategyBuilderPage } from '../../pages/StrategyBuilderPage.js';
 import { StyleAudit, DESIGN_TOKENS } from '../../helpers/style-audit.helper.js';
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';

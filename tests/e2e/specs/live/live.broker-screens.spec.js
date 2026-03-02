@@ -27,10 +27,10 @@
 
 import { test, expect } from '../../fixtures/auth.fixture.js';
 import { BrokerSettingsPage } from '../../pages/BrokerSettingsPage.js';
-import WatchlistPage from '../../pages/WatchlistPage.js';
-import OptionChainPage from '../../pages/OptionChainPage.js';
-import PositionsPage from '../../pages/PositionsPage.js';
-import DashboardPage from '../../pages/DashboardPage.js';
+import { WatchlistPage } from '../../pages/WatchlistPage.js';
+import { OptionChainPage } from '../../pages/OptionChainPage.js';
+import { PositionsPage } from '../../pages/PositionsPage.js';
+import { DashboardPage } from '../../pages/DashboardPage.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // All 6 brokers parameterized

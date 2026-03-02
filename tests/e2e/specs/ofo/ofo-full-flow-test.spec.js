@@ -1,4 +1,4 @@
-import { test, expect } from '../fixtures/auth.fixture.js'
+import { test, expect } from '../../fixtures/auth.fixture.js'
 
 test.describe('OFO to Strategy Builder - Full Flow', () => {
   test('Calculate Short Straddle then Open in Builder', { timeout: 120000 }, async ({ authenticatedPage }) => {

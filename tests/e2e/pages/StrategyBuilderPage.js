@@ -4,7 +4,7 @@ import { BasePage } from './BasePage.js';
  * Page Object for Strategy Builder screen
  * Path: /strategy
  */
-export default class StrategyBuilderPage extends BasePage {
+export class StrategyBuilderPage extends BasePage {
   constructor(page) {
     super(page);
     this.url = '/strategy';

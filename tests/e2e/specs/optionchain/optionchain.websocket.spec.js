@@ -1,5 +1,5 @@
 import { test, expect } from '../../fixtures/auth.fixture.js';
-import OptionChainPage from '../../pages/OptionChainPage.js';
+import { OptionChainPage } from '../../pages/OptionChainPage.js';
 
 /**
  * Option Chain Screen - WebSocket Tests

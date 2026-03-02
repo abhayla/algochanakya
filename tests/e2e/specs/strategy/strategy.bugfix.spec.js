@@ -1,5 +1,5 @@
 import { test, expect } from '../../fixtures/auth.fixture.js';
-import StrategyBuilderPage from '../../pages/StrategyBuilderPage.js';
+import { StrategyBuilderPage } from '../../pages/StrategyBuilderPage.js';
 
 /**
  * Strategy Builder - Bug Fix Verification Tests

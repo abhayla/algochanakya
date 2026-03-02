@@ -1,5 +1,5 @@
 import { test, expect } from '../../fixtures/auth.fixture.js';
-import WatchlistPage from '../../pages/WatchlistPage.js';
+import { WatchlistPage } from '../../pages/WatchlistPage.js';
 
 /**
  * Watchlist Screen - WebSocket Tests

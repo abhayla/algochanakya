@@ -1,5 +1,5 @@
 import { test, expect } from '../../fixtures/auth.fixture.js';
-import OFOPage from '../../pages/OFOPage.js';
+import { OFOPage } from '../../pages/OFOPage.js';
 
 /**
  * OFO (Options For Options) Screen - Edge Case Tests

@@ -4,7 +4,7 @@ import { BasePage } from './BasePage.js';
  * Page Object for OFO (Options For Options) screen
  * Path: /ofo
  */
-export default class OFOPage extends BasePage {
+export class OFOPage extends BasePage {
   constructor(page) {
     super(page);
     this.url = '/ofo';

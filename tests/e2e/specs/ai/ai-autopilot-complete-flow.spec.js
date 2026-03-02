@@ -5,7 +5,7 @@
  * monitors position, triggers exit, and verifies paper trading stats.
  */
 
-import { test, expect } from '../fixtures/auth.fixture.js'
+import { test, expect } from '../../fixtures/auth.fixture.js'
 
 test.describe('AI AutoPilot - Complete Paper Trading Flow', () => {
   test.setTimeout(300000) // 5 minutes for complete flow

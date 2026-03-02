@@ -1,4 +1,4 @@
-import { test, expect } from '../fixtures/auth.fixture.js'
+import { test, expect } from '../../fixtures/auth.fixture.js'
 
 test.describe('OFO Short Straddle - Step 1', () => {
   test('Calculate Short Straddle and capture results', async ({ authenticatedPage }) => {
