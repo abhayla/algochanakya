@@ -11,7 +11,7 @@ test.describe('Strategy Builder - Bug Fixes @bugfix', () => {
   test.beforeEach(async ({ authenticatedPage }) => {
     strategyPage = new StrategyBuilderPage(authenticatedPage);
     await strategyPage.navigate();
-    await strategyPage.page.waitForTimeout(1000); // Extra wait for market data
+    await strategyPage.waitForPageLoad(); // Wait for market data
   });
 
   test('BUG FIX: should recalculate P/L after bulk delete using removeSelectedLegs()', async () => {
@@ -19,7 +19,7 @@ test.describe('Strategy Builder - Bug Fixes @bugfix', () => {
 
     // Add 2 legs
     await strategyPage.addRow();
-    await strategyPage.page.waitForTimeout(2000); // Wait for leg to fully load
+    await strategyPage.waitForLegCount(1);
 
     const legCount1 = await strategyPage.getLegCount();
     if (legCount1 === 0) {
@@ -28,13 +28,13 @@ test.describe('Strategy Builder - Bug Fixes @bugfix', () => {
     }
 
     await strategyPage.addRow();
-    await strategyPage.page.waitForTimeout(2000); // Wait for second leg
+    await strategyPage.waitForLegCount(2);
 
     const legCount2 = await strategyPage.getLegCount();
     expect(legCount2).toBe(2);
 
     // Wait for initial P/L calculation
-    await strategyPage.page.waitForTimeout(1000);
+    await strategyPage.waitForPnLCalculation();
 
     // Verify P/L summary exists before deletion
     const hasSummaryBefore = await strategyPage.hasSummaryCards();
@@ -44,11 +44,12 @@ test.describe('Strategy Builder - Bug Fixes @bugfix', () => {
     const legRow = await strategyPage.getLegRow(0);
     const checkbox = legRow.locator('input[type="checkbox"]');
     await checkbox.check();
-    await strategyPage.page.waitForTimeout(500);
+    await strategyPage.page.waitForLoadState('domcontentloaded');
 
     // Delete selected leg (this calls removeSelectedLegs())
     await strategyPage.deleteSelectedLegs();
-    await strategyPage.page.waitForTimeout(2000); // Wait for deletion and recalculation
+    await strategyPage.waitForLegCount(1);
+    await strategyPage.waitForPnLCalculation();
 
     // Verify we now have 1 leg
     const finalLegCount = await strategyPage.getLegCount();
@@ -69,7 +70,7 @@ test.describe('Strategy Builder - Bug Fixes @bugfix', () => {
   test('BUG FIX: should clear P/L when deleting all legs', async () => {
     // Add 1 leg
     await strategyPage.addRow();
-    await strategyPage.page.waitForTimeout(3000);
+    await strategyPage.waitForLegCount(1);
 
     const legCount = await strategyPage.getLegCount();
     if (legCount === 0) {
@@ -78,7 +79,7 @@ test.describe('Strategy Builder - Bug Fixes @bugfix', () => {
     }
 
     // Wait for P/L calculation
-    await strategyPage.page.waitForTimeout(2000);
+    await strategyPage.waitForPnLCalculation();
 
     // Verify P/L exists
     const hasSummary = await strategyPage.hasSummaryCards();
@@ -88,11 +89,11 @@ test.describe('Strategy Builder - Bug Fixes @bugfix', () => {
     const legRow = await strategyPage.getLegRow(0);
     const checkbox = legRow.locator('input[type="checkbox"]');
     await checkbox.check();
-    await strategyPage.page.waitForTimeout(300);
+    await strategyPage.page.waitForLoadState('domcontentloaded');
 
     // Delete the leg
     await strategyPage.deleteSelectedLegs();
-    await strategyPage.page.waitForTimeout(1000);
+    await strategyPage.waitForLegCount(0);
 
     // Verify no legs remain
     const finalLegCount = await strategyPage.getLegCount();
@@ -111,7 +112,7 @@ test.describe('Strategy Builder - Bug Fixes @bugfix', () => {
 
     // Add 1 leg
     await strategyPage.addRow();
-    await strategyPage.page.waitForTimeout(3000); // Wait for leg to fully load
+    await strategyPage.waitForLegCount(1);
 
     const legCount = await strategyPage.getLegCount();
     if (legCount === 0) {
@@ -120,7 +121,7 @@ test.describe('Strategy Builder - Bug Fixes @bugfix', () => {
     }
 
     // Wait for P/L calculation (which should now fetch LTP from API if WebSocket unavailable)
-    await strategyPage.page.waitForTimeout(3000);
+    await strategyPage.waitForPnLCalculation();
 
     // THE FIX VERIFICATION: P/L summary should appear for single row
     // Before the fix, this would fail if WebSocket CMP was unavailable

@@ -131,7 +131,7 @@ export async function waitForAuth(page, timeout = 5000) {
     if (authenticated) {
       return true;
     }
-    await page.waitForTimeout(500);
+    await page.waitForLoadState('domcontentloaded');
   }
 
   return false;

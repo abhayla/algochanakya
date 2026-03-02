@@ -96,7 +96,7 @@ test.describe('StrikeLadder Integration', () => {
     await authenticatedPage.click('[data-testid="autopilot-leg-open-ladder-0"]')
 
     // Wait for spot price API call
-    await authenticatedPage.waitForTimeout(1000)
+    await authenticatedPage.waitForLoadState('domcontentloaded')
 
     // Verify API call was made
     expect(spotPriceRequests.length).toBeGreaterThan(0)
@@ -199,7 +199,7 @@ test.describe('StrikeLadder Integration', () => {
       await authenticatedPage.waitForSelector('[data-testid="autopilot-strike-ladder-modal"]', { state: 'visible' })
 
       // Wait for API response
-      await authenticatedPage.waitForTimeout(1000)
+      await authenticatedPage.waitForLoadState('domcontentloaded')
 
       // Verify correct underlying in modal title
       const modalTitle = authenticatedPage.locator('.modal-title')
@@ -253,7 +253,7 @@ test.describe('StrikeLadder Integration', () => {
     await expect(modal).toBeVisible()
 
     // Should have logged the error
-    await authenticatedPage.waitForTimeout(500)
+    await authenticatedPage.waitForLoadState('domcontentloaded')
     expect(consoleMessages.some(msg => msg.includes('Error fetching spot price'))).toBeTruthy()
   })
 
@@ -318,7 +318,7 @@ test.describe('StrikeLadder Integration', () => {
 
     await authenticatedPage.click('[data-testid="autopilot-leg-open-ladder-0"]')
     await authenticatedPage.waitForSelector('[data-testid="autopilot-strike-ladder-modal"]', { state: 'visible' })
-    await authenticatedPage.waitForTimeout(2000) // Wait for any async operations
+    await authenticatedPage.waitForLoadState('domcontentloaded') // Wait for any async operations
 
     // Filter out known/acceptable errors
     const criticalErrors = consoleErrors.filter(error =>

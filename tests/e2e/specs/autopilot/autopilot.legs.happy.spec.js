@@ -211,7 +211,7 @@ test.describe('AutoPilot Legs Configuration - Happy Path', () => {
     });
 
     // Wait for CMP to load (WebSocket or LTP API)
-    await authenticatedPage.waitForTimeout(2000);
+    await authenticatedPage.waitForLoadState('domcontentloaded');
 
     // Check market hours to determine validation behavior
     const now = new Date();

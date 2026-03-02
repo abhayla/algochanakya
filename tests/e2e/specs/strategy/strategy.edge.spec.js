@@ -131,11 +131,11 @@ test.describe('Strategy Builder - Edge Cases @edge', () => {
     const row0 = await strategyPage.getLegRow(0);
     const checkbox = row0.locator('input[type="checkbox"]');
     await checkbox.check();
-    await strategyPage.page.waitForTimeout(300);
+    await strategyPage.page.waitForLoadState('domcontentloaded');
 
     // Delete selected leg
     await strategyPage.deleteSelectedLegs();
-    await strategyPage.page.waitForTimeout(500);
+    await strategyPage.waitForLegCount(1);
 
     // Verify one leg was deleted
     const finalCount = await strategyPage.getLegCount();
@@ -175,13 +175,13 @@ test.describe('Strategy Builder - Edge Cases @edge', () => {
     await strategyPage.waitForLegCount(1);
     await strategyPage.enterStrategyName('Test Strategy');
     await strategyPage.save();
-    await strategyPage.page.waitForTimeout(1000); // Wait for save to complete
+    await strategyPage.page.waitForLoadState('domcontentloaded');
 
     // Close the success modal from first save
     const modalVisibleAfterSave = await strategyPage.isValidationModalVisible();
     if (modalVisibleAfterSave) {
       await strategyPage.closeValidationModal();
-      await strategyPage.page.waitForTimeout(500);
+      await strategyPage.page.waitForLoadState('domcontentloaded');
     }
 
     // Reset to "New Strategy" mode
@@ -212,13 +212,13 @@ test.describe('Strategy Builder - Edge Cases @edge', () => {
     await strategyPage.waitForLegCount(1);
     await strategyPage.enterStrategyName('My Strategy');
     await strategyPage.save();
-    await strategyPage.page.waitForTimeout(1000);
+    await strategyPage.page.waitForLoadState('domcontentloaded');
 
     // Close the success modal from first save
     const modalVisibleAfterSave = await strategyPage.isValidationModalVisible();
     if (modalVisibleAfterSave) {
       await strategyPage.closeValidationModal();
-      await strategyPage.page.waitForTimeout(500);
+      await strategyPage.page.waitForLoadState('domcontentloaded');
     }
 
     // Reset to "New Strategy" mode
@@ -261,7 +261,7 @@ test.describe('Strategy Builder - Edge Cases @edge', () => {
     // This test would need to clear fields, but that depends on UI implementation
     // For now, we verify the happy path works
     await strategyPage.save();
-    await strategyPage.page.waitForTimeout(500);
+    await strategyPage.page.waitForLoadState('domcontentloaded');
   });
 
   // Underlying change confirmation tests
@@ -396,7 +396,7 @@ test.describe('Strategy Builder - Edge Cases @edge', () => {
 
     // Delete all legs
     await strategyPage.deleteSelectedLegs();
-    await strategyPage.page.waitForTimeout(1000);
+    await strategyPage.waitForLegCount(0);
 
     // Verify legs are gone
     const legCount = await strategyPage.getLegCount();

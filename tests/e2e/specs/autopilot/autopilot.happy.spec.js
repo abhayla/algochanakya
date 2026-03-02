@@ -323,7 +323,7 @@ test.describe('AutoPilot Strategy Builder - Happy Path', () => {
     await builderPage.selectStrategyType('iron_condor');
 
     // Wait for legs to be added
-    await builderPage.page.waitForTimeout(500);
+    await builderPage.page.waitForLoadState('domcontentloaded');
 
     // Iron Condor should have 4 legs
     const legCount = await builderPage.getLegCount();
@@ -335,7 +335,7 @@ test.describe('AutoPilot Strategy Builder - Happy Path', () => {
     await builderPage.selectStrategyType('short_straddle');
 
     // Wait for legs to be added
-    await builderPage.page.waitForTimeout(500);
+    await builderPage.page.waitForLoadState('domcontentloaded');
 
     // Short Straddle should have 2 legs
     const legCount = await builderPage.getLegCount();

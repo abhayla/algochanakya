@@ -179,14 +179,14 @@ test.describe('OFO - Edge Cases @edge', () => {
   test.describe('Responsive Behavior', () => {
     test('should not have horizontal overflow on wide viewport', async () => {
       await ofoPage.setViewportSize(1920, 1080);
-      await ofoPage.page.waitForTimeout(300);
+      await ofoPage.page.waitForLoadState('domcontentloaded');
       const hasOverflow = await ofoPage.hasHorizontalOverflow();
       expect(hasOverflow).toBe(false);
     });
 
     test('should not have horizontal overflow on narrow viewport', async () => {
       await ofoPage.setViewportSize(1280, 800);
-      await ofoPage.page.waitForTimeout(300);
+      await ofoPage.page.waitForLoadState('domcontentloaded');
       const hasOverflow = await ofoPage.hasHorizontalOverflow();
       expect(hasOverflow).toBe(false);
     });

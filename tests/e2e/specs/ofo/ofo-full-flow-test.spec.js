@@ -7,8 +7,7 @@ test.describe('OFO to Strategy Builder - Full Flow', () => {
     // Step 1: Navigate to OFO
     console.log('=== STEP 1: Navigate to OFO ===')
     await page.goto('/ofo')
-    await page.waitForLoadState('networkidle')
-    await page.waitForTimeout(3000)
+    await page.waitForLoadState('domcontentloaded')
 
     // Take initial screenshot
     await page.screenshot({
@@ -20,14 +19,14 @@ test.describe('OFO to Strategy Builder - Full Flow', () => {
     const niftyTab = page.getByTestId('ofo-underlying-nifty')
     if (await niftyTab.isVisible()) {
       await niftyTab.click()
-      await page.waitForTimeout(1000)
+      await page.waitForLoadState('domcontentloaded')
     }
 
     // Step 2: Select Short Straddle strategy
     console.log('=== STEP 2: Select Short Straddle ===')
     const strategySelect = page.getByTestId('ofo-strategy-select')
     await strategySelect.click()
-    await page.waitForTimeout(500)
+    await page.waitForLoadState('domcontentloaded')
 
     // Take screenshot of dropdown open
     await page.screenshot({
@@ -39,7 +38,7 @@ test.describe('OFO to Strategy Builder - Full Flow', () => {
     const clearAllBtn = page.locator('button:has-text("Clear All")')
     if (await clearAllBtn.isVisible()) {
       await clearAllBtn.click()
-      await page.waitForTimeout(300)
+      await page.waitForLoadState('domcontentloaded')
     }
 
     // Select Short Straddle
@@ -50,7 +49,7 @@ test.describe('OFO to Strategy Builder - Full Flow', () => {
     } else {
       console.log('ERROR: Short Straddle option not visible')
     }
-    await page.waitForTimeout(500)
+    await page.waitForLoadState('domcontentloaded')
 
     // Close dropdown by clicking on the backdrop overlay
     const backdrop = page.locator('.dropdown-backdrop')
@@ -62,7 +61,7 @@ test.describe('OFO to Strategy Builder - Full Flow', () => {
       await page.keyboard.press('Escape')
       console.log('Pressed Escape to close dropdown')
     }
-    await page.waitForTimeout(500)
+    await page.waitForLoadState('domcontentloaded')
 
     // Take screenshot after selection
     await page.screenshot({
@@ -82,13 +81,18 @@ test.describe('OFO to Strategy Builder - Full Flow', () => {
     await expect(calculateBtn).toBeVisible()
     console.log('Calculate button is visible')
 
-    // Click calculate
+    // Click calculate and wait for results to appear
     await calculateBtn.click()
     console.log('Clicked Calculate button')
 
-    // Wait for calculation to complete (watch for loading state to finish)
+    // Wait for calculation results — either result cards or "no results" message
     console.log('Waiting for calculation results...')
-    await page.waitForTimeout(15000)
+    await Promise.race([
+      page.locator('[class*="result-card"]').first().waitFor({ state: 'visible', timeout: 60000 }),
+      page.locator('text=No valid combinations found for Short Straddle').waitFor({ state: 'visible', timeout: 60000 })
+    ]).catch(() => {
+      console.log('No result indicator appeared within timeout')
+    })
 
     // Take screenshot of OFO results
     await page.screenshot({
@@ -113,12 +117,12 @@ test.describe('OFO to Strategy Builder - Full Flow', () => {
 
       // Open dropdown again
       await strategySelect.click()
-      await page.waitForTimeout(500)
+      await page.waitForLoadState('domcontentloaded')
 
       // Clear and select Iron Butterfly
       if (await clearAllBtn.isVisible()) {
         await clearAllBtn.click()
-        await page.waitForTimeout(300)
+        await page.waitForLoadState('domcontentloaded')
       }
 
       const ironButterflyItem = page.locator('label:has-text("Iron Butterfly")').first()
@@ -128,12 +132,17 @@ test.describe('OFO to Strategy Builder - Full Flow', () => {
       }
 
       await page.keyboard.press('Escape')
-      await page.waitForTimeout(500)
+      await page.waitForLoadState('domcontentloaded')
 
-      // Click Calculate again
+      // Click Calculate again and wait for results
       await calculateBtn.click()
       console.log('Clicked Calculate for Iron Butterfly')
-      await page.waitForTimeout(15000)
+      await Promise.race([
+        page.locator('[class*="result-card"]').first().waitFor({ state: 'visible', timeout: 60000 }),
+        page.locator('text=No valid combinations found for Iron Butterfly').waitFor({ state: 'visible', timeout: 60000 })
+      ]).catch(() => {
+        console.log('No result indicator appeared within timeout')
+      })
 
       await page.screenshot({
         path: 'tests/screenshots/ofo-step3-iron-butterfly.png',
@@ -165,8 +174,9 @@ test.describe('OFO to Strategy Builder - Full Flow', () => {
 
       // Wait for Strategy Builder to load
       await page.waitForURL(/\/strategy/, { timeout: 15000 })
-      await page.waitForLoadState('networkidle')
-      await page.waitForTimeout(5000)
+      await page.waitForLoadState('domcontentloaded')
+      // Wait for Strategy Builder page to be ready (leg rows visible)
+      await page.locator('[data-testid="strategy-legs-table"], [data-testid^="strategy-leg-row-"]').first().waitFor({ state: 'visible', timeout: 15000 }).catch(() => {})
 
       // Take screenshot of Strategy Builder
       await page.screenshot({

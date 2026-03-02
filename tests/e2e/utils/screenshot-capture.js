@@ -52,8 +52,7 @@ if (!fs.existsSync(SCREENSHOTS_DIR)) {
  * Wait for page to be fully loaded with dynamic content
  */
 async function waitForFullLoad(page, additionalWait = WAIT_FOR_LOAD) {
-  await page.waitForLoadState('networkidle');
-  await page.waitForTimeout(additionalWait); // Wait for charts, animations, etc.
+  await page.waitForLoadState('domcontentloaded');
 }
 
 /**
@@ -251,7 +250,7 @@ async function captureAllScreenshots() {
       const templateCount = await templatesPage.getTemplateCount();
       if (templateCount > 0) {
         await templatesPage.clickTemplate(1);
-        await page.waitForTimeout(500);
+        await page.waitForLoadState('domcontentloaded');
         await captureScreenshot(page, 'autopilot-template-details-modal.png', 'Template Details Modal');
         await templatesPage.closeDetailsModal();
       }
@@ -289,7 +288,7 @@ async function captureAllScreenshots() {
     // Capture report generation modal
     try {
       await reportsPage.openGenerateModal();
-      await page.waitForTimeout(500);
+      await page.waitForLoadState('domcontentloaded');
       await captureScreenshot(page, 'autopilot-reports-generate-modal.png', 'Generate Report Modal');
       await reportsPage.cancelGenerate();
     } catch (error) {
@@ -308,7 +307,7 @@ async function captureAllScreenshots() {
     // Capture backtest config modal
     try {
       await backtestPage.openConfigModal();
-      await page.waitForTimeout(500);
+      await page.waitForLoadState('domcontentloaded');
       await captureScreenshot(page, 'autopilot-backtest-config-modal.png', 'Backtest Configuration Modal');
       await backtestPage.cancelConfig();
     } catch (error) {
@@ -342,7 +341,7 @@ async function captureAllScreenshots() {
       await page.goto(`${FRONTEND_URL}/autopilot`);
       await dashboardPage.waitForDashboardLoad();
       await dashboardPage.activateKillSwitch();
-      await page.waitForTimeout(500);
+      await page.waitForLoadState('domcontentloaded');
       await captureScreenshot(page, 'autopilot-kill-switch-modal.png', 'Kill Switch Confirmation Modal');
       await dashboardPage.cancelKillSwitch();
     } catch (error) {

@@ -42,7 +42,7 @@ export async function fetchLTPFromAPI(page, tradingsymbol) {
  * @param {StrategyBuilderPage} strategyPage - Page object
  */
 export async function waitForCalculation(page, strategyPage) {
-  await page.waitForTimeout(500);
+  await page.waitForLoadState('domcontentloaded');
   await strategyPage.waitForPnLCalculation();
   await page.waitForLoadState('networkidle').catch(() => {});
 }

@@ -76,7 +76,7 @@ export async function assertNoConsoleErrors(page, allowList = []) {
     }
   })
   // Give the page a moment to emit any pending errors
-  await page.waitForTimeout(500)
+  await page.waitForLoadState('domcontentloaded')
   expect(errors, `Console errors found:\n${errors.join('\n')}`).toHaveLength(0)
 }
 

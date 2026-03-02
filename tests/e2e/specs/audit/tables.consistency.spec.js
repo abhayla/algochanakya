@@ -238,7 +238,7 @@ test.describe('Table Consistency @audit', () => {
         );
 
         await row.hover();
-        await authenticatedPage.waitForTimeout(200);
+        await authenticatedPage.waitForLoadState('domcontentloaded');
 
         const afterHover = await row.evaluate(el =>
           window.getComputedStyle(el).backgroundColor

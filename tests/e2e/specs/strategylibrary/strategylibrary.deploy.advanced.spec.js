@@ -63,7 +63,7 @@ test.describe('Strategy Library Deploy - Advanced Strategies @deploy @advanced',
 
         // Configure deployment
         await strategyLibraryPage.selectDeployUnderlying('NIFTY');
-        await authenticatedPage.waitForTimeout(1000); // Wait for expiries to load
+        await authenticatedPage.waitForLoadState('domcontentloaded');
         await strategyLibraryPage.setDeployLots(1);
 
         // Deploy
@@ -92,7 +92,7 @@ test.describe('Strategy Library Deploy - Advanced Strategies @deploy @advanced',
         await strategyLibraryPage.navigate();
         await strategyLibraryPage.openDeploy(strategyName);
         await strategyLibraryPage.selectDeployUnderlying('NIFTY');
-        await authenticatedPage.waitForTimeout(1000);
+        await authenticatedPage.waitForLoadState('domcontentloaded');
         await strategyLibraryPage.setDeployLots(1);
         await strategyLibraryPage.confirmDeploy();
         await expect(strategyLibraryPage.deploySuccess).toBeVisible({ timeout: 15000 });
@@ -145,7 +145,7 @@ test.describe('Strategy Library Deploy - Advanced Strategies @deploy @advanced',
         await strategyLibraryPage.navigate();
         await strategyLibraryPage.openDeploy(strategyName);
         await strategyLibraryPage.selectDeployUnderlying('NIFTY');
-        await authenticatedPage.waitForTimeout(1000);
+        await authenticatedPage.waitForLoadState('domcontentloaded');
         await strategyLibraryPage.confirmDeploy();
         await expect(strategyLibraryPage.deploySuccess).toBeVisible({ timeout: 15000 });
         await strategyLibraryPage.clickViewStrategy();
@@ -183,7 +183,7 @@ test.describe('Strategy Library Deploy - Advanced Strategies @deploy @advanced',
         await strategyLibraryPage.navigate();
         await strategyLibraryPage.openDeploy(strategyName);
         await strategyLibraryPage.selectDeployUnderlying('NIFTY');
-        await authenticatedPage.waitForTimeout(1000);
+        await authenticatedPage.waitForLoadState('domcontentloaded');
         await strategyLibraryPage.setDeployLots(2);
         await strategyLibraryPage.confirmDeploy();
         await expect(strategyLibraryPage.deploySuccess).toBeVisible({ timeout: 15000 });
@@ -213,7 +213,7 @@ test.describe('Strategy Library Deploy - Advanced Strategies @deploy @advanced',
         await strategyLibraryPage.navigate();
         await strategyLibraryPage.openDeploy(strategyName);
         await strategyLibraryPage.selectDeployUnderlying('BANKNIFTY');
-        await authenticatedPage.waitForTimeout(1000);
+        await authenticatedPage.waitForLoadState('domcontentloaded');
         await strategyLibraryPage.setDeployLots(1);
         await strategyLibraryPage.confirmDeploy();
         await expect(strategyLibraryPage.deploySuccess).toBeVisible({ timeout: 15000 });
@@ -250,7 +250,7 @@ test.describe('Strategy Library Deploy - Advanced Strategies @deploy @advanced',
       await strategyLibraryPage.navigate();
       await strategyLibraryPage.openDeploy('calendar_spread');
       await strategyLibraryPage.selectDeployUnderlying('NIFTY');
-      await authenticatedPage.waitForTimeout(1000);
+      await authenticatedPage.waitForLoadState('domcontentloaded');
       await strategyLibraryPage.confirmDeploy();
       await expect(strategyLibraryPage.deploySuccess).toBeVisible({ timeout: 15000 });
       await strategyLibraryPage.clickViewStrategy();
@@ -281,7 +281,7 @@ test.describe('Strategy Library Deploy - Advanced Strategies @deploy @advanced',
       await strategyLibraryPage.navigate();
       await strategyLibraryPage.openDeploy('butterfly_spread');
       await strategyLibraryPage.selectDeployUnderlying('NIFTY');
-      await authenticatedPage.waitForTimeout(1000);
+      await authenticatedPage.waitForLoadState('domcontentloaded');
       await strategyLibraryPage.confirmDeploy();
       await expect(strategyLibraryPage.deploySuccess).toBeVisible({ timeout: 15000 });
       await strategyLibraryPage.clickViewStrategy();
@@ -342,7 +342,7 @@ test.describe('Strategy Library Deploy - Advanced Strategies @deploy @advanced',
       await strategyLibraryPage.navigate();
       await strategyLibraryPage.openDeploy('ratio_backspread_call');
       await strategyLibraryPage.selectDeployUnderlying('NIFTY');
-      await authenticatedPage.waitForTimeout(1000);
+      await authenticatedPage.waitForLoadState('domcontentloaded');
       await strategyLibraryPage.confirmDeploy();
       await expect(strategyLibraryPage.deploySuccess).toBeVisible({ timeout: 15000 });
       await strategyLibraryPage.clickViewStrategy();

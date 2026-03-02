@@ -72,6 +72,6 @@ test.describe('Dashboard - Edge Cases @edge', () => {
 
     // Should redirect to login eventually (when API call fails)
     // Note: This depends on how the app handles token validation
-    await page.waitForTimeout(2000);
+    await page.waitForLoadState('domcontentloaded');
   });
 });

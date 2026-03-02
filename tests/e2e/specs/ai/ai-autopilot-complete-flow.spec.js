@@ -42,10 +42,11 @@ test.describe('AI AutoPilot - Complete Paper Trading Flow', () => {
     await page.getByTestId('autopilot-builder-lots').fill('1')
     await page.getByTestId('autopilot-builder-position-type').selectOption('intraday')
 
-    await page.waitForTimeout(1000)
+    // Wait for leg rows to be populated for iron_condor
+    const legRows = page.locator('[data-testid^="autopilot-leg-row-"]')
+    await legRows.nth(3).waitFor({ state: 'visible', timeout: 10000 })
 
     // Verify 4 legs created
-    const legRows = page.locator('[data-testid^="autopilot-leg-row-"]')
     const legCount = await legRows.count()
     expect(legCount).toBeGreaterThanOrEqual(4)
     console.log(`✅ Created ${legCount} legs for Iron Condor`)
@@ -63,14 +64,13 @@ test.describe('AI AutoPilot - Complete Paper Trading Flow', () => {
       if (expiryOptions.length > 1) {
         await expirySelect.selectOption({ index: 1 })
       }
-      await page.waitForTimeout(500)
+      await page.waitForLoadState('domcontentloaded')
 
       // Open Strike Ladder
       const openLadderBtn = page.getByTestId(`autopilot-leg-open-ladder-${i}`)
       await expect(openLadderBtn).toBeVisible({ timeout: 5000 })
       await openLadderBtn.click()
       await expect(strikeLadderModal).toBeVisible({ timeout: 5000 })
-      await page.waitForTimeout(2000)
 
       // Select strike (PE for legs 0-1, CE for legs 2-3)
       if (i < 2) {
@@ -92,7 +92,7 @@ test.describe('AI AutoPilot - Complete Paper Trading Flow', () => {
       }
 
       await expect(strikeLadderModal).not.toBeVisible({ timeout: 5000 })
-      await page.waitForTimeout(500)
+      await page.waitForLoadState('domcontentloaded')
     }
 
     console.log('✅ All legs configured')
@@ -103,7 +103,7 @@ test.describe('AI AutoPilot - Complete Paper Trading Flow', () => {
 
     // Add immediate entry condition (current time)
     await page.getByTestId('autopilot-add-condition-button').click()
-    await page.waitForTimeout(300)
+    await page.getByTestId('autopilot-condition-variable-0').waitFor({ state: 'visible' })
     await page.getByTestId('autopilot-condition-variable-0').selectOption('TIME.CURRENT')
     await page.getByTestId('autopilot-condition-operator-0').selectOption('greater_than')
     await page.getByTestId('autopilot-condition-value-0').fill('09:15')
@@ -198,10 +198,10 @@ test.describe('AI AutoPilot - Complete Paper Trading Flow', () => {
     await expect(activateModal).not.toBeVisible({ timeout: 5000 })
 
     // Wait for status to change to "waiting" or "active"
-    await page.waitForTimeout(2000)
+    const statusBadge = page.locator('[data-testid*="strategy-status"]').first()
+    await statusBadge.waitFor({ state: 'visible', timeout: 10000 }).catch(() => {})
 
     // Verify strategy status
-    const statusBadge = page.locator('[data-testid*="strategy-status"]').first()
     if (await statusBadge.isVisible({ timeout: 5000 })) {
       const statusText = await statusBadge.textContent()
       console.log(`✅ Strategy status: ${statusText}`)
@@ -215,7 +215,7 @@ test.describe('AI AutoPilot - Complete Paper Trading Flow', () => {
 
     // Navigate to AutoPilot dashboard to see strategy
     await page.goto('/autopilot', { waitUntil: 'domcontentloaded' })
-    await page.waitForTimeout(2000)
+    await page.waitForLoadState('domcontentloaded')
 
     // Look for strategy card
     const strategyCard = page.locator(`[data-testid="autopilot-strategy-card-${strategyId}"]`)
@@ -234,7 +234,7 @@ test.describe('AI AutoPilot - Complete Paper Trading Flow', () => {
     console.log('\n📋 STEP 4: Checking Paper Trading Stats')
 
     await page.goto('/ai/paper-trading', { waitUntil: 'domcontentloaded' })
-    await page.waitForTimeout(2000)
+    await page.waitForLoadState('domcontentloaded')
 
     // Look for paper trading stats
     const statsSection = page.locator('[data-testid*="paper"], [class*="paper"]').first()
@@ -251,7 +251,7 @@ test.describe('AI AutoPilot - Complete Paper Trading Flow', () => {
 
     // Go back to strategy detail
     await page.goto(`/autopilot/strategies/${strategyId}`, { waitUntil: 'domcontentloaded' })
-    await page.waitForTimeout(2000)
+    await page.waitForLoadState('domcontentloaded')
 
     // Look for Exit button
     const exitButton = page.getByTestId('autopilot-strategy-exit')
@@ -269,10 +269,11 @@ test.describe('AI AutoPilot - Complete Paper Trading Flow', () => {
           await confirmExitBtn.click()
           console.log('✅ Exit confirmed')
 
-          await page.waitForTimeout(2000)
+          // Wait for status change
+          const newStatus = page.locator('[data-testid*="strategy-status"]').first()
+          await newStatus.waitFor({ state: 'visible', timeout: 10000 }).catch(() => {})
 
           // Check if status changed to completed/exited
-          const newStatus = page.locator('[data-testid*="strategy-status"]').first()
           if (await newStatus.isVisible({ timeout: 5000 })) {
             const newStatusText = await newStatus.textContent()
             console.log(`✅ Final status: ${newStatusText}`)

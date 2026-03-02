@@ -78,8 +78,8 @@ test.describe('AutoPilot - SHORT-IRON-CONDOR-ADJUSTMENTS-Template', () => {
     await page.getByTestId('autopilot-builder-position-type').selectOption('positional')
 
     // Verify legs were auto-populated for iron condor (4 legs: BUY PE + SELL PE + SELL CE + BUY CE)
-    await page.waitForTimeout(500) // Wait for legs to populate
     const legsTable = page.locator('[data-testid^="autopilot-leg-row-"]')
+    await legsTable.nth(3).waitFor({ state: 'visible', timeout: 5000 })
     const legCount = await legsTable.count()
     expect(legCount).toBeGreaterThanOrEqual(4)
 
@@ -90,7 +90,7 @@ test.describe('AutoPilot - SHORT-IRON-CONDOR-ADJUSTMENTS-Template', () => {
     if (leg0ExpiryOptions.length > 1) {
       await leg0ExpirySelect.selectOption({ index: 1 }) // Select first available expiry
     }
-    await page.waitForTimeout(500) // Wait for expiry to be set
+    await page.waitForLoadState('domcontentloaded')
 
     // Open Strike Ladder for Leg 0 and select a far OTM PE strike (wing)
     const leg0OpenLadderBtn = page.getByTestId('autopilot-leg-open-ladder-0')
@@ -102,7 +102,6 @@ test.describe('AutoPilot - SHORT-IRON-CONDOR-ADJUSTMENTS-Template', () => {
     await expect(strikeLadderModal).toBeVisible({ timeout: 5000 })
 
     // Wait for option chain to load - look for PE buttons to appear
-    await page.waitForTimeout(2000) // Wait for data to load
     const peButtons = strikeLadderModal.locator('button.select-pe')
     await expect(peButtons.first()).toBeVisible({ timeout: 10000 })
 
@@ -115,7 +114,7 @@ test.describe('AutoPilot - SHORT-IRON-CONDOR-ADJUSTMENTS-Template', () => {
 
     // Modal should close after selection
     await expect(strikeLadderModal).not.toBeVisible({ timeout: 5000 })
-    await page.waitForTimeout(500)
+    await page.waitForLoadState('domcontentloaded')
 
     // ---- Configure Leg 1 (SELL PE - short leg): Select expiry and strike via Strike Ladder ----
     const leg1ExpirySelect = page.getByTestId('autopilot-leg-expiry-1')
@@ -124,7 +123,7 @@ test.describe('AutoPilot - SHORT-IRON-CONDOR-ADJUSTMENTS-Template', () => {
     if (leg1ExpiryOptions.length > 1) {
       await leg1ExpirySelect.selectOption({ index: 1 }) // Select same expiry as leg 0
     }
-    await page.waitForTimeout(500) // Wait for expiry to be set
+    await page.waitForLoadState('domcontentloaded')
 
     // Open Strike Ladder for Leg 1 and select a near OTM PE strike (short leg)
     const leg1OpenLadderBtn = page.getByTestId('autopilot-leg-open-ladder-1')
@@ -132,7 +131,6 @@ test.describe('AutoPilot - SHORT-IRON-CONDOR-ADJUSTMENTS-Template', () => {
     await leg1OpenLadderBtn.click()
 
     await expect(strikeLadderModal).toBeVisible({ timeout: 5000 })
-    await page.waitForTimeout(2000)
     await expect(peButtons.first()).toBeVisible({ timeout: 10000 })
 
     // Select near OTM PE strike (short leg) - closer to ATM than wing
@@ -143,7 +141,7 @@ test.describe('AutoPilot - SHORT-IRON-CONDOR-ADJUSTMENTS-Template', () => {
     }
 
     await expect(strikeLadderModal).not.toBeVisible({ timeout: 5000 })
-    await page.waitForTimeout(500)
+    await page.waitForLoadState('domcontentloaded')
 
     // ---- Configure Leg 2 (SELL CE - short leg): Select expiry and strike via Strike Ladder ----
     const leg2ExpirySelect = page.getByTestId('autopilot-leg-expiry-2')
@@ -152,7 +150,7 @@ test.describe('AutoPilot - SHORT-IRON-CONDOR-ADJUSTMENTS-Template', () => {
     if (leg2ExpiryOptions.length > 1) {
       await leg2ExpirySelect.selectOption({ index: 1 }) // Select same expiry as legs 0-1
     }
-    await page.waitForTimeout(500) // Wait for expiry to be set
+    await page.waitForLoadState('domcontentloaded')
 
     // Open Strike Ladder for Leg 2 and select a near OTM CE strike (short leg)
     const leg2OpenLadderBtn = page.getByTestId('autopilot-leg-open-ladder-2')
@@ -160,7 +158,6 @@ test.describe('AutoPilot - SHORT-IRON-CONDOR-ADJUSTMENTS-Template', () => {
     await leg2OpenLadderBtn.click()
 
     await expect(strikeLadderModal).toBeVisible({ timeout: 5000 })
-    await page.waitForTimeout(2000)
 
     // Wait for CE buttons to appear
     const ceButtons = strikeLadderModal.locator('button.select-ce')
@@ -174,7 +171,7 @@ test.describe('AutoPilot - SHORT-IRON-CONDOR-ADJUSTMENTS-Template', () => {
     }
 
     await expect(strikeLadderModal).not.toBeVisible({ timeout: 5000 })
-    await page.waitForTimeout(500)
+    await page.waitForLoadState('domcontentloaded')
 
     // ---- Configure Leg 3 (BUY CE - wing): Select expiry and strike via Strike Ladder ----
     const leg3ExpirySelect = page.getByTestId('autopilot-leg-expiry-3')
@@ -183,7 +180,7 @@ test.describe('AutoPilot - SHORT-IRON-CONDOR-ADJUSTMENTS-Template', () => {
     if (leg3ExpiryOptions.length > 1) {
       await leg3ExpirySelect.selectOption({ index: 1 }) // Select same expiry
     }
-    await page.waitForTimeout(500) // Wait for expiry to be set
+    await page.waitForLoadState('domcontentloaded')
 
     // Open Strike Ladder for Leg 3 and select a far OTM CE strike (wing)
     const leg3OpenLadderBtn = page.getByTestId('autopilot-leg-open-ladder-3')
@@ -191,7 +188,6 @@ test.describe('AutoPilot - SHORT-IRON-CONDOR-ADJUSTMENTS-Template', () => {
     await leg3OpenLadderBtn.click()
 
     await expect(strikeLadderModal).toBeVisible({ timeout: 5000 })
-    await page.waitForTimeout(2000)
     await expect(ceButtons.first()).toBeVisible({ timeout: 10000 })
 
     // Select far OTM CE strike (wing) - top of the list
@@ -202,11 +198,11 @@ test.describe('AutoPilot - SHORT-IRON-CONDOR-ADJUSTMENTS-Template', () => {
     }
 
     await expect(strikeLadderModal).not.toBeVisible({ timeout: 5000 })
-    await page.waitForTimeout(500)
+    await page.waitForLoadState('domcontentloaded')
 
     // Scroll back to top and verify/re-fill strategy name (may have been cleared by modal interactions)
     await page.evaluate(() => window.scrollTo(0, 0))
-    await page.waitForTimeout(300)
+    await page.waitForLoadState('domcontentloaded')
 
     // Check if name field is empty and re-fill if needed
     const nameField = page.getByTestId('autopilot-builder-name')
@@ -225,7 +221,7 @@ test.describe('AutoPilot - SHORT-IRON-CONDOR-ADJUSTMENTS-Template', () => {
 
     // Add Time condition using "between" operator (9:30 AM - 11:30 AM)
     await page.getByTestId('autopilot-add-condition-button').click()
-    await page.waitForTimeout(300)
+    await page.getByTestId('autopilot-condition-variable-0').waitFor({ state: 'visible' })
 
     await page.getByTestId('autopilot-condition-variable-0').selectOption('TIME.CURRENT')
     await page.getByTestId('autopilot-condition-operator-0').selectOption('between')
@@ -234,7 +230,7 @@ test.describe('AutoPilot - SHORT-IRON-CONDOR-ADJUSTMENTS-Template', () => {
 
     // Add VIX condition (VIX > 15)
     await page.getByTestId('autopilot-add-condition-button').click()
-    await page.waitForTimeout(300)
+    await page.getByTestId('autopilot-condition-variable-1').waitFor({ state: 'visible' })
 
     await page.getByTestId('autopilot-condition-variable-1').selectOption('VOLATILITY.VIX')
     await page.getByTestId('autopilot-condition-operator-1').selectOption('greater_than')
@@ -565,10 +561,9 @@ test.describe('AutoPilot - SHORT-IRON-CONDOR-ADJUSTMENTS-Template', () => {
       await page.getByTestId('autopilot-replace-legs-confirm').click()
     }
 
-    await page.waitForTimeout(500)
-
     // Verify 4 legs were created
     const legRows = page.locator('[data-testid^="autopilot-leg-row-"]')
+    await legRows.nth(3).waitFor({ state: 'visible', timeout: 5000 })
     const legCount = await legRows.count()
     expect(legCount).toBeGreaterThanOrEqual(4)
 
@@ -583,7 +578,7 @@ test.describe('AutoPilot - SHORT-IRON-CONDOR-ADJUSTMENTS-Template', () => {
       if (expiryOptions.length > 1) {
         await expirySelect.selectOption({ index: 1 })
       }
-      await page.waitForTimeout(500)
+      await page.waitForLoadState('domcontentloaded')
 
       // Open Strike Ladder
       const openLadderBtn = page.getByTestId(`autopilot-leg-open-ladder-${i}`)
@@ -591,7 +586,6 @@ test.describe('AutoPilot - SHORT-IRON-CONDOR-ADJUSTMENTS-Template', () => {
       await openLadderBtn.click()
 
       await expect(strikeLadderModal).toBeVisible({ timeout: 5000 })
-      await page.waitForTimeout(2000)
 
       // For legs 0-1 (PE legs), select PE buttons
       // For legs 2-3 (CE legs), select CE buttons
@@ -616,7 +610,7 @@ test.describe('AutoPilot - SHORT-IRON-CONDOR-ADJUSTMENTS-Template', () => {
       }
 
       await expect(strikeLadderModal).not.toBeVisible({ timeout: 5000 })
-      await page.waitForTimeout(500)
+      await page.waitForLoadState('domcontentloaded')
     }
 
     // Navigate to Step 2
@@ -661,10 +655,10 @@ test.describe('AutoPilot - SHORT-IRON-CONDOR-ADJUSTMENTS-Template', () => {
     }
 
     // Wait for legs to populate
-    await page.waitForTimeout(1000)
+    const legsTable = page.locator('[data-testid^="autopilot-leg-row-"]')
+    await legsTable.nth(3).waitFor({ state: 'visible', timeout: 5000 })
 
     // Verify legs were created (should be 4 for iron condor: BUY PE + SELL PE + SELL CE + BUY CE)
-    const legsTable = page.locator('[data-testid^="autopilot-leg-row-"]')
     const legCount = await legsTable.count()
 
     // Iron condor should have 4 legs

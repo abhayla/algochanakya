@@ -20,7 +20,7 @@ test.describe('AutoPilot - Re-Entry Configuration (Edge Cases)', () => {
 
     // Navigate to Step 4 (Risk Settings) where ReentryConfig is located
     await authenticatedPage.getByTestId('autopilot-builder-settings-tab').click()
-    await authenticatedPage.waitForTimeout(500)
+    await authenticatedPage.getByTestId('autopilot-reentry-config').waitFor({ state: 'visible' })
   })
 
   test('should handle rapid toggle clicks', async ({ authenticatedPage }) => {
@@ -29,7 +29,7 @@ test.describe('AutoPilot - Re-Entry Configuration (Edge Cases)', () => {
     // Click toggle rapidly 5 times
     for (let i = 0; i < 5; i++) {
       await toggle.click()
-      await authenticatedPage.waitForTimeout(100) // Small delay
+      await authenticatedPage.waitForLoadState('domcontentloaded')
     }
 
     // Final state should be enabled (odd number of clicks)
@@ -42,7 +42,7 @@ test.describe('AutoPilot - Re-Entry Configuration (Edge Cases)', () => {
 
     // Enable and configure
     await toggle.click()
-    await authenticatedPage.waitForTimeout(300)
+    await authenticatedPage.getByTestId('autopilot-reentry-max-reentries').waitFor({ state: 'visible' })
 
     // Set specific values
     await authenticatedPage.getByTestId('autopilot-reentry-max-reentries').selectOption({ value: '5' })
@@ -50,11 +50,11 @@ test.describe('AutoPilot - Re-Entry Configuration (Edge Cases)', () => {
 
     // Toggle off
     await toggle.click()
-    await authenticatedPage.waitForTimeout(300)
+    await authenticatedPage.getByTestId('autopilot-reentry-max-reentries').waitFor({ state: 'hidden' })
 
     // Toggle back on
     await toggle.click()
-    await authenticatedPage.waitForTimeout(300)
+    await authenticatedPage.getByTestId('autopilot-reentry-max-reentries').waitFor({ state: 'visible' })
 
     // Verify values persisted
     const maxReentriesValue = await authenticatedPage.getByTestId('autopilot-reentry-max-reentries').inputValue()
@@ -67,7 +67,7 @@ test.describe('AutoPilot - Re-Entry Configuration (Edge Cases)', () => {
   test('should handle minimum re-entry count (1)', async ({ authenticatedPage }) => {
     const toggle = authenticatedPage.getByTestId('autopilot-reentry-toggle')
     await toggle.click()
-    await authenticatedPage.waitForTimeout(300)
+    await authenticatedPage.getByTestId('autopilot-reentry-max-reentries').waitFor({ state: 'visible' })
 
     // Select minimum value
     await authenticatedPage.getByTestId('autopilot-reentry-max-reentries').selectOption({ value: '1' })
@@ -84,7 +84,7 @@ test.describe('AutoPilot - Re-Entry Configuration (Edge Cases)', () => {
   test('should handle maximum re-entry count (10)', async ({ authenticatedPage }) => {
     const toggle = authenticatedPage.getByTestId('autopilot-reentry-toggle')
     await toggle.click()
-    await authenticatedPage.waitForTimeout(300)
+    await authenticatedPage.getByTestId('autopilot-reentry-max-reentries').waitFor({ state: 'visible' })
 
     // Select maximum value
     await authenticatedPage.getByTestId('autopilot-reentry-max-reentries').selectOption({ value: '10' })
@@ -97,7 +97,7 @@ test.describe('AutoPilot - Re-Entry Configuration (Edge Cases)', () => {
   test('should handle minimum cooldown (5 minutes)', async ({ authenticatedPage }) => {
     const toggle = authenticatedPage.getByTestId('autopilot-reentry-toggle')
     await toggle.click()
-    await authenticatedPage.waitForTimeout(300)
+    await authenticatedPage.getByTestId('autopilot-reentry-cooldown').waitFor({ state: 'visible' })
 
     // Select minimum cooldown
     await authenticatedPage.getByTestId('autopilot-reentry-cooldown').selectOption({ value: '5' })
@@ -113,7 +113,7 @@ test.describe('AutoPilot - Re-Entry Configuration (Edge Cases)', () => {
   test('should handle maximum cooldown (2 hours)', async ({ authenticatedPage }) => {
     const toggle = authenticatedPage.getByTestId('autopilot-reentry-toggle')
     await toggle.click()
-    await authenticatedPage.waitForTimeout(300)
+    await authenticatedPage.getByTestId('autopilot-reentry-cooldown').waitFor({ state: 'visible' })
 
     // Select maximum cooldown
     await authenticatedPage.getByTestId('autopilot-reentry-cooldown').selectOption({ value: '120' })
@@ -130,7 +130,7 @@ test.describe('AutoPilot - Re-Entry Configuration (Edge Cases)', () => {
 
     // Reload page
     await authenticatedPage.reload()
-    await authenticatedPage.waitForLoadState('networkidle')
+    await authenticatedPage.waitForLoadState('domcontentloaded')
 
     // Verify still disabled
     await expect(authenticatedPage.getByTestId('autopilot-reentry-config').getByText('Disabled')).toBeVisible()
@@ -139,7 +139,7 @@ test.describe('AutoPilot - Re-Entry Configuration (Edge Cases)', () => {
   test('should show appropriate help text for all options', async ({ authenticatedPage }) => {
     const toggle = authenticatedPage.getByTestId('autopilot-reentry-toggle')
     await toggle.click()
-    await authenticatedPage.waitForTimeout(300)
+    await authenticatedPage.getByTestId('autopilot-reentry-max-reentries').waitFor({ state: 'visible' })
 
     // Check max re-entries help text
     await expect(authenticatedPage.getByText('Maximum number of times to re-enter')).toBeVisible()
@@ -151,7 +151,7 @@ test.describe('AutoPilot - Re-Entry Configuration (Edge Cases)', () => {
   test('should handle empty conditions gracefully', async ({ authenticatedPage }) => {
     const toggle = authenticatedPage.getByTestId('autopilot-reentry-toggle')
     await toggle.click()
-    await authenticatedPage.waitForTimeout(300)
+    await authenticatedPage.getByTestId('autopilot-reentry-conditions').waitFor({ state: 'visible' })
 
     // Condition builder should be present but empty
     const conditionsSection = authenticatedPage.getByTestId('autopilot-reentry-conditions')
@@ -164,7 +164,7 @@ test.describe('AutoPilot - Re-Entry Configuration (Edge Cases)', () => {
   test('should update info box when changing max reentries', async ({ authenticatedPage }) => {
     const toggle = authenticatedPage.getByTestId('autopilot-reentry-toggle')
     await toggle.click()
-    await authenticatedPage.waitForTimeout(300)
+    await authenticatedPage.getByTestId('autopilot-reentry-max-reentries').waitFor({ state: 'visible' })
 
     // Change max reentries to 3
     await authenticatedPage.getByTestId('autopilot-reentry-max-reentries').selectOption({ value: '3' })
@@ -184,7 +184,7 @@ test.describe('AutoPilot - Re-Entry Configuration (Edge Cases)', () => {
   test('should update info box when changing cooldown', async ({ authenticatedPage }) => {
     const toggle = authenticatedPage.getByTestId('autopilot-reentry-toggle')
     await toggle.click()
-    await authenticatedPage.waitForTimeout(300)
+    await authenticatedPage.getByTestId('autopilot-reentry-cooldown').waitFor({ state: 'visible' })
 
     // Change cooldown to 30 minutes
     await authenticatedPage.getByTestId('autopilot-reentry-cooldown').selectOption({ value: '30' })
@@ -217,7 +217,7 @@ test.describe('AutoPilot - Re-Entry Configuration (Edge Cases)', () => {
   test('should not show re-entry count for new strategies', async ({ authenticatedPage }) => {
     const toggle = authenticatedPage.getByTestId('autopilot-reentry-toggle')
     await toggle.click()
-    await authenticatedPage.waitForTimeout(300)
+    await authenticatedPage.getByTestId('autopilot-reentry-max-reentries').waitFor({ state: 'visible' })
 
     // Re-entry count should not be visible
     const reentryCount = authenticatedPage.getByTestId('autopilot-reentry-count')

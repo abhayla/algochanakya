@@ -85,6 +85,6 @@ test.describe('Login - Edge Cases @edge', () => {
     const buttonText = await loginPage.zerodhaButton.textContent();
     // The button should either show "Connecting..." or redirect
     // Since OAuth flow redirects, we just verify no crash
-    await page.waitForTimeout(500);
+    await page.waitForLoadState('domcontentloaded');
   });
 });

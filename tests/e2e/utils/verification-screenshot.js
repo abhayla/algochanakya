@@ -56,8 +56,7 @@ async function captureVerificationScreenshot(feature, screen, state) {
     // Navigate to feature
     const baseUrl = FEATURE_URLS[feature] || `/${feature}`;
     await page.goto(`${FRONTEND_URL}${baseUrl}`);
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1000);
+    await page.waitForLoadState('domcontentloaded');
 
     // Handle specific screens/states (modals, etc.)
     if (screen !== 'main') {
@@ -116,7 +115,7 @@ async function triggerScreenState(page, feature, screen, state) {
     'strategy-builder': {
       'add-leg': async () => {
         await page.click('[data-testid="strategy-add-row-button"]');
-        await page.waitForTimeout(500);
+        await page.waitForLoadState('domcontentloaded');
       }
     }
     // Add more feature/screen triggers as needed
@@ -125,7 +124,7 @@ async function triggerScreenState(page, feature, screen, state) {
   const featureTriggers = triggers[feature];
   if (featureTriggers && featureTriggers[screen]) {
     await featureTriggers[screen]();
-    await page.waitForTimeout(500); // Wait for animations
+    await page.waitForLoadState('domcontentloaded'); // Wait for animations
   }
 }
 

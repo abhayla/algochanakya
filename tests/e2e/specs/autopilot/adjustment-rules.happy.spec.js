@@ -24,7 +24,7 @@ test.describe('AutoPilot - Adjustment Rule Builder (Happy Path)', () => {
 
     // Navigate to Step 3 (Monitoring & Adjustments) where AdjustmentRuleBuilder is located
     await authenticatedPage.getByTestId('autopilot-builder-monitoring-tab').click()
-    await authenticatedPage.waitForTimeout(500)
+    await authenticatedPage.waitForLoadState('domcontentloaded')
   })
 
   test('should display adjustment rule builder section', async ({ authenticatedPage }) => {

@@ -23,7 +23,7 @@ test.describe('AutoPilot - Re-Entry Configuration (Happy Path)', () => {
 
     // Navigate to Step 4 (Risk Settings) where ReentryConfig is located
     await authenticatedPage.getByTestId('autopilot-builder-settings-tab').click()
-    await authenticatedPage.waitForTimeout(500)
+    await authenticatedPage.getByTestId('autopilot-reentry-config').waitFor({ state: 'visible' })
   })
 
   test('should display re-entry configuration section', async ({ authenticatedPage }) => {
@@ -58,8 +58,8 @@ test.describe('AutoPilot - Re-Entry Configuration (Happy Path)', () => {
     const toggle = authenticatedPage.getByTestId('autopilot-reentry-toggle')
     await toggle.click()
 
-    // Wait for animation
-    await authenticatedPage.waitForTimeout(300)
+    // Wait for configuration to become visible
+    await authenticatedPage.getByTestId('autopilot-reentry-max-reentries').waitFor({ state: 'visible' })
 
     // Check toggle shows "Enabled"
     await expect(authenticatedPage.getByTestId('autopilot-reentry-config').getByText('Enabled')).toBeVisible()
@@ -75,7 +75,7 @@ test.describe('AutoPilot - Re-Entry Configuration (Happy Path)', () => {
   test('should configure max re-entries', async ({ authenticatedPage }) => {
     // Enable re-entry
     await authenticatedPage.getByTestId('autopilot-reentry-toggle').click()
-    await authenticatedPage.waitForTimeout(300)
+    await authenticatedPage.getByTestId('autopilot-reentry-max-reentries').waitFor({ state: 'visible' })
 
     // Open max re-entries dropdown
     const maxReentriesSelect = authenticatedPage.getByTestId('autopilot-reentry-max-reentries')
@@ -92,7 +92,7 @@ test.describe('AutoPilot - Re-Entry Configuration (Happy Path)', () => {
   test('should configure cooldown period', async ({ authenticatedPage }) => {
     // Enable re-entry
     await authenticatedPage.getByTestId('autopilot-reentry-toggle').click()
-    await authenticatedPage.waitForTimeout(300)
+    await authenticatedPage.getByTestId('autopilot-reentry-cooldown').waitFor({ state: 'visible' })
 
     // Open cooldown dropdown
     const cooldownSelect = authenticatedPage.getByTestId('autopilot-reentry-cooldown')
@@ -109,7 +109,7 @@ test.describe('AutoPilot - Re-Entry Configuration (Happy Path)', () => {
   test('should display all max re-entries options', async ({ authenticatedPage }) => {
     // Enable re-entry
     await authenticatedPage.getByTestId('autopilot-reentry-toggle').click()
-    await authenticatedPage.waitForTimeout(300)
+    await authenticatedPage.getByTestId('autopilot-reentry-max-reentries').waitFor({ state: 'visible' })
 
     const maxReentriesSelect = authenticatedPage.getByTestId('autopilot-reentry-max-reentries')
 
@@ -127,7 +127,7 @@ test.describe('AutoPilot - Re-Entry Configuration (Happy Path)', () => {
   test('should display all cooldown options', async ({ authenticatedPage }) => {
     // Enable re-entry
     await authenticatedPage.getByTestId('autopilot-reentry-toggle').click()
-    await authenticatedPage.waitForTimeout(300)
+    await authenticatedPage.getByTestId('autopilot-reentry-cooldown').waitFor({ state: 'visible' })
 
     const cooldownSelect = authenticatedPage.getByTestId('autopilot-reentry-cooldown')
 
@@ -149,7 +149,7 @@ test.describe('AutoPilot - Re-Entry Configuration (Happy Path)', () => {
 
     // Enable re-entry
     await authenticatedPage.getByTestId('autopilot-reentry-toggle').click()
-    await authenticatedPage.waitForTimeout(300)
+    await authenticatedPage.getByTestId('autopilot-reentry-max-reentries').waitFor({ state: 'visible' })
 
     // Re-entry count should not be visible for new strategies
     await expect(authenticatedPage.getByTestId('autopilot-reentry-count')).not.toBeVisible()
@@ -158,7 +158,7 @@ test.describe('AutoPilot - Re-Entry Configuration (Happy Path)', () => {
   test('should show info box with correct steps', async ({ authenticatedPage }) => {
     // Enable re-entry
     await authenticatedPage.getByTestId('autopilot-reentry-toggle').click()
-    await authenticatedPage.waitForTimeout(300)
+    await authenticatedPage.getByTestId('autopilot-reentry-max-reentries').waitFor({ state: 'visible' })
 
     const reentryConfig = authenticatedPage.getByTestId('autopilot-reentry-config')
 
@@ -176,7 +176,7 @@ test.describe('AutoPilot - Re-Entry Configuration (Happy Path)', () => {
   test('should integrate with condition builder', async ({ authenticatedPage }) => {
     // Enable re-entry
     await authenticatedPage.getByTestId('autopilot-reentry-toggle').click()
-    await authenticatedPage.waitForTimeout(300)
+    await authenticatedPage.getByTestId('autopilot-reentry-conditions').waitFor({ state: 'visible' })
 
     // Check that re-entry conditions section exists
     const conditionsSection = authenticatedPage.getByTestId('autopilot-reentry-conditions')
@@ -191,14 +191,14 @@ test.describe('AutoPilot - Re-Entry Configuration (Happy Path)', () => {
     // Enable re-entry first
     const toggle = authenticatedPage.getByTestId('autopilot-reentry-toggle')
     await toggle.click()
-    await authenticatedPage.waitForTimeout(300)
+    await authenticatedPage.getByTestId('autopilot-reentry-max-reentries').waitFor({ state: 'visible' })
 
     // Verify enabled state
     await expect(authenticatedPage.getByTestId('autopilot-reentry-max-reentries')).toBeVisible()
 
     // Toggle off
     await toggle.click()
-    await authenticatedPage.waitForTimeout(300)
+    await authenticatedPage.getByTestId('autopilot-reentry-max-reentries').waitFor({ state: 'hidden' })
 
     // Verify disabled state
     await expect(authenticatedPage.getByTestId('autopilot-reentry-config').getByText('Disabled')).toBeVisible()

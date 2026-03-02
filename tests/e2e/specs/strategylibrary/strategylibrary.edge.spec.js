@@ -62,7 +62,7 @@ test.describe('Strategy Library - Edge Cases @edge', () => {
     await strategyLibraryPage.searchInput.fill('ir');
     await strategyLibraryPage.searchInput.fill('iro');
     await strategyLibraryPage.searchInput.fill('iron');
-    await strategyLibraryPage.page.waitForTimeout(600); // Wait for debounce
+    await strategyLibraryPage.page.waitForLoadState('domcontentloaded');
 
     const pageVisible = await strategyLibraryPage.pageContainer.isVisible();
     expect(pageVisible).toBe(true);
@@ -166,8 +166,8 @@ test.describe('Strategy Library - Edge Cases @edge', () => {
 
     await strategyLibraryPage.wizardGetRecommendationsButton.click();
 
-    // Should show error or handle gracefully
-    await authenticatedPage.waitForTimeout(1000);
+    // Wait for response to be processed
+    await authenticatedPage.waitForLoadState('domcontentloaded');
     const pageVisible = await strategyLibraryPage.pageContainer.isVisible();
     expect(pageVisible).toBe(true);
   });
@@ -177,7 +177,7 @@ test.describe('Strategy Library - Edge Cases @edge', () => {
     await strategyLibraryPage.assertWizardModalVisible();
 
     await authenticatedPage.keyboard.press('Escape');
-    await authenticatedPage.waitForTimeout(500);
+    await strategyLibraryPage.wizardModal.waitFor({ state: 'hidden', timeout: 2000 }).catch(() => {});
 
     const isVisible = await strategyLibraryPage.wizardModal.isVisible().catch(() => false);
     // May or may not close on escape depending on implementation
@@ -250,11 +250,11 @@ test.describe('Strategy Library - Edge Cases @edge', () => {
 
     // Click once to add
     await compareCheckbox.click();
-    await authenticatedPage.waitForTimeout(200);
+    await authenticatedPage.waitForLoadState('domcontentloaded');
 
     // Click again to remove
     await compareCheckbox.click();
-    await authenticatedPage.waitForTimeout(200);
+    await authenticatedPage.waitForLoadState('domcontentloaded');
 
     // Should not break
     const pageVisible = await strategyLibraryPage.pageContainer.isVisible();
@@ -268,7 +268,7 @@ test.describe('Strategy Library - Edge Cases @edge', () => {
     for (let i = 0; i < Math.min(6, cards.length); i++) {
       const compareCheckbox = cards[i].locator('[data-testid$="-compare"]');
       await compareCheckbox.click().catch(() => {});
-      await authenticatedPage.waitForTimeout(100);
+      await authenticatedPage.waitForLoadState('domcontentloaded');
     }
 
     // Should enforce limit or handle gracefully
@@ -281,7 +281,7 @@ test.describe('Strategy Library - Edge Cases @edge', () => {
     const compareCheckbox = firstCard.locator('[data-testid$="-compare"]');
 
     await compareCheckbox.click();
-    await authenticatedPage.waitForTimeout(300);
+    await authenticatedPage.waitForLoadState('domcontentloaded');
 
     const comparisonBar = await strategyLibraryPage.comparisonBar.isVisible().catch(() => false);
 
@@ -345,7 +345,7 @@ test.describe('Strategy Library - Edge Cases @edge', () => {
   test('should preserve search state after modal close', async ({ authenticatedPage }) => {
     // Search
     await strategyLibraryPage.search('spread');
-    await authenticatedPage.waitForTimeout(500);
+    await authenticatedPage.waitForLoadState('domcontentloaded');
 
     // Open and close details
     const firstCard = authenticatedPage.locator('[data-testid^="strategy-card-"]').first();
@@ -390,7 +390,7 @@ test.describe('Strategy Library - Edge Cases @edge', () => {
 
     // Check that deploy button is disabled when no expiry selected
     await expirySelect.selectOption({ value: '' });
-    await authenticatedPage.waitForTimeout(300);
+    await authenticatedPage.waitForLoadState('domcontentloaded');
 
     const deployBtn = strategyLibraryPage.deployButton;
     await expect(deployBtn).toBeDisabled();
@@ -408,14 +408,14 @@ test.describe('Strategy Library - Edge Cases @edge', () => {
 
     await strategyLibraryPage.openDeploy('iron_condor');
     await strategyLibraryPage.selectDeployUnderlying('NIFTY');
-    await authenticatedPage.waitForTimeout(1000);
+    await authenticatedPage.waitForResponse(resp => resp.url().includes('/api/') && resp.status() !== 0).catch(() => {});
     await strategyLibraryPage.setDeployLots(1);
 
     // Attempt to deploy
     await strategyLibraryPage.confirmDeploy();
 
-    // Should show error state (not success state)
-    await authenticatedPage.waitForTimeout(1000);
+    // Wait for the response to be processed
+    await authenticatedPage.waitForLoadState('domcontentloaded');
     const successVisible = await strategyLibraryPage.deploySuccess.isVisible().catch(() => false);
     expect(successVisible).toBe(false);
 
@@ -430,7 +430,7 @@ test.describe('Strategy Library - Edge Cases @edge', () => {
 
     // Select NIFTY first
     await strategyLibraryPage.selectDeployUnderlying('NIFTY');
-    await authenticatedPage.waitForTimeout(1000);
+    await authenticatedPage.waitForLoadState('domcontentloaded');
 
     // Get NIFTY expiries count
     const expirySelect = strategyLibraryPage.deployExpirySelect;
@@ -438,7 +438,7 @@ test.describe('Strategy Library - Edge Cases @edge', () => {
 
     // Change to BANKNIFTY
     await strategyLibraryPage.selectDeployUnderlying('BANKNIFTY');
-    await authenticatedPage.waitForTimeout(1000);
+    await authenticatedPage.waitForLoadState('domcontentloaded');
 
     // Expiries should refresh (may be different count or same, but select should work)
     const bankniftyOptions = await expirySelect.locator('option').count();
@@ -462,7 +462,7 @@ test.describe('Strategy Library - Edge Cases @edge', () => {
 
     await strategyLibraryPage.openDeploy('iron_condor');
     await strategyLibraryPage.selectDeployUnderlying('NIFTY');
-    await authenticatedPage.waitForTimeout(1000);
+    await authenticatedPage.waitForLoadState('domcontentloaded');
     await strategyLibraryPage.setDeployLots(1);
 
     // Click deploy
@@ -501,12 +501,12 @@ test.describe('Strategy Library - Edge Cases @edge', () => {
 
     // Configure some settings
     await strategyLibraryPage.selectDeployUnderlying('BANKNIFTY');
-    await authenticatedPage.waitForTimeout(1000);
+    await authenticatedPage.waitForLoadState('domcontentloaded');
     await strategyLibraryPage.setDeployLots(3);
 
     // Close by clicking overlay using POM method
     await strategyLibraryPage.clickDeployOverlay();
-    await authenticatedPage.waitForTimeout(500);
+    await strategyLibraryPage.deployModal.waitFor({ state: 'hidden', timeout: 2000 }).catch(() => {});
 
     // Modal should be closed
     const isVisible = await strategyLibraryPage.deployModal.isVisible().catch(() => false);

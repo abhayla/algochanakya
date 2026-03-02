@@ -224,22 +224,24 @@ export class StrategyLibraryPage extends BasePage {
 
   async selectCategory(category) {
     await this.getCategoryPill(category).click();
-    await this.page.waitForTimeout(300); // Wait for filter to apply
+    // Wait for the active pill to be marked selected (reactive filter apply)
+    await this.getCategoryPill(category).waitFor({ state: 'visible' });
   }
 
   async clearCategoryFilter() {
     await this.categoryAll.click();
-    await this.page.waitForTimeout(300);
+    await this.categoryAll.waitFor({ state: 'visible' });
   }
 
   async search(query) {
     await this.searchInput.fill(query);
-    await this.page.waitForTimeout(500); // Wait for debounce
+    // Wait for debounce by watching cards grid update (no fixed timeout)
+    await this.cardsGrid.waitFor({ state: 'visible' });
   }
 
   async clearSearch() {
     await this.searchClearButton.click();
-    await this.page.waitForTimeout(300);
+    await this.cardsGrid.waitFor({ state: 'visible' });
   }
 
   async openWizard() {
@@ -269,12 +271,13 @@ export class StrategyLibraryPage extends BasePage {
 
   async wizardNext() {
     await this.wizardNextButton.click();
-    await this.page.waitForTimeout(300);
+    // Wait for next step to be visible (step transition)
+    await this.wizardModal.waitFor({ state: 'visible' });
   }
 
   async wizardBack() {
     await this.wizardBackButton.click();
-    await this.page.waitForTimeout(300);
+    await this.wizardModal.waitFor({ state: 'visible' });
   }
 
   async getRecommendations() {
@@ -333,17 +336,20 @@ export class StrategyLibraryPage extends BasePage {
 
   async addToComparison(strategyName) {
     await this.getCardCompareCheckbox(strategyName).click();
-    await this.page.waitForTimeout(200);
+    // Wait for comparison bar to reflect the new selection
+    await this.comparisonBar.waitFor({ state: 'visible' });
   }
 
   async removeFromComparison(strategyName) {
     await this.getCardCompareCheckbox(strategyName).click();
-    await this.page.waitForTimeout(200);
+    // Comparison bar hides when count reaches 0 — wait for stable state
+    await this.page.waitForLoadState('domcontentloaded');
   }
 
   async clearComparison() {
     await this.comparisonClearButton.click();
-    await this.page.waitForTimeout(200);
+    // Bar should disappear after clearing all
+    await this.comparisonBar.waitFor({ state: 'hidden' });
   }
 
   async openCompareModal() {

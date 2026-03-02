@@ -54,7 +54,7 @@ test.describe('Strategy Library Deploy - Income Strategies @deploy @income', () 
 
         // Configure deployment
         await strategyLibraryPage.selectDeployUnderlying('NIFTY');
-        await authenticatedPage.waitForTimeout(1000); // Wait for expiries to load
+        await authenticatedPage.waitForLoadState('domcontentloaded'); // Wait for expiries to load
         await strategyLibraryPage.setDeployLots(1);
 
         // Deploy
@@ -84,7 +84,7 @@ test.describe('Strategy Library Deploy - Income Strategies @deploy @income', () 
         await strategyLibraryPage.navigate();
         await strategyLibraryPage.openDeploy(strategyName);
         await strategyLibraryPage.selectDeployUnderlying('NIFTY');
-        await authenticatedPage.waitForTimeout(1000);
+        await authenticatedPage.waitForLoadState('domcontentloaded');
         await strategyLibraryPage.setDeployLots(1);
         await strategyLibraryPage.confirmDeploy();
         await expect(strategyLibraryPage.deploySuccess).toBeVisible({ timeout: 15000 });
@@ -142,7 +142,7 @@ test.describe('Strategy Library Deploy - Income Strategies @deploy @income', () 
         await strategyLibraryPage.navigate();
         await strategyLibraryPage.openDeploy(strategyName);
         await strategyLibraryPage.selectDeployUnderlying('NIFTY');
-        await authenticatedPage.waitForTimeout(1000);
+        await authenticatedPage.waitForLoadState('domcontentloaded');
         await strategyLibraryPage.confirmDeploy();
         await expect(strategyLibraryPage.deploySuccess).toBeVisible({ timeout: 15000 });
         await strategyLibraryPage.clickViewStrategy();
@@ -180,7 +180,7 @@ test.describe('Strategy Library Deploy - Income Strategies @deploy @income', () 
         await strategyLibraryPage.navigate();
         await strategyLibraryPage.openDeploy(strategyName);
         await strategyLibraryPage.selectDeployUnderlying('NIFTY');
-        await authenticatedPage.waitForTimeout(1000);
+        await authenticatedPage.waitForLoadState('domcontentloaded');
         await strategyLibraryPage.setDeployLots(2);
         await strategyLibraryPage.confirmDeploy();
         await expect(strategyLibraryPage.deploySuccess).toBeVisible({ timeout: 15000 });
@@ -210,7 +210,7 @@ test.describe('Strategy Library Deploy - Income Strategies @deploy @income', () 
         await strategyLibraryPage.navigate();
         await strategyLibraryPage.openDeploy(strategyName);
         await strategyLibraryPage.selectDeployUnderlying('BANKNIFTY');
-        await authenticatedPage.waitForTimeout(1000);
+        await authenticatedPage.waitForLoadState('domcontentloaded');
         await strategyLibraryPage.setDeployLots(1);
         await strategyLibraryPage.confirmDeploy();
         await expect(strategyLibraryPage.deploySuccess).toBeVisible({ timeout: 15000 });

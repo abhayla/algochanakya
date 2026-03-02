@@ -40,7 +40,7 @@ test.describe('Option Chain - WebSocket @websocket', () => {
 
   test('should show live dot when connected and enabled', async ({ authenticatedPage }) => {
     // Wait for WebSocket connection
-    await authenticatedPage.waitForTimeout(2000);
+    await authenticatedPage.waitForLoadState('domcontentloaded');
     await optionChainPage.waitForChainLoad();
 
     // Check for live dot (may not appear if WebSocket not connected)
@@ -52,7 +52,7 @@ test.describe('Option Chain - WebSocket @websocket', () => {
 
   test('should hide live dot when live updates disabled', async ({ authenticatedPage }) => {
     await optionChainPage.waitForChainLoad();
-    await authenticatedPage.waitForTimeout(1000);
+    await authenticatedPage.waitForLoadState('domcontentloaded');
 
     // Disable live updates
     await optionChainPage.toggleLiveUpdates();
@@ -152,7 +152,7 @@ test.describe('Option Chain - WebSocket @websocket', () => {
     });
 
     await optionChainPage.waitForChainLoad();
-    await authenticatedPage.waitForTimeout(2000);
+    await authenticatedPage.waitForLoadState('domcontentloaded');
 
     // Should see subscription log (if WebSocket connected)
     // This validates the subscription logic runs

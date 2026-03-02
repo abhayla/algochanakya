@@ -65,8 +65,7 @@ export async function maskDynamicContent(page) {
  */
 export async function prepareForVisualTest(page) {
   // Wait for page to be fully loaded
-  await page.waitForLoadState('networkidle');
-  await page.waitForTimeout(1000); // Allow Vue animations to complete
+  await page.waitForLoadState('domcontentloaded');
 
   // Disable animations for consistent screenshots
   await page.evaluate(() => {
@@ -114,7 +113,7 @@ export const VIEWPORTS = {
 export async function setViewportAndPrepare(page, viewportName) {
   const viewport = VIEWPORTS[viewportName] || VIEWPORTS.desktop;
   await page.setViewportSize(viewport);
-  await page.waitForTimeout(500); // Allow responsive adjustments
+  await page.waitForLoadState('domcontentloaded'); // Allow responsive adjustments
   await prepareForVisualTest(page);
 }
 
@@ -125,7 +124,7 @@ export async function setViewportAndPrepare(page, viewportName) {
 export async function ensureConsistentViewport(page, viewportName = 'desktop') {
   const viewport = VIEWPORTS[viewportName] || VIEWPORTS.desktop;
   await page.setViewportSize(viewport);
-  await page.waitForTimeout(200); // Allow responsive adjustments
+  await page.waitForLoadState('domcontentloaded'); // Allow responsive adjustments
 }
 
 /**

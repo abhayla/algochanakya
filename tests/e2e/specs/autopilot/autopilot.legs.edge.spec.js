@@ -154,7 +154,7 @@ test.describe('AutoPilot Legs Configuration - Edge Cases', () => {
     await expect(cmpCell).toBeVisible();
 
     // Wait for CMP to load (WebSocket or LTP API)
-    await authenticatedPage.waitForTimeout(2000);
+    await authenticatedPage.waitForLoadState('domcontentloaded');
 
     // Check market hours to determine validation behavior
     const now = new Date();

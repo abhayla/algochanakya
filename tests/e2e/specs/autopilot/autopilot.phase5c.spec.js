@@ -97,7 +97,7 @@ test.describe('AutoPilot Phase 5C - SD Strike Selection', () => {
     await findStrikeButton.click();
 
     // Wait for response - either strike found or error
-    await builderPage.page.waitForTimeout(2000);
+    await builderPage.page.waitForLoadState('domcontentloaded');
 
     // Should show either strike or error (both are valid outcomes)
     const strikeDisplay = builderPage.page.getByTestId('autopilot-leg-selected-strike-0');

@@ -23,7 +23,7 @@ test.describe('AutoPilot Dropdown Options', () => {
 
     for (const underlying of underlyings) {
       await underlyingDropdown.selectOption(underlying);
-      await builderPage.page.waitForTimeout(500);
+      await builderPage.page.waitForLoadState('domcontentloaded');
       await expect(underlyingDropdown).toHaveValue(underlying);
     }
   });
@@ -47,7 +47,7 @@ test.describe('AutoPilot Dropdown Options', () => {
 
     for (const strategyType of strategyTypes) {
       await strategyTypeDropdown.selectOption(strategyType);
-      await builderPage.page.waitForTimeout(500);
+      await builderPage.page.waitForLoadState('domcontentloaded');
       await expect(strategyTypeDropdown).toHaveValue(strategyType);
     }
   });
@@ -63,7 +63,7 @@ test.describe('AutoPilot Dropdown Options', () => {
 
     for (const expiryType of expiryTypes) {
       await expiryTypeDropdown.selectOption(expiryType);
-      await builderPage.page.waitForTimeout(500);
+      await builderPage.page.waitForLoadState('domcontentloaded');
       await expect(expiryTypeDropdown).toHaveValue(expiryType);
     }
   });
@@ -75,7 +75,7 @@ test.describe('AutoPilot Dropdown Options', () => {
 
     for (const positionType of positionTypes) {
       await positionTypeDropdown.selectOption(positionType);
-      await builderPage.page.waitForTimeout(500);
+      await builderPage.page.waitForLoadState('domcontentloaded');
       await expect(positionTypeDropdown).toHaveValue(positionType);
     }
   });
@@ -83,7 +83,8 @@ test.describe('AutoPilot Dropdown Options', () => {
   test('should support all Strike Mode options with a leg', async () => {
     // Add a leg first
     await builderPage.page.click('button[data-testid="autopilot-legs-add-row-button"]');
-    await builderPage.page.waitForTimeout(1000);
+    // Wait for the leg row to appear
+    await builderPage.page.locator('[data-testid="autopilot-leg-row-0"]').waitFor({ state: 'visible' });
 
     const strikeCell = builderPage.page.locator('td').filter({ has: builderPage.page.locator('.strike-selector-compact') }).first();
     const modeDropdown = strikeCell.locator('select.mode-dropdown');
@@ -98,7 +99,7 @@ test.describe('AutoPilot Dropdown Options', () => {
 
     for (const mode of strikeModes) {
       await modeDropdown.selectOption(mode);
-      await builderPage.page.waitForTimeout(1000);
+      await builderPage.page.waitForLoadState('domcontentloaded');
       await expect(modeDropdown).toHaveValue(mode);
 
       // Verify mode-specific inputs appear
@@ -115,7 +116,8 @@ test.describe('AutoPilot Dropdown Options', () => {
   test('should support all Action options (BUY/SELL) with a leg', async () => {
     // Add a leg first
     await builderPage.page.click('button[data-testid="autopilot-legs-add-row-button"]');
-    await builderPage.page.waitForTimeout(1000);
+    // Wait for the leg row to appear
+    await builderPage.page.locator('[data-testid="autopilot-leg-row-0"]').waitFor({ state: 'visible' });
 
     const actionDropdown = builderPage.page.locator('tbody tr').first().locator('select').first();
 
@@ -129,7 +131,8 @@ test.describe('AutoPilot Dropdown Options', () => {
   test('should support all Option Type options (CE/PE) with a leg', async () => {
     // Add a leg first
     await builderPage.page.click('button[data-testid="autopilot-legs-add-row-button"]');
-    await builderPage.page.waitForTimeout(1000);
+    // Wait for the leg row to appear
+    await builderPage.page.locator('[data-testid="autopilot-leg-row-0"]').waitFor({ state: 'visible' });
 
     // Get the option type dropdown (4th select in the row after action, expiry, strike mode)
     const optionTypeDropdown = builderPage.page.locator('tbody tr').first().locator('select').nth(3);

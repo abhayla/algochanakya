@@ -141,7 +141,7 @@ test.describe('AutoPilot Analytics Dashboard - Edge Cases', () => {
       if (await bars.count() > 0) {
         await bars.first().hover();
         // Tooltip should appear (teleported to body)
-        await analyticsPage.page.waitForTimeout(300);
+        await analyticsPage.page.waitForLoadState('domcontentloaded');
       }
     }
   });

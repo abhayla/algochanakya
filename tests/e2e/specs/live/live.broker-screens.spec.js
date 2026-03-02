@@ -95,10 +95,10 @@ for (const broker of ALL_BROKERS) {
 
     const watchlist = new WatchlistPage(authenticatedPage);
     await watchlist.navigate();
-    await authenticatedPage.waitForLoadState('networkidle');
+    await authenticatedPage.waitForLoadState('domcontentloaded');
 
     // Wait for price data to populate (WebSocket or REST)
-    await authenticatedPage.waitForTimeout(3000);
+    await authenticatedPage.waitForLoadState('domcontentloaded');
 
     // Find a price cell in the watchlist
     const priceLocator = authenticatedPage.locator('[data-testid*="watchlist-price"], [data-testid*="ltp"]').first();
@@ -107,11 +107,11 @@ for (const broker of ALL_BROKERS) {
     if (!isVisible) {
       // No instruments in watchlist — add NIFTY first
       await watchlist.search('NIFTY 50');
-      await authenticatedPage.waitForTimeout(800);
+      await authenticatedPage.waitForLoadState('domcontentloaded');
       const firstResult = authenticatedPage.locator('[data-testid*="watchlist-search-result"]').first();
       if (await firstResult.isVisible().catch(() => false)) {
         await firstResult.click();
-        await authenticatedPage.waitForTimeout(2000);
+        await authenticatedPage.waitForLoadState('domcontentloaded');
       }
     }
 
@@ -143,8 +143,8 @@ for (const broker of ALL_BROKERS) {
 
     const optionChain = new OptionChainPage(authenticatedPage);
     await optionChain.navigate();
-    await authenticatedPage.waitForLoadState('networkidle');
-    await authenticatedPage.waitForTimeout(3000);
+    await authenticatedPage.waitForLoadState('domcontentloaded');
+    await authenticatedPage.waitForLoadState('domcontentloaded');
 
     // Assert strikes table is visible
     const strikeTable = authenticatedPage.locator('[data-testid="optionchain-strikes-table"], [data-testid*="strike-row"]').first();
@@ -178,8 +178,8 @@ for (const broker of ALL_BROKERS) {
 
     const positions = new PositionsPage(authenticatedPage);
     await positions.navigate();
-    await authenticatedPage.waitForLoadState('networkidle');
-    await authenticatedPage.waitForTimeout(2000);
+    await authenticatedPage.waitForLoadState('domcontentloaded');
+    await authenticatedPage.waitForLoadState('domcontentloaded');
 
     // Should show either positions table OR empty state — NOT an error
     const hasTable = await authenticatedPage.locator('[data-testid="positions-table"], [data-testid*="positions-row"]').first().isVisible().catch(() => false);
@@ -205,8 +205,8 @@ for (const broker of ALL_BROKERS) {
 
     const dashboard = new DashboardPage(authenticatedPage);
     await dashboard.navigate();
-    await authenticatedPage.waitForLoadState('networkidle');
-    await authenticatedPage.waitForTimeout(3000);
+    await authenticatedPage.waitForLoadState('domcontentloaded');
+    await authenticatedPage.waitForLoadState('domcontentloaded');
 
     // Assert NIFTY index card is visible
     const niftyCard = authenticatedPage.locator('[data-testid*="dashboard-nifty"], [data-testid*="index-nifty"]').first();

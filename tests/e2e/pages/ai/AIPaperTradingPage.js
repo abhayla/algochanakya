@@ -94,7 +94,7 @@ export class AIPaperTradingPage extends BasePage {
     }
 
     // Wait for UI to update after exit (the list refreshes)
-    await this.page.waitForTimeout(1000)
+    await this.page.waitForLoadState('domcontentloaded')
 
     // Verify trade is no longer in active list by refreshing
     await this.refreshTrades()

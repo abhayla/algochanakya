@@ -182,7 +182,7 @@ test.describe('Form Input Consistency @audit', () => {
         }));
 
         await input.focus();
-        await authenticatedPage.waitForTimeout(100);
+        await authenticatedPage.waitForLoadState('domcontentloaded');
 
         const afterFocus = await input.evaluate(el => ({
           borderColor: window.getComputedStyle(el).borderColor,
@@ -210,7 +210,7 @@ test.describe('Form Input Consistency @audit', () => {
 
       if (inputExists) {
         await input.focus();
-        await authenticatedPage.waitForTimeout(100);
+        await authenticatedPage.waitForLoadState('domcontentloaded');
 
         const focusBorderColor = await input.evaluate(el =>
           window.getComputedStyle(el).borderColor

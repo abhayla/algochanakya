@@ -74,7 +74,7 @@ export class WatchlistPage extends BasePage {
   async search(query) {
     await this.searchInput.fill(query);
     // Wait for debounce and results
-    await this.page.waitForTimeout(500);
+    await this.page.waitForLoadState('domcontentloaded');
   }
 
   async clearSearch() {

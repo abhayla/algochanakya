@@ -71,11 +71,8 @@ async function fetchLTPFromAPI(page, tradingsymbol) {
  * Helper: Wait for auto-calculation to complete
  */
 async function waitForCalculation(page, strategyPage) {
-  // Wait for loading to finish
-  await page.waitForTimeout(500);
   await strategyPage.waitForPnLCalculation();
-  // Additional wait for network
-  await page.waitForLoadState('networkidle').catch(() => {});
+  await page.waitForLoadState('domcontentloaded');
 }
 
 /**
@@ -213,7 +210,16 @@ test.describe('Strategy Builder Manual Test Plan', () => {
 
     // Wait for page to fully initialize (WebSocket, API calls)
     console.log('Waiting for page to fully initialize...');
-    await page.waitForTimeout(3000);
+    await page.waitForFunction(
+      () => {
+        const btn = document.querySelector('[data-testid="strategy-add-row-button"]');
+        return btn && !btn.disabled;
+      },
+      { timeout: 30000 }
+    ).catch(async () => {
+      console.log('Add Row button still disabled after 30s - taking diagnostic screenshot');
+      await takeScreenshot(page, 'add_row_disabled_init');
+    });
 
     // Check for errors and take diagnostic screenshot
     const errorAlert = page.locator('[data-testid="strategy-error"]');
@@ -235,7 +241,7 @@ test.describe('Strategy Builder Manual Test Plan', () => {
       );
       console.log('Add Row button is now enabled');
     } catch (e) {
-      console.log('Add Row button still disabled - taking diagnostic screenshot');
+      console.log('Add Row button still disabled - trying to re-trigger...');
       await takeScreenshot(page, 'add_row_disabled');
 
       // Check if there's a network issue
@@ -246,9 +252,15 @@ test.describe('Strategy Builder Manual Test Plan', () => {
       // Try to manually trigger expiry fetch by re-selecting underlying
       console.log('Attempting to re-trigger expiry fetch...');
       await strategyPage.selectUnderlying('BANKNIFTY');
-      await page.waitForTimeout(2000);
+      await page.waitForLoadState('domcontentloaded');
       await strategyPage.selectUnderlying('NIFTY');
-      await page.waitForTimeout(5000);
+      await page.waitForFunction(
+        () => {
+          const btn = document.querySelector('[data-testid="strategy-add-row-button"]');
+          return btn && !btn.disabled;
+        },
+        { timeout: 10000 }
+      ).catch(() => {});
 
       await takeScreenshot(page, 'after_reselect_underlying');
     }
@@ -258,7 +270,7 @@ test.describe('Strategy Builder Manual Test Plan', () => {
     const isNiftyActive = await niftyTab.getAttribute('class').then(c => c?.includes('active') || c?.includes('bg-blue'));
     if (!isNiftyActive) {
       await strategyPage.selectUnderlying('NIFTY');
-      await page.waitForTimeout(3000);
+      await page.waitForLoadState('domcontentloaded');
     }
 
     // Ensure "At Expiry" mode for easier P/L verification
@@ -339,7 +351,7 @@ test.describe('Strategy Builder Manual Test Plan', () => {
     console.log(`CMP before type change: ${cmpBeforeTypeChange}`);
 
     await typeSelect1.selectOption(newType);
-    await page.waitForTimeout(1000);
+    await page.waitForLoadState('domcontentloaded');
     await waitForCalculation(page, strategyPage);
 
     screenshot = await takeScreenshot(page, '1.3_change_ce_pe_row1');
@@ -391,7 +403,8 @@ test.describe('Strategy Builder Manual Test Plan', () => {
 
     if (newStrike) {
       await strikeSelect1.selectOption(newStrike);
-      await page.waitForTimeout(1500); // Strike change triggers instrument token fetch
+      // Strike change triggers instrument token fetch — wait for DOM to settle then recalculate
+      await page.waitForLoadState('domcontentloaded');
       await waitForCalculation(page, strategyPage);
     }
 
@@ -451,7 +464,8 @@ test.describe('Strategy Builder Manual Test Plan', () => {
     if (newExpiry) {
       console.log(`Changing expiry from ${currentExpiry} to ${newExpiry}`);
       await expirySelect1.selectOption(newExpiry);
-      await page.waitForTimeout(2000); // Expiry change triggers strikes fetch
+      // Expiry change triggers strikes fetch — wait for DOM then recalculate
+      await page.waitForLoadState('domcontentloaded');
       await waitForCalculation(page, strategyPage);
     } else {
       console.log('No valid alternative expiry found - skipping step');
@@ -504,7 +518,7 @@ test.describe('Strategy Builder Manual Test Plan', () => {
     console.log(`Row 2 CMP before type change: ${cmpBeforeType2}`);
 
     await typeSelect2.selectOption(newType2);
-    await page.waitForTimeout(1000);
+    await page.waitForLoadState('domcontentloaded');
     await waitForCalculation(page, strategyPage);
 
     screenshot = await takeScreenshot(page, '1.6_change_ce_pe_row2');
@@ -552,7 +566,7 @@ test.describe('Strategy Builder Manual Test Plan', () => {
 
     if (newStrike2) {
       await strikeSelect2.selectOption(newStrike2);
-      await page.waitForTimeout(1500);
+      await page.waitForLoadState('domcontentloaded');
       await waitForCalculation(page, strategyPage);
     }
 
@@ -606,7 +620,7 @@ test.describe('Strategy Builder Manual Test Plan', () => {
     if (newExpiry2) {
       console.log(`Changing row 2 expiry from ${currentExpiry2} to ${newExpiry2}`);
       await expirySelect2.selectOption(newExpiry2);
-      await page.waitForTimeout(2000);
+      await page.waitForLoadState('domcontentloaded');
       await waitForCalculation(page, strategyPage);
     } else {
       console.log('No valid alternative expiry for row 2 - skipping');
@@ -654,10 +668,6 @@ test.describe('Strategy Builder Manual Test Plan', () => {
     await strategyPage.navigate();
     await strategyPage.waitForPageLoad();
 
-    // Wait for page to fully initialize (WebSocket, API calls)
-    console.log('Waiting for page to fully initialize...');
-    await page.waitForTimeout(3000);
-
     // Wait for expiries to load (check Add Row button)
     console.log('Waiting for Add Row button to be enabled...');
     try {
@@ -672,9 +682,15 @@ test.describe('Strategy Builder Manual Test Plan', () => {
     } catch (e) {
       console.log('Add Row button still disabled - trying to re-trigger...');
       await strategyPage.selectUnderlying('BANKNIFTY');
-      await page.waitForTimeout(2000);
+      await page.waitForLoadState('domcontentloaded');
       await strategyPage.selectUnderlying('NIFTY');
-      await page.waitForTimeout(5000);
+      await page.waitForFunction(
+        () => {
+          const btn = document.querySelector('[data-testid="strategy-add-row-button"]');
+          return btn && !btn.disabled;
+        },
+        { timeout: 10000 }
+      ).catch(() => {});
     }
 
     // Ensure "At Expiry" mode
@@ -697,22 +713,17 @@ test.describe('Strategy Builder Manual Test Plan', () => {
       await strategyTypeSelect.selectOption({ label: strategy.key });
 
       // Handle "Replace Existing Legs?" confirmation modal if legs exist
-      await page.waitForTimeout(500);
+      await page.waitForLoadState('domcontentloaded');
       const replaceModal = page.locator('[data-testid="strategy-replace-legs-modal"]');
       if (await replaceModal.isVisible().catch(() => false)) {
         console.log('Handling Replace Legs modal...');
         await page.locator('[data-testid="strategy-replace-legs-confirm"]').click();
-        await page.waitForTimeout(500);
+        await page.waitForLoadState('domcontentloaded');
       }
 
-      // Wait for legs to be populated
-      await page.waitForTimeout(3000); // Strategy application is async
+      // Wait for legs to be populated (strategy application is async)
       await strategyPage.waitForLegsLoaded(strategy.expectedLegs);
       await waitForCalculation(page, strategyPage);
-
-      // Wait additional time for CMP values to populate from WebSocket/API
-      console.log('Waiting for CMP values to load...');
-      await page.waitForTimeout(3000);
 
       // Click ReCalculate to trigger price fetch
       const recalcButton = page.locator('[data-testid="strategy-recalculate-button"]');
@@ -720,7 +731,6 @@ test.describe('Strategy Builder Manual Test Plan', () => {
         console.log('Clicking ReCalculate to refresh prices...');
         await recalcButton.click();
         await waitForCalculation(page, strategyPage);
-        await page.waitForTimeout(2000);
       }
 
       // Take screenshot

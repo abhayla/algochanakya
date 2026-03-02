@@ -137,7 +137,7 @@ test.describe('AutoPilot Strategy Lifecycle - Edge Cases', () => {
     const statusFilter = authenticatedPage.locator('[data-testid="autopilot-status-filter"]');
     if (await statusFilter.isVisible()) {
       await statusFilter.selectOption('draft');
-      await authenticatedPage.waitForTimeout(500);
+      await authenticatedPage.waitForLoadState('domcontentloaded');
     }
 
     // Verify dashboard loaded
@@ -151,7 +151,7 @@ test.describe('AutoPilot Strategy Lifecycle - Edge Cases', () => {
     const statusFilter = authenticatedPage.locator('[data-testid="autopilot-status-filter"]');
     if (await statusFilter.isVisible()) {
       await statusFilter.selectOption('active');
-      await authenticatedPage.waitForTimeout(500);
+      await authenticatedPage.waitForLoadState('domcontentloaded');
     }
 
     // Verify dashboard loaded
@@ -647,10 +647,10 @@ test.describe('AutoPilot Strategy Types - Strike Auto-Population', () => {
     }
 
     // Wait for legs to be populated and strike preview API calls to complete
-    await page.waitForTimeout(4000)
+    const legRows = page.locator('[data-testid^="autopilot-leg-row-"]')
+    await legRows.nth(3).waitFor({ state: 'visible', timeout: 10000 })
 
     // Verify leg count is exactly 4 (Iron Condor legs)
-    const legRows = page.locator('[data-testid^="autopilot-leg-row-"]')
     await expect(legRows).toHaveCount(4)
 
     // Assert: All 4 legs should have valid strike previews (not "Preview unavailable")
@@ -664,8 +664,11 @@ test.describe('AutoPilot Strategy Types - Strike Auto-Population', () => {
       const preview = strikeSelector.locator('.preview-inline')
       const previewError = strikeSelector.locator('.preview-error-inline')
 
-      // Wait for either preview or error to appear (with longer timeout)
-      await page.waitForTimeout(1000)
+      // Wait for either preview or error to appear
+      await Promise.race([
+        preview.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {}),
+        previewError.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {})
+      ])
 
       const hasPreview = await preview.isVisible().catch(() => false)
       const hasError = await previewError.isVisible().catch(() => false)
@@ -736,10 +739,10 @@ test.describe('AutoPilot Strategy Types - Strike Auto-Population', () => {
     }
 
     // Wait for legs to be populated
-    await page.waitForTimeout(4000)
+    const legRows = page.locator('[data-testid^="autopilot-leg-row-"]')
+    await legRows.nth(1).waitFor({ state: 'visible', timeout: 10000 })
 
     // Verify leg count is exactly 2 (Bull Call Spread legs)
-    const legRows = page.locator('[data-testid^="autopilot-leg-row-"]')
     await expect(legRows).toHaveCount(2)
 
     // Assert: All 2 legs should have valid strike previews
@@ -751,7 +754,10 @@ test.describe('AutoPilot Strategy Types - Strike Auto-Population', () => {
       const preview = strikeSelector.locator('.preview-inline')
       const previewError = strikeSelector.locator('.preview-error-inline')
 
-      await page.waitForTimeout(1000)
+      await Promise.race([
+        preview.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {}),
+        previewError.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {})
+      ])
 
       const hasPreview = await preview.isVisible().catch(() => false)
       const hasError = await previewError.isVisible().catch(() => false)
@@ -811,9 +817,8 @@ test.describe('AutoPilot Strategy Types - Strike Auto-Population', () => {
       await page.getByTestId('autopilot-replace-legs-confirm').click()
     }
 
-    await page.waitForTimeout(4000)
-
     const legRows = page.locator('[data-testid^="autopilot-leg-row-"]')
+    await legRows.nth(1).waitFor({ state: 'visible', timeout: 10000 })
     await expect(legRows).toHaveCount(2)
 
     for (let i = 0; i < 2; i++) {
@@ -824,7 +829,10 @@ test.describe('AutoPilot Strategy Types - Strike Auto-Population', () => {
       const preview = strikeSelector.locator('.preview-inline')
       const previewError = strikeSelector.locator('.preview-error-inline')
 
-      await page.waitForTimeout(1000)
+      await Promise.race([
+        preview.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {}),
+        previewError.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {})
+      ])
 
       const hasPreview = await preview.isVisible().catch(() => false)
       const hasError = await previewError.isVisible().catch(() => false)
@@ -884,9 +892,8 @@ test.describe('AutoPilot Strategy Types - Strike Auto-Population', () => {
       await page.getByTestId('autopilot-replace-legs-confirm').click()
     }
 
-    await page.waitForTimeout(4000)
-
     const legRows = page.locator('[data-testid^="autopilot-leg-row-"]')
+    await legRows.nth(1).waitFor({ state: 'visible', timeout: 10000 })
     await expect(legRows).toHaveCount(2)
 
     for (let i = 0; i < 2; i++) {
@@ -897,7 +904,10 @@ test.describe('AutoPilot Strategy Types - Strike Auto-Population', () => {
       const preview = strikeSelector.locator('.preview-inline')
       const previewError = strikeSelector.locator('.preview-error-inline')
 
-      await page.waitForTimeout(1000)
+      await Promise.race([
+        preview.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {}),
+        previewError.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {})
+      ])
 
       const hasPreview = await preview.isVisible().catch(() => false)
       const hasError = await previewError.isVisible().catch(() => false)
@@ -957,9 +967,8 @@ test.describe('AutoPilot Strategy Types - Strike Auto-Population', () => {
       await page.getByTestId('autopilot-replace-legs-confirm').click()
     }
 
-    await page.waitForTimeout(4000)
-
     const legRows = page.locator('[data-testid^="autopilot-leg-row-"]')
+    await legRows.nth(2).waitFor({ state: 'visible', timeout: 10000 })
     await expect(legRows).toHaveCount(3)
 
     for (let i = 0; i < 3; i++) {
@@ -970,7 +979,10 @@ test.describe('AutoPilot Strategy Types - Strike Auto-Population', () => {
       const preview = strikeSelector.locator('.preview-inline')
       const previewError = strikeSelector.locator('.preview-error-inline')
 
-      await page.waitForTimeout(1000)
+      await Promise.race([
+        preview.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {}),
+        previewError.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {})
+      ])
 
       const hasPreview = await preview.isVisible().catch(() => false)
       const hasError = await previewError.isVisible().catch(() => false)
@@ -1030,9 +1042,8 @@ test.describe('AutoPilot Strategy Types - Strike Auto-Population', () => {
       await page.getByTestId('autopilot-replace-legs-confirm').click()
     }
 
-    await page.waitForTimeout(4000)
-
     const legRows = page.locator('[data-testid^="autopilot-leg-row-"]')
+    await legRows.nth(3).waitFor({ state: 'visible', timeout: 10000 })
     await expect(legRows).toHaveCount(4)
 
     for (let i = 0; i < 4; i++) {
@@ -1043,7 +1054,10 @@ test.describe('AutoPilot Strategy Types - Strike Auto-Population', () => {
       const preview = strikeSelector.locator('.preview-inline')
       const previewError = strikeSelector.locator('.preview-error-inline')
 
-      await page.waitForTimeout(1000)
+      await Promise.race([
+        preview.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {}),
+        previewError.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {})
+      ])
 
       const hasPreview = await preview.isVisible().catch(() => false)
       const hasError = await previewError.isVisible().catch(() => false)

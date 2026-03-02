@@ -226,7 +226,7 @@ test.describe('Button Consistency @audit', () => {
         );
 
         await button.hover();
-        await authenticatedPage.waitForTimeout(200);
+        await authenticatedPage.waitForLoadState('domcontentloaded');
 
         const afterHover = await button.evaluate(el =>
           window.getComputedStyle(el).backgroundColor

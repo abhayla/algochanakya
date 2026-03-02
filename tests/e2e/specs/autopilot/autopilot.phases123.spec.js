@@ -32,7 +32,7 @@ test.describe('AutoPilot Phase 3: Re-Entry Configuration', () => {
 
     // Navigate directly to strategy builder
     await authenticatedPage.goto('/autopilot/strategies/new')
-    await authenticatedPage.waitForLoadState('networkidle')
+    await authenticatedPage.waitForLoadState('domcontentloaded')
     await authenticatedPage.waitForSelector('[data-testid="autopilot-strategy-builder"]', { timeout: 10000 })
 
     // Fill required Step 1 fields to pass validation
@@ -42,7 +42,7 @@ test.describe('AutoPilot Phase 3: Re-Entry Configuration', () => {
 
     // Add a leg (required for Step 1 validation)
     await authenticatedPage.click('[data-testid="autopilot-legs-add-row-button"]')
-    await authenticatedPage.waitForTimeout(300)
+    await authenticatedPage.locator('[data-testid="autopilot-leg-row-0"]').waitFor({ state: 'visible' })
 
     // Fill leg details (select options that should be available)
     await authenticatedPage.selectOption('[data-testid="autopilot-leg-type-0"]', 'CE')
@@ -55,7 +55,7 @@ test.describe('AutoPilot Phase 3: Re-Entry Configuration', () => {
     if (expiryOptions > 1) {
       await authenticatedPage.selectOption('[data-testid="autopilot-leg-expiry-0"]', { index: 1 })
     }
-    await authenticatedPage.waitForTimeout(500)
+    await authenticatedPage.waitForLoadState('domcontentloaded')
 
     // Set strike price directly via Pinia store (bypassing UI since dispatchEvent doesn't work with Vue)
     await authenticatedPage.evaluate(() => {
@@ -71,17 +71,17 @@ test.describe('AutoPilot Phase 3: Re-Entry Configuration', () => {
         }
       }
     })
-    await authenticatedPage.waitForTimeout(500)
+    await authenticatedPage.waitForLoadState('domcontentloaded')
 
     // Navigate to Step 4 (Risk Settings) where Re-Entry Config is located
     // Step 1 → 2 → 3 → 4 using Next button
     const nextBtn = authenticatedPage.locator('[data-testid="autopilot-builder-next"]')
     await nextBtn.click() // Step 1 → 2
-    await authenticatedPage.waitForTimeout(300)
+    await authenticatedPage.waitForLoadState('domcontentloaded')
     await nextBtn.click() // Step 2 → 3
-    await authenticatedPage.waitForTimeout(300)
+    await authenticatedPage.waitForLoadState('domcontentloaded')
     await nextBtn.click() // Step 3 → 4
-    await authenticatedPage.waitForTimeout(500) // Wait for step transition
+    await authenticatedPage.locator('[data-testid="autopilot-builder-step-4"]').waitFor({ state: 'visible' })
   })
 
   test('should display Re-Entry Configuration section', async ({ authenticatedPage }) => {
@@ -209,7 +209,7 @@ test.describe('AutoPilot Phase 3: Adjustment Rule Builder', () => {
 
     // Navigate directly to strategy builder
     await authenticatedPage.goto('/autopilot/strategies/new')
-    await authenticatedPage.waitForLoadState('networkidle')
+    await authenticatedPage.waitForLoadState('domcontentloaded')
     await authenticatedPage.waitForSelector('[data-testid="autopilot-strategy-builder"]', { timeout: 10000 })
 
     // Fill required Step 1 fields to pass validation
@@ -219,7 +219,7 @@ test.describe('AutoPilot Phase 3: Adjustment Rule Builder', () => {
 
     // Add a leg (required for Step 1 validation)
     await authenticatedPage.click('[data-testid="autopilot-legs-add-row-button"]')
-    await authenticatedPage.waitForTimeout(300)
+    await authenticatedPage.locator('[data-testid="autopilot-leg-row-0"]').waitFor({ state: 'visible' })
 
     // Fill leg details
     await authenticatedPage.selectOption('[data-testid="autopilot-leg-type-0"]', 'CE')
@@ -232,7 +232,7 @@ test.describe('AutoPilot Phase 3: Adjustment Rule Builder', () => {
     if (expiryOptions > 1) {
       await authenticatedPage.selectOption('[data-testid="autopilot-leg-expiry-0"]', { index: 1 })
     }
-    await authenticatedPage.waitForTimeout(500)
+    await authenticatedPage.waitForLoadState('domcontentloaded')
 
     // Set strike price directly via Pinia store (bypassing UI since dispatchEvent doesn't work with Vue)
     await authenticatedPage.evaluate(() => {
@@ -248,15 +248,15 @@ test.describe('AutoPilot Phase 3: Adjustment Rule Builder', () => {
         }
       }
     })
-    await authenticatedPage.waitForTimeout(500)
+    await authenticatedPage.waitForLoadState('domcontentloaded')
 
     // Navigate to Step 3 (Monitoring/Adjustments)
     // First navigate to Step 3 using Next button
     const nextBtn = authenticatedPage.locator('[data-testid="autopilot-builder-next"]')
     await nextBtn.click() // Step 1 → 2
-    await authenticatedPage.waitForTimeout(300)
+    await authenticatedPage.waitForLoadState('domcontentloaded')
     await nextBtn.click() // Step 2 → 3
-    await authenticatedPage.waitForTimeout(500) // Wait for step transition
+    await authenticatedPage.locator('[data-testid="autopilot-builder-step-3"]').waitFor({ state: 'visible' })
   })
 
   test('should display Adjustment Rule Builder section', async ({ authenticatedPage }) => {

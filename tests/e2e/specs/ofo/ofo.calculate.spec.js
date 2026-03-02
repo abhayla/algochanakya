@@ -242,7 +242,7 @@ test.describe('OFO - Calculate Button Tests @calculate', () => {
     await expect(ofoPage.bankniftyTab).toHaveClass(/active/);
 
     // Wait for expiries to load
-    await page.waitForTimeout(1000);
+    await page.waitForLoadState('domcontentloaded');
 
     // Select short straddle
     await ofoPage.openStrategyDropdown();
@@ -270,7 +270,7 @@ test.describe('OFO - Calculate Button Tests @calculate', () => {
     await expect(ofoPage.finniftyTab).toHaveClass(/active/);
 
     // Wait for expiries to load
-    await page.waitForTimeout(1000);
+    await page.waitForLoadState('domcontentloaded');
 
     // Select bull call spread
     await ofoPage.openStrategyDropdown();

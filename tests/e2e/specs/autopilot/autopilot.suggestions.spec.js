@@ -132,7 +132,7 @@ test.describe('AutoPilot Suggestions - E2E', () => {
       }
 
       // Wait for suggestion to be removed (card should disappear or count should decrease)
-      await page.page.waitForTimeout(1000);
+      await page.page.waitForLoadState('domcontentloaded');
 
       const newCount = await suggestionCards.count();
       expect(newCount).toBeLessThanOrEqual(initialCount);
@@ -156,7 +156,7 @@ test.describe('AutoPilot Suggestions - E2E', () => {
         await page.page.click('[data-testid="autopilot-dismiss-confirm-btn"]');
       }
 
-      await page.page.waitForTimeout(500);
+      await page.page.waitForLoadState('domcontentloaded');
       count = await suggestionCards.count();
     }
 
@@ -205,7 +205,7 @@ test.describe('AutoPilot Suggestions - E2E', () => {
       }
 
       // Suggestions should be reloaded
-      await page.page.waitForTimeout(500);
+      await page.page.waitForLoadState('domcontentloaded');
       const suggestionsPanel = page.page.locator('[data-testid="autopilot-suggestions-panel"]');
       await expect(suggestionsPanel).toBeVisible();
     }

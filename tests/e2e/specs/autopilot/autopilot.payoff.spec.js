@@ -52,16 +52,16 @@ test.describe('AutoPilot Payoff Chart - E2E', () => {
         await page.page.click('[data-testid="autopilot-payoff-mode-current"]');
 
         // Wait for chart to update
-        await page.page.waitForTimeout(1000);
+        const currentModeLabel = page.page.locator('[data-testid="autopilot-payoff-current-label"]');
+        await currentModeLabel.waitFor({ state: 'visible' });
 
         // Verify current mode indicator
-        const currentModeLabel = page.page.locator('[data-testid="autopilot-payoff-current-label"]');
         await expect(currentModeLabel).toBeVisible();
 
         // Toggle back to expiry
         await page.page.click('[data-testid="autopilot-payoff-mode-expiry"]');
 
-        await page.page.waitForTimeout(1000);
+        await page.page.waitForLoadState('domcontentloaded');
       }
     }
   });
@@ -131,7 +131,7 @@ test.describe('AutoPilot Payoff Chart - E2E', () => {
       await payoffTab.click();
 
       // Wait for metrics to load
-      await page.page.waitForTimeout(2000);
+      await page.page.waitForLoadState('domcontentloaded');
 
       // Verify risk metrics section
       const riskMetrics = page.page.locator('[data-testid="autopilot-risk-metrics"]');

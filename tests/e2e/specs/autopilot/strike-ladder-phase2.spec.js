@@ -14,7 +14,7 @@ test.describe('StrikeLadder Phase 2 Features', () => {
   test.beforeEach(async ({ authenticatedPage }) => {
     // Navigate to strategy builder
     await authenticatedPage.goto('/autopilot/strategies/new')
-    await authenticatedPage.waitForLoadState('networkidle')
+    await authenticatedPage.waitForLoadState('domcontentloaded')
   })
 
   test('should display loading skeleton for spot price', async ({ authenticatedPage }) => {
@@ -52,13 +52,11 @@ test.describe('StrikeLadder Phase 2 Features', () => {
     // Check for skeleton element (it should be visible initially)
     const skeleton = authenticatedPage.locator('.spot-skeleton')
 
-    // Wait a bit to ensure skeleton was displayed
-    await authenticatedPage.waitForTimeout(100)
-
-    // After delay, spot value should be visible and skeleton gone
-    await authenticatedPage.waitForTimeout(1100)
+    // Wait briefly so skeleton has had time to appear
+    // The route intercept adds 1s delay so after modal appears skeleton should be showing
+    // Then wait for spot value to appear after the delayed API responds
     const spotValue = authenticatedPage.locator('.spot-value')
-    await expect(spotValue).toBeVisible()
+    await expect(spotValue).toBeVisible({ timeout: 5000 })
 
     // Verify spot value contains a number
     const spotText = await spotValue.textContent()
@@ -110,8 +108,9 @@ test.describe('StrikeLadder Phase 2 Features', () => {
         state: 'visible'
       })
 
-      // Wait for API call
-      await authenticatedPage.waitForTimeout(2000)
+      // Wait for API call — look for strike rows to appear as a proxy
+      const strikeRows = authenticatedPage.locator('.strike-row')
+      await strikeRows.first().waitFor({ state: 'visible', timeout: 10000 }).catch(() => {})
 
       // Verify API call was made
       expect(optionChainRequests.length).toBeGreaterThan(0)
@@ -145,7 +144,6 @@ test.describe('StrikeLadder Phase 2 Features', () => {
       await expect(table).toBeVisible()
 
       // Check that at least one strike row exists
-      const strikeRows = authenticatedPage.locator('.strike-row')
       const rowCount = await strikeRows.count()
       expect(rowCount).toBeGreaterThan(0)
     }
@@ -170,8 +168,9 @@ test.describe('StrikeLadder Phase 2 Features', () => {
       state: 'visible'
     })
 
-    // Wait for table to load
-    await authenticatedPage.waitForTimeout(1000)
+    // Wait for table to load (wait for strike rows or table to be populated)
+    const strikeRows = authenticatedPage.locator('.strike-row')
+    await strikeRows.first().waitFor({ state: 'visible', timeout: 10000 }).catch(() => {})
 
     // Initially, Greeks columns should NOT be visible
     let ceTheta = authenticatedPage.locator('th:has-text("CE Θ")')
@@ -221,18 +220,18 @@ test.describe('StrikeLadder Phase 2 Features', () => {
       state: 'visible'
     })
 
-    // Wait for data to load
-    await authenticatedPage.waitForTimeout(2000)
+    // Wait for data to load — look for strike rows to appear
+    const strikeRows = authenticatedPage.locator('.strike-row')
+    await strikeRows.first().waitFor({ state: 'visible', timeout: 10000 }).catch(() => {})
 
     // Enable Greeks display
     const greeksToggle = authenticatedPage.locator('.greeks-toggle input[type="checkbox"]')
     await greeksToggle.check()
 
     // Wait for Greeks columns to appear
-    await authenticatedPage.waitForTimeout(500)
+    await authenticatedPage.locator('th:has-text("CE Θ")').waitFor({ state: 'visible', timeout: 5000 }).catch(() => {})
 
     // Find a strike row with data
-    const strikeRows = authenticatedPage.locator('.strike-row')
     const firstRow = strikeRows.first()
 
     // Get CE Theta cell
@@ -289,8 +288,8 @@ test.describe('StrikeLadder Phase 2 Features', () => {
     const modal = authenticatedPage.locator('[data-testid="autopilot-strike-ladder-modal"]')
     await expect(modal).toBeVisible()
 
-    // Wait for API failure to be processed
-    await authenticatedPage.waitForTimeout(1000)
+    // Wait for API failure to be processed — wait for loading state to resolve
+    await authenticatedPage.locator('.ladder-loading, .ladder-error, .strike-row').first().waitFor({ timeout: 5000 }).catch(() => {})
 
     // Table should be empty (no mock data fallback)
     const strikeRows = authenticatedPage.locator('.strike-row')
@@ -322,14 +321,14 @@ test.describe('StrikeLadder Phase 2 Features', () => {
       state: 'visible'
     })
 
-    // Wait for spot price to load
-    await authenticatedPage.waitForTimeout(1500)
+    // Wait for spot price to load — wait for spot-value element to appear
+    const spotValue = authenticatedPage.locator('.spot-value')
+    await expect(spotValue).toBeVisible({ timeout: 10000 })
 
     // Verify spot price display
     const spotLabel = authenticatedPage.locator('.spot-label')
     await expect(spotLabel).toContainText('Spot:')
 
-    const spotValue = authenticatedPage.locator('.spot-value')
     await expect(spotValue).toBeVisible()
 
     // Verify format

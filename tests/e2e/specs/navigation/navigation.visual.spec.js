@@ -9,7 +9,7 @@ import { test, expect } from '../../fixtures/auth.fixture.js';
 // Helper to prepare page for visual testing
 async function prepareForVisualTest(page) {
   // Wait for any animations to complete
-  await page.waitForTimeout(500);
+  await page.waitForLoadState('domcontentloaded');
 
   // Hide dynamic content that changes between runs
   await page.evaluate(() => {
@@ -58,7 +58,7 @@ test.describe('Navigation Menu - AutoPilot Visual Tests', () => {
 
     const autopilotNav = authenticatedPage.locator('[data-testid="kite-header-nav-autopilot"]');
     await autopilotNav.hover();
-    await authenticatedPage.waitForTimeout(200); // Wait for hover transition
+    await authenticatedPage.waitForLoadState('domcontentloaded'); // Wait for hover transition
 
     await expect(autopilotNav).toHaveScreenshot('autopilot-nav-hover.png', {
       maxDiffPixels: 50,

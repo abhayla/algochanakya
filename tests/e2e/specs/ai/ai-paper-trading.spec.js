@@ -212,7 +212,7 @@ test.describe('AI Paper Trading - Comprehensive Tests', () => {
     test('TC08: Configure tiered sizing', async ({ authenticatedPage }) => {
       await settingsPage.navigate()
       // Wait for page to fully load and sync with backend
-      await authenticatedPage.waitForTimeout(1000)
+      await authenticatedPage.waitForLoadState('domcontentloaded')
 
       // Verify tiered mode is set
       const config = await settingsPage.getConfiguration()
@@ -261,7 +261,7 @@ test.describe('AI Paper Trading - Comprehensive Tests', () => {
         // Deploy a tiered trade first
         await paperTradingPage.triggerDeploy()
         await paperTradingPage.waitForDeploymentComplete()
-        await authenticatedPage.waitForTimeout(2000)
+        await authenticatedPage.waitForLoadState('domcontentloaded')
         tieredTradeRow = await paperTradingPage.findTradeRowBySizing('tiered')
       }
 
@@ -294,7 +294,7 @@ test.describe('AI Paper Trading - Comprehensive Tests', () => {
     test('TC11: Configure kelly sizing', async ({ authenticatedPage }) => {
       await settingsPage.navigate()
       // Wait for page to fully load and sync with backend
-      await authenticatedPage.waitForTimeout(1000)
+      await authenticatedPage.waitForLoadState('domcontentloaded')
 
       const config = await settingsPage.getConfiguration()
       expect(config.sizingMode).toBe('kelly')
@@ -337,7 +337,7 @@ test.describe('AI Paper Trading - Comprehensive Tests', () => {
       if (rows.length === 0) {
         await paperTradingPage.triggerDeploy()
         await paperTradingPage.waitForDeploymentComplete()
-        await authenticatedPage.waitForTimeout(2000)
+        await authenticatedPage.waitForLoadState('domcontentloaded')
       }
 
       const rowsAfterDeploy = await paperTradingPage.getActiveTradeRows()
@@ -345,7 +345,7 @@ test.describe('AI Paper Trading - Comprehensive Tests', () => {
 
       // Exit
       await paperTradingPage.exitTrade(tradeId)
-      await authenticatedPage.waitForTimeout(2000)
+      await authenticatedPage.waitForLoadState('domcontentloaded')
 
       // Verify P&L calculated
       const summary = await paperTradingPage.getSummaryStats()

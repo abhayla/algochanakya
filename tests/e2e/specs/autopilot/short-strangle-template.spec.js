@@ -79,8 +79,9 @@ test.describe('AutoPilot - SHORT-STRANGLE-ADJUSTMENTS-Template', () => {
     await page.getByTestId('autopilot-builder-position-type').selectOption('positional')
 
     // Verify legs were auto-populated for short strangle (2 legs: SELL CE + SELL PE)
-    await page.waitForTimeout(500) // Wait for legs to populate
+    // Wait for legs to populate after strategy type selection
     const legsTable = page.locator('[data-testid^="autopilot-leg-row-"]')
+    await legsTable.first().waitFor({ state: 'visible', timeout: 10000 })
     const legCount = await legsTable.count()
     expect(legCount).toBeGreaterThanOrEqual(2)
 
@@ -91,7 +92,7 @@ test.describe('AutoPilot - SHORT-STRANGLE-ADJUSTMENTS-Template', () => {
     if (leg0ExpiryOptions.length > 1) {
       await leg0ExpirySelect.selectOption({ index: 1 }) // Select first available expiry
     }
-    await page.waitForTimeout(500) // Wait for expiry to be set
+    await page.waitForLoadState('domcontentloaded')
 
     // Open Strike Ladder for Leg 0 and select a CE strike
     const leg0OpenLadderBtn = page.getByTestId('autopilot-leg-open-ladder-0')
@@ -116,7 +117,7 @@ test.describe('AutoPilot - SHORT-STRANGLE-ADJUSTMENTS-Template', () => {
 
     // Modal should close after selection
     await expect(strikeLadderModal).not.toBeVisible({ timeout: 5000 })
-    await page.waitForTimeout(500)
+    await page.waitForLoadState('domcontentloaded')
 
     // ---- Configure Leg 1 (SELL PE): Select expiry and strike via Strike Ladder ----
     const leg1ExpirySelect = page.getByTestId('autopilot-leg-expiry-1')
@@ -125,7 +126,7 @@ test.describe('AutoPilot - SHORT-STRANGLE-ADJUSTMENTS-Template', () => {
     if (leg1ExpiryOptions.length > 1) {
       await leg1ExpirySelect.selectOption({ index: 1 }) // Select same expiry as leg 0
     }
-    await page.waitForTimeout(500) // Wait for expiry to be set
+    await page.waitForLoadState('domcontentloaded')
 
     // Open Strike Ladder for Leg 1 and select a PE strike
     const leg1OpenLadderBtn = page.getByTestId('autopilot-leg-open-ladder-1')
@@ -149,11 +150,11 @@ test.describe('AutoPilot - SHORT-STRANGLE-ADJUSTMENTS-Template', () => {
 
     // Modal should close after selection
     await expect(strikeLadderModal).not.toBeVisible({ timeout: 5000 })
-    await page.waitForTimeout(500)
+    await page.waitForLoadState('domcontentloaded')
 
     // Scroll back to top and verify/re-fill strategy name (may have been cleared by modal interactions)
     await page.evaluate(() => window.scrollTo(0, 0))
-    await page.waitForTimeout(300)
+    await page.waitForLoadState('domcontentloaded')
 
     // Check if name field is empty and re-fill if needed
     const nameField = page.getByTestId('autopilot-builder-name')
@@ -465,7 +466,7 @@ test.describe('AutoPilot - SHORT-STRANGLE-ADJUSTMENTS-Template', () => {
     // This test verifies that adjustment rules persist after navigation
     // First, go directly to Step 3 to check if rules are configured
     await page.getByTestId('autopilot-builder-monitoring-tab').click()
-    await page.waitForTimeout(500)
+    await page.waitForLoadState('domcontentloaded')
 
     // Check that rule builder is visible
     await expect(page.getByTestId('autopilot-adjustment-rule-builder')).toBeVisible()
@@ -496,7 +497,7 @@ test.describe('AutoPilot - SHORT-STRANGLE-ADJUSTMENTS-Template', () => {
     if (expiryOptions.length > 1) {
       await expirySelect.selectOption({ index: 1 })
     }
-    await page.waitForTimeout(500)
+    await page.waitForLoadState('domcontentloaded')
 
     // Open Strike Ladder and select a strike
     const openLadderBtn = page.getByTestId('autopilot-leg-open-ladder-0')
@@ -555,10 +556,10 @@ test.describe('AutoPilot - SHORT-STRANGLE-ADJUSTMENTS-Template', () => {
     }
 
     // Wait for legs to populate
-    await page.waitForTimeout(1000)
+    const legsTable = page.locator('[data-testid^="autopilot-leg-row-"]')
+    await legsTable.first().waitFor({ state: 'visible', timeout: 10000 })
 
     // Verify legs were created (at least 2 for strangle: CE + PE)
-    const legsTable = page.locator('[data-testid^="autopilot-leg-row-"]')
     const legCount = await legsTable.count()
 
     // Short strangle should have 2 legs

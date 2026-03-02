@@ -7,8 +7,7 @@ test.describe('OFO to Strategy Builder - Step 2', () => {
     // Navigate to OFO (assuming Short Straddle results are already there)
     console.log('Navigating to OFO...')
     await page.goto('/ofo')
-    await page.waitForLoadState('networkidle')
-    await page.waitForTimeout(3000)
+    await page.waitForLoadState('domcontentloaded')
 
     // Take screenshot of current OFO state
     await page.screenshot({
@@ -41,8 +40,7 @@ test.describe('OFO to Strategy Builder - Step 2', () => {
       // Wait for navigation to Strategy Builder
       console.log('\nWaiting for Strategy Builder to load...')
       await page.waitForURL(/\/strategy/, { timeout: 10000 })
-      await page.waitForLoadState('networkidle')
-      await page.waitForTimeout(5000)
+      await page.waitForLoadState('domcontentloaded')
 
       // Take screenshot of Strategy Builder
       await page.screenshot({

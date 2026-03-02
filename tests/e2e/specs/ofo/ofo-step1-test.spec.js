@@ -7,46 +7,51 @@ test.describe('OFO Short Straddle - Step 1', () => {
     // Navigate to OFO
     console.log('Navigating to OFO...')
     await page.goto('/ofo')
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('domcontentloaded')
 
-    // Wait for page to fully load
+    // Wait for page to fully load (wait for calculate button to be ready)
     console.log('Waiting for page to load...')
-    await page.waitForTimeout(3000)
+    const calculateBtn = page.getByTestId('ofo-calculate-btn')
+    await calculateBtn.waitFor({ state: 'visible', timeout: 15000 })
 
     // Ensure NIFTY is selected
     console.log('Ensuring NIFTY is selected...')
     const niftyTab = page.getByTestId('ofo-underlying-nifty')
     if (await niftyTab.isVisible()) {
       await niftyTab.click()
-      await page.waitForTimeout(2000)
+      await page.waitForLoadState('domcontentloaded')
     }
 
     // Open strategy dropdown
     console.log('Opening strategy dropdown...')
     const strategySelect = page.getByTestId('ofo-strategy-select')
     await strategySelect.click()
-    await page.waitForTimeout(500)
+    await page.waitForLoadState('domcontentloaded')
 
     // Click "Select All" first to test with multiple strategies
     console.log('Selecting all strategies to find which ones have results...')
     const selectAllBtn = page.locator('button:has-text("Select All")')
     if (await selectAllBtn.isVisible()) {
       await selectAllBtn.click()
-      await page.waitForTimeout(300)
+      await page.waitForLoadState('domcontentloaded')
     }
 
     // Close dropdown
     await page.keyboard.press('Escape')
-    await page.waitForTimeout(500)
+    await page.waitForLoadState('domcontentloaded')
 
-    // Click Calculate button
+    // Click Calculate button and wait for results
     console.log('Clicking Calculate button...')
-    const calculateBtn = page.getByTestId('ofo-calculate-btn')
     await calculateBtn.click({ force: true })
 
-    // Wait for calculation
+    // Wait for calculation — look for result cards or "no results" messages
     console.log('Waiting for calculation to complete...')
-    await page.waitForTimeout(15000)
+    await Promise.race([
+      page.locator('[class*="result-card"]').first().waitFor({ state: 'visible', timeout: 60000 }),
+      page.locator('text=No valid combinations found').first().waitFor({ state: 'visible', timeout: 60000 })
+    ]).catch(() => {
+      console.log('No result indicator appeared within timeout')
+    })
 
     // Take screenshot
     await page.screenshot({
@@ -78,13 +83,13 @@ test.describe('OFO Short Straddle - Step 1', () => {
 
     // Open dropdown again
     await strategySelect.click()
-    await page.waitForTimeout(500)
+    await page.waitForLoadState('domcontentloaded')
 
     // Clear all
     const clearAllBtn = page.locator('button:has-text("Clear All")')
     if (await clearAllBtn.isVisible()) {
       await clearAllBtn.click()
-      await page.waitForTimeout(300)
+      await page.waitForLoadState('domcontentloaded')
     }
 
     // Select Short Straddle
@@ -92,15 +97,20 @@ test.describe('OFO Short Straddle - Step 1', () => {
     if (await shortStraddleItem.isVisible()) {
       await shortStraddleItem.click()
     }
-    await page.waitForTimeout(300)
+    await page.waitForLoadState('domcontentloaded')
 
     // Close dropdown
     await page.keyboard.press('Escape')
-    await page.waitForTimeout(500)
+    await page.waitForLoadState('domcontentloaded')
 
-    // Click Calculate again
+    // Click Calculate again and wait for results
     await calculateBtn.click({ force: true })
-    await page.waitForTimeout(10000)
+    await Promise.race([
+      page.locator('[class*="result-card"]').first().waitFor({ state: 'visible', timeout: 45000 }),
+      page.locator('text=No valid combinations found for Short Straddle').waitFor({ state: 'visible', timeout: 45000 })
+    ]).catch(() => {
+      console.log('No result indicator appeared within timeout')
+    })
 
     // Take final screenshot
     await page.screenshot({

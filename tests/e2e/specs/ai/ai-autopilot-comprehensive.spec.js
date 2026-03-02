@@ -72,7 +72,7 @@ test.describe('AI AutoPilot Comprehensive Testing', () => {
     const saveButton = authenticatedPage.locator('[data-testid="save-strategy-button"]');
     if (await saveButton.isVisible({ timeout: 5000 })) {
       await saveButton.click();
-      await authenticatedPage.waitForTimeout(2000);
+      await authenticatedPage.waitForLoadState('domcontentloaded');
       console.log('✅ Strategy saved');
     }
 
@@ -97,7 +97,7 @@ test.describe('AI AutoPilot Comprehensive Testing', () => {
         console.log(`\n📋 Testing ${strategy.name}`);
 
         await authenticatedPage.goto('/autopilot/builder');
-        await authenticatedPage.waitForLoadState('networkidle');
+        await authenticatedPage.waitForLoadState('domcontentloaded');
 
         // Try to select template
         const templateSelector = `[data-testid="template-${strategy.template}"]`;
@@ -111,7 +111,7 @@ test.describe('AI AutoPilot Comprehensive Testing', () => {
           const saveButton = authenticatedPage.locator('[data-testid="save-strategy-button"]');
           if (await saveButton.isVisible({ timeout: 5000 })) {
             await saveButton.click();
-            await authenticatedPage.waitForTimeout(1000);
+            await authenticatedPage.waitForLoadState('domcontentloaded');
             console.log(`✅ ${strategy.name} saved`);
           }
         } else {

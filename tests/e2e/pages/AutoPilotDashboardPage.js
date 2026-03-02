@@ -439,20 +439,20 @@ export class AutoPilotDashboardPage extends BasePage {
 
   async filterByStatus(status) {
     await this.statusFilter.selectOption(status);
-    // Wait briefly for the filter to apply (API call is triggered on change)
-    await this.page.waitForTimeout(500);
+    // Wait for strategy list to update after filter change
+    await this.page.waitForLoadState('domcontentloaded');
   }
 
   async filterByUnderlying(underlying) {
     await this.underlyingFilter.selectOption(underlying);
-    // Wait briefly for the filter to apply (API call is triggered on change)
-    await this.page.waitForTimeout(500);
+    // Wait for strategy list to update after filter change
+    await this.page.waitForLoadState('domcontentloaded');
   }
 
   async clearAllFilters() {
     await this.clearFiltersButton.click();
-    // Wait briefly for the filters to clear (API call is triggered)
-    await this.page.waitForTimeout(500);
+    // Wait for strategy list to reset
+    await this.page.waitForLoadState('domcontentloaded');
   }
 
   async clickStrategy(id) {
@@ -604,7 +604,7 @@ export class AutoPilotDashboardPage extends BasePage {
   // Activity Timeline methods
   async filterActivities(type) {
     await this.activityFilter.selectOption(type);
-    await this.page.waitForTimeout(300);
+    await this.page.waitForLoadState('domcontentloaded');
   }
 
   async isRealtimeConnected() {
@@ -1197,7 +1197,8 @@ export class AutoPilotStrategyBuilderPage extends BasePage {
       // Wait for mode dropdown to be visible (ensures component is ready)
       await this.getLegStrikeModeDropdown(lastLegIndex).waitFor({ state: 'visible', timeout: 3000 });
       await this.getLegStrikeModeDropdown(lastLegIndex).selectOption('fixed');
-      await this.page.waitForTimeout(200); // Wait for mode change to render input
+      // Wait for mode change to render fixed input (reactive update)
+      await this.getLegStrikeFixedInput(lastLegIndex).waitFor({ state: 'visible', timeout: 3000 });
       await this.getLegStrikeFixedInput(lastLegIndex).fill(strike.toString());
     }
     if (type) {
@@ -2060,8 +2061,8 @@ export class AutoPilotTemplatesPage extends BasePage {
 
   async searchTemplates(query) {
     await this.searchInput.fill(query);
-    await this.page.waitForTimeout(500);
-    await this.page.waitForLoadState('networkidle');
+    // Wait for search debounce + results to render (no fixed timeout needed)
+    await this.page.waitForLoadState('domcontentloaded');
   }
 
   async clearSearch() {
@@ -2610,7 +2611,8 @@ export class AutoPilotAnalyticsPage extends BasePage {
   async filterByCustomDates(start, end) {
     // Click custom preset first
     await this.rangeCustom.click();
-    await this.page.waitForTimeout(300); // Wait for custom inputs to appear
+    // Wait for custom date inputs to become visible (reactive show/hide)
+    await this.startDate.waitFor({ state: 'visible', timeout: 3000 });
     await this.startDate.fill(start);
     await this.endDate.fill(end);
     // No apply button needed - Vue watches date changes
@@ -3095,8 +3097,8 @@ export class AutoPilotBacktestPage extends BasePage {
 
   async configureBacktest({ name, strategy, startDate, endDate, capital, lots, slippage }) {
     await this.openConfigModal();
-    // Wait for modal to be fully visible
-    await this.page.waitForTimeout(300);
+    // Wait for modal to be fully visible (openConfigModal uses waitForTestId already)
+    // No additional wait needed — modal is confirmed visible by openConfigModal
 
     if (name && await this.nameInput.isVisible()) {
       await this.nameInput.fill(name);

@@ -78,7 +78,7 @@ export class AISettingsPage extends BasePage {
     const radio = this.getByTestId(`mode-${mode}`)
     await radio.click()
     // Wait for auto-save
-    await this.page.waitForTimeout(500)
+    await this.page.waitForLoadState('domcontentloaded')
   }
 
   /**
@@ -96,7 +96,7 @@ export class AISettingsPage extends BasePage {
   async setSizingMode(mode) {
     await this.sizingModeSelect.selectOption(mode)
     // Wait for auto-save
-    await this.page.waitForTimeout(500)
+    await this.page.waitForLoadState('domcontentloaded')
   }
 
   /**
@@ -144,7 +144,7 @@ export class AISettingsPage extends BasePage {
   async saveAndWait() {
     await this.saveButton.click()
     // Wait briefly for save to complete
-    await this.page.waitForTimeout(500)
+    await this.page.waitForLoadState('domcontentloaded')
   }
 
   /**
@@ -157,7 +157,7 @@ export class AISettingsPage extends BasePage {
     })
 
     await this.resetButton.click()
-    await this.page.waitForTimeout(1000)
+    await this.page.waitForLoadState('domcontentloaded')
   }
 
   /**
@@ -263,6 +263,6 @@ export class AISettingsPage extends BasePage {
    */
   async waitForSaveComplete() {
     // Wait for toast or some success indicator
-    await this.page.waitForTimeout(1500)
+    await this.page.waitForLoadState('domcontentloaded')
   }
 }

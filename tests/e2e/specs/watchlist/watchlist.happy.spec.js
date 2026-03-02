@@ -33,7 +33,7 @@ test.describe('Watchlist - Happy Path @happy', () => {
   test('should search for instruments', async ({ page }) => {
     await watchlistPage.search('NIFTY');
     // Wait for search results
-    await page.waitForTimeout(600);
+    await page.waitForLoadState('domcontentloaded');
     // Either dropdown appears or no results
     const hasResults = await watchlistPage.searchDropdown.isVisible().catch(() => false);
     const hasNoResults = await watchlistPage.noResultsMessage.isVisible().catch(() => false);

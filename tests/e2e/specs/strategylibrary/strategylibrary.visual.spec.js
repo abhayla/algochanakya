@@ -240,7 +240,7 @@ test.describe('Strategy Library - Visual Regression @visual', () => {
 
   test('should display empty state properly', async ({ authenticatedPage }) => {
     await strategyLibraryPage.search('xyz123nonexistent999');
-    await authenticatedPage.waitForTimeout(500);
+    await authenticatedPage.waitForLoadState('domcontentloaded');
 
     const cardCount = await strategyLibraryPage.getStrategyCardCount();
     if (cardCount === 0) {
@@ -261,9 +261,9 @@ test.describe('Strategy Library - Visual Regression @visual', () => {
 
     // Select two strategies
     await cards[0].locator('[data-testid$="-compare"]').click();
-    await authenticatedPage.waitForTimeout(200);
+    await authenticatedPage.waitForLoadState('domcontentloaded');
     await cards[1].locator('[data-testid$="-compare"]').click();
-    await authenticatedPage.waitForTimeout(200);
+    await authenticatedPage.waitForLoadState('domcontentloaded');
 
     const comparisonBar = strategyLibraryPage.comparisonBar;
     const isVisible = await comparisonBar.isVisible().catch(() => false);
@@ -279,7 +279,7 @@ test.describe('Strategy Library - Visual Regression @visual', () => {
 
   test('should match strategy library page snapshot', async ({ authenticatedPage }) => {
     // Wait for page to fully load
-    await authenticatedPage.waitForTimeout(1000);
+    await authenticatedPage.waitForLoadState('domcontentloaded');
     await prepareForVisualTest(authenticatedPage);
 
     // Take screenshot for visual comparison
@@ -288,7 +288,7 @@ test.describe('Strategy Library - Visual Regression @visual', () => {
 
   test('should match wizard modal snapshot', async ({ authenticatedPage }) => {
     await strategyLibraryPage.openWizard();
-    await authenticatedPage.waitForTimeout(500);
+    await strategyLibraryPage.wizardModal.waitFor({ state: 'visible' });
     await prepareForVisualTest(authenticatedPage);
 
     await expect(strategyLibraryPage.wizardModal).toHaveScreenshot('strategy-wizard-modal.png', getVisualCompareOptions());
@@ -299,7 +299,7 @@ test.describe('Strategy Library - Visual Regression @visual', () => {
     const detailsButton = firstCard.locator('[data-testid$="-view-details"]');
 
     await detailsButton.click();
-    await authenticatedPage.waitForTimeout(500);
+    await strategyLibraryPage.detailsModal.waitFor({ state: 'visible' });
     await prepareForVisualTest(authenticatedPage);
 
     await expect(strategyLibraryPage.detailsModal).toHaveScreenshot('strategy-details-modal.png', getVisualCompareOptions());

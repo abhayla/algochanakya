@@ -49,7 +49,7 @@ test.describe('Login - Visual Regression @visual', () => {
   test('safety info expanded state matches baseline', async ({ page }) => {
     await page.setViewportSize(VIEWPORTS.desktop);
     await loginPage.toggleSafetyInfo();
-    await page.waitForTimeout(300); // Wait for expand animation
+    await page.waitForLoadState('domcontentloaded'); // Wait for expand animation
     await prepareForVisualTest(page);
     await expect(page).toHaveScreenshot(
       'login-safety-info.png',
@@ -60,7 +60,7 @@ test.describe('Login - Visual Regression @visual', () => {
   test('error state matches baseline', async ({ page }) => {
     await page.setViewportSize(VIEWPORTS.desktop);
     await loginPage.clickAngelOneLogin(); // Triggers error message
-    await page.waitForTimeout(300);
+    await page.waitForLoadState('domcontentloaded');
     await prepareForVisualTest(page);
     await expect(page).toHaveScreenshot(
       'login-error.png',

@@ -98,7 +98,7 @@ test.describe('Header Index Prices @happy', () => {
     await authenticatedPage.waitForLoadState('networkidle');
 
     // Wait a moment for the page to stabilize
-    await authenticatedPage.waitForTimeout(1000);
+    await authenticatedPage.waitForLoadState('domcontentloaded');
 
     // Verify index prices are still visible
     await expect(headerPage.indexPricesContainer).toBeVisible();

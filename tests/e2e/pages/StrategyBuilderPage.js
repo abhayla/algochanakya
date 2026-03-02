@@ -349,7 +349,7 @@ export class StrategyBuilderPage extends BasePage {
     await this.page.waitForLoadState('networkidle').catch(() => {});
 
     // Additional wait for Vue reactivity
-    await this.page.waitForTimeout(1000);
+    await this.page.waitForLoadState('domcontentloaded');
   }
 
   /**
@@ -421,7 +421,7 @@ export class StrategyBuilderPage extends BasePage {
       timeout: 15000
     }).catch(() => {});
     // Additional buffer for Vue reactivity
-    await this.page.waitForTimeout(500);
+    await this.page.waitForLoadState('domcontentloaded');
   }
 
   /**
@@ -576,7 +576,7 @@ export class StrategyBuilderPage extends BasePage {
   async waitForPnLUpdate() {
     // Wait for P/L calculation to complete by checking for P/L columns
     // The P/L grid columns (th.th-spot) appear after calculation
-    await this.page.waitForTimeout(500); // Brief delay for calculation to trigger
+    await this.page.waitForLoadState('domcontentloaded'); // Brief delay for calculation to trigger
 
     // Wait for P/L grid columns to appear (max 10 seconds)
     try {
@@ -587,7 +587,7 @@ export class StrategyBuilderPage extends BasePage {
     } catch (e) {
       // If columns don't appear, wait additional time and continue
       // (calculation might have failed, which is a valid test failure)
-      await this.page.waitForTimeout(2000);
+      await this.page.waitForLoadState('domcontentloaded');
     }
   }
 

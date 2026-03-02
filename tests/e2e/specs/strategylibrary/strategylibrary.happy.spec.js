@@ -329,7 +329,7 @@ test.describe('Strategy Library - Happy Path @happy', () => {
     await deployButton.click();
 
     // Wait for legs to load
-    await authenticatedPage.waitForTimeout(1000);
+    await authenticatedPage.waitForLoadState('domcontentloaded');
     const legsCount = await strategyLibraryPage.getDeployLegsCount();
     expect(legsCount).toBeGreaterThanOrEqual(1);
   });
@@ -358,7 +358,7 @@ test.describe('Strategy Library - Happy Path @happy', () => {
     await strategyLibraryPage.selectDeployUnderlying('NIFTY');
 
     // Wait for expiries to load and auto-select
-    await authenticatedPage.waitForTimeout(1000);
+    await authenticatedPage.waitForLoadState('domcontentloaded');
 
     // Verify expiry is selected (auto-selects first)
     const expirySelect = strategyLibraryPage.deployExpirySelect;
@@ -396,7 +396,7 @@ test.describe('Strategy Library - Happy Path @happy', () => {
 
     // Select BANKNIFTY
     await strategyLibraryPage.selectDeployUnderlying('BANKNIFTY');
-    await authenticatedPage.waitForTimeout(1000);
+    await authenticatedPage.waitForLoadState('domcontentloaded');
 
     // Set 2 lots
     await strategyLibraryPage.setDeployLots(2);
@@ -423,7 +423,7 @@ test.describe('Strategy Library - Happy Path @happy', () => {
 
     // Select FINNIFTY
     await strategyLibraryPage.selectDeployUnderlying('FINNIFTY');
-    await authenticatedPage.waitForTimeout(1000);
+    await authenticatedPage.waitForLoadState('domcontentloaded');
 
     // Set 1 lot
     await strategyLibraryPage.setDeployLots(1);
@@ -463,7 +463,7 @@ test.describe('Strategy Library - Happy Path @happy', () => {
 
       // Configure and deploy
       await strategyLibraryPage.selectDeployUnderlying('NIFTY');
-      await authenticatedPage.waitForTimeout(1000);
+      await authenticatedPage.waitForLoadState('domcontentloaded');
       await strategyLibraryPage.setDeployLots(1);
       await strategyLibraryPage.confirmDeploy();
 
@@ -478,7 +478,7 @@ test.describe('Strategy Library - Happy Path @happy', () => {
 
     // NIFTY lot size = 75
     await strategyLibraryPage.selectDeployUnderlying('NIFTY');
-    await authenticatedPage.waitForTimeout(500);
+    await authenticatedPage.waitForLoadState('domcontentloaded');
     await strategyLibraryPage.setDeployLots(2);
 
     // Check lot size display (75 x 2 = 150)
@@ -487,7 +487,7 @@ test.describe('Strategy Library - Happy Path @happy', () => {
 
     // Change to BANKNIFTY lot size = 15
     await strategyLibraryPage.selectDeployUnderlying('BANKNIFTY');
-    await authenticatedPage.waitForTimeout(500);
+    await authenticatedPage.waitForLoadState('domcontentloaded');
 
     // Check lot size display (15 x 2 = 30)
     const lotSizeText2 = await strategyLibraryPage.deployEstimates.textContent();

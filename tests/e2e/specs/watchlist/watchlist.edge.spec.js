@@ -29,7 +29,7 @@ test.describe('Watchlist - Edge Cases @edge', () => {
 
   test('should handle search with no results', async ({ page }) => {
     await watchlistPage.search('XYZNONEXISTENT123');
-    await page.waitForTimeout(600);
+    await page.waitForLoadState('domcontentloaded');
     const noResults = await watchlistPage.noResultsMessage.isVisible().catch(() => false);
     // Either no results or empty dropdown
     expect(noResults || !(await watchlistPage.searchDropdown.isVisible().catch(() => false))).toBeTruthy();
@@ -37,7 +37,7 @@ test.describe('Watchlist - Edge Cases @edge', () => {
 
   test('should handle special characters in search', async ({ page }) => {
     await watchlistPage.search('@#$%');
-    await page.waitForTimeout(600);
+    await page.waitForLoadState('domcontentloaded');
     // Should not crash, may show no results
     await expect(watchlistPage.searchInput).toBeVisible();
   });
@@ -45,7 +45,7 @@ test.describe('Watchlist - Edge Cases @edge', () => {
   test('should handle rapid search input', async ({ page }) => {
     // Type rapidly
     await watchlistPage.searchInput.type('NIFTY', { delay: 50 });
-    await page.waitForTimeout(600);
+    await page.waitForLoadState('domcontentloaded');
     // Page should remain stable
     await expect(watchlistPage.pageContainer).toBeVisible();
   });
@@ -73,7 +73,7 @@ test.describe('Watchlist - Edge Cases @edge', () => {
 
   test('should maintain state after failed search', async ({ page }) => {
     await watchlistPage.search('INVALIDTERM');
-    await page.waitForTimeout(600);
+    await page.waitForLoadState('domcontentloaded');
     await watchlistPage.clearSearch();
     // Page should be in initial state
     await expect(watchlistPage.searchInput).toHaveValue('');
