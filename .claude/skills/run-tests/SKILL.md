@@ -61,59 +61,109 @@ run-tests frontend           # All frontend tests
 
 ---
 
-### E2E Tests (Per-Screen Strategy)
+### E2E Tests (Tier-Based Strategy)
 
-**Run specs one at a time to isolate failures:**
+**Run tiers in order. Login failure cascade-stops all subsequent tiers.**
+
+Tiered execution saves time: if login is broken, nothing else will pass. Running login first ensures
+cascading failures are detected immediately rather than wasting time on 100+ doomed tests.
 
 ```python
-screens = [
-    'login', 'dashboard', 'watchlist', 'positions',
-    'optionchain', 'strategy', 'strategylibrary',
-    'autopilot', 'ofo', 'navigation', 'audit'
+# Tier definitions — ordered by dependency (login is the foundation)
+TIERS = [
+    {
+        "name": "Tier 0 — CRITICAL: Auth",
+        "screens": ["login"],
+        "cascade_stop": True,  # If this tier fails, stop ALL subsequent tiers
+        "description": "Auth foundation. Any failure here means all other tests will fail."
+    },
+    {
+        "name": "Tier 1 — Core Navigation",
+        "screens": ["dashboard", "navigation"],
+        "cascade_stop": False,
+    },
+    {
+        "name": "Tier 2 — Market Data",
+        "screens": ["watchlist", "optionchain"],
+        "cascade_stop": False,
+    },
+    {
+        "name": "Tier 3 — Trading",
+        "screens": ["positions", "strategy", "strategylibrary", "ofo"],
+        "cascade_stop": False,
+    },
+    {
+        "name": "Tier 4 — Automation",
+        "screens": ["autopilot", "ai"],
+        "cascade_stop": False,
+    },
+    {
+        "name": "Tier 5 — Quality",
+        "screens": ["audit", "header", "auth", "integration"],
+        "cascade_stop": False,
+    },
 ]
 
-for screen in screens:
+failed_specs = []
+
+for tier in TIERS:
     print(f"\n{'='*60}")
-    print(f"Running {screen} E2E tests...")
+    print(f"🔷 {tier['name']}")
     print(f"{'='*60}\n")
 
-    # Get all specs for this screen
-    specs = glob(f"tests/e2e/specs/{screen}/*.spec.js")
+    tier_failed = False
 
-    for spec in specs:
-        print(f"\n📝 Running {spec}...")
+    for screen in tier["screens"]:
+        specs = glob(f"tests/e2e/specs/{screen}/*.spec.js")
+        if not specs:
+            continue
 
-        # Run single spec
-        result = Bash(
-            command=f"npx playwright test {spec}",
-            timeout=180000  # 3 minutes per spec
-        )
+        for spec in specs:
+            print(f"\n📝 Running {spec}...")
 
-        # Check result (hooks record automatically)
-        if "failed" in result.lower():
-            print(f"❌ {spec} failed")
+            result = Bash(
+                command=f"npx playwright test {spec}",
+                timeout=180000  # 3 minutes per spec
+            )
 
-            # Attempt fix (budget=1, single iteration)
-            print(f"🔧 Attempting fix with fix-loop (budget=1)...")
-            fix_result = Skill("fix-loop")
+            if "failed" in result.lower():
+                print(f"❌ {spec} failed")
+                tier_failed = True
 
-            if "RESOLVED" in fix_result or "PASSED" in fix_result:
-                print(f"✅ Fix successful, restarting {screen} screen")
-                break  # Restart this screen from first spec
+                # Attempt fix (budget=1, single iteration)
+                print(f"🔧 Attempting fix with fix-loop (budget=1)...")
+                fix_result = Skill("fix-loop")
+
+                if "RESOLVED" in fix_result or "PASSED" in fix_result:
+                    print(f"✅ Fix successful, restarting {screen} screen")
+                    break  # Restart this screen from first spec
+                else:
+                    print(f"⚠️  Fix failed, continuing to next spec")
+                    failed_specs.append(spec)
+
+                    # Check global failure limit
+                    if len(failed_specs) >= 10:
+                        print(f"\n🚫 10 failures reached, stopping E2E tests")
+                        break
             else:
-                print(f"⚠️  Fix failed, continuing to next spec")
-                failed_specs.append(spec)
+                print(f"✅ {spec} passed")
 
-                # Check failure limit
-                if len(failed_specs) >= 10:
-                    print(f"\n🚫 10 failures reached, stopping E2E tests")
-                    break
+    # Cascade stop check: if Tier 0 (auth) fails, stop everything
+    if tier_failed and tier["cascade_stop"]:
+        print(f"\n🚨 CRITICAL: {tier['name']} failed!")
+        print(f"   Auth is broken — all downstream tiers will fail.")
+        print(f"   Stopping execution. Fix auth first.")
+        print(f"\nFailed specs: {failed_specs}")
+        break  # Stop all tiers
 
-        else:
-            print(f"✅ {spec} passed")
+    if len(failed_specs) >= 10:
+        break  # Global limit reached
 ```
 
-**10-failure limit:** Stop if 10 specs fail across all screens (prevents cascading failures).
+**Tier 0 cascade-stop:** If login tests fail, all subsequent tiers are skipped. This prevents
+wasting 20+ minutes running tests that will all fail due to auth being broken.
+
+**10-failure limit:** Stop if 10 specs fail across all tiers (prevents cascading failures).
 
 **Per-screen restart:** If a fix succeeds, restart that screen from the first spec (fix may have affected multiple tests).
 

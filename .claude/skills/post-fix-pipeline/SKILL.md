@@ -229,7 +229,97 @@ if result != 'pass':
     exit(1)  # Block commit
 ```
 
-**If both suites pass:** Continue to Step 4
+**If both suites pass:** Continue to Step 3.3
+
+---
+
+#### 3.3 E2E Smoke + Affected Screens
+
+**Purpose:** Catch UI regressions that pass unit tests but break the actual rendered interface.
+
+**Why:** Unit tests (pytest/Vitest) can't catch broken Vue components, missing `data-testid`, or broken navigation. E2E is the only gate that catches these.
+
+**Execution strategy:**
+1. Always run **login smoke** first — if auth breaks, all other E2E tests will fail
+2. Run affected screens based on changed files
+3. Fallback to `npm run test:main-features` if no specific screen is affected
+4. Time budget: 10 minutes maximum, `--retries=1` for flakiness
+
+**Step 3.3 Implementation:**
+
+```python
+import subprocess
+
+# Step 3.3.1: Always run login smoke (foundation — auth breakage cascades to all tests)
+print("🔐 Step 3.3.1: Login smoke test...")
+login_result = Bash(
+    command="npx playwright test tests/e2e/specs/login/login.isolated.spec.js --retries=1",
+    timeout=60000  # 1 minute
+)
+
+if "failed" in login_result.lower():
+    print("🚫 BLOCKED: Login smoke test failed.")
+    print("   Auth is broken — all E2E tests will fail. Fix auth before proceeding.")
+    exit(1)
+
+print("✅ Login smoke passed")
+
+# Step 3.3.2: Determine affected screens from changed files
+changed_files = state['steps']['step3_implement']['filesChanged']
+
+SCREEN_MAP = {
+    'positions': ['PositionsView.vue', 'positions.py', 'PositionsPage.js', 'specs/positions/'],
+    'watchlist': ['WatchlistView.vue', 'watchlist.py', 'WatchlistPage.js', 'specs/watchlist/'],
+    'optionchain': ['OptionChainView.vue', 'option_chain', 'OptionChainPage.js', 'specs/optionchain/'],
+    'strategy': ['StrategyBuilderView.vue', 'strategy.py', 'StrategyBuilderPage.js', 'specs/strategy/'],
+    'strategylibrary': ['StrategyLibrary', 'strategy_library', 'StrategyLibraryPage.js', 'specs/strategylibrary/'],
+    'autopilot': ['autopilot/', 'AutoPilot', 'specs/autopilot/', 'specs/ai/'],
+    'dashboard': ['DashboardView.vue', 'dashboard.py', 'DashboardPage.js', 'specs/dashboard/'],
+    'ofo': ['OFOView.vue', 'ofo.py', 'OFOPage.js', 'specs/ofo/'],
+    'navigation': ['KiteHeader.vue', 'router/', 'specs/navigation/'],
+    'auth': ['auth.py', 'auth.js', 'specs/auth/', 'specs/login/', 'specs/integration/'],
+}
+
+affected_screens = set()
+for f in changed_files:
+    for screen, patterns in SCREEN_MAP.items():
+        if any(p in f for p in patterns):
+            affected_screens.add(screen)
+
+# Step 3.3.3: Run affected screen tests (or fallback to main-features)
+if affected_screens:
+    print(f"📋 Running E2E for affected screens: {', '.join(sorted(affected_screens))}")
+    e2e_failed = False
+    for screen in sorted(affected_screens):
+        result = Bash(
+            command=f"npm run test:specs:{screen} -- --retries=1",
+            timeout=300000  # 5 minutes per screen
+        )
+        if "failed" in result.lower():
+            print(f"❌ E2E failed for screen: {screen}")
+            e2e_failed = True
+        else:
+            print(f"✅ E2E passed for screen: {screen}")
+    if e2e_failed:
+        print("🚫 BLOCKED: E2E smoke tests failed for affected screens.")
+        exit(1)
+else:
+    print("📋 No specific screen affected — running main feature smoke tests...")
+    result = Bash(
+        command="npm run test:main-features -- --retries=1",
+        timeout=600000  # 10 minutes budget
+    )
+    if "failed" in result.lower():
+        print("🚫 BLOCKED: E2E main-features smoke test failed.")
+        exit(1)
+    print("✅ E2E main-features smoke passed")
+```
+
+**Hard blocks:**
+- Login smoke failure → immediate block (auth breakage cascades to everything)
+- Any affected screen failure → block (UI regression detected)
+
+**If E2E smoke passes:** Continue to Step 4
 
 ---
 
