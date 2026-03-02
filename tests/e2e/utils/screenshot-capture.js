@@ -8,7 +8,7 @@
  *   node tests/e2e/utils/screenshot-capture.js
  *
  * Prerequisites:
- *   - Backend running on http://localhost:8000
+ *   - Backend running on http://localhost:8001
  *   - Frontend running on http://localhost:5173
  *   - Valid auth token in tests/config/.auth-token
  *   - Test data seeded (strategies, templates, etc.)

@@ -24,7 +24,7 @@ try {
 }
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
-const API_BASE = process.env.API_BASE || 'http://localhost:8000';
+const API_BASE = process.env.API_BASE || 'http://localhost:8001';
 
 /**
  * Check if credentials are configured

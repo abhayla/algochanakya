@@ -13,7 +13,7 @@
 
 import { test, expect } from '@playwright/test';
 
-const API_BASE = process.env.API_BASE || 'http://localhost:8000';
+const API_BASE = process.env.API_BASE || 'http://localhost:8001';
 
 test.describe('Strategy Library - API Validation @api', () => {
   const authHeader = process.env.TEST_AUTH_TOKEN

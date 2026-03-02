@@ -4,6 +4,7 @@
  */
 
 import { test, expect } from '../../fixtures/auth.fixture.js';
+import { API_BASE } from '../../helpers/config.helper.js';
 
 test.describe('AI AutoPilot Comprehensive Testing', () => {
   test.describe.configure({ mode: 'serial' });
@@ -12,7 +13,7 @@ test.describe('AI AutoPilot Comprehensive Testing', () => {
 
   // Phase 1: Environment Setup & Verification
   test('Phase 1.1: Verify backend health', async ({ request }) => {
-    const response = await request.get('http://localhost:8000/api/health');
+    const response = await request.get(`${API_BASE}/api/health`);
     expect(response.ok()).toBeTruthy();
     const data = await response.json();
     expect(data.status).toBe('healthy');

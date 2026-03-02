@@ -13,7 +13,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Dev URLs
 const DEV_FRONTEND_URL = 'http://localhost:5173';
-const DEV_API_BASE = 'http://localhost:8000';
+const DEV_API_BASE = process.env.API_BASE || 'http://localhost:8001';
 
 // Auth state files for dev
 const AUTH_STATE_PATH = path.join(__dirname, '../config/.auth-state.json');

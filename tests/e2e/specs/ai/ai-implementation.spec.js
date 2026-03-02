@@ -27,7 +27,7 @@ function getAuthToken() {
   return process.env.TEST_AUTH_TOKEN
 }
 
-const API_BASE = process.env.API_BASE || 'http://localhost:8000'
+const API_BASE = process.env.API_BASE || 'http://localhost:8001'
 const authToken = getAuthToken()
 const authHeader = authToken ? { 'Authorization': `Bearer ${authToken}` } : {}
 

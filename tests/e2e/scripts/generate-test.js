@@ -272,7 +272,7 @@ function generateApiSpec(screenName, routePath) {
 
 import { test, expect } from '@playwright/test';
 
-const API_BASE = process.env.API_BASE || 'http://localhost:8000';
+const API_BASE = process.env.API_BASE || 'http://localhost:8001';
 
 test.describe('${screenName} - API Validation @api', () => {
   // TODO: Add API tests specific to ${screenName}

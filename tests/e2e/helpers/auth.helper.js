@@ -10,6 +10,8 @@
  * @param {import('@playwright/test').Page} page - Playwright page object
  * @returns {Promise<string|null>} The auth token or null
  */
+const API_BASE = process.env.API_BASE || 'http://localhost:8001';
+
 export async function getAuthToken(page) {
   return await page.evaluate(() => localStorage.getItem('access_token'));
 }
@@ -58,7 +60,7 @@ export async function getUserInfo(page) {
 
   return await page.evaluate(async (tokenValue) => {
     try {
-      const response = await fetch('http://localhost:8000/api/auth/me', {
+      const response = await fetch(`${API_BASE}/api/auth/me`, {
         headers: { 'Authorization': `Bearer ${tokenValue}` }
       });
 
@@ -97,7 +99,7 @@ export async function logout(page) {
   if (token) {
     try {
       await page.evaluate(async (tokenValue) => {
-        await fetch('http://localhost:8000/api/auth/logout', {
+        await fetch(`${API_BASE}/api/auth/logout`, {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${tokenValue}` }
         });

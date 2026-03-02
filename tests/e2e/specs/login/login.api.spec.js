@@ -6,7 +6,7 @@
 
 import { test, expect } from '@playwright/test';
 
-const API_BASE = process.env.API_BASE || 'http://localhost:8000';
+const API_BASE = process.env.API_BASE || 'http://localhost:8001';
 
 // Skip: API tests require running backend
 test.describe.skip('Login - API Validation @api', () => {
