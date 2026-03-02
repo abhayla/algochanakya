@@ -1,6 +1,6 @@
 # Container and Component Diagram
 
-**Last Updated:** 2026-02-16
+**Last Updated:** 2026-03-02
 
 This diagram shows AlgoChanakya's internal architecture, including containers (deployable units) and their internal components.
 
@@ -36,13 +36,16 @@ flowchart TB
         subgraph BrokerLayer["<b>Broker Abstraction Layer</b>"]
             Interfaces["<b>Interfaces</b><br/>BrokerAdapter<br/>MarketDataBrokerAdapter"]
             Factories["<b>Factories</b><br/>get_broker_adapter()<br/>get_market_data_adapter()"]
-            Adapters["<b>Adapters</b><br/>KiteAdapter, SmartAPIAdapter,<br/>SmartAPIMarketDataAdapter"]
+            Adapters["<b>Adapters (6 order + 6 market data)</b><br/>KiteAdapter, SmartAPIAdapter, DhanOrderAdapter,<br/>FyersOrderAdapter, PaytmOrderAdapter, UpstoxOrderAdapter<br/>+ SmartAPI/Kite/Dhan/Fyers/Paytm/Upstox MarketData"]
             Utils["<b>Utils</b><br/>SymbolConverter, TokenManager,<br/>RateLimiter"]
         end
 
-        subgraph TickerServices["<b>Legacy Ticker Services</b><br/>(to be replaced)"]
-            SmartTicker["SmartAPITickerService<br/>(singleton WebSocket)"]
-            KiteTicker["KiteTickerService<br/>(singleton WebSocket)"]
+        subgraph TickerSystem["<b>Ticker System</b><br/>5-Component Architecture"]
+            TickerPool["TickerPool<br/>(adapter lifecycle, ref-counting)"]
+            TickerRouter["TickerRouter<br/>(user fan-out, subscription mapping)"]
+            HealthMonitor["HealthMonitor<br/>(5s heartbeat, per-adapter scoring)"]
+            FailoverCtrl["FailoverController<br/>(make-before-break failover)"]
+            TickerAdapters["6 Ticker Adapters<br/>(SmartAPI, Kite, Dhan,<br/>Fyers, Paytm, Upstox)"]
         end
 
         subgraph AutoPilot["<b>AutoPilot Engine</b><br/>26 services"]
@@ -64,8 +67,7 @@ flowchart TB
 
         subgraph Auth["<b>Auth & Security</b>"]
             JWT["JWT (HS256, 24h expiry)"]
-            OAuth["OAuth 2.0 (Zerodha)"]
-            TOTP["Auto-TOTP (AngelOne)"]
+            BrokerAuth["6 Broker Auth Flows<br/>Kite: OAuth 2.0 | SmartAPI: Auto-TOTP<br/>Upstox: OAuth (~1yr) | Fyers: OAuth<br/>Dhan: Static Token | Paytm: OAuth 3 JWTs"]
             Encrypt["Credential Encryption<br/>(cryptography lib, AES-256)"]
         end
     end
@@ -92,9 +94,9 @@ flowchart TB
     Routes --> AI
     Routes --> Options
     Routes --> Auth
-    Routes --> TickerServices
+    Routes --> TickerSystem
 
-    BrokerLayer --> TickerServices
+    BrokerLayer --> TickerSystem
     AutoPilot --> BrokerLayer
     AI --> BrokerLayer
 
@@ -109,7 +111,7 @@ flowchart TB
     class Database database
     class Cache cache
     class Views,Stores,Services,Composables component
-    class API,BrokerLayer,TickerServices,AutoPilot,AI,Options,Auth component
+    class API,BrokerLayer,TickerSystem,AutoPilot,AI,Options,Auth component
 ```
 
 ---
@@ -167,19 +169,32 @@ flowchart TB
 │  ┌─────────────────────────────────────────────────────────────────┐   │
 │  │ Broker Abstraction Layer                                        │   │
 │  │ ┌─────────────────┬──────────────────┬────────────────────────┐ │   │
-│  │ │ Interfaces      │ Factories        │ Adapters              │ │   │
-│  │ │ - BrokerAdapter │ - get_broker_    │ - KiteAdapter         │ │   │
-│  │ │ - MarketData    │   adapter()      │ - SmartAPIAdapter     │ │   │
-│  │ │   BrokerAdapter │ - get_market_    │ - SmartAPIMarketData  │ │   │
-│  │ │                 │   data_adapter() │   Adapter             │ │   │
+│  │ │ Interfaces      │ Factories        │ Order Adapters (6)     │ │   │
+│  │ │ - BrokerAdapter │ - get_broker_    │ - KiteAdapter          │ │   │
+│  │ │ - MarketData    │   adapter()      │ - SmartAPIAdapter      │ │   │
+│  │ │   BrokerAdapter │ - get_market_    │ - DhanOrderAdapter     │ │   │
+│  │ │                 │   data_adapter() │ - FyersOrderAdapter    │ │   │
+│  │ │                 │                  │ - PaytmOrderAdapter    │ │   │
+│  │ │                 │                  │ - UpstoxOrderAdapter   │ │   │
+│  │ │                 │                  ├────────────────────────┤ │   │
+│  │ │                 │                  │ MarketData Adap. (6)   │ │   │
+│  │ │                 │                  │ - SmartAPIMarketData   │ │   │
+│  │ │                 │                  │ - KiteMarketData       │ │   │
+│  │ │                 │                  │ - DhanMarketData       │ │   │
+│  │ │                 │                  │ - FyersMarketData      │ │   │
+│  │ │                 │                  │ - PaytmMarketData      │ │   │
+│  │ │                 │                  │ - UpstoxMarketData     │ │   │
 │  │ └─────────────────┴──────────────────┴────────────────────────┘ │   │
 │  │ Utils: SymbolConverter, TokenManager, RateLimiter              │   │
 │  └─────────────────────────────────────────────────────────────────┘   │
 │                                                                         │
 │  ┌─────────────────────────────────────────────────────────────────┐   │
-│  │ Legacy Ticker Services (to be replaced by 5-component arch)     │   │
-│  │ - SmartAPITickerService (singleton WebSocket)                   │   │
-│  │ - KiteTickerService (singleton WebSocket)                       │   │
+│  │ Ticker System (5-Component Architecture)                        │   │
+│  │ - TickerPool (adapter lifecycle, ref-counted subscriptions)     │   │
+│  │ - TickerRouter (user fan-out, subscription mapping)             │   │
+│  │ - HealthMonitor (5s heartbeat, per-adapter scoring)             │   │
+│  │ - FailoverController (make-before-break failover)               │   │
+│  │ - 6 Adapters: SmartAPI, Kite, Dhan, Fyers, Paytm, Upstox      │   │
 │  └─────────────────────────────────────────────────────────────────┘   │
 │                                                                         │
 │  ┌─────────────────────────────────────────────────────────────────┐   │
@@ -209,9 +224,11 @@ flowchart TB
 │                                                                         │
 │  ┌─────────────────────────────────────────────────────────────────┐   │
 │  │ Auth & Security                                                 │   │
-│  │ - JWT (HS256, 24h expiry)                                       │   │
-│  │ - OAuth 2.0 (Zerodha)                                           │   │
-│  │ - Auto-TOTP (AngelOne, pyotp)                                   │   │
+│  │ - JWT (HS256, 24h expiry) — user session tokens                 │   │
+│  │ - 6 Broker Auth Flows:                                          │   │
+│  │   Kite: OAuth 2.0 | SmartAPI: Auto-TOTP (pyotp)                │   │
+│  │   Upstox: OAuth (~1yr) | Fyers: OAuth (midnight expiry)        │   │
+│  │   Dhan: Static Token | Paytm: OAuth 3 JWTs                     │   │
 │  │ - Credential Encryption (cryptography lib, AES-256)             │   │
 │  └─────────────────────────────────────────────────────────────────┘   │
 │                                                                         │
@@ -282,7 +299,7 @@ flowchart TB
 - **Database Driver:** asyncpg (PostgreSQL)
 - **Cache Driver:** redis-py (async)
 - **Authentication:** python-jose (JWT)
-- **Broker SDKs:** kiteconnect, smartapi-python
+- **Broker SDKs:** kiteconnect, smartapi-python, httpx (Upstox/Dhan/Fyers/Paytm REST)
 - **AI/ML:** pandas, XGBoost, LightGBM
 - **TOTP:** pyotp
 
@@ -335,21 +352,36 @@ class MarketDataBrokerAdapter(ABC):
 ```
 
 **Factories:**
-- `get_broker_adapter(broker_type, credentials)` → `KiteAdapter` | `SmartAPIAdapter`
-- `get_market_data_adapter(broker_type, credentials)` → `SmartAPIMarketDataAdapter` | `KiteMarketDataAdapter`
+- `get_broker_adapter(broker_type, credentials)` → `KiteAdapter` | `SmartAPIAdapter` | `DhanOrderAdapter` | `FyersOrderAdapter` | `PaytmOrderAdapter` | `UpstoxOrderAdapter`
+- `get_market_data_adapter(broker_type, credentials)` → `SmartAPIMarketDataAdapter` | `KiteMarketDataAdapter` | `DhanMarketDataAdapter` | `FyersMarketDataAdapter` | `PaytmMarketDataAdapter` | `UpstoxMarketDataAdapter`
 
 **Utilities:**
-- `SymbolConverter`: Convert between broker symbol formats (Kite ↔ SmartAPI)
+- `SymbolConverter`: Convert between broker symbol formats (SmartAPI + Kite complete, 4 broker stubs)
 - `TokenManager`: Resolve instrument tokens across brokers
-- `RateLimiter`: Per-broker API rate limiting
+- `RateLimiter`: Per-broker API rate limiting (SmartAPI 1/s, Kite 3/s, Dhan 10/s, Fyers 10/s general + 1/s historical, Paytm 10/s, Upstox 25/s)
 
-#### Legacy Ticker Services (Planned Migration)
+#### Ticker System (5-Component Architecture, Complete)
 
-**Current Implementation:**
-- `SmartAPITickerService` (singleton WebSocket manager)
-- `KiteTickerService` (singleton WebSocket manager)
+| Component | File | Purpose |
+|-----------|------|---------|
+| **TickerPool** | `ticker/pool.py` | Adapter lifecycle, ref-counted subscriptions, credential integration |
+| **TickerRouter** | `ticker/router.py` | User fan-out, maps subscriptions to correct broker adapter |
+| **HealthMonitor** | `ticker/health.py` | 5s heartbeat, per-adapter scoring, triggers failover |
+| **FailoverController** | `ticker/failover.py` | Make-before-break failover with configurable priority chain |
+| **API Routes** | `api/routes/ticker.py` | `/api/ticker/health`, `/api/ticker/failover/status` |
 
-**Status:** ⚠️ To be replaced by 5-component ticker architecture
+**6 Ticker Adapters (all complete):**
+
+| Adapter | File | Protocol | Capacity |
+|---------|------|----------|----------|
+| SmartAPI | `ticker/adapters/smartapi.py` | Binary (paise) | 3×3,000 = 9,000 tokens |
+| Kite | `ticker/adapters/kite.py` | Binary (paise) | 3×3,000 = 9,000 tokens |
+| Dhan | `ticker/adapters/dhan.py` | Little-endian binary | 5×100 = 500 tokens |
+| Fyers | `ticker/adapters/fyers.py` | JSON | 5,000 tokens/connection |
+| Paytm | `ticker/adapters/paytm.py` | JSON | 200 tokens/connection |
+| Upstox | `ticker/adapters/upstox.py` | Protobuf | 1,500–5,000 tokens |
+
+**Legacy tickers** (`SmartAPITickerService`, `KiteTickerService`) deprecated to `services/deprecated/`.
 - See [TICKER-DESIGN-SPEC.md](../decisions/TICKER-DESIGN-SPEC.md)
 - See [TICKER-IMPLEMENTATION-GUIDE.md](../guides/TICKER-IMPLEMENTATION-GUIDE.md)
 
@@ -413,8 +445,12 @@ class MarketDataBrokerAdapter(ABC):
 | Component | Technology | Purpose |
 |-----------|------------|---------|
 | **JWT** | python-jose, HS256 | User session tokens (24h expiry) |
-| **OAuth 2.0** | Zerodha Kite Connect | Broker authentication |
-| **Auto-TOTP** | pyotp | AngelOne automatic 2FA |
+| **Kite OAuth** | OAuth 2.0 redirect | Zerodha broker authentication |
+| **SmartAPI Auto-TOTP** | pyotp | AngelOne automatic 2FA |
+| **Upstox OAuth** | OAuth 2.0 (~1yr token) | Upstox broker authentication |
+| **Fyers OAuth** | OAuth 2.0 (midnight expiry) | Fyers broker authentication |
+| **Dhan Static Token** | API token (never expires) | Dhan broker authentication |
+| **Paytm OAuth** | OAuth 2.0 (3 JWTs) | Paytm Money broker authentication |
 | **Encryption** | cryptography (AES-256) | Stored broker credentials |
 
 ---
@@ -475,7 +511,7 @@ Auth Middleware (verify JWT)
     ↓
 Broker Abstraction Layer (get_broker_adapter)
     ↓
-KiteAdapter / SmartAPIAdapter
+Broker Adapter (Kite/SmartAPI/Dhan/Fyers/Paytm/Upstox)
     ↓ (REST API call)
 External Broker API
     ↓
@@ -485,10 +521,14 @@ Response flows back through layers
 ### 2. WebSocket Market Data Flow
 
 ```
-External Broker WebSocket
-    ↓ (binary ticks)
-SmartAPITickerService / KiteTickerService
-    ↓ (parse + convert to unified format)
+External Broker WebSocket (SmartAPI/Kite/Dhan/Fyers/Paytm/Upstox)
+    ↓ (binary/JSON/Protobuf ticks)
+TickerAdapter (broker-specific parser → unified format)
+    ↓
+TickerPool (adapter lifecycle, ref-counting)
+    ↓
+TickerRouter (user fan-out, subscription mapping)
+    ↓
 FastAPI WebSocket Endpoint (/ws/ticks)
     ↓ (broadcast JSON)
 Frontend Composable (useWebSocket)
@@ -507,7 +547,7 @@ Order Executor
     ↓ (async)
 Broker Abstraction Layer (get_broker_adapter)
     ↓
-KiteAdapter / SmartAPIAdapter
+Broker Adapter (Kite/SmartAPI/Dhan/Fyers/Paytm/Upstox)
     ↓ (place_order API call)
 External Broker API
     ↓ (order placed)
@@ -548,7 +588,7 @@ Frontend AI View (regime indicator)
 | **Backend** | FastAPI, async SQLAlchemy, Uvicorn, asyncpg, redis-py |
 | **Database** | PostgreSQL 16 (38 tables, 19 custom enums) |
 | **Cache** | Redis 7 (sessions, data cache, rate limits) |
-| **Broker SDKs** | kiteconnect, smartapi-python |
+| **Broker SDKs** | kiteconnect, smartapi-python, httpx (Upstox/Dhan/Fyers/Paytm REST) |
 | **AI/ML** | pandas, XGBoost, LightGBM |
 | **Auth** | python-jose (JWT), pyotp (TOTP) |
 | **Testing** | Playwright (122 E2E specs), pytest (67 tests), Vitest |

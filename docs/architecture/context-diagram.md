@@ -1,6 +1,6 @@
 # System Context Diagram
 
-**Last Updated:** 2026-02-16
+**Last Updated:** 2026-03-02
 
 This diagram shows AlgoChanakya's external system dependencies and user interactions.
 
@@ -13,7 +13,6 @@ flowchart TB
     %% Styling
     classDef user fill:#4A90E2,stroke:#2E5C8A,stroke-width:2px,color:#fff
     classDef system fill:#50C878,stroke:#2D7A4A,stroke-width:2px,color:#fff
-    classDef planned fill:#FFA500,stroke:#CC8400,stroke-width:2px,color:#fff,stroke-dasharray: 5 5
     classDef database fill:#9370DB,stroke:#6A4CA3,stroke-width:2px,color:#fff
     classDef cache fill:#FF6B6B,stroke:#C94545,stroke-width:2px,color:#fff
     classDef ai fill:#FFD700,stroke:#B8960A,stroke-width:2px,color:#000
@@ -33,11 +32,11 @@ flowchart TB
     Claude["<b>Anthropic Claude API</b><br/>AI Strategy Analysis<br/>Market Insights"]
     GitHub["<b>GitHub Actions</b><br/>CI/CD<br/>4 Workflows"]
 
-    %% Planned External Systems
-    Upstox["<b>Upstox</b><br/>Market Data ₹499/mo<br/>Orders ₹499/mo<br/>Q2 2026"]
-    Fyers["<b>Fyers</b><br/>Market Data FREE<br/>Orders FREE<br/>Q2 2026"]
-    Dhan["<b>Dhan</b><br/>Market Data FREE<br/>Orders FREE<br/>Q3 2026"]
-    Paytm["<b>Paytm Money</b><br/>Market Data FREE<br/>Orders FREE<br/>Q3 2026"]
+    %% Additional Production Brokers
+    Upstox["<b>Upstox</b><br/>Market Data ₹499/mo<br/>Orders ₹499/mo"]
+    Fyers["<b>Fyers</b><br/>Market Data FREE<br/>Orders FREE"]
+    Dhan["<b>Dhan</b><br/>Market Data FREE<br/>Orders FREE"]
+    Paytm["<b>Paytm Money</b><br/>Market Data FREE<br/>Orders FREE"]
 
     %% User Connections
     Trader -->|"HTTPS<br/>WebSocket"| AlgoChanakya
@@ -56,21 +55,20 @@ flowchart TB
     %% CI/CD
     AlgoChanakya -.->|"Deploy"| GitHub
 
-    %% Planned Broker Connections
-    AlgoChanakya -.->|"REST + WebSocket"| Upstox
-    AlgoChanakya -.->|"REST + WebSocket"| Fyers
-    AlgoChanakya -.->|"REST + WebSocket"| Dhan
-    AlgoChanakya -.->|"REST + WebSocket"| Paytm
+    %% Additional Broker Connections
+    AlgoChanakya -->|"OAuth 2.0 + REST<br/>Protobuf WebSocket"| Upstox
+    AlgoChanakya -->|"OAuth 2.0 + REST<br/>JSON WebSocket"| Fyers
+    AlgoChanakya -->|"Static Token + REST<br/>Binary WebSocket"| Dhan
+    AlgoChanakya -->|"OAuth 2.0 (3 JWTs) + REST<br/>JSON WebSocket"| Paytm
 
     %% Apply Styles
     class Trader user
     class AlgoChanakya system
-    class Zerodha,SmartAPI system
+    class Zerodha,SmartAPI,Upstox,Fyers,Dhan,Paytm system
     class PostgreSQL database
     class Redis cache
     class Claude ai
     class GitHub cicd
-    class Upstox,Fyers,Dhan,Paytm planned
 ```
 
 ---
@@ -113,14 +111,21 @@ flowchart TB
                                               (Orders + Market Data ₹500/mo)
                                               OAuth 2.0 + REST + WebSocket
 
-   ┌─── PLANNED INTEGRATIONS (Dashed) ───────────────┐
-   │                                                  │
-   ├──────► Upstox (Q2 2026)  ──── ₹499/mo           │
-   ├──────► Fyers (Q2 2026)   ──── FREE             │
-   ├──────► Dhan (Q3 2026)    ──── FREE             │
-   └──────► Paytm Money (Q3 2026) ─ FREE            │
-                                                     │
-   └──────────────────────────────────────────────────┘
+   ├──────────────────────────────────────────────────► Upstox
+   │                                                    (Orders + Market Data ₹499/mo)
+   │                                                    OAuth 2.0 + REST + Protobuf WebSocket
+   │
+   ├──────────────────────────────────────────────────► Fyers
+   │                                                    (FREE Market Data + Orders)
+   │                                                    OAuth 2.0 + REST + JSON WebSocket
+   │
+   ├──────────────────────────────────────────────────► Dhan
+   │                                                    (FREE Market Data + Orders)
+   │                                                    Static Token + REST + Binary WebSocket
+   │
+   └──────────────────────────────────────────────────► Paytm Money
+                                                        (FREE Market Data + Orders)
+                                                        OAuth 2.0 (3 JWTs) + REST + JSON WebSocket
 ```
 
 ---
@@ -130,10 +135,9 @@ flowchart TB
 | Visual Element | Meaning |
 |---------------|---------|
 | **Solid Lines** | Production integrations (active) |
-| **Dashed Lines** | Planned integrations (roadmap) |
+| **Dashed Lines** | CI/CD and infrastructure connections |
 | **Blue** | User/Actor |
 | **Green** | Core system or production broker |
-| **Orange** | Planned brokers |
 | **Purple** | Database |
 | **Red** | Cache |
 | **Yellow** | AI/ML service |
@@ -143,25 +147,22 @@ flowchart TB
 
 ## External Systems Summary
 
-### Production Dependencies (6)
+### Production Dependencies (10)
 
 | System | Protocol | Purpose | Cost | Status |
 |--------|----------|---------|------|--------|
 | **Zerodha Kite Connect** | OAuth 2.0, REST, WebSocket | Order execution, market data | ₹500/month | ✅ Production |
-| **AngelOne SmartAPI** | JWT, REST, WebSocket V2, Auto-TOTP | Market data (default), orders | FREE | ✅ Production |
+| **AngelOne SmartAPI** | JWT, REST, WebSocket V2, Auto-TOTP | Market data (platform default), orders | FREE | ✅ Production |
+| **Upstox** | OAuth 2.0, REST, Protobuf WebSocket | Market data, order execution | ₹499/month | ✅ Production |
+| **Fyers** | OAuth 2.0, REST, JSON WebSocket | Market data, order execution | FREE | ✅ Production |
+| **Dhan** | Static Token, REST, Binary WebSocket | Market data, order execution | FREE† | ✅ Production |
+| **Paytm Money** | OAuth 2.0 (3 JWTs), REST, JSON WebSocket | Market data, order execution | FREE | ✅ Production |
 | **PostgreSQL 16** | async TCP (asyncpg) | Primary database (38 tables) | Hosted on VPS | ✅ Production |
 | **Redis 7** | async TCP (redis-py) | Session storage, caching | Hosted on VPS | ✅ Production |
 | **Anthropic Claude API** | REST/HTTPS, Anthropic SDK | AI strategy analysis, market insights | API usage-based | ✅ Production |
 | **GitHub Actions** | HTTPS (GitHub webhooks) | CI/CD (4 workflows: backend tests, E2E, deploy) | Free tier | ✅ Production |
 
-### Planned Brokers (4)
-
-| Broker | Market Data | Orders | Target Quarter | Status |
-|--------|-------------|--------|----------------|--------|
-| **Upstox** | ₹499/mo | ₹499/mo | Q2 2026 | 📋 Planned |
-| **Fyers** | FREE | FREE | Q2 2026 | 📋 Planned |
-| **Dhan** | FREE | FREE | Q3 2026 | 📋 Planned |
-| **Paytm Money** | FREE | FREE | Q3 2026 | 📋 Planned |
+**†** Dhan Data API is FREE with 25+ F&O trades/month, else ₹499/month
 
 ---
 
@@ -180,6 +181,26 @@ flowchart TB
 - **Authentication:** JWT + Auto-TOTP (pyotp-based)
 - **REST API:** HTTPS (SmartAPI REST endpoints)
 - **WebSocket:** SmartAPI WebSocket V2 (JSON-based, subscription model)
+
+### AlgoChanakya → Upstox
+- **Authentication:** OAuth 2.0 (extended ~1 year token)
+- **REST API:** HTTPS (Upstox v2 REST endpoints, 25 req/sec)
+- **WebSocket:** Protobuf binary protocol (runtime descriptor, no compiled _pb2)
+
+### AlgoChanakya → Fyers
+- **Authentication:** OAuth 2.0 (unique `{app_id}:{access_token}` header, midnight IST expiry)
+- **REST API:** HTTPS (Fyers REST endpoints, 10 req/sec general, 1 req/sec historical)
+- **WebSocket:** JSON-based (FyersDataSocket, 5,000 symbols/connection)
+
+### AlgoChanakya → Dhan
+- **Authentication:** Static API token (never expires unless revoked)
+- **REST API:** HTTPS (Dhan REST endpoints, 10 req/sec)
+- **WebSocket:** Little-endian binary protocol (unique among brokers)
+
+### AlgoChanakya → Paytm Money
+- **Authentication:** OAuth 2.0 with 3 JWTs (`access_token`, `read_access_token`, `public_access_token`)
+- **REST API:** HTTPS (custom `x-jwt-token` header, 10 req/sec)
+- **WebSocket:** JSON-based (uses `public_access_token` as query param)
 
 ### AlgoChanakya → PostgreSQL
 - **Connection:** async TCP via asyncpg

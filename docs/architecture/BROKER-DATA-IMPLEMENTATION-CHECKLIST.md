@@ -1,7 +1,7 @@
 # Broker Data Implementation Checklist
 
 **Purpose:** Per-broker checklist of everything needed for market data (live ticks + OHLC) to work at both Platform-Level and User-Level.
-**Last Updated:** 2026-02-16
+**Last Updated:** 2026-03-02
 **Scope:** Documentation only — no code implementation.
 
 **References:**
@@ -33,20 +33,21 @@
 |-----------|---------|------|-------|-------|--------|------|
 | **Failover Rank** | #1 (Primary) | #2 | #3 | #4 | #5 | #6 (Last Resort) |
 | **Platform Cost** | FREE | FREE† | FREE | FREE | ₹499/mo | ₹500/mo |
-| **Auth Adapter** | ✅ Done | ⬜ Todo | ⬜ Todo | ⬜ Todo | ⬜ Todo | ✅ Done |
-| **MarketData Adapter** | ✅ Done | ⬜ Todo | ⬜ Todo | ⬜ Todo | ⬜ Todo | ✅ Done |
+| **Auth Adapter** | ✅ Done | ✅ Done (173L) | ✅ Done (205L) | ✅ Done (250L) | ✅ Done (194L) | ✅ Done |
+| **MarketData Adapter** | ✅ Done (616L) | ✅ Done (813L) | ✅ Done (695L) | ✅ Done (581L) | ✅ Done (567L) | ✅ Done (422L) |
 | **Ticker Adapter (WS)** | ✅ Done | ✅ Done | ✅ Done | ✅ Done | ✅ Done | ✅ Done |
 | **Ticker Infrastructure** | ✅ Pool+Router+Health+Failover | — | — | — | — | — |
-| **Symbol Converter** | ✅ Done | ⬜ Todo | ⬜ Todo | ⬜ Todo | ⬜ Todo | ✅ (Canonical) |
-| **Token Manager** | ✅ Done | ⬜ Todo | ⬜ Todo | ⬜ Todo | ⬜ Todo | ✅ Done |
-| **Instrument Master** | ✅ Done | ⬜ Todo | ⬜ Todo | ⬜ Todo | ⬜ Todo | ✅ Done |
-| **Rate Limiter Config** | ✅ Done | ⬜ Todo | ⬜ Todo | ⬜ Todo | ⬜ Todo | ✅ Done |
-| **Factory Registration** | ✅ Done | ⬜ Todo | ⬜ Todo | ⬜ Todo | ⬜ Todo | ✅ Done |
+| **Order Adapter** | ✅ Done | ✅ Done (446L) | ✅ Done (467L) | ✅ Done (437L) | ✅ Done (493L) | ✅ Done (584L) |
+| **Symbol Converter** | ✅ Done | ⬜ Stub | ⬜ Stub | ⬜ Stub | ⬜ Stub | ✅ (Canonical) |
+| **Token Manager** | ✅ Done | ✅ Done | ✅ Done | ✅ Done | ✅ Done | ✅ Done |
+| **Instrument Master** | ✅ Done | ✅ Done | ✅ Done | ✅ Done | ✅ Done | ✅ Done |
+| **Rate Limiter Config** | ✅ Done | ✅ Done (10/s) | ✅ Done (10/s, 1/s hist) | ✅ Done (10/s) | ✅ Done (25/s) | ✅ Done (3/s) |
+| **Factory Registration** | ✅ Done | ✅ Done | ✅ Done | ✅ Done | ✅ Done | ✅ Done |
 | **Platform Creds in .env** | ✅ Done | ⬜ Todo | ⬜ Todo | ⬜ Todo | ⬜ Todo | ❌ N/A (OAuth) |
-| **Frontend Settings UI** | ✅ Done | ⬜ Todo | ⬜ Todo | ⬜ Todo | ⬜ Todo | ✅ Partial |
+| **Frontend Settings UI** | ✅ Done | ✅ Done (194L) | ✅ Done (154L) | ✅ Done (252L) | ✅ Done (155L) | ✅ Done (148L) |
 | **Legacy Cleanup** | ✅ Deprecated | — | — | — | — | ✅ Deprecated |
 
-**Legend:** ✅ Done | 🟡 Stub (interface only) | ⬜ Todo | ❌ Not Applicable
+**Legend:** ✅ Done | ⬜ Stub (raises NotImplementedError) | ⬜ Todo | ❌ Not Applicable
 **†** Dhan Data API is FREE with 25+ F&O trades/month, else ₹499/month
 
 ---
@@ -80,17 +81,24 @@ These are shared components that all brokers rely on. Most are already built but
 | **Ticker Router** | ✅ Done | `ticker/router.py` — user fan-out, maps subscriptions to correct broker adapter |
 | **Ticker API Routes** | ✅ Done | `api/routes/ticker.py` — `/api/ticker/health`, `/api/ticker/failover/status` |
 
-### Not Yet Built (cross-cutting, needed before/during broker work)
+### Partially Built
+
+| Component | Status | Details |
+|-----------|--------|---------|
+| **`MarketDataRouter`** | 🟡 Partial | Dual-path routing exists via factory pattern; full `MarketDataRouter` class with failover pending |
+| **Source Indicator API** | ✅ Done | `/api/ticker/health`, `/api/ticker/failover/status` routes in `ticker.py` |
+| **Frontend: Broker Selection UI** | ✅ Done | Settings page with per-broker settings components (6 Vue files) |
+| **User Preferences API** | ✅ Done | `/api/settings` endpoints for broker preferences |
+
+### Not Yet Built
 
 | Component | Description | Blocked By |
 |-----------|-------------|------------|
-| **`MarketDataRouter`** | Dual-path routing (platform default → user override). Decides which adapter to use per request. | Architecture finalized in Working Doc, implementation pending |
 | **Platform Credential Manager** | Reads shared credentials from `.env`, handles auto-refresh loops (e.g., SmartAPI 5 AM refresh, Fyers midnight refresh) | Needs broker-specific refresh strategies |
-| **Source Indicator API** | `GET /api/market-data/source` — returns active data source + failover status | Needed for frontend badge |
+| **Frontend: Source Indicator Badge** | Shows active data source + failover notifications on data screens | Needs UI design |
 | **Frontend: Persistent Banner** | "Use your own API key" banner on Dashboard, Watchlist, Option Chain, Positions | UI component, no backend dependency |
-| **Frontend: Source Indicator Badge** | Shows active data source, failover notifications | Needs Source Indicator API |
-| **Frontend: Broker Selection UI** | Settings → Market Data Broker / Order Broker dropdowns | Needs `PATCH /api/user/broker-preferences` API |
 | **Instrument Sync Scheduler** | Daily job to download instrument masters for all active brokers and populate `broker_instrument_tokens` | Extends existing SmartAPI instrument sync |
+| **Symbol Converter (4 brokers)** | `parse_*/format_*` for Dhan, Fyers, Paytm, Upstox are stubs (`NotImplementedError`) | Needs per-broker format specs |
 
 ---
 
@@ -164,50 +172,50 @@ These are shared components that all brokers rely on. Most are already built but
 ## Broker #2: Dhan — Platform Fallback #2
 
 **Rank:** #2 | **Cost:** FREE† | **Skill:** `/dhan-expert`
-**Status:** ⬜ Not started — all items are Todo
+**Status:** ✅ Complete — Auth, MarketData adapter (813L), Ticker adapter, Order adapter (446L), Frontend UI (194L) all done
 
 ### Authentication
 
 | Item | Status | Details |
 |------|--------|---------|
-| Auth flow implementation | ⬜ Todo | Static API token — simplest auth (no OAuth, no TOTP) |
+| Auth flow implementation | ✅ Done | `dhan_auth.py` (173 lines) — static API token auth |
 | Platform credentials in `.env` | ⬜ Todo | Need: `DHAN_CLIENT_ID`, `DHAN_ACCESS_TOKEN` |
 | Token type | — | Single static access token (never expires unless revoked) |
 | Token lifetime | — | **Never expires** — simplest for platform |
 | Auto-refresh loop | ❌ N/A | Static token, no refresh needed |
-| User-level auth UI | ⬜ Todo | Settings form: Client ID + Access Token fields |
-| Credential encryption + storage | ⬜ Todo | `dhan_credentials` table with encrypted `access_token` |
+| User-level auth UI | ✅ Done | `DhanSettings.vue` (194 lines) — Client ID + Access Token fields |
+| Credential encryption + storage | ✅ Done | Encrypted credentials stored via broker_connections |
 
 ### Market Data REST API
 
 | Item | Status | Details |
 |------|--------|---------|
-| `DhanMarketDataAdapter` class | ⬜ Todo | File: `market_data/dhan_adapter.py` |
-| `get_quote()` | ⬜ Todo | `GET /marketfeed/ltp` — prices in rupees (no conversion) |
-| `get_ltp()` | ⬜ Todo | Same endpoint, extract LTP only |
-| `get_historical()` | ⬜ Todo | `GET /charts/historical` |
-| `get_instruments()` / `search_instruments()` | ⬜ Todo | Parse instrument master CSV |
+| `DhanMarketDataAdapter` class | ✅ Done | `market_data/dhan_adapter.py` (813 lines) |
+| `get_quote()` | ✅ Done | `GET /marketfeed/ltp` — prices in rupees (no conversion) |
+| `get_ltp()` | ✅ Done | Same endpoint, extract LTP only |
+| `get_historical()` | ✅ Done | `GET /charts/historical` |
+| `get_instruments()` / `search_instruments()` | ✅ Done | Parse instrument master CSV |
 | Price normalization | — | **Rupees** (no conversion needed) |
-| Rate limiting (10 req/sec) | ⬜ Todo | Add Dhan config to RateLimiter |
-| Factory registration | ⬜ Todo | Add `_create_dhan_adapter()` to `market_data/factory.py` |
+| Rate limiting (10 req/sec) | ✅ Done | Dhan config in RateLimiter |
+| Factory registration | ✅ Done | Registered in `market_data/factory.py` |
 
 ### WebSocket Live Ticks
 
 | Item | Status | Details |
 |------|--------|---------|
-| Ticker adapter | ⬜ Todo | File: `ticker/adapters/dhan.py` |
-| Binary protocol parser | ⬜ Todo | **Little-endian** binary — use `struct.unpack('<...')` (unique among brokers) |
+| Ticker adapter | ✅ Done | `ticker/adapters/dhan.py` (575 lines) |
+| Binary protocol parser | ✅ Done | **Little-endian** binary — `struct.unpack('<...')` (unique among brokers) |
 | Connection limits | — | 100 tokens/connection × 5 connections = **500 tokens** (lowest capacity) |
-| Thread → asyncio bridge | ⬜ Todo | Threading-based, needs bridge like SmartAPI |
+| Thread → asyncio bridge | ✅ Done | Threading-based with asyncio bridge |
 | Price normalization in ticks | — | Rupees (no conversion) |
 
 ### Symbol Format
 
 | Item | Status | Details |
 |------|--------|---------|
-| `SymbolConverter.parse_dhan()` | ⬜ Todo | Numeric `security_id` only — **no string symbols** |
-| `SymbolConverter.format_dhan()` | ⬜ Todo | Canonical → numeric security_id (requires full CSV lookup) |
-| Token manager mapping | ⬜ Todo | Map Dhan `security_id` ↔ canonical symbol |
+| `SymbolConverter.parse_dhan()` | ⬜ Stub | `NotImplementedError` — numeric `security_id` only, no string symbols |
+| `SymbolConverter.format_dhan()` | ⬜ Stub | `NotImplementedError` — canonical → numeric security_id (requires full CSV lookup) |
+| Token manager mapping | ✅ Done | Map Dhan `security_id` ↔ canonical symbol |
 | Conversion difficulty | — | **Very High** — numeric-only, requires full instrument master CSV mapping |
 
 ### Instrument Master
@@ -216,7 +224,7 @@ These are shared components that all brokers rely on. Most are already built but
 |------|--------|---------|
 | Download URL | — | `https://images.dhan.co/api-data/api-scrip-master.csv` |
 | Format | — | CSV |
-| Parse + populate `broker_instrument_tokens` | ⬜ Todo | Map `security_id` to canonical symbols |
+| Parse + populate `broker_instrument_tokens` | ✅ Done | Map `security_id` to canonical symbols via adapter |
 
 ### Broker-Specific Quirks
 
@@ -232,33 +240,33 @@ These are shared components that all brokers rely on. Most are already built but
 ## Broker #3: Fyers — Platform Fallback #3
 
 **Rank:** #3 | **Cost:** FREE | **Skill:** `/fyers-expert`
-**Status:** 🟡 In progress — WebSocket ticker adapter complete, Auth/REST/Symbol format pending
+**Status:** ✅ Complete — Auth (205L), MarketData adapter (695L), Ticker adapter, Order adapter (467L), Frontend UI (154L) all done
 
 ### Authentication
 
 | Item | Status | Details |
 |------|--------|---------|
-| Auth flow implementation | ⬜ Todo | OAuth 2.0 standard flow |
+| Auth flow implementation | ✅ Done | `fyers_auth.py` (205 lines) — OAuth 2.0 standard flow |
 | Platform credentials in `.env` | ⬜ Todo | Need: `FYERS_APP_ID`, `FYERS_SECRET_KEY`, `FYERS_REDIRECT_URL` |
 | Token type | — | `access_token` (standard OAuth) |
 | Token lifetime | — | Until **midnight IST** (daily expiry) |
 | Auto-refresh loop | ⬜ Todo | Needs: refresh token flow before midnight IST |
 | Auth header format | — | **Unique:** `{app_id}:{access_token}` (colon-separated, not Bearer) |
-| User-level auth UI | ⬜ Todo | Settings: OAuth redirect flow (like Kite) |
-| Credential encryption + storage | ⬜ Todo | `fyers_credentials` table with encrypted tokens |
+| User-level auth UI | ✅ Done | `FyersSettings.vue` (154 lines) — OAuth redirect flow |
+| Credential encryption + storage | ✅ Done | Encrypted credentials stored via broker_connections |
 
 ### Market Data REST API
 
 | Item | Status | Details |
 |------|--------|---------|
-| `FyersMarketDataAdapter` class | ⬜ Todo | File: `market_data/fyers_adapter.py` |
-| `get_quote()` | ⬜ Todo | `GET /data/quotes` — prices in rupees |
-| `get_ltp()` | ⬜ Todo | Same endpoint, extract LTP |
-| `get_historical()` | ⬜ Todo | `GET /data/history` — **1 req/sec** for historical (stricter than general 10/sec) |
-| `get_instruments()` / `search_instruments()` | ⬜ Todo | Parse per-exchange CSV files |
+| `FyersMarketDataAdapter` class | ✅ Done | `market_data/fyers_adapter.py` (695 lines) |
+| `get_quote()` | ✅ Done | `GET /data/quotes` — prices in rupees |
+| `get_ltp()` | ✅ Done | Same endpoint, extract LTP |
+| `get_historical()` | ✅ Done | `GET /data/history` — **1 req/sec** for historical (stricter than general 10/sec) |
+| `get_instruments()` / `search_instruments()` | ✅ Done | Parse per-exchange CSV files |
 | Price normalization | — | **Rupees** (no conversion needed) |
-| Rate limiting | ⬜ Todo | 10 req/sec general, **1 req/sec historical** (dual rate limit) |
-| Factory registration | ⬜ Todo | Add `_create_fyers_adapter()` to factory |
+| Rate limiting | ✅ Done | 10 req/sec general, **1 req/sec historical** (dual rate limit) |
+| Factory registration | ✅ Done | Registered in `market_data/factory.py` |
 
 ### WebSocket Live Ticks
 
@@ -276,9 +284,9 @@ These are shared components that all brokers rely on. Most are already built but
 
 | Item | Status | Details |
 |------|--------|---------|
-| `SymbolConverter.parse_fyers()` | ⬜ Todo | `NSE:{SYMBOL}` format (e.g., `NSE:NIFTY2522725000CE`) |
-| `SymbolConverter.format_fyers()` | ⬜ Todo | Canonical → `NSE:{symbol}` (just add prefix) |
-| Token manager mapping | ⬜ Todo | Map Fyers symbols ↔ canonical |
+| `SymbolConverter.parse_fyers()` | ⬜ Stub | `NotImplementedError` — `NSE:{SYMBOL}` format (e.g., `NSE:NIFTY2522725000CE`) |
+| `SymbolConverter.format_fyers()` | ⬜ Stub | `NotImplementedError` — canonical → `NSE:{symbol}` (just add prefix) |
+| Token manager mapping | ✅ Done | Map Fyers symbols ↔ canonical |
 | Conversion difficulty | — | **Trivial** — just strip/add `NSE:` prefix |
 | Index symbols | — | `NSE:NIFTY50-INDEX`, `NSE:NIFTYBANK-INDEX` |
 
@@ -288,7 +296,7 @@ These are shared components that all brokers rely on. Most are already built but
 |------|--------|---------|
 | Download URL | — | `https://public.fyers.in/sym_details/{exchange}.csv` (per exchange) |
 | Format | — | CSV (per exchange: NSE, NFO, BSE, etc.) |
-| Parse + populate `broker_instrument_tokens` | ⬜ Todo | Map Fyers `NSE:` format to canonical |
+| Parse + populate `broker_instrument_tokens` | ✅ Done | Map Fyers `NSE:` format to canonical via adapter |
 
 ### Broker-Specific Quirks
 
@@ -305,33 +313,33 @@ These are shared components that all brokers rely on. Most are already built but
 ## Broker #4: Paytm Money — Platform Fallback #4
 
 **Rank:** #4 | **Cost:** FREE | **Skill:** `/paytm-expert`
-**Status:** 🟡 Partial — WebSocket ticker adapter ✅ implemented (100 tests). REST API, auth, symbol converter pending.
+**Status:** ✅ Complete — Auth (250L), MarketData adapter (581L), Ticker adapter (100 tests), Order adapter (437L), Frontend UI (252L) all done
 
 ### Authentication
 
 | Item | Status | Details |
 |------|--------|---------|
-| Auth flow implementation | ⬜ Todo | OAuth 2.0 with **3 separate JWT tokens** (most complex auth) |
+| Auth flow implementation | ✅ Done | `paytm_auth.py` (250 lines) — OAuth 2.0 with 3 JWTs |
 | Platform credentials in `.env` | ⬜ Todo | Need: `PAYTM_API_KEY`, `PAYTM_API_SECRET`, `PAYTM_REDIRECT_URL` |
 | Token types | — | **3 JWTs:** `access_token` (REST), `read_access_token` (portfolio), `public_access_token` (WebSocket) |
 | Token lifetime | — | 1 trading day |
 | Auto-refresh loop | ⬜ Todo | Daily refresh needed. Must refresh all 3 tokens. |
 | Custom header format | — | `x-jwt-token: {token}` (not standard Authorization header) |
-| User-level auth UI | ⬜ Todo | Settings: OAuth redirect flow |
-| Credential encryption + storage | ⬜ Todo | `paytm_credentials` table with 3 encrypted tokens |
+| User-level auth UI | ✅ Done | `PaytmSettings.vue` (252 lines) — OAuth redirect flow |
+| Credential encryption + storage | ✅ Done | Encrypted credentials stored via broker_connections |
 
 ### Market Data REST API
 
 | Item | Status | Details |
 |------|--------|---------|
-| `PaytmMarketDataAdapter` class | ⬜ Todo | File: `market_data/paytm_adapter.py` |
-| `get_quote()` | ⬜ Todo | Scrip margins endpoint — prices in rupees |
-| `get_ltp()` | ⬜ Todo | Extract LTP from quote |
-| `get_historical()` | ⬜ Todo | `GET /accounts/v1/candle/{exchange}/{token}/{resolution}` |
-| `get_instruments()` / `search_instruments()` | ⬜ Todo | Via API call (not static CSV) |
+| `PaytmMarketDataAdapter` class | ✅ Done | `market_data/paytm_adapter.py` (581 lines) |
+| `get_quote()` | ✅ Done | Scrip margins endpoint — prices in rupees |
+| `get_ltp()` | ✅ Done | Extract LTP from quote |
+| `get_historical()` | ✅ Done | `GET /accounts/v1/candle/{exchange}/{token}/{resolution}` |
+| `get_instruments()` / `search_instruments()` | ✅ Done | Via API call (not static CSV) |
 | Price normalization | — | **Rupees** (no conversion needed) |
-| Rate limiting (10 req/sec) | ⬜ Todo | Add Paytm config to RateLimiter |
-| Factory registration | ⬜ Todo | Add `_create_paytm_adapter()` to factory |
+| Rate limiting (10 req/sec) | ✅ Done | Paytm config in RateLimiter |
+| Factory registration | ✅ Done | Registered in `market_data/factory.py` |
 
 ### WebSocket Live Ticks
 
@@ -349,9 +357,9 @@ These are shared components that all brokers rely on. Most are already built but
 
 | Item | Status | Details |
 |------|--------|---------|
-| `SymbolConverter.parse_paytm()` | ⬜ Todo | RIC format: `{exchange_segment}.{exchange_type}!{security_id}` |
-| `SymbolConverter.format_paytm()` | ⬜ Todo | Canonical → RIC format (requires full mapping) |
-| Token manager mapping | ⬜ Todo | Map Paytm RIC/security_id ↔ canonical |
+| `SymbolConverter.parse_paytm()` | ⬜ Stub | `NotImplementedError` — RIC format: `{exchange_segment}.{exchange_type}!{security_id}` |
+| `SymbolConverter.format_paytm()` | ⬜ Stub | `NotImplementedError` — canonical → RIC format (requires full mapping) |
+| Token manager mapping | ✅ Done | Map Paytm RIC/security_id ↔ canonical |
 | Conversion difficulty | — | **Very High** — RIC format requires full instrument master mapping |
 
 ### Instrument Master
@@ -360,7 +368,7 @@ These are shared components that all brokers rely on. Most are already built but
 |------|--------|---------|
 | Source | — | Via API call (not static file download) |
 | Format | — | JSON API response |
-| Parse + populate `broker_instrument_tokens` | ⬜ Todo | Map RIC format to canonical symbols |
+| Parse + populate `broker_instrument_tokens` | ✅ Done | Map RIC format to canonical symbols via adapter |
 
 ### Broker-Specific Quirks
 
@@ -377,32 +385,32 @@ These are shared components that all brokers rely on. Most are already built but
 ## Broker #5: Upstox — Platform Fallback #5
 
 **Rank:** #5 | **Cost:** ₹499/month | **Skill:** `/upstox-expert`
-**Status:** 🟡 Ticker adapter implemented — REST adapter, symbol converter, instrument master pending
+**Status:** ✅ Complete — Auth (194L), MarketData adapter (567L), Ticker adapter (92 tests), Order adapter (493L), Frontend UI (155L) all done
 
 ### Authentication
 
 | Item | Status | Details |
 |------|--------|---------|
-| Auth flow implementation | ⬜ Todo | OAuth 2.0 with extended token (~1 year validity) |
+| Auth flow implementation | ✅ Done | `upstox_auth.py` (194 lines) — OAuth 2.0 with extended token (~1 year) |
 | Platform credentials in `.env` | ⬜ Todo | Need: `UPSTOX_API_KEY`, `UPSTOX_API_SECRET`, `UPSTOX_REDIRECT_URL` |
 | Token type | — | `access_token` (extended ~1 year for read-only) |
 | Token lifetime | — | **~1 year** (extended token, simplifies credential management) |
 | Auto-refresh loop | ⬜ Todo | Minimal — only needed annually. Standard OAuth refresh. |
-| User-level auth UI | ⬜ Todo | Settings: OAuth redirect flow |
-| Credential encryption + storage | ⬜ Todo | `upstox_credentials` table with encrypted tokens |
+| User-level auth UI | ✅ Done | `UpstoxSettings.vue` (155 lines) — OAuth redirect flow |
+| Credential encryption + storage | ✅ Done | Encrypted credentials stored via broker_connections |
 
 ### Market Data REST API
 
 | Item | Status | Details |
 |------|--------|---------|
-| `UpstoxMarketDataAdapter` class | ⬜ Todo | File: `market_data/upstox_adapter.py` |
-| `get_quote()` | ⬜ Todo | `GET /market-quote/quotes` — prices in rupees |
-| `get_ltp()` | ⬜ Todo | `GET /market-quote/ltp` |
-| `get_historical()` | ⬜ Todo | `GET /historical-candle/{instrument_key}/{interval}/{to_date}` |
-| `get_instruments()` / `search_instruments()` | ⬜ Todo | Parse gzip CSV instrument master |
+| `UpstoxMarketDataAdapter` class | ✅ Done | `market_data/upstox_adapter.py` (567 lines) |
+| `get_quote()` | ✅ Done | `GET /market-quote/quotes` — prices in rupees |
+| `get_ltp()` | ✅ Done | `GET /market-quote/ltp` |
+| `get_historical()` | ✅ Done | `GET /historical-candle/{instrument_key}/{interval}/{to_date}` |
+| `get_instruments()` / `search_instruments()` | ✅ Done | Parse gzip CSV instrument master |
 | Price normalization | — | **Rupees** (no conversion needed) |
-| Rate limiting (25 req/sec) | ⬜ Todo | Fastest rate limit — add config to RateLimiter |
-| Factory registration | ⬜ Todo | Add `_create_upstox_adapter()` to factory |
+| Rate limiting (25 req/sec) | ✅ Done | Fastest rate limit — config in RateLimiter |
+| Factory registration | ✅ Done | Registered in `market_data/factory.py` |
 
 ### WebSocket Live Ticks
 
@@ -422,9 +430,9 @@ These are shared components that all brokers rely on. Most are already built but
 
 | Item | Status | Details |
 |------|--------|---------|
-| `SymbolConverter.parse_upstox()` | ⬜ Todo | `{EXCHANGE}_{SEGMENT}\|{instrument_token}` (e.g., `NSE_FO\|12345`) |
-| `SymbolConverter.format_upstox()` | ⬜ Todo | Canonical → instrument_key (requires instrument master lookup) |
-| Token manager mapping | ⬜ Todo | Map Upstox instrument_key ↔ canonical |
+| `SymbolConverter.parse_upstox()` | ⬜ Stub | `NotImplementedError` — `{EXCHANGE}_{SEGMENT}\|{instrument_token}` (e.g., `NSE_FO\|12345`) |
+| `SymbolConverter.format_upstox()` | ⬜ Stub | `NotImplementedError` — canonical → instrument_key (requires instrument master lookup) |
+| Token manager mapping | ✅ Done | Map Upstox instrument_key ↔ canonical |
 | Conversion difficulty | — | **High** — pipe-separated format, requires instrument master lookup |
 
 ### Instrument Master
@@ -433,7 +441,7 @@ These are shared components that all brokers rely on. Most are already built but
 |------|--------|---------|
 | Download URL | — | `https://assets.upstox.com/market-quote/instruments/exchange/complete.csv.gz` |
 | Format | — | **Gzip CSV** (compressed, needs decompression) |
-| Parse + populate `broker_instrument_tokens` | ⬜ Todo | Decompress gzip → parse CSV → map to canonical |
+| Parse + populate `broker_instrument_tokens` | ✅ Done | Decompress gzip → parse CSV → map to canonical via adapter |
 
 ### Broker-Specific Quirks
 
@@ -461,7 +469,7 @@ These are shared components that all brokers rely on. Most are already built but
 | Token type | ✅ Done | `access_token` via OAuth callback |
 | Token lifetime | — | 1 trading day (expires ~6 AM, no auto-refresh) |
 | Auto-refresh loop | ❌ N/A | No refresh mechanism — user must re-login daily via OAuth |
-| User-level auth UI | ✅ Done | OAuth redirect flow already implemented |
+| User-level auth UI | ✅ Done | `KiteSettings.vue` (148 lines) — OAuth redirect flow |
 | Kite Connect vs Personal API | — | Personal API (FREE) = orders only, **no market data**. Connect (₹500/mo) = full access. |
 
 ### Market Data REST API
@@ -515,17 +523,25 @@ These are shared components that all brokers rely on. Most are already built but
 
 ---
 
-## Implementation Priority Recommendation
+## Implementation Status Summary
 
-Based on the failover chain and implementation effort:
+All 6 brokers are fully implemented with auth, market data adapters, ticker adapters, order adapters, and frontend settings UI.
 
-| Priority | Broker | Status | Rationale |
-|----------|--------|--------|-----------|
-| 1 | **SmartAPI** | ✅ Complete | Ticker adapter + all infrastructure done (Phase T1–T5) |
-| 2 | **Kite** | ✅ Complete | Ticker adapter done (Phase T2). No platform use (OAuth only). |
-| 3 | **Fyers** | 🟡 Stub ready | FREE + JSON WebSocket (simplest parsing) + trivial symbol conversion + 5K capacity |
-| 4 | **Dhan** | 🟡 Stub ready | FREE† + static token (simplest auth, no refresh) + decent REST rate limits |
-| 5 | **Paytm** | 🟡 Stub ready | FREE + JSON WebSocket. But: lowest capacity (200), complex auth (3 JWTs) |
-| 6 | **Upstox** | ✅ Ticker implemented | Best rate limits + Option Greeks. Protobuf parsed via runtime descriptor. REST adapter pending. |
+| Broker | Status | Auth | MarketData | Ticker | Orders | Frontend |
+|--------|--------|------|------------|--------|--------|----------|
+| **SmartAPI** | ✅ Complete | ✅ Auto-TOTP | ✅ 616L | ✅ 353L | ✅ 467L | ✅ 581L |
+| **Kite** | ✅ Complete | ✅ OAuth | ✅ 422L | ✅ 313L | ✅ 584L | ✅ 148L |
+| **Dhan** | ✅ Complete | ✅ Static Token (173L) | ✅ 813L | ✅ 575L | ✅ 446L | ✅ 194L |
+| **Fyers** | ✅ Complete | ✅ OAuth (205L) | ✅ 695L | ✅ 410L | ✅ 467L | ✅ 154L |
+| **Paytm** | ✅ Complete | ✅ OAuth 3 JWTs (250L) | ✅ 581L | ✅ 618L | ✅ 437L | ✅ 252L |
+| **Upstox** | ✅ Complete | ✅ OAuth ~1yr (194L) | ✅ 567L | ✅ 820L | ✅ 493L | ✅ 155L |
 
-**Next:** Implement full adapter logic for Fyers (Priority 3) — simplest parsing, highest capacity among remaining brokers.
+### Remaining Work
+
+| Item | Scope | Priority |
+|------|-------|----------|
+| **Symbol Converter stubs** | `parse_*/format_*` for Dhan, Fyers, Paytm, Upstox raise `NotImplementedError` | Medium — needed for cross-broker symbol resolution |
+| **Platform Credentials** | `.env` entries for Dhan, Fyers, Paytm, Upstox (platform-level shared keys) | Medium — needed for platform-default data path |
+| **Auto-Refresh Loops** | Pre-market credential refresh (SmartAPI 5 AM, Fyers midnight, Paytm daily) | Medium — needed for unattended platform operation |
+| **Instrument Sync Scheduler** | Daily job to download all 6 instrument masters | Low — manual sync works for now |
+| **Source Indicator Badge** | Frontend badge showing active data source + failover notifications | Low — nice-to-have UX |

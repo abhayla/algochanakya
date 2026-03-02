@@ -290,12 +290,7 @@ Rate limiting is automatic — adapters handle this internally. **Never bypass t
 - `"zerodha"` → `BrokerType.KITE`
 - `"angelone"` → `BrokerType.ANGEL`
 
-**Plan**: Alembic migration to normalize `broker_connections.broker` values. Until then, use `broker_name_mapper.py` utility:
-
-```python
-from app.services.brokers.broker_name_mapper import get_broker_type
-broker_type = get_broker_type("zerodha")  # Returns BrokerType.KITE
-```
+**Workaround**: Mapping is currently handled inline in factory functions and adapter code. A dedicated `broker_name_mapper.py` utility is planned. Long-term fix: Alembic migration to normalize `broker_connections.broker` values.
 
 ---
 
@@ -305,44 +300,46 @@ broker_type = get_broker_type("zerodha")  # Returns BrokerType.KITE
 
 | Component | Status | Files |
 |-----------|--------|-------|
-| Order execution abstraction | ✅ | `brokers/base.py`, `brokers/factory.py`, `brokers/kite_adapter.py` |
-| Market data REST abstraction | ✅ | `market_data/market_data_base.py`, `market_data/factory.py`, `market_data/smartapi_adapter.py` |
+| Order execution abstraction | ✅ | `brokers/base.py`, `brokers/factory.py` |
+| Order adapters (all 6) | ✅ | `kite_adapter.py`, `angelone_adapter.py`, `upstox_order_adapter.py`, `dhan_order_adapter.py`, `fyers_order_adapter.py`, `paytm_order_adapter.py` |
+| Market data REST abstraction | ✅ | `market_data/market_data_base.py`, `market_data/factory.py` |
+| Market data adapters (all 6) | ✅ | `smartapi_adapter.py`, `kite_adapter.py`, `upstox_adapter.py`, `dhan_adapter.py`, `fyers_adapter.py`, `paytm_adapter.py` |
 | Token/symbol mapping | ✅ | `market_data/token_manager.py`, `market_data/symbol_converter.py` |
 | Rate limiting | ✅ | `market_data/rate_limiter.py` |
 | Route refactoring | ✅ | All routes use `get_market_data_adapter()` / `get_broker_adapter()` |
-| KiteMarketDataAdapter | ✅ | `market_data/kite_adapter.py` |
 
-### Phase 4: 5-Component Ticker Architecture — WebSocket Refactoring
+### Phase 4: COMPLETE (Feb 2026) — 5-Component Ticker Architecture
 
 | Component | Status | Files |
 |-----------|--------|-------|
-| TickerAdapter ABC | 📋 Planned | `ticker/adapter_base.py` |
-| TickerPool (with integrated credentials) | 📋 Planned | `ticker/pool.py` |
-| TickerRouter | 📋 Planned | `ticker/router.py` |
-| HealthMonitor | 📋 Planned | `ticker/health.py` |
-| FailoverController | 📋 Planned | `ticker/failover.py` |
-| SmartAPITickerAdapter | 📋 Planned | `ticker/adapters/smartapi.py` |
-| KiteTickerAdapter | 📋 Planned | `ticker/adapters/kite.py` |
-| websocket.py refactor (494→90 lines) | 📋 Planned | `api/routes/websocket.py` |
+| TickerAdapter ABC | ✅ | `ticker/adapter_base.py` (236 lines) |
+| TickerPool (with integrated credentials) | ✅ | `ticker/pool.py` (341 lines) |
+| TickerRouter | ✅ | `ticker/router.py` (326 lines) |
+| HealthMonitor | ✅ | `ticker/health.py` (299 lines) |
+| FailoverController | ✅ | `ticker/failover.py` (256 lines) |
+| Ticker adapters (all 6) | ✅ | `ticker/adapters/smartapi.py`, `kite.py`, `upstox.py`, `dhan.py`, `fyers.py`, `paytm.py` |
+| websocket.py refactor (494→292 lines) | ✅ | `api/routes/websocket.py` |
+| Test coverage | ✅ | 8 test files, 5,100+ lines |
 
-**Current Design (Feb 14, 2026):** 5-component architecture with integrated credential management in TickerPool. NormalizedTick uses `Decimal` (not `float`) for precision.
+5-component architecture with integrated credential management in TickerPool. NormalizedTick uses `Decimal` (not `float`) for precision.
 
-See: [TICKER-DESIGN-SPEC.md](../decisions/TICKER-DESIGN-SPEC.md) (refined design) | [Implementation Guide](../guides/TICKER-IMPLEMENTATION-GUIDE.md) | [API Reference](../api/multi-broker-ticker-api.md)
+See: [TICKER-DESIGN-SPEC.md](../decisions/TICKER-DESIGN-SPEC.md) | [Implementation Guide](../guides/TICKER-IMPLEMENTATION-GUIDE.md) | [API Reference](../api/multi-broker-ticker-api.md)
 
 **Note:** ~~ADR-003 v2~~ is superseded by TICKER-DESIGN-SPEC.md. The old ADR-003 v2 described a 6-component system with separate SystemCredentialManager - this has been merged into TickerPool.
 
-### Phase 5: Additional Broker Adapters
+### Phase 5: COMPLETE (Feb 2026) — All Broker Ticker Adapters
 
-- Upstox, Dhan, Fyers, Paytm ticker adapters (stubs → full implementation)
-- Per-broker instrument master download + token mapping population
+All 6 broker ticker adapters fully implemented (SmartAPI, Kite, Upstox, Dhan, Fyers, Paytm). 3,100+ lines of adapter code total.
 
-### Phase 6: Order Execution — All 6 Brokers (Phase 1)
+### Phase 6: MOSTLY COMPLETE (Mar 2026) — Order Execution All 6 Brokers
 
-- All 6 order execution adapters: Kite, Angel, Upstox, Dhan, Fyers, Paytm
-- Auth fallback chain per broker: refresh_token → OAuth re-login → API key/secret
-- Broker-specific auth: SmartAPI (PIN+TOTP), Kite (OAuth), Upstox (OAuth ~1yr), Dhan (static), Fyers (OAuth), Paytm (OAuth 3 JWTs)
-- Migrate ~40 `get_kite_client()` usages to broker-agnostic adapter methods
-- Frontend broker selection UI for all 6 brokers
+| Component | Status | Notes |
+|-----------|--------|-------|
+| All 6 order adapters | ✅ | Kite, AngelOne, Upstox, Dhan, Fyers, Paytm |
+| Factory registration | ✅ | All 6 in `_BROKER_ADAPTERS` dict |
+| Auth per broker | ✅ | SmartAPI (PIN+TOTP), Kite (OAuth), Upstox (OAuth ~1yr), Dhan (static), Fyers (OAuth), Paytm (OAuth 3 JWTs) |
+| `get_kite_client()` migration | 🔄 In Progress | ~64 usages in 18 files (concentrated in AutoPilot v1 routes + AI services) |
+| Frontend broker selection UI | 📋 Planned | Settings page shows Kite+SmartAPI; remaining 4 brokers need UI |
 
 ---
 
@@ -389,7 +386,7 @@ from datetime import datetime
 @dataclass(slots=True)
 class NormalizedTick:
     token: int                # Canonical instrument token (Kite format)
-    ltp: Decimal              # Last traded price (₹, NOT paise) - Uses Decimal for precision
+    ltp: Decimal              # Last traded price (₹, NOT paise)
     open: Decimal
     high: Decimal
     low: Decimal
@@ -401,22 +398,11 @@ class NormalizedTick:
     timestamp: datetime
     broker_type: str          # Source broker ("kite", "smartapi", etc.)
 
-    def to_dict(self) -> dict:
-        """Convert to JSON-serializable dict (float conversion for JSON)"""
-        return {
-            "token": self.token,
-            "ltp": float(self.ltp),
-            "open": float(self.open),
-            "high": float(self.high),
-            "low": float(self.low),
-            "close": float(self.close),
-            "change": float(self.change),
-            "change_percent": float(self.change_percent),
-            "volume": self.volume,
-            "oi": self.oi,
-            "timestamp": self.timestamp.isoformat(),
-            "broker_type": self.broker_type
-        }
+    # Optional depth fields
+    bid: Optional[Decimal]
+    ask: Optional[Decimal]
+    bid_qty: Optional[int]
+    ask_qty: Optional[int]
 ```
 
 **Key Changes from Original ADR-003 v2:**
@@ -530,7 +516,7 @@ Full definitions in `backend/app/services/brokers/base.py` and `ticker/models.py
 
 ## Related Documentation
 
-**Current as of Feb 14, 2026:**
+**Current as of Mar 2, 2026:**
 
 - [ADR-002: Multi-Broker Abstraction](../decisions/002-broker-abstraction.md) — Decision rationale
 - [TICKER-DESIGN-SPEC.md](../decisions/TICKER-DESIGN-SPEC.md) — **Current ticker architecture** (5-component design)
