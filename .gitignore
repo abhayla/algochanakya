@@ -69,6 +69,8 @@ Thumbs.db
 htmlcov/
 test-results/
 tests/screenshots/
+# E2E debug screenshots (not visual regression baselines)
+tests/e2e/screenshots/
 tests/config/credentials.js
 tests/config/.auth-token
 tests/config/.auth-token-prod
@@ -86,6 +88,9 @@ allure-results/
 
 # Windows artifacts
 NUL
+# Corrupted/garbage filenames from shell expansion errors
+{,
+80%
 
 # Environment files (all locations)
 .env
@@ -104,6 +109,8 @@ secrets/
 # Deployment
 deploy.sh
 *.bak
+# Backup files
+*.backup
 
 # Temporary images/screenshots
 images/
