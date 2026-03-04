@@ -83,7 +83,7 @@ When broker adapter code changes, additional documentation must be updated beyon
 | **New broker adapter created** | Update [comparison-matrix.md](../.claude/skills/broker-shared/comparison-matrix.md) Implementation Status table, [feature-registry.yaml](../../docs/feature-registry.yaml) broker-abstraction patterns, [CLAUDE.md](../../CLAUDE.md) Supported Brokers table |
 | **Adapter status change** (planned→complete) | Update comparison-matrix.md section 11, CLAUDE.md Implementation Status, [IMPLEMENTATION-CHECKLIST.md](../../docs/IMPLEMENTATION-CHECKLIST.md) Progress Tracking table |
 | **Ticker/WebSocket change** | Update [ADR-003](../../docs/decisions/003-multi-broker-ticker-architecture.md) status if applicable, IMPLEMENTATION-CHECKLIST.md Phase 4 tasks |
-| **Symbol converter change** | Verify the relevant broker expert skill's Symbol Format section matches (e.g., `/smartapi-expert`, `/kite-expert`) |
+| **Symbol converter change** | Verify the relevant broker expert skill's Symbol Format section matches (e.g., `/smartapi-expert`, `/zerodha-expert`) |
 | **Rate limiter change** | Update comparison-matrix.md section 3 (Rate Limits) + relevant broker expert skill's Rate Limits section |
 | **New broker expert skill created** | Update comparison-matrix.md skill callout, CLAUDE.md skills table, [DEVELOPER-QUICK-REFERENCE.md](../../docs/DEVELOPER-QUICK-REFERENCE.md) broker skills references |
 

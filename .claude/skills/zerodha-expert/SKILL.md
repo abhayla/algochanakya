@@ -1,23 +1,25 @@
 ---
-name: kite-expert
-description: Use when implementing Kite adapter, debugging Kite API errors, understanding Kite symbol format (canonical), or auditing code calling Kite API. Kite Connect (Zerodha) API expert for AlgoChanakya.
-metadata:
-  author: AlgoChanakya
-  version: "2.5"
-  last_verified: "2026-02-25"
+name: zerodha-expert
+description: Zerodha expert — broker overview, products, pricing, Kite Connect API,
+  and AlgoChanakya adapter guidance. Use for any Zerodha or Kite Connect question.
+version: "3.0"
+last_verified: "2026-03-03"
 ---
 
-# Kite Connect (Zerodha) API Expert
+# Zerodha Expert
 
-Zerodha's Kite Connect is used for **order execution** in AlgoChanakya. It provides a well-documented REST API and binary WebSocket (KiteTicker) for market data. Kite Connect costs ₹500/month for third-party apps (includes live market data + historical data since Feb 2025). Zerodha's Personal API is free (since March 2025) but provides order execution only—no market data access. AlgoChanakya uses Kite for orders and SmartAPI for market data (₹0/month total). **Kite symbol format IS the canonical format** used throughout AlgoChanakya - no symbol conversion needed. All AlgoChanakya adapters for Kite are **fully implemented**.
+Zerodha is India's largest retail stockbroker (14M+ active clients), founded in 2010 by Nithin and Nikhil Kamath. It pioneered discount broking in India with flat ₹20/order pricing and free equity delivery. Zerodha's trading API is called **Kite Connect** — a well-documented REST + binary WebSocket API costing ₹500/month (or FREE via Personal API for orders only).
+
+In AlgoChanakya, Zerodha/Kite Connect is used for **order execution** (fully implemented). Kite symbol format IS the canonical format used throughout the platform — no symbol conversion needed. Market data comes from SmartAPI by default (free), with Kite Connect as the last resort in the platform failover chain.
 
 ## When to Use
 
+- Any question about Zerodha as a broker (products, pricing, account types)
 - Implementing or modifying the Kite order execution adapter
 - Debugging Kite API errors, OAuth flow, or access token issues
 - Understanding Kite symbol format (canonical format for AlgoChanakya)
 - Working with KiteTicker WebSocket binary protocol
-- Comparing Kite capabilities with other brokers
+- Comparing Zerodha/Kite capabilities with other brokers
 - Auditing code that calls Kite API for correctness
 - Writing tests that mock Kite API responses
 - GTT (Good Till Triggered) order questions
@@ -29,7 +31,46 @@ Zerodha's Kite Connect is used for **order execution** in AlgoChanakya. It provi
 - SmartAPI issues (use smartapi-expert)
 - Upstox/Dhan/Fyers/Paytm issues (use their respective expert skills)
 
-## API Overview
+---
+
+## 1. Zerodha Overview
+
+Zerodha Broking Limited (SEBI: INZ000031633) is headquartered in Bengaluru. It offers trading across NSE, BSE, MCX, and CDS segments. Key platforms include Kite (trading), Console (back-office), Coin (mutual funds), and Varsity (education).
+
+**Account types:** Individual, Joint, HUF, Corporate, NRI (NRE/NRO).
+
+See [zerodha-overview.md](./references/zerodha-overview.md) for complete company profile, products table, and differentiators.
+
+## 2. Brokerage & Pricing
+
+### Trading Charges
+
+| Segment | Brokerage |
+|---------|-----------|
+| Equity Delivery | ₹0 (FREE) |
+| Equity Intraday | ₹20/order or 0.03% (lower) |
+| F&O (Options) | ₹20/order (flat) |
+| F&O (Futures) | ₹20/order or 0.03% (lower) |
+| Currency / Commodity | ₹20/order or 0.03% (lower) |
+
+**Other:** Account opening FREE, AMC ₹300/year, DP charges ₹15.93/scrip on sell.
+
+### API Costs
+
+| Product | Cost | Capability |
+|---------|------|------------|
+| **Kite Connect** | ₹500/month | Full API: REST + WebSocket + market data + historical data |
+| **Personal API** | FREE | Order execution only — NO market data |
+
+**AlgoChanakya impact:** Since SmartAPI provides free market data, AlgoChanakya uses Kite only for order execution. Users with Personal API (free) can execute orders; Kite Connect (₹500/month) is only needed if using Kite as a data source.
+
+See [zerodha-overview.md](./references/zerodha-overview.md) for detailed charges and exchange support.
+
+---
+
+## 3. Kite Connect API
+
+### API Overview
 
 | Property | Value |
 |----------|-------|
@@ -43,11 +84,11 @@ Zerodha's Kite Connect is used for **order execution** in AlgoChanakya. It provi
 | **Token Validity** | access_token: ~24h (until 6 AM next day), no auto-refresh |
 | **Sandbox** | Yes — see [Sandbox Environment](#sandbox-environment) |
 
-## Authentication Flow
+### Authentication Flow
 
 Kite uses a standard **OAuth 2.0 redirect flow**. No auto-refresh - user must re-login daily.
 
-### Step-by-Step Authentication
+#### Step-by-Step Authentication
 
 ```
 1. Redirect user → https://kite.zerodha.com/connect/login?v=3&api_key={api_key}
@@ -58,7 +99,7 @@ Kite uses a standard **OAuth 2.0 redirect flow**. No auto-refresh - user must re
 6. Use access_token for all API calls: Authorization: token {api_key}:{access_token}
 ```
 
-### Token Types
+#### Token Types
 
 | Token | Purpose | Validity | Notes |
 |-------|---------|----------|-------|
@@ -66,7 +107,7 @@ Kite uses a standard **OAuth 2.0 redirect flow**. No auto-refresh - user must re
 | `access_token` | REST + WebSocket auth | Until ~6 AM next day | Cannot be refreshed |
 | `public_token` | Public data only | Same as access_token | Limited endpoints |
 
-### Auth Header Format
+#### Auth Header Format
 
 ```
 Authorization: token {api_key}:{access_token}
@@ -74,13 +115,13 @@ Authorization: token {api_key}:{access_token}
 
 **Example:** `Authorization: token abc123:xyz789`
 
-### No Auto-Refresh
+#### No Auto-Refresh
 
 Unlike SmartAPI, Kite has **no refresh token**. When access_token expires (~6 AM), the user must complete the OAuth flow again. This is why AlgoChanakya uses SmartAPI (with auto-TOTP) as the default market data source.
 
 See [auth-flow.md](./references/auth-flow.md) for complete request/response examples including sandbox setup.
 
-## Key Endpoints Quick Reference
+### Key Endpoints Quick Reference
 
 | Category | Method | Endpoint | Notes |
 |----------|--------|----------|-------|
@@ -110,9 +151,9 @@ See [auth-flow.md](./references/auth-flow.md) for complete request/response exam
 
 See [endpoints-catalog.md](./references/endpoints-catalog.md) for complete schemas.
 
-## Symbol Format (CANONICAL)
+### Symbol Format (CANONICAL)
 
-### Kite IS the Canonical Format
+#### Kite IS the Canonical Format
 
 **Kite symbol format is the canonical format used throughout AlgoChanakya.** No conversion needed when working with Kite symbols.
 
@@ -129,7 +170,7 @@ See [endpoints-catalog.md](./references/endpoints-catalog.md) for complete schem
 | BANKNIFTY Future | `NIFTY25FEBFUT` | varies |
 | Reliance Equity | `RELIANCE` | `738561` |
 
-### Weekly vs Monthly Expiry Format
+#### Weekly vs Monthly Expiry Format
 
 | Type | Format | Example |
 |------|--------|---------|
@@ -138,7 +179,7 @@ See [endpoints-catalog.md](./references/endpoints-catalog.md) for complete schem
 
 **Month codes (weekly):** `1`=Jan, `2`=Feb, ..., `9`=Sep, `O`=Oct, `N`=Nov, `D`=Dec
 
-### Key Index Tokens
+#### Key Index Tokens
 
 | Index | Token | Exchange |
 |-------|-------|----------|
@@ -149,9 +190,9 @@ See [endpoints-catalog.md](./references/endpoints-catalog.md) for complete schem
 
 See [symbol-format.md](./references/symbol-format.md) for complete format details.
 
-## WebSocket Protocol (KiteTicker)
+### WebSocket Protocol (KiteTicker)
 
-### Binary Tick Format
+#### Binary Tick Format
 
 KiteTicker sends **binary messages** with 3 modes:
 
@@ -161,7 +202,7 @@ KiteTicker sends **binary messages** with 3 modes:
 | **Quote** | 44 | Token + OHLC + Volume + OI + Bid/Ask |
 | **Full** | 184 | Quote + 5-level depth + timestamps |
 
-### Prices in PAISE (int32)
+#### Prices in PAISE (int32)
 
 All prices are **int32 in paise**. Divide by 100 for rupees.
 
@@ -170,13 +211,13 @@ ltp_paise = struct.unpack('>I', data[4:8])[0]
 ltp_rupees = ltp_paise / 100.0  # 15025 → 150.25
 ```
 
-### Connection URL
+#### Connection URL
 
 ```
 wss://ws.kite.trade?api_key={api_key}&access_token={access_token}
 ```
 
-### WebSocket Limits
+#### WebSocket Limits
 
 | Limit | Value |
 |-------|-------|
@@ -186,7 +227,7 @@ wss://ws.kite.trade?api_key={api_key}&access_token={access_token}
 
 See [websocket-protocol.md](./references/websocket-protocol.md) for byte offsets and parsing.
 
-## Rate Limits
+### Rate Limits
 
 | Endpoint Type | Limit | Notes |
 |---------------|-------|-------|
@@ -198,7 +239,7 @@ See [websocket-protocol.md](./references/websocket-protocol.md) for byte offsets
 
 **AlgoChanakya Configuration:** `rate_limiter.py` currently sets `"kite": 3` — this is **INCORRECT** and should be updated to `"kite": 10`. See [maintenance-log.md](./references/maintenance-log.md) for details.
 
-## GTT Orders
+### GTT Orders
 
 Kite supports **Good Till Triggered (GTT)** orders — orders that execute automatically when a price condition is met. GTTs persist for up to 1 year.
 
@@ -211,7 +252,7 @@ GTT is **not yet implemented** in AlgoChanakya's Kite adapter. Standard orders a
 
 See [gtt-orders.md](./references/gtt-orders.md) for complete GTT reference including request/response examples and status values.
 
-## No Webhook Support
+### No Webhook Support
 
 Kite Connect does **NOT support HTTP webhooks** for order or trade notifications. There is no mechanism to register a URL that Zerodha will call when orders execute.
 
@@ -222,7 +263,7 @@ Kite Connect does **NOT support HTTP webhooks** for order or trade notifications
 
 See [webhook.md](./references/webhook.md) for details and comparison with other brokers.
 
-## No Dedicated Option Chain API
+### No Dedicated Option Chain API
 
 Kite Connect does **NOT** have a dedicated option chain endpoint. To build an option chain, you must query individual strike quotes in batches using the `/quote` endpoint (max 500 instruments per request).
 
@@ -230,7 +271,7 @@ Kite Connect does **NOT** have a dedicated option chain endpoint. To build an op
 
 See [option-chain.md](./references/option-chain.md) for the batched quote approach and performance considerations.
 
-## Sandbox Environment
+### Sandbox Environment
 
 Kite Connect provides a **test/sandbox environment** for development:
 
@@ -241,7 +282,7 @@ Kite Connect provides a **test/sandbox environment** for development:
 
 See [auth-flow.md](./references/auth-flow.md) for sandbox configuration details.
 
-## Price Normalization
+### Price Normalization
 
 | Data Source | Price Unit | Action Required |
 |------------|------------|-----------------|
@@ -251,7 +292,24 @@ See [auth-flow.md](./references/auth-flow.md) for sandbox configuration details.
 
 **Note:** Unlike SmartAPI where REST historical returns paise, Kite REST always returns rupees. Only WebSocket uses paise.
 
-## AlgoChanakya Implementation Status
+### Error Codes Quick Reference
+
+| HTTP Status | Exception Class | Cause | Retryable |
+|-------------|----------------|-------|-----------|
+| `400` | `InputException` | Invalid parameters | No |
+| `403` | `TokenException` | Invalid/expired token | No - re-auth |
+| `429` | `NetworkException` | Rate limit exceeded | Yes - backoff |
+| `500` | `GeneralException` | Server error | Yes - retry |
+| `502` | `NetworkException` | Gateway error | Yes - retry |
+| `503` | `NetworkException` | Service unavailable | Yes - retry |
+
+See [error-codes.md](./references/error-codes.md) for complete error catalog including GTT-specific errors.
+
+---
+
+## 4. AlgoChanakya Integration
+
+### Implementation Status
 
 | Component | Status | File |
 |-----------|--------|------|
@@ -288,7 +346,9 @@ quote = await data_adapter.get_quote(["NIFTY2522725000CE"])
 # Use name mapping utility when converting
 ```
 
-## Common Gotchas
+---
+
+## 5. Common Gotchas
 
 1. **No auto-refresh** - Access token expires ~6 AM. No refresh mechanism. User must OAuth again. This is why SmartAPI is default for market data.
 
@@ -320,24 +380,13 @@ quote = await data_adapter.get_quote(["NIFTY2522725000CE"])
 
 15. **₹500/month subscription** - Kite Connect requires a paid subscription for third-party apps. Personal Kite API is free but limited to orders only.
 
-## Error Codes Quick Reference
+---
 
-| HTTP Status | Exception Class | Cause | Retryable |
-|-------------|----------------|-------|-----------|
-| `400` | `InputException` | Invalid parameters | No |
-| `403` | `TokenException` | Invalid/expired token | No - re-auth |
-| `429` | `NetworkException` | Rate limit exceeded | Yes - backoff |
-| `500` | `GeneralException` | Server error | Yes - retry |
-| `502` | `NetworkException` | Gateway error | Yes - retry |
-| `503` | `NetworkException` | Service unavailable | Yes - retry |
-
-See [error-codes.md](./references/error-codes.md) for complete error catalog including GTT-specific errors.
-
-## Related Skills
+## 6. Related Skills
 
 | Skill | When to Use |
 |-------|-------------|
-| `/smartapi-expert` | Kite's default pair for market data — compare paise handling, auto-TOTP vs OAuth, WS binary formats |
+| `/smartapi-expert` | Zerodha's default pair for market data — compare paise handling, auto-TOTP vs OAuth, WS binary formats |
 | `/upstox-expert` | Both fully implemented — compare Protobuf vs binary WS, extended token vs OAuth |
 | `/trading-constants-manager` | Kite symbol format IS canonical — verify constants match when adding new instruments |
 | `/auto-verify` | After any Kite adapter change — run verification immediately |
@@ -345,13 +394,16 @@ See [error-codes.md](./references/error-codes.md) for complete error catalog inc
 
 **Cross-Broker Comparison:** See [comparison-matrix.md](../broker-shared/comparison-matrix.md) for pricing, rate limits, WebSocket capabilities, and symbol format differences across all 6 brokers.
 
-## Maintenance & Auto-Improvement
+---
+
+## 7. Maintenance & Auto-Improvement
 
 ### Freshness Tracking
 
 | Reference File | Last Verified | Check Frequency |
 |---|---|---|
-| SKILL.md | 2026-02-25 | Quarterly |
+| SKILL.md | 2026-03-03 | Quarterly |
+| zerodha-overview.md | 2026-03-03 | Quarterly |
 | endpoints-catalog.md | 2026-02-25 | Quarterly |
 | auth-flow.md | 2026-02-25 | Quarterly |
 | error-codes.md | 2026-02-25 | Quarterly |
@@ -366,18 +418,22 @@ See [error-codes.md](./references/error-codes.md) for complete error catalog inc
 
 1. **Error-driven update**: If this skill is invoked 3+ times with FAILED/UNKNOWN outcome for the same error_type (tracked via `post_skill_learning.py` hook → `knowledge.db`), `reflect deep` mode should propose a skill update.
 2. **Staleness alert**: If `last_verified` exceeds 90 days, check https://kite.trade/docs/connect/v3/ for API changes.
-3. **Quarterly review**: Next scheduled review: **May 2026**.
+3. **Quarterly review**: Next scheduled review: **June 2026**.
 
 ### Version Changelog
 
 | Version | Date | Changes |
 |---|---|---|
+| 3.0 | 2026-03-04 | Renamed from `kite-expert` to `zerodha-expert`. Restructured: Zerodha overview + pricing sections added, Kite Connect API content reorganized as subsection. New `zerodha-overview.md` reference file. All existing API content preserved. |
 | 2.5 | 2026-02-25 | CRITICAL rate limit fix (3/sec → 10/sec), added GTT section + reference, added No Webhook section + reference, added No Option Chain API section + reference, added Sandbox section, updated SDK version to v5.0.1, added historical data 60-day limit note, expanded Maintenance section to all 9 reference files |
 | 2.0 | 2026-02-25 | Implementation status corrected (ticker adapter added, all adapters Implemented), updated Related Skills (removed outdated "next to implement" note), maintenance section added |
-| 1.0 | 2026-02-16 | Initial creation |
+| 1.0 | 2026-02-16 | Initial creation as `kite-expert` |
+
+---
 
 ## References
 
+- [Zerodha Overview](./references/zerodha-overview.md) - Company profile, products, pricing, exchanges, differentiators
 - [Authentication Flow](./references/auth-flow.md) - OAuth flow with request/response examples, sandbox setup
 - [Endpoints Catalog](./references/endpoints-catalog.md) - All REST endpoints with schemas
 - [WebSocket Protocol](./references/websocket-protocol.md) - KiteTicker binary format and parsing

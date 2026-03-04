@@ -27,7 +27,7 @@ Angel One's SmartAPI is the **default market data provider** for AlgoChanakya, o
 
 - General broker abstraction questions (read docs/architecture/broker-abstraction.md instead)
 - Cross-broker comparison (use broker-shared/comparison-matrix.md instead)
-- Kite Connect issues (use kite-expert)
+- Kite Connect issues (use zerodha-expert)
 - Upstox/Dhan/Fyers/Paytm issues (use their respective expert skills)
 
 ## API Overview
@@ -405,7 +405,7 @@ See [error-codes.md](./references/error-codes.md) for complete error code catalo
 
 | Skill | When to Use |
 |-------|-------------|
-| `/kite-expert` | SmartAPI's default pair for order execution — compare auth flows, symbol formats, canonical conversion |
+| `/zerodha-expert` | SmartAPI's default pair for order execution — compare auth flows, symbol formats, canonical conversion |
 | `/upstox-expert` | Free data alternative to SmartAPI — compare Protobuf vs binary WS, rate limits (50/s vs 1/s) |
 | `/trading-constants-manager` | When adding SmartAPI instrument tokens or lot sizes to centralized constants |
 | `/auto-verify` | After any SmartAPI adapter change — run verification immediately |

@@ -54,7 +54,7 @@
 | 7 | e2e-test-generator | ✅ | ❌→✅ | ❌→✅ | ⚠️→✅ Improved | 1,900 | ✅ Fixed |
 | 8 | fyers-expert | ✅ | ❌→✅ | ❌→✅ | ⚠️→✅ Improved | 2,700 | ✅ Fixed |
 | 9 | health-check | ✅ | ❌→✅ | ❌→✅ | ✅ Good | 2,300 | ✅ Fixed |
-| 10 | kite-expert | ✅ | ❌→✅ | ❌→✅ | ⚠️→✅ Improved | 3,100 | ✅ Fixed |
+| 10 | zerodha-expert | ✅ | ❌→✅ | ❌→✅ | ⚠️→✅ Improved | 3,100 | ✅ Fixed |
 | 11 | learning-engine | ✅ | ❌→✅ | ❌→✅ | ✅ Good | 3,800 | ✅ Fixed |
 | 12 | paytm-expert | ✅ | ❌→✅ | ❌→✅ | ⚠️→✅ Improved | 2,600 | ✅ Fixed |
 | 13 | phase-gate | ✅ | ❌→✅ | ❌→✅ | ✅ Good | 1,700 | ✅ Fixed |
@@ -245,7 +245,7 @@
 ### Manual Spot Checks
 
 - ✅ Verified smartapi-expert.md frontmatter parses correctly
-- ✅ Verified kite-expert.md "When NOT to Use" section exists
+- ✅ Verified zerodha-expert.md "When NOT to Use" section exists
 - ✅ Verified test-fixer.md description improved
 - ✅ Verified fix-loop.md has pseudocode annotations
 - ✅ Verified planner-researcher.md stale reference fixed

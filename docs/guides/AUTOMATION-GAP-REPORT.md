@@ -135,7 +135,7 @@ AlgoChanakya has **MORE automation** than CricApp but **ZERO unified documentati
 - `browser-testing` - Browser automation
 
 **Broker Experts (6):**
-- `smartapi-expert`, `kite-expert`, `upstox-expert`, `dhan-expert`, `fyers-expert`, `paytm-expert`
+- `smartapi-expert`, `zerodha-expert`, `upstox-expert`, `dhan-expert`, `fyers-expert`, `paytm-expert`
 
 **Other (2):**
 - `keybindings-help` - Customize keyboard shortcuts

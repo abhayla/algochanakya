@@ -239,7 +239,7 @@ S22: End-to-End Integration Test (full failover chain)
 - [ ] Kite integer tokens are already canonical (identity mapping)
 - [ ] Unit tests (mock KiteTicker, verify NormalizedTick output)
 
-**Key reference:** `/kite-expert`
+**Key reference:** `/zerodha-expert`
 
 **Manual intervention:** None (uses existing Kite adapter code).
 

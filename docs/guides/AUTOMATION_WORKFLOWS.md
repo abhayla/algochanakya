@@ -82,7 +82,7 @@ ls -l .claude/hooks/*.py
 | **Check codebase health** | `health-check` | Tier 2 |
 | **Creating a Vue component** | `vue-component-generator` | Tier 1 |
 | **Writing E2E tests** | `e2e-test-generator` | Tier 1 |
-| **Broker API question** | `smartapi-expert`, `kite-expert`, etc. | Tier 2 |
+| **Broker API question** | `smartapi-expert`, `zerodha-expert`, etc. | Tier 2 |
 | **Save current work** | `save-session` | Tier 2 |
 | **Debug complex failure** | Launch `debugger` agent | Tier 2 |
 
@@ -1488,7 +1488,7 @@ All broker experts follow the same pattern:
 | Skill | Broker | Reference Files (each) |
 |-------|--------|------------------------|
 | `smartapi-expert` | Angel One | 6 files (SKILL.md + 5 refs) |
-| `kite-expert` | Zerodha | 6 files |
+| `zerodha-expert` | Zerodha | 11 files |
 | `upstox-expert` | Upstox | 6 files |
 | `dhan-expert` | Dhan | 6 files |
 | `fyers-expert` | Fyers | 6 files |

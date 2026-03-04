@@ -24,7 +24,7 @@ Upstox offers a modern API with OAuth 2.0 authentication, Protobuf-based WebSock
 
 - General broker abstraction questions (read docs/architecture/broker-abstraction.md instead)
 - Cross-broker comparison (use broker-shared/comparison-matrix.md instead)
-- SmartAPI/Kite issues (use smartapi-expert or kite-expert)
+- SmartAPI/Kite issues (use smartapi-expert or zerodha-expert)
 - Dhan/Fyers/Paytm issues (use their respective expert skills)
 
 ## API Overview
@@ -328,7 +328,7 @@ See [error-codes.md](./references/error-codes.md) for complete error catalog inc
 | Skill | When to Use |
 |-------|-------------|
 | `/smartapi-expert` | Reference implementation — SmartAPI adapter is the model for new adapters |
-| `/kite-expert` | Order execution reference — Kite adapter is the model |
+| `/zerodha-expert` | Order execution reference — Kite adapter is the model |
 | `/dhan-expert` | Compare unique WS features — Dhan has 200-depth, Upstox has Greeks via WS |
 | `/auto-verify` | After any Upstox adapter change — run verification immediately |
 | `/docs-maintainer` | After adapter changes — update feature registry, comparison matrix |

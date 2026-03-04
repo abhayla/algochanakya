@@ -17,7 +17,7 @@ Comprehensive review and update of all 6 broker expert skills against latest 202
 ## Working Files
 
 ### Broker Skills Updated (5 files modified)
-- `.claude/skills/kite-expert/skill.md` (modified) - Updated Kite Connect pricing, added Personal API details
+- `.claude/skills/zerodha-expert/SKILL.md` (modified) - Updated Kite Connect pricing, added Personal API details (renamed from kite-expert)
 - `.claude/skills/upstox-expert/skill.md` (modified) - CRITICAL: Changed from FREE to ₹499/month
 - `.claude/skills/dhan-expert/skill.md` (modified) - Clarified two-tier pricing model
 - `.claude/skills/fyers-expert/skill.md` (modified) - Updated to v3.0.0, 5K symbol capacity

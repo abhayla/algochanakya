@@ -149,7 +149,7 @@ Detailed footnotes explaining:
 
 ## Files Modified
 
-1. ✅ `.claude/skills/kite-expert/skill.md` (3 updates)
+1. ✅ `.claude/skills/zerodha-expert/SKILL.md` (3 updates → renamed from kite-expert, v3.0)
 2. ✅ `.claude/skills/upstox-expert/skill.md` (3 updates)
 3. ✅ `.claude/skills/dhan-expert/skill.md` (3 updates)
 4. ✅ `.claude/skills/fyers-expert/skill.md` (4 updates)

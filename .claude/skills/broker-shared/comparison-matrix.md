@@ -6,7 +6,7 @@ Comprehensive comparison of all 6 brokers supported by AlgoChanakya.
 
 > **Broker Expert Skills:** For API-specific guidance (auth flows, error codes, WebSocket protocols, symbol formats), consult the dedicated broker expert skills:
 > - `/smartapi-expert` — Angel One SmartAPI (default market data, auto-TOTP, binary WS, paise pricing, static IP required Aug 2025)
-> - `/kite-expert` — Zerodha Kite Connect (default orders, OAuth, canonical symbol format, 10/sec rate limit)
+> - `/zerodha-expert` — Zerodha Kite Connect (default orders, OAuth, canonical symbol format, 10/sec rate limit)
 > - `/upstox-expert` — Upstox (FREE, Protobuf WS, extended token, Option Greeks via WS, GTT, v3 API)
 > - `/dhan-expert` — Dhan (static token, 200-level depth, Little Endian binary WS, Forever Orders, `availabelBalance` typo)
 > - `/fyers-expert` — Fyers (FREE, 5-socket WS system, 5K symbols/conn, v3 SDK Nov 2023, daily 100K limit)
@@ -269,7 +269,7 @@ BROKER_LIMITS = {
 | Broker | Expert Skill | Top Gotchas |
 |--------|-------------|-------------|
 | **SmartAPI** | `/smartapi-expert` | Static IP required (Aug 2025); paise conversion (WS + historical); auto-TOTP; 1 req/sec |
-| **Kite** | `/kite-expert` | Rate limit is **10/sec** (not 3); symbol IS canonical; no webhooks; no option chain API |
+| **Kite** | `/zerodha-expert` | Rate limit is **10/sec** (not 3); symbol IS canonical; no webhooks; no option chain API |
 | **Upstox** | `/upstox-expert` | IP whitelist required; V2 WS discontinued Aug 2025; Protobuf; UDAPI100050 dual meaning |
 | **Dhan** | `/dhan-expert` | `availabelBalance` typo (exact spelling required); Little Endian WS; numeric security_ids |
 | **Fyers** | `/fyers-expert` | v3 SDK Nov 2023; 5 socket types; GTT WS events broken (Feb 2026); midnight token expiry |

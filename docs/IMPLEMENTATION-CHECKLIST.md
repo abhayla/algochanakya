@@ -208,7 +208,7 @@ For current roadmap and next steps, see [ROADMAP.md](ROADMAP.md).
 | **Important Patterns** | [CLAUDE.md - Patterns](../CLAUDE.md#important-patterns) |
 | **Common Pitfalls** | [CLAUDE.md - Pitfalls](../CLAUDE.md#common-pitfalls) |
 | **Testing Rules** | [Testing Guide](testing/README.md) |
-| **Broker Expert Skills** | `/smartapi-expert`, `/kite-expert`, `/upstox-expert`, `/dhan-expert`, `/fyers-expert`, `/paytm-expert` |
+| **Broker Expert Skills** | `/smartapi-expert`, `/zerodha-expert`, `/upstox-expert`, `/dhan-expert`, `/fyers-expert`, `/paytm-expert` |
 | **Cross-Broker Comparison** | [Comparison Matrix](../.claude/skills/broker-shared/comparison-matrix.md) |
 
 ---

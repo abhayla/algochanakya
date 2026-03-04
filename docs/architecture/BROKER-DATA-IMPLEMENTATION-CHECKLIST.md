@@ -457,7 +457,7 @@ These are shared components that all brokers rely on. Most are already built but
 
 ## Broker #6: Kite Connect (Zerodha) — Platform Fallback #6 (Last Resort)
 
-**Rank:** #6 (Last Resort) | **Cost:** ₹500/month (Connect tier) | **Skill:** `/kite-expert`
+**Rank:** #6 (Last Resort) | **Cost:** ₹500/month (Connect tier) | **Skill:** `/zerodha-expert`
 **Status:** ✅ Market Data Adapter complete, ✅ Ticker Adapter complete (Phase T4)
 
 ### Authentication
