@@ -219,7 +219,7 @@ S22: End-to-End Integration Test (full failover chain)
 - [x] Unit tests (mock WebSocket, verify NormalizedTick output) — 45 tests
 - [ ] Integration test (connect to SmartAPI WS with platform creds)
 
-**Key reference:** [TICKER-IMPLEMENTATION-GUIDE Phase T2](TICKER-IMPLEMENTATION-GUIDE.md) + `/smartapi-expert`
+**Key reference:** [TICKER-IMPLEMENTATION-GUIDE Phase T2](TICKER-IMPLEMENTATION-GUIDE.md) + `/angelone-expert`
 
 **Manual intervention:** None (platform SmartAPI creds already in `.env`).
 

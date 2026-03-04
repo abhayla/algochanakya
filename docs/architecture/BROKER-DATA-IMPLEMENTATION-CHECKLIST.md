@@ -104,7 +104,7 @@ These are shared components that all brokers rely on. Most are already built but
 
 ## Broker #1: SmartAPI (Angel One) — Platform Primary
 
-**Rank:** #1 | **Cost:** FREE | **Skill:** `/smartapi-expert`
+**Rank:** #1 | **Cost:** FREE | **Skill:** `/angelone-expert`
 **Status:** ✅ Market Data Adapter complete, ✅ Ticker Adapter complete (Phase T4)
 
 ### Authentication

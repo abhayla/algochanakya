@@ -180,7 +180,7 @@ Adding a new broker requires:
 
 **Zero changes** to routes, services, or business logic required.
 
-**Skill guidance:** Use the relevant broker expert skill (`/smartapi-expert`, `/zerodha-expert`, `/upstox-expert`, `/dhan-expert`, `/fyers-expert`, `/paytm-expert`) for API-specific guidance. See [Comparison Matrix](../.claude/skills/broker-shared/comparison-matrix.md) for cross-broker differences.
+**Skill guidance:** Use the relevant broker expert skill (`/angelone-expert`, `/zerodha-expert`, `/upstox-expert`, `/dhan-expert`, `/fyers-expert`, `/paytm-expert`) for API-specific guidance. See [Comparison Matrix](../.claude/skills/broker-shared/comparison-matrix.md) for cross-broker differences.
 
 **Documentation:**
 - [Broker Abstraction Architecture](../docs/architecture/broker-abstraction.md) - Complete technical design (updated Feb 16, 2026)

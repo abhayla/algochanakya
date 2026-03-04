@@ -1,18 +1,18 @@
 ---
 name: fyers-expert
-description: Use when implementing Fyers adapter, debugging Fyers API errors, understanding Fyers WebSocket system (5 socket types), or auditing code calling Fyers API. Fyers API expert for AlgoChanakya.
-metadata:
-  author: AlgoChanakya
-  version: "2.5"
-  last_verified: "2026-02-25"
+description: Fyers expert — broker overview, products, pricing, Fyers API,
+  and AlgoChanakya adapter guidance. Use for any Fyers question.
+version: "3.0"
+last_verified: "2026-03-04"
 ---
 
-# Fyers API Expert
+# Fyers Expert
 
-Fyers offers a **FREE** API with a **5-socket WebSocket system** (FyersDataSocket, FyersOrderSocket, FyersPositionSocket, FyersTradeSocket, FyersGeneralSocket), OAuth authentication with a distinctive `appid:accesstoken` header format. **API v3** (SDK: `fyers-apiv3` v3.1.7, **released November 2023**) supports up to **5,000 symbols** per Data WebSocket connection (massive upgrade from 200) and includes dedicated Position and Trade sockets for real-time P&L and execution updates. All 3 AlgoChanakya adapters (market data, order execution, ticker/WebSocket) are **fully implemented**. Key differentiator: five separate WebSocket socket types and exchange-prefixed symbol format (`NSE:SYMBOL`). Daily limit: 100,000 requests/day.
+Fyers is a **tech-focused discount broker** founded in 2015 and headquartered in Bengaluru. Known for its developer-friendly platform, Fyers offers a **FREE API** (v3, SDK: `fyers-apiv3` v3.1.7, released November 2023) with a **5-socket WebSocket system** (FyersDataSocket, FyersOrderSocket, FyersPositionSocket, FyersTradeSocket, FyersGeneralSocket), OAuth authentication with a distinctive `appid:accesstoken` header format, and up to **5,000 symbols** per Data WebSocket connection. All 3 AlgoChanakya adapters (market data, order execution, ticker/WebSocket) are **fully implemented**. Key differentiator: five separate WebSocket socket types and exchange-prefixed symbol format (`NSE:SYMBOL`). Daily limit: 100,000 requests/day.
 
 ## When to Use
 
+- Any question about Fyers as a broker (products, pricing, account types)
 - Implementing or debugging the Fyers market data, order, or ticker adapter
 - Debugging Fyers API errors or OAuth flow issues
 - Understanding Fyers symbol format (`NSE:NIFTY2522725000CE`)
@@ -25,10 +25,33 @@ Fyers offers a **FREE** API with a **5-socket WebSocket system** (FyersDataSocke
 
 - General broker abstraction questions (read docs/architecture/broker-abstraction.md instead)
 - Cross-broker comparison (use broker-shared/comparison-matrix.md instead)
-- SmartAPI/Kite/Upstox/Dhan issues (use their respective expert skills)
+- AngelOne/Kite/Upstox/Dhan issues (use their respective expert skills)
 - Paytm issues (use paytm-expert)
 
-## API Overview
+## 1. Fyers Overview
+
+Fyers (Focus Your Energy, Redefine Success) is a technology-first discount stockbroker offering equity, F&O, commodity, and currency trading on NSE, BSE, and MCX. The company differentiates itself with a powerful charting platform, free API access, and a modern trading experience.
+
+See [fyers-overview.md](./references/fyers-overview.md) for full company profile, products, account types, exchanges, and differentiators.
+
+## 2. Brokerage & Pricing
+
+| Segment | Brokerage | Notes |
+|---------|-----------|-------|
+| Equity Delivery | **FREE** (zero) | No brokerage on delivery trades |
+| Equity Intraday | **Rs 20** or 0.03% (whichever is lower) | Per executed order |
+| F&O (Futures) | **Rs 20** per order | Flat fee |
+| F&O (Options) | **Rs 20** per order | Flat fee |
+| Currency | **Rs 20** per order | Flat fee |
+| Commodity | **Rs 20** per order | Flat fee |
+
+**API Costs:** **FREE** — no additional charges for API access. 100,000 daily REST requests included.
+
+**Account Opening:** Free online account opening. Annual maintenance charges may apply.
+
+## 3. Fyers API
+
+### API Overview
 
 | Property | Value |
 |----------|-------|
@@ -42,11 +65,11 @@ Fyers offers a **FREE** API with a **5-socket WebSocket system** (FyersDataSocke
 | **Token Validity** | access_token: until midnight IST |
 | **Daily Request Limit** | 100,000 requests/day |
 
-## Authentication Flow
+### Authentication Flow
 
 Fyers uses OAuth 2.0 with a unique auth header format: `appid:accesstoken`.
 
-### Step-by-Step Authentication
+#### Step-by-Step Authentication
 
 ```
 1. Redirect user → https://api-t1.fyers.in/api/v3/generate-authcode
@@ -59,7 +82,7 @@ Fyers uses OAuth 2.0 with a unique auth header format: `appid:accesstoken`.
 7. Use in header: Authorization: {app_id}:{access_token}
 ```
 
-### Auth Header Format (UNIQUE)
+#### Auth Header Format (UNIQUE)
 
 ```
 Authorization: {app_id}:{access_token}
@@ -69,7 +92,7 @@ Authorization: {app_id}:{access_token}
 
 **Note:** This is NOT `Bearer` format. The app_id and access_token are colon-separated.
 
-### Token Types
+#### Token Types
 
 | Token | Purpose | Validity |
 |-------|---------|----------|
@@ -78,7 +101,7 @@ Authorization: {app_id}:{access_token}
 
 See [auth-flow.md](./references/auth-flow.md) for complete request/response examples.
 
-## Key Endpoints Quick Reference
+### Key Endpoints Quick Reference
 
 | Category | Method | Endpoint | Notes |
 |----------|--------|----------|-------|
@@ -100,9 +123,9 @@ See [auth-flow.md](./references/auth-flow.md) for complete request/response exam
 
 See [endpoints-catalog.md](./references/endpoints-catalog.md) for complete schemas.
 
-## Symbol Format
+### Symbol Format
 
-### Exchange-Prefixed Format
+#### Exchange-Prefixed Format
 
 Fyers uses `{EXCHANGE}:{SYMBOL}` format with exchange prefix.
 
@@ -117,7 +140,7 @@ Fyers uses `{EXCHANGE}:{SYMBOL}` format with exchange prefix.
 | NIFTY Future | `NSE:NIFTY25FEBFUT` | With exchange prefix |
 | Reliance Equity | `NSE:RELIANCE-EQ` | With -EQ suffix |
 
-### Canonical Conversion
+#### Canonical Conversion
 
 **Low complexity** - Fyers symbols are Kite symbols with exchange prefix:
 
@@ -135,9 +158,9 @@ fyers = f"NSE:{canonical}"  # For equities, also add "-EQ" suffix
 
 See [symbol-format.md](./references/symbol-format.md) for complete rules.
 
-## WebSocket Protocol (5 Socket Types)
+### WebSocket Protocol (5 Socket Types)
 
-### All Five Socket Types
+#### All Five Socket Types
 
 Fyers v3 provides **five independent WebSocket socket types** — the most extensive among Indian brokers:
 
@@ -149,7 +172,7 @@ Fyers v3 provides **five independent WebSocket socket types** — the most exten
 | **FyersTradeSocket** | `trades_ws.FyersTradeSocket` | Trade execution updates | New in v3 |
 | **FyersGeneralSocket** | `general_ws.FyersGeneralSocket` | General notifications | Alerts, misc |
 
-### FyersDataSocket (Market Data)
+#### FyersDataSocket (Market Data)
 
 ```python
 from fyers_apiv3.FyersWebsocket import data_ws
@@ -169,7 +192,7 @@ data_ws.subscribe(symbols=["NSE:NIFTY2522725000CE"], data_type="SymbolUpdate")
 data_ws.keep_running()
 ```
 
-### FyersOrderSocket (Order Updates)
+#### FyersOrderSocket (Order Updates)
 
 ```python
 from fyers_apiv3.FyersWebsocket import order_ws
@@ -185,7 +208,7 @@ order_ws = order_ws.FyersOrderSocket(
 order_ws.connect()
 ```
 
-### WebSocket Limits
+#### WebSocket Limits
 
 | Limit | Value |
 |-------|-------|
@@ -196,13 +219,13 @@ order_ws.connect()
 
 See [websocket-protocol.md](./references/websocket-protocol.md) for complete protocol and all 5 socket types.
 
-## Option Chain
+### Option Chain
 
 Fyers v3 provides `GET /api/v3/optionchain` with full Greeks (delta, theta, gamma, vega, rho, vanna, charm). Returns put/call chain with market data per strike. MCX commodity option chains are not supported.
 
 See [option-chain.md](./references/option-chain.md) for complete request/response format.
 
-## GTT Orders
+### GTT Orders
 
 Fyers offers GTT (Good Till Triggered) via app and potentially via API, but:
 - GTT API documentation is incomplete in official v3 docs
@@ -211,13 +234,13 @@ Fyers offers GTT (Good Till Triggered) via app and potentially via API, but:
 
 See [gtt-orders.md](./references/gtt-orders.md) for details and community-reported issues.
 
-## Webhooks / Order Updates
+### Webhooks / Order Updates
 
 Fyers does **NOT support traditional HTTP webhooks**. Use `FyersOrderSocket` for real-time order updates instead. No POST-to-URL mechanism exists.
 
 See [webhook.md](./references/webhook.md) for FyersOrderSocket implementation and all 5 socket types.
 
-## Rate Limits
+### Rate Limits
 
 | Endpoint Type | Limit | Notes |
 |---------------|-------|-------|
@@ -229,7 +252,7 @@ See [webhook.md](./references/webhook.md) for FyersOrderSocket implementation an
 
 **AlgoChanakya Configuration:** `rate_limiter.py` sets `"fyers": 10` (10 req/sec).
 
-## Price Normalization
+### Price Normalization
 
 | Data Source | Price Unit | Action Required |
 |------------|------------|-----------------|
@@ -239,7 +262,7 @@ See [webhook.md](./references/webhook.md) for FyersOrderSocket implementation an
 
 Fyers returns all prices in RUPEES. No paise conversion needed.
 
-## Virtual Trading (Paper Trading)
+### Virtual Trading (Paper Trading)
 
 Fyers offers **built-in virtual trading** mode:
 
@@ -253,7 +276,22 @@ fyers = fyersModel.FyersModel(
 # Virtual trading uses same API, different endpoint prefix
 ```
 
-## AlgoChanakya Implementation Status
+### Error Codes Quick Reference
+
+| Code | HTTP | Cause | Retryable |
+|------|------|-------|-----------|
+| `-1` | 400 | Invalid request | No |
+| `-16` | 401 | Invalid/expired token | No - re-auth |
+| `-300` | 429 | Rate limit exceeded | Yes - backoff |
+| `-310` | 400 | Invalid symbol | No |
+| `-320` | 400 | Order rejected | No |
+| `-99` | 500 | Server error | Yes - retry |
+
+See [error-codes.md](./references/error-codes.md) for complete error catalog.
+
+## 4. AlgoChanakya Integration
+
+### Implementation Status
 
 | Component | Status | File |
 |-----------|--------|------|
@@ -278,7 +316,7 @@ adapter = FyersOrderAdapter(app_id=app_id, access_token=token)
 order_id = await adapter.place_order(order_params)
 ```
 
-## Common Gotchas
+## 5. Common Gotchas
 
 1. **v3 SDK (not v2)** - Use `fyers-apiv3` (released November 2023), not the deprecated `fyers-apiv2`. Breaking changes between versions.
 
@@ -306,38 +344,26 @@ order_id = await adapter.place_order(order_params)
 
 13. **No HTTP webhooks** - Use FyersOrderSocket for order updates; no POST-to-URL webhook exists.
 
-## Error Codes Quick Reference
-
-| Code | HTTP | Cause | Retryable |
-|------|------|-------|-----------|
-| `-1` | 400 | Invalid request | No |
-| `-16` | 401 | Invalid/expired token | No - re-auth |
-| `-300` | 429 | Rate limit exceeded | Yes - backoff |
-| `-310` | 400 | Invalid symbol | No |
-| `-320` | 400 | Order rejected | No |
-| `-99` | 500 | Server error | Yes - retry |
-
-See [error-codes.md](./references/error-codes.md) for complete error catalog.
-
-## Related Skills
+## 6. Related Skills
 
 | Skill | When to Use |
 |-------|-------------|
 | `/upstox-expert` | Both free modern APIs — compare WS approaches (Fyers: JSON 5-socket, Upstox: Protobuf) |
 | `/dhan-expert` | Compare unique features — Fyers has 5 WS socket types + paper trading, Dhan has 200-depth |
-| `/smartapi-expert` | Fyers symbol format closest to Kite canonical — compare symbol conversion approaches |
+| `/angelone-expert` | Fyers symbol format closest to Kite canonical — compare symbol conversion approaches |
 | `/auto-verify` | After any Fyers adapter change — run verification immediately |
 | `/docs-maintainer` | After adapter changes — update feature registry, comparison matrix, CHANGELOG |
 
 **Cross-Broker Comparison:** See [comparison-matrix.md](../broker-shared/comparison-matrix.md) for pricing, rate limits, WebSocket capabilities, and symbol format differences across all 6 brokers.
 
-## Maintenance & Auto-Improvement
+## 7. Maintenance & Auto-Improvement
 
 ### Freshness Tracking
 
 | Reference File | Last Verified | Check Frequency |
 |---|---|---|
-| SKILL.md | 2026-02-25 | Quarterly |
+| SKILL.md | 2026-03-04 | Quarterly |
+| fyers-overview.md | 2026-03-04 | Quarterly |
 | endpoints-catalog.md | 2026-02-25 | Quarterly |
 | auth-flow.md | 2026-02-25 | Quarterly |
 | error-codes.md | 2026-02-25 | Quarterly |
@@ -352,18 +378,20 @@ See [error-codes.md](./references/error-codes.md) for complete error catalog.
 
 1. **Error-driven update**: If this skill is invoked 3+ times with FAILED/UNKNOWN outcome for the same error_type (tracked via `post_skill_learning.py` hook → `knowledge.db`), `reflect deep` mode should propose a skill update.
 2. **Staleness alert**: If `last_verified` exceeds 90 days, check https://myapi.fyers.in/docs/ for API changes.
-3. **Quarterly review**: Next scheduled review: **May 2026**. Watch for v3.x updates and GTT API fixes.
+3. **Quarterly review**: Next scheduled review: **June 2026**. Watch for v3.x updates and GTT API fixes.
 
 ### Version Changelog
 
 | Version | Date | Changes |
 |---|---|---|
+| 3.0 | 2026-03-04 | Restructured: Fyers overview + pricing sections added, Fyers API content reorganized as subsection. New `fyers-overview.md` reference file. All existing API content preserved. |
 | 2.5 | 2026-02-25 | CRITICAL FIX: v3 release date corrected to November 2023 (was "Feb 3, 2026"). Added all 5 WebSocket socket types. Added Option Chain section. Added GTT section with broken WebSocket warning. Added Webhook section. Added 100K daily request limit. Expanded Maintenance to 9 reference files. Created gtt-orders.md, option-chain.md, webhook.md, maintenance-log.md. |
 | 2.0 | 2026-02-25 | Implementation status corrected: all 3 adapters fully Implemented (was Planned), auth route + frontend + tests added to status table, maintenance section added |
 | 1.0 | 2026-02-16 | Initial creation |
 
 ## References
 
+- [Fyers Overview](./references/fyers-overview.md) - Company profile, products, pricing, exchanges, differentiators
 - [Authentication Flow](./references/auth-flow.md) - OAuth flow with appIdHash
 - [Endpoints Catalog](./references/endpoints-catalog.md) - All REST endpoints
 - [WebSocket Protocol](./references/websocket-protocol.md) - All 5 socket types

@@ -1,22 +1,22 @@
 ---
 name: paytm-expert
-description: Use when implementing Paytm Money adapter, debugging Paytm API errors, understanding Paytm's 3-token system, GTT orders, option chain data, or auditing code calling Paytm API. Paytm Money API expert for AlgoChanakya.
-metadata:
-  author: AlgoChanakya
-  version: "2.5"
-  last_verified: "2026-02-25"
+description: Paytm Money expert — broker overview, products, pricing, Paytm Money API,
+  and AlgoChanakya adapter guidance. Use for any Paytm Money question.
+version: "3.0"
+last_verified: "2026-03-04"
 ---
 
-# Paytm Money API Expert
+# Paytm Money Expert
 
-Paytm Money offers a **FREE** trading API with a unique **3 JWT token** system (access_token, public_access_token for WebSocket, read_access_token for read-only). It's the least mature API among the 6 supported brokers, with limited F&O coverage and occasional breaking changes. All 3 AlgoChanakya adapters (market data, order execution, ticker/WebSocket) are **fully implemented**. Key differentiator: three separate token types and the `public_access_token` specifically for WebSocket authentication.
+Paytm Money is an investment platform operated by **One97 Communications** (the parent company of Paytm), launched in **2019** and registered with **SEBI** as a stockbroker. As the newest entrant among AlgoChanakya's 6 supported brokers, it is the **least mature API** — expect limited documentation, occasional breaking changes without deprecation notices, and less community support compared to established players like Zerodha or AngelOne.
 
-**Maturity Warning:** Paytm Money API is the least mature among Indian broker APIs. Expect limited documentation, occasional breaking changes, and less community support. Test thoroughly before production use.
+Despite its maturity limitations, Paytm Money offers a **FREE** trading API with a unique **3 JWT token** system (access_token, public_access_token for WebSocket, read_access_token for read-only), covering market data, order execution, and WebSocket streaming. All 3 AlgoChanakya adapters (market data, order execution, ticker/WebSocket) are **fully implemented**. Key differentiator: three separate token types and the `public_access_token` specifically for WebSocket authentication.
 
 **BSE F&O (2025):** Paytm Money added BSE F&O instruments in 2025. Previously NSE-only F&O; BSE options now available.
 
 ## When to Use
 
+- Any question about Paytm Money as a broker (products, pricing, account types)
 - Implementing or debugging the Paytm Money market data, order, or ticker adapter
 - Debugging Paytm API errors or authentication issues
 - Understanding Paytm's 3-token system (access, public_access, read_access)
@@ -30,9 +30,63 @@ Paytm Money offers a **FREE** trading API with a unique **3 JWT token** system (
 
 - General broker abstraction questions (read docs/architecture/broker-abstraction.md instead)
 - Cross-broker comparison (use broker-shared/comparison-matrix.md instead)
-- SmartAPI/Kite/Upstox/Dhan/Fyers issues (use their respective expert skills)
+- AngelOne/Kite/Upstox/Dhan/Fyers issues (use their respective expert skills, e.g., `angelone-expert`)
 
-## API Overview
+## 1. Paytm Money Overview
+
+Paytm Money is a **fintech-backed** investment platform, a subsidiary of **One97 Communications Limited** — the company behind Paytm, India's largest digital payments platform. Launched in 2019, Paytm Money initially focused on mutual fund investments before expanding into equity, F&O, and IPO.
+
+### Account Types
+
+- **Individual** — Standard demat + trading account
+- **Joint** — Not widely supported via API
+- **NRI** — Limited availability
+
+### Maturity Warning
+
+Paytm Money API is the **least mature** among Indian broker APIs. Key concerns:
+- **pyPMClient SDK** last updated Jul 2024, limited maintenance
+- Sporadic documentation updates
+- Breaking changes without deprecation notices
+- Less community support and fewer third-party integrations
+
+See [paytm-overview.md](./references/paytm-overview.md) for full company profile, products, exchanges, and differentiators.
+
+## 2. Brokerage & Pricing
+
+### Trading Charges
+
+| Segment | Brokerage | Notes |
+|---------|-----------|-------|
+| **Equity Delivery** | FREE | Zero brokerage |
+| **Equity Intraday** | Rs 10 per executed order | Flat fee |
+| **F&O (Options)** | Rs 10 per executed order | Flat fee |
+| **F&O (Futures)** | Rs 10 per executed order | Flat fee |
+
+*Standard statutory charges (STT, exchange charges, GST, SEBI fees, stamp duty) apply on top.*
+
+### API Costs
+
+| Item | Cost |
+|------|------|
+| **API Access** | **FREE** |
+| **Market Data** | **FREE** (included) |
+| **Historical Data** | **FREE** (included) |
+| **WebSocket Ticks** | **FREE** (included) |
+
+### Exchange Support
+
+| Exchange | Equity | F&O | Currency | Commodity (MCX) |
+|----------|--------|-----|----------|-----------------|
+| **NSE** | Yes | Yes | No | No |
+| **BSE** | Yes | Yes (2025) | No | No |
+| **MCX** | -- | -- | -- | **No** |
+
+**Note:** Paytm Money does **not** support MCX (commodity) or currency derivatives trading.
+
+## 3. Paytm Money API
+
+### API Overview
 
 | Property | Value |
 |----------|-------|
@@ -45,11 +99,11 @@ Paytm Money offers a **FREE** trading API with a unique **3 JWT token** system (
 | **Auth Method** | OAuth 2.0 (authorization_code) |
 | **Token Validity** | access_token: ~24h, public_access_token: ~24h |
 
-## Authentication Flow
+### Authentication Flow
 
 Paytm Money uses OAuth 2.0 with **3 different JWT token types**.
 
-### Step-by-Step Authentication
+#### Step-by-Step Authentication
 
 ```
 1. Redirect user → https://login.paytmmoney.com/merchant-login
@@ -61,7 +115,7 @@ Paytm Money uses OAuth 2.0 with **3 different JWT token types**.
 6. Use appropriate token per endpoint
 ```
 
-### Token Types (3 JWTs)
+#### Token Types (3 JWTs)
 
 | Token | Purpose | Validity | Used For |
 |-------|---------|----------|----------|
@@ -69,7 +123,7 @@ Paytm Money uses OAuth 2.0 with **3 different JWT token types**.
 | `public_access_token` | WebSocket only | ~24 hours | **WebSocket authentication** |
 | `read_access_token` | Read-only REST | ~24 hours | Market data, quotes, instruments, option chain |
 
-### Auth Header
+#### Auth Header
 
 ```
 x-jwt-token: {access_token|read_access_token}
@@ -79,7 +133,7 @@ x-jwt-token: {access_token|read_access_token}
 
 See [auth-flow.md](./references/auth-flow.md) for complete request/response examples.
 
-## Key Endpoints Quick Reference
+### Key Endpoints Quick Reference
 
 | Category | Method | Endpoint | Token Type |
 |----------|--------|----------|------------|
@@ -102,9 +156,9 @@ See [auth-flow.md](./references/auth-flow.md) for complete request/response exam
 
 See [endpoints-catalog.md](./references/endpoints-catalog.md) for complete schemas.
 
-## Symbol Format
+### Symbol Format
 
-### Paytm Instrument IDs
+#### Paytm Instrument IDs
 
 Paytm uses a combination of `security_id` (numeric) and exchange-specific identifiers.
 
@@ -116,7 +170,7 @@ Paytm uses a combination of `security_id` (numeric) and exchange-specific identi
 | NIFTY 25000 CE | `12345` | `NSE` | `NIFTY2522725000CE` |
 | Reliance | `2885` | `NSE` | `RELIANCE` |
 
-### Canonical Conversion
+#### Canonical Conversion
 
 Conversion requires instrument master lookup:
 
@@ -132,16 +186,16 @@ paytm_id = await token_manager.get_broker_token("NIFTY2522725000CE", "paytm")
 
 See [symbol-format.md](./references/symbol-format.md) for instrument master details.
 
-## WebSocket Protocol
+### WebSocket Protocol
 
-### Connection with public_access_token
+#### Connection with public_access_token
 
 ```python
 # WebSocket uses public_access_token (NOT access_token)
 ws_url = f"wss://developer-ws.paytmmoney.com/broadcast/user/v1/data?x_jwt_token={public_access_token}"
 ```
 
-### Subscription
+#### Subscription
 
 ```json
 {
@@ -158,14 +212,14 @@ ws_url = f"wss://developer-ws.paytmmoney.com/broadcast/user/v1/data?x_jwt_token=
 }
 ```
 
-### Modes
+#### Modes
 
 | Mode | Code | Description |
 |------|------|-------------|
 | LTP | `1` | Last price only |
 | Full | `2` | OHLC + volume + OI + depth |
 
-### WebSocket Limits
+#### WebSocket Limits
 
 | Limit | Value |
 |-------|-------|
@@ -176,7 +230,7 @@ ws_url = f"wss://developer-ws.paytmmoney.com/broadcast/user/v1/data?x_jwt_token=
 
 See [websocket-protocol.md](./references/websocket-protocol.md) for detailed protocol.
 
-## Rate Limits
+### Rate Limits
 
 | Endpoint Type | Limit | Notes |
 |---------------|-------|-------|
@@ -187,7 +241,7 @@ See [websocket-protocol.md](./references/websocket-protocol.md) for detailed pro
 
 **AlgoChanakya Configuration:** `rate_limiter.py` sets `"paytm": 10` (10 req/sec).
 
-## Price Normalization
+### Price Normalization
 
 | Data Source | Price Unit | Action Required |
 |------------|------------|-----------------|
@@ -197,7 +251,7 @@ See [websocket-protocol.md](./references/websocket-protocol.md) for detailed pro
 
 Paytm returns all prices in RUPEES. No paise conversion needed.
 
-## GTT Orders
+### GTT Orders
 
 Paytm Money provides GTT (Good Till Triggered) order functionality. The endpoint is available but documentation is sparse.
 
@@ -210,7 +264,7 @@ Paytm Money provides GTT (Good Till Triggered) order functionality. The endpoint
 
 See [gtt-orders.md](./references/gtt-orders.md) for endpoint details, request format, and implementation cautions.
 
-## Option Chain
+### Option Chain
 
 Paytm Money provides option chain data including Greeks, powered by **Heckyl Technologies** as the underlying data vendor.
 
@@ -223,7 +277,7 @@ Paytm Money provides option chain data including Greeks, powered by **Heckyl Tec
 
 See [option-chain.md](./references/option-chain.md) for endpoint details and response format.
 
-## Webhooks / Order Updates
+### Webhooks / Order Updates
 
 **Paytm Money does NOT support webhooks or order update push notifications.**
 
@@ -233,7 +287,19 @@ AlgoChanakya handles this via AutoPilot polling at 2-second intervals for active
 
 See [webhook.md](./references/webhook.md) for polling implementation and broker comparison table.
 
-## AlgoChanakya Implementation Status
+### Error Codes Quick Reference
+
+| HTTP Status | Cause | Retryable |
+|-------------|-------|-----------|
+| `400` | Bad request / invalid params | No |
+| `401` | Invalid/expired token | No - re-auth |
+| `403` | Insufficient permissions | No |
+| `429` | Rate limit exceeded | Yes - backoff |
+| `500` | Server error | Yes - retry |
+
+See [error-codes.md](./references/error-codes.md) for complete error catalog.
+
+## 4. AlgoChanakya Integration
 
 | Component | Status | File |
 |-----------|--------|------|
@@ -260,7 +326,7 @@ adapter = PaytmOrderAdapter(access_token=token)
 order_id = await adapter.place_order(order_params)
 ```
 
-## Common Gotchas
+## 5. Common Gotchas
 
 1. **3 token types** - Must use the correct token for each endpoint. WebSocket requires `public_access_token`, not `access_token`. Read endpoints use `read_access_token`. GTT requires `access_token`.
 
@@ -280,23 +346,11 @@ order_id = await adapter.place_order(order_params)
 
 9. **No webhooks** - No HTTP webhooks and no order update WebSocket. REST polling is the only option.
 
-## Error Codes Quick Reference
-
-| HTTP Status | Cause | Retryable |
-|-------------|-------|-----------|
-| `400` | Bad request / invalid params | No |
-| `401` | Invalid/expired token | No - re-auth |
-| `403` | Insufficient permissions | No |
-| `429` | Rate limit exceeded | Yes - backoff |
-| `500` | Server error | Yes - retry |
-
-See [error-codes.md](./references/error-codes.md) for complete error catalog.
-
-## Related Skills
+## 6. Related Skills
 
 | Skill | When to Use |
 |-------|-------------|
-| `/smartapi-expert` | Compare 3-token auth systems — both SmartAPI and Paytm use 3 tokens (jwt/feed/refresh vs access/public/read) |
+| `/angelone-expert` | Compare 3-token auth systems — both AngelOne and Paytm use 3 tokens (jwt/feed/refresh vs access/public/read) |
 | `/zerodha-expert` | Compare API maturity — Kite is most mature, use as quality benchmark for Paytm adapter |
 | `/fyers-expert` | Both use JSON WebSocket — compare message formats and subscription models |
 | `/auto-verify` | After any Paytm adapter change — run verification immediately |
@@ -306,13 +360,14 @@ See [error-codes.md](./references/error-codes.md) for complete error catalog.
 
 **Cross-Broker Comparison:** See [comparison-matrix.md](../broker-shared/comparison-matrix.md) for pricing, rate limits, WebSocket capabilities, and symbol format differences across all 6 brokers.
 
-## Maintenance & Auto-Improvement
+## 7. Maintenance & Auto-Improvement
 
 ### Freshness Tracking
 
 | Reference File | Last Verified | Check Frequency |
 |---|---|---|
-| skill.md | 2026-02-25 | Quarterly |
+| SKILL.md | 2026-03-04 | Quarterly |
+| paytm-overview.md | 2026-03-04 | Quarterly |
 | endpoints-catalog.md | 2026-02-25 | Quarterly |
 | auth-flow.md | 2026-02-25 | Quarterly |
 | error-codes.md | 2026-02-25 | Quarterly |
@@ -327,18 +382,20 @@ See [error-codes.md](./references/error-codes.md) for complete error catalog.
 
 1. **Error-driven update**: If this skill is invoked 3+ times with FAILED/UNKNOWN outcome for the same error_type (tracked via `post_skill_learning.py` hook → `knowledge.db`), `reflect deep` mode should propose a skill update.
 2. **Staleness alert**: If `last_verified` exceeds 90 days, check https://developer.paytmmoney.com/docs/ for API changes.
-3. **Quarterly review**: Next scheduled review: **May 2026**. Check for breaking changes (common with Paytm).
+3. **Quarterly review**: Next scheduled review: **June 2026**. Check for breaking changes (common with Paytm).
 
 ### Version Changelog
 
 | Version | Date | Changes |
 |---|---|---|
+| 3.0 | 2026-03-04 | Restructured: Paytm Money overview + pricing sections added, Paytm Money API content reorganized as subsection. New `paytm-overview.md` reference file. All existing API content preserved. |
 | 2.5 | 2026-02-25 | Added GTT Orders section (not yet implemented), Option Chain section (Heckyl data, not implemented), Webhook section (no webhooks — REST polling only), BSE F&O 2025 note, pyPMClient last-updated note, expanded maintenance freshness table to 9 reference files, updated gotcha #9 (no webhooks) |
 | 2.0 | 2026-02-25 | Implementation status corrected: all 3 adapters fully Implemented (was Planned), auth route + frontend + tests added to status table, maintenance section added |
 | 1.0 | 2026-02-16 | Initial creation |
 
 ## References
 
+- [Paytm Money Overview](./references/paytm-overview.md) - Company profile, products, pricing, exchanges, differentiators
 - [Authentication Flow](./references/auth-flow.md) - 3-token OAuth flow
 - [Endpoints Catalog](./references/endpoints-catalog.md) - All REST endpoints
 - [WebSocket Protocol](./references/websocket-protocol.md) - public_access_token WS

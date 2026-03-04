@@ -36,7 +36,7 @@ See [CLAUDE.md Quick Reference Card](../CLAUDE.md#-quick-reference-card) for dai
 | **Implementation Status** | [Broker Abstraction - Current Status](architecture/broker-abstraction.md#current-implementation-status) |
 | **Code Reference** | `backend/app/services/brokers/` |
 
-**Broker Expert Skills:** `smartapi-expert`, `zerodha-expert`, `upstox-expert`, `dhan-expert`, `fyers-expert`, `paytm-expert` — API-specific guidance for each broker. See [Comparison Matrix](../.claude/skills/broker-shared/comparison-matrix.md) for cross-broker differences.
+**Broker Expert Skills:** `angelone-expert`, `zerodha-expert`, `upstox-expert`, `dhan-expert`, `fyers-expert`, `paytm-expert` — API-specific guidance for each broker. See [Comparison Matrix](../.claude/skills/broker-shared/comparison-matrix.md) for cross-broker differences.
 
 ### Authentication & Security
 
@@ -142,7 +142,7 @@ pytest tests/ -m "not slow" -v      # Skip slow tests
 **Backend tasks:** [backend/CLAUDE.md](../backend/CLAUDE.md)
 **Frontend tasks:** [frontend/CLAUDE.md](../frontend/CLAUDE.md)
 **Broker adapters:** [Broker Abstraction](architecture/broker-abstraction.md)
-**Broker-specific guidance:** Use broker expert skills (`/smartapi-expert`, `/zerodha-expert`, etc.)
+**Broker-specific guidance:** Use broker expert skills (`/angelone-expert`, `/zerodha-expert`, etc.)
 
 ---
 

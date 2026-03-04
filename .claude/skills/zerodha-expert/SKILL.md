@@ -28,7 +28,7 @@ In AlgoChanakya, Zerodha/Kite Connect is used for **order execution** (fully imp
 
 - General broker abstraction questions (read docs/architecture/broker-abstraction.md instead)
 - Cross-broker comparison (use broker-shared/comparison-matrix.md instead)
-- SmartAPI issues (use smartapi-expert)
+- SmartAPI issues (use angelone-expert)
 - Upstox/Dhan/Fyers/Paytm issues (use their respective expert skills)
 
 ---
@@ -386,7 +386,7 @@ quote = await data_adapter.get_quote(["NIFTY2522725000CE"])
 
 | Skill | When to Use |
 |-------|-------------|
-| `/smartapi-expert` | Zerodha's default pair for market data — compare paise handling, auto-TOTP vs OAuth, WS binary formats |
+| `/angelone-expert` | Zerodha's default pair for market data — compare paise handling, auto-TOTP vs OAuth, WS binary formats |
 | `/upstox-expert` | Both fully implemented — compare Protobuf vs binary WS, extended token vs OAuth |
 | `/trading-constants-manager` | Kite symbol format IS canonical — verify constants match when adding new instruments |
 | `/auto-verify` | After any Kite adapter change — run verification immediately |

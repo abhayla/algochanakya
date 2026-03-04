@@ -59,7 +59,7 @@
 | 12 | paytm-expert | ✅ | ❌→✅ | ❌→✅ | ⚠️→✅ Improved | 2,600 | ✅ Fixed |
 | 13 | phase-gate | ✅ | ❌→✅ | ❌→✅ | ✅ Good | 1,700 | ✅ Fixed |
 | 14 | save-session | ✅ | ❌→✅ | ❌→✅ | ✅ Good | 1,100 | ✅ Fixed |
-| 15 | smartapi-expert | ✅ | ❌→✅ | ❌→✅ | ✅ Good | 3,400 | ✅ Fixed |
+| 15 | angelone-expert | ✅ | ❌→✅ | ❌→✅ | ✅ Good | 3,400 | ✅ Fixed |
 | 16 | start-session | ✅ | ❌→✅ | ❌→✅ | ✅ Good | 1,000 | ✅ Fixed |
 | 17 | test-fixer | ✅ | ❌→✅ | ❌→✅ | ⚠️→✅ Improved | 2,800 | ✅ Fixed |
 | 18 | trading-constants-manager | ✅ | ❌→✅ | ❌→✅ | ⚠️→✅ Improved | 1,500 | ✅ Fixed |
@@ -244,7 +244,7 @@
 
 ### Manual Spot Checks
 
-- ✅ Verified smartapi-expert.md frontmatter parses correctly
+- ✅ Verified angelone-expert.md frontmatter parses correctly
 - ✅ Verified zerodha-expert.md "When NOT to Use" section exists
 - ✅ Verified test-fixer.md description improved
 - ✅ Verified fix-loop.md has pseudocode annotations

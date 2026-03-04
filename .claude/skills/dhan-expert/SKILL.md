@@ -1,18 +1,20 @@
 ---
 name: dhan-expert
-description: Use when implementing Dhan adapter, debugging Dhan API errors, understanding Dhan security_id format, or auditing code calling Dhan API. Dhan API expert for AlgoChanakya.
-metadata:
-  author: AlgoChanakya
-  version: "2.6"
-  last_verified: "2026-02-26"
+description: Dhan expert — broker overview, products, pricing, DhanHQ API,
+  and AlgoChanakya adapter guidance. Use for any Dhan question.
+version: "3.0"
+last_verified: "2026-03-04"
 ---
 
-# Dhan API Expert
+# Dhan Expert
 
-Dhan offers a modern REST API with unique features: **200-level market depth** (unique in India), **Little Endian binary WebSocket**, and **security_id-based** instrument identification (numeric IDs only). Dhan has a **two-tier pricing model**: Trading APIs are FREE for all users, but Data APIs (market data WebSocket) require either executing 25 F&O trades/month OR paying ₹499/month subscription. All 3 AlgoChanakya adapters (market data, order execution, ticker/WebSocket) are **fully implemented**. Key differentiator: deepest market depth data, multi-tier rate limiting, Super Order (bracket), Kill Switch, and P&L-based auto-exit built into the API.
+Dhan (Raise Financial Services) is a fast-growing Indian fintech broker founded in 2021, focused on derivatives traders with a mobile-first UX and deep market data. Dhan's trading API is called **DhanHQ** — a modern REST + Little Endian binary WebSocket API with unique features: **200-level market depth** (unique in India), **security_id-based** instrument identification (numeric IDs only), and a **two-tier pricing model** (Trading APIs FREE, Data APIs require 25 F&O trades/month OR ₹499/month).
+
+In AlgoChanakya, all 3 Dhan adapters (market data, order execution, ticker/WebSocket) are **fully implemented**. Key differentiator: deepest market depth data, multi-tier rate limiting, Super Order (bracket), Kill Switch, and P&L-based auto-exit built into the API. Dhan sits in the platform failover chain for market data: SmartAPI → **Dhan** → Fyers → Paytm → Upstox → Kite.
 
 ## When to Use
 
+- Any question about Dhan as a broker (products, pricing, account types)
 - Implementing or debugging the Dhan market data, order, or ticker adapter
 - Debugging Dhan API errors or authentication issues
 - Understanding Dhan's security_id format (numeric-only, no string symbols)
@@ -30,10 +32,49 @@ Dhan offers a modern REST API with unique features: **200-level market depth** (
 
 - General broker abstraction questions (read docs/architecture/broker-abstraction.md instead)
 - Cross-broker comparison (use broker-shared/comparison-matrix.md instead)
-- SmartAPI/Kite/Upstox issues (use their respective expert skills)
-- Fyers/Paytm issues (use their respective expert skills)
+- AngelOne/SmartAPI issues (use angelone-expert)
+- Kite/Upstox/Fyers/Paytm issues (use their respective expert skills)
 
-## API Overview
+---
+
+## 1. Dhan Overview
+
+Dhan (Raise Financial Services Private Limited), est. 2021, is a SEBI-registered stockbroker focused on derivatives traders. It offers trading across NSE, BSE, and MCX segments with a mobile-first approach and deep market data capabilities.
+
+**Account types:** Individual, Joint, HUF, Corporate, NRI.
+
+See [dhan-overview.md](./references/dhan-overview.md) for complete company profile, products table, and differentiators.
+
+## 2. Brokerage & Pricing
+
+### Trading Charges
+
+| Segment | Brokerage |
+|---------|-----------|
+| Equity Delivery | ₹0 (FREE) |
+| Equity Intraday | ₹20/order or 0.03% (lower) |
+| F&O (Options) | ₹20/order (flat) |
+| F&O (Futures) | ₹20/order or 0.03% (lower) |
+| Currency / Commodity | ₹20/order or 0.03% (lower) |
+
+**Other:** Account opening FREE, no AMC.
+
+### API Costs
+
+| Product | Cost | Capability |
+|---------|------|------------|
+| **Trading API** | FREE | Order execution, positions, holdings, margins |
+| **Data API** | FREE (with 25 F&O trades/mo) OR ₹499/month | Market data WebSocket, historical data, option chain |
+
+**AlgoChanakya impact:** Since SmartAPI provides free market data, AlgoChanakya uses Dhan as a failover data source. Trading API is free for all users. Data API requires either active F&O trading (25 trades/month) or ₹499/month subscription.
+
+See [dhan-overview.md](./references/dhan-overview.md) for detailed charges and exchange support.
+
+---
+
+## 3. DhanHQ API
+
+### API Overview
 
 | Property | Value |
 |----------|-------|
@@ -47,11 +88,11 @@ Dhan offers a modern REST API with unique features: **200-level market depth** (
 | **Auth Method** | API access token (from web dashboard) |
 | **Token Validity** | Until manually revoked or regenerated |
 
-## Authentication Flow
+### Authentication Flow
 
 Dhan uses a simple **API token** model - no OAuth redirect needed.
 
-### Step-by-Step
+#### Step-by-Step
 
 ```
 1. Login to Dhan web dashboard (https://trade.dhan.co)
@@ -60,7 +101,7 @@ Dhan uses a simple **API token** model - no OAuth redirect needed.
 4. Use token in all API calls: access-token: {token}
 ```
 
-### Auth Header
+#### Auth Header
 
 ```
 access-token: {access_token}
@@ -71,7 +112,7 @@ Content-Type: application/json
 
 See [auth-flow.md](./references/auth-flow.md) for complete details.
 
-## Key Endpoints Quick Reference
+### Key Endpoints Quick Reference
 
 | Category | Method | Endpoint | Notes |
 |----------|--------|----------|-------|
@@ -101,9 +142,9 @@ See [auth-flow.md](./references/auth-flow.md) for complete details.
 
 See [endpoints-catalog.md](./references/endpoints-catalog.md) for complete schemas.
 
-## Symbol Format (security_id)
+### Symbol Format (security_id)
 
-### Numeric IDs Only
+#### Numeric IDs Only
 
 Dhan uses **numeric security_id** values. There are NO string trading symbols in the API.
 
@@ -116,7 +157,7 @@ Dhan uses **numeric security_id** values. There are NO string trading symbols in
 | NIFTY 25000 CE | `12345` | `NSE_FNO` |
 | Reliance | `2885` | `NSE_EQ` |
 
-### Exchange Segments
+#### Exchange Segments
 
 | Segment | Code | Description |
 |---------|------|-------------|
@@ -127,7 +168,7 @@ Dhan uses **numeric security_id** values. There are NO string trading symbols in
 | `MCX_COMM` | `MCX_COMM` | MCX Commodities |
 | `IDX_I` | `IDX_I` | Indices |
 
-### Canonical Conversion
+#### Canonical Conversion
 
 Conversion is **high complexity** because Dhan uses only numeric IDs:
 
@@ -143,13 +184,13 @@ security_id = await token_manager.get_broker_token("NIFTY2522725000CE", "dhan")
 
 See [symbol-format.md](./references/symbol-format.md) for instrument CSV format.
 
-## WebSocket Protocol (Little Endian Binary)
+### WebSocket Protocol (Little Endian Binary)
 
-### Unique: Little Endian
+#### Unique: Little Endian
 
 Dhan is the **only Indian broker** using Little Endian byte order (`struct.unpack('<...')`). All others use Big Endian.
 
-### Connection URL (v2)
+#### Connection URL (v2)
 
 ```
 wss://api-feed.dhan.co?version=2&token={access_token}&clientId={client_id}&authType=2
@@ -157,15 +198,15 @@ wss://api-feed.dhan.co?version=2&token={access_token}&clientId={client_id}&authT
 
 Auth is via **query parameters** in the URL (not headers). `authType=2` is the default.
 
-### Heartbeat
+#### Heartbeat
 
 Server sends a **ping every 10 seconds**. Client must respond with pong (handled automatically by most WebSocket libraries). Connection drops after **40 seconds** of no response.
 
-### Graceful Disconnect
+#### Graceful Disconnect
 
 Send `{"RequestCode": 12}` to cleanly close the connection before disconnecting.
 
-### Subscription Modes
+#### Subscription Modes
 
 | Mode | Description | Data |
 |------|-------------|------|
@@ -174,7 +215,7 @@ Send `{"RequestCode": 12}` to cleanly close the connection before disconnecting.
 | **Full** | All quote data + timestamps | ~700 bytes |
 | **200-Depth** | 200-level depth | **1 instrument/connection** (unique in India) |
 
-### WebSocket Limits
+#### WebSocket Limits
 
 | Limit | Value |
 |-------|-------|
@@ -185,7 +226,7 @@ Send `{"RequestCode": 12}` to cleanly close the connection before disconnecting.
 
 See [websocket-protocol.md](./references/websocket-protocol.md) for byte offsets and parsing.
 
-## Super Orders
+### Super Orders
 
 Dhan's **Super Order** combines entry + target + stop-loss into a single API call with optional trailing stop-loss. Different from Forever Orders — Super Orders execute within the same trading session.
 
@@ -206,11 +247,11 @@ Dhan's **Super Order** combines entry + target + stop-loss into a single API cal
 
 See [super-order.md](./references/super-order.md) for full request/response schemas.
 
-## Trader's Control (Kill Switch & P&L Exit)
+### Trader's Control (Kill Switch & P&L Exit)
 
 Dhan provides two risk management APIs under the "Trader's Control" category:
 
-### Kill Switch
+#### Kill Switch
 
 Disables ALL trading for the current day. **Prerequisite:** All positions closed and no pending orders.
 
@@ -222,7 +263,7 @@ GET  /v2/killswitch                              # Check current status
 
 **Important:** You MUST close all positions and cancel all orders BEFORE calling `ACTIVATE`. Attempting to activate with open positions/orders will fail.
 
-### P&L Exit
+#### P&L Exit
 
 Automatically exits all positions when a profit or loss threshold is hit.
 
@@ -242,7 +283,7 @@ GET    /v2/pnlExit    # Get current configuration
 
 See [traders-control.md](./references/traders-control.md) for full schemas and integration notes.
 
-## Forever Orders (GTT)
+### Forever Orders (GTT)
 
 Dhan's GTT equivalent is called **"Forever Orders"** — orders that persist until triggered or manually cancelled (up to 365 days). Supports two types: `SINGLE` (one trigger) and `OCO` (target + stop loss, one cancels other).
 
@@ -256,7 +297,7 @@ Dhan's GTT equivalent is called **"Forever Orders"** — orders that persist unt
 
 See [gtt-orders.md](./references/gtt-orders.md) for full request/response schemas and OCO details.
 
-## Option Chain API
+### Option Chain API
 
 Dhan provides a dedicated Option Chain API returning full strike list with Greeks (delta, gamma, theta, vega, IV).
 
@@ -268,7 +309,7 @@ Dhan provides a dedicated Option Chain API returning full strike list with Greek
 
 See [option-chain.md](./references/option-chain.md) for request/response schemas and supported underlyings.
 
-## Postback / Webhook & Live Order Updates
+### Postback / Webhook & Live Order Updates
 
 Dhan provides two mechanisms for real-time order notifications:
 
@@ -280,7 +321,7 @@ Dhan provides two mechanisms for real-time order notifications:
 
 See [webhook.md](./references/webhook.md) for postback payload schema, WebSocket connection code, and integration notes.
 
-## Rate Limits (Multi-Tier)
+### Rate Limits (Multi-Tier)
 
 | Resource | Per Second | Per Minute | Per Hour | Per Day |
 |----------|-----------|-----------|---------|---------|
@@ -294,7 +335,7 @@ See [webhook.md](./references/webhook.md) for postback payload schema, WebSocket
 
 **Note:** Place + Modify + Cancel each count against ALL four order tiers. Hit any one tier → HTTP 429. Max 25 modifications per order total.
 
-## Price Normalization
+### Price Normalization
 
 | Data Source | Price Unit | Action Required |
 |------------|------------|-----------------|
@@ -304,7 +345,23 @@ See [webhook.md](./references/webhook.md) for postback payload schema, WebSocket
 
 Dhan returns all prices in RUPEES. No paise conversion needed.
 
-## AlgoChanakya Implementation Status
+### Error Codes Quick Reference
+
+| HTTP Status | Error | Cause | Retryable |
+|-------------|-------|-------|-----------|
+| `400` | Bad Request | Invalid parameters | No |
+| `401` | Unauthorized | Invalid/expired token | No |
+| `403` | Forbidden | Permissions issue | No |
+| `429` | Rate Limited | Exceeded rate limit | Yes - backoff |
+| `500` | Server Error | Dhan server issue | Yes - retry |
+
+See [error-codes.md](./references/error-codes.md) for complete error catalog.
+
+---
+
+## 4. AlgoChanakya Integration
+
+### Implementation Status
 
 | Component | Status | File |
 |-----------|--------|------|
@@ -332,7 +389,9 @@ adapter = DhanOrderAdapter(access_token=token, client_id=client_id)
 order_id = await adapter.place_order(order_params)
 ```
 
-## Common Gotchas
+---
+
+## 5. Common Gotchas
 
 1. **Two-tier pricing model** - Trading APIs are FREE, but Data APIs (market data WebSocket) require 25 F&O trades/month OR ₹499/month subscription. Common confusion point.
 
@@ -372,37 +431,30 @@ order_id = await adapter.place_order(order_params)
 
 19. **Super Order vs Forever Order** - Super Order = bracket order, same session. Forever Order = GTT, persists until triggered or cancelled (up to 365 days).
 
-## Error Codes Quick Reference
+---
 
-| HTTP Status | Error | Cause | Retryable |
-|-------------|-------|-------|-----------|
-| `400` | Bad Request | Invalid parameters | No |
-| `401` | Unauthorized | Invalid/expired token | No |
-| `403` | Forbidden | Permissions issue | No |
-| `429` | Rate Limited | Exceeded rate limit | Yes - backoff |
-| `500` | Server Error | Dhan server issue | Yes - retry |
-
-See [error-codes.md](./references/error-codes.md) for complete error catalog.
-
-## Related Skills
+## 6. Related Skills
 
 | Skill | When to Use |
 |-------|-------------|
 | `/upstox-expert` | Both modern free-tier APIs — compare unique WS features (Dhan: 200-depth, Upstox: Greeks) |
-| `/smartapi-expert` | Compare auth approaches — Dhan static token vs SmartAPI auto-TOTP |
+| `/angelone-expert` | Compare auth approaches — Dhan static token vs SmartAPI auto-TOTP |
 | `/fyers-expert` | Compare unique features — Fyers has dual WS + order updates, Dhan has deep depth |
 | `/auto-verify` | After any Dhan adapter change — run verification immediately |
 | `/docs-maintainer` | After adapter changes — update feature registry, comparison matrix, CHANGELOG |
 
 **Cross-Broker Comparison:** See [comparison-matrix.md](../broker-shared/comparison-matrix.md) for pricing, rate limits, WebSocket capabilities, and symbol format differences across all 6 brokers.
 
-## Maintenance & Auto-Improvement
+---
+
+## 7. Maintenance & Auto-Improvement
 
 ### Freshness Tracking
 
 | Reference File | Last Verified | Check Frequency |
 |---|---|---|
-| SKILL.md | 2026-02-26 | Quarterly |
+| SKILL.md | 2026-03-04 | Quarterly |
+| dhan-overview.md | 2026-03-04 | Quarterly |
 | endpoints-catalog.md | 2026-02-26 | Quarterly |
 | auth-flow.md | 2026-02-25 | Quarterly |
 | error-codes.md | 2026-02-25 | Quarterly |
@@ -419,19 +471,23 @@ See [error-codes.md](./references/error-codes.md) for complete error catalog.
 
 1. **Error-driven update**: If this skill is invoked 3+ times with FAILED/UNKNOWN outcome for the same error_type (tracked via `post_skill_learning.py` hook → `knowledge.db`), `reflect deep` mode should propose a skill update.
 2. **Staleness alert**: If `last_verified` exceeds 90 days, check https://dhanhq.co/docs/v2/ for API changes.
-3. **Quarterly review**: Next scheduled review: **May 2026**.
+3. **Quarterly review**: Next scheduled review: **June 2026**.
 
 ### Version Changelog
 
 | Version | Date | Changes |
 |---|---|---|
+| 3.0 | 2026-03-04 | Restructured: Dhan overview + pricing sections added, DhanHQ API content reorganized as subsection. New `dhan-overview.md` reference file. All existing API content preserved. |
 | 2.6 | 2026-02-26 | Added Super Order section + `super-order.md` reference, Trader's Control section + `traders-control.md` reference; corrected WS connection URL (query params, not headers), added heartbeat/disconnect details, corrected 5000 instruments/connection limit; corrected rate limits to 4-tier table (Order/Data/Quote/Non-Trading); added 9 new gotchas; updated `gtt-orders.md`, `webhook.md`, `option-chain.md`, `websocket-protocol.md`, `endpoints-catalog.md` |
 | 2.5 | 2026-02-25 | Added Forever Orders (GTT) section, Option Chain section, Postback/Webhook section, Live Order Update WebSocket, `availabelBalance` typo gotcha, corrected multi-tier rate limits (10/sec, 250/min, 1000/hr, 7000/day), expanded Maintenance section with all 9 reference files, added 3 new reference files |
 | 2.0 | 2026-02-25 | Implementation status corrected: all 3 adapters fully Implemented (was Planned), auth route + frontend + tests added to status table, maintenance section added |
 | 1.0 | 2026-02-16 | Initial creation |
 
+---
+
 ## References
 
+- [Dhan Overview](./references/dhan-overview.md) - Company profile, products, pricing, exchanges, differentiators
 - [Authentication Flow](./references/auth-flow.md) - API token setup
 - [Endpoints Catalog](./references/endpoints-catalog.md) - All REST endpoints
 - [WebSocket Protocol](./references/websocket-protocol.md) - Little Endian binary protocol

@@ -90,7 +90,7 @@
 
 ### Missing Context
 
-- Broker-specific API quirks — consult broker expert skills (smartapi-expert, zerodha-expert, etc.)
+- Broker-specific API quirks — consult broker expert skills (angelone-expert, zerodha-expert, etc.)
 - AutoPilot service interactions — complex 26-service dependency chain
 - AI module trust ladder — graduation criteria need docs/ai/ reference
 
