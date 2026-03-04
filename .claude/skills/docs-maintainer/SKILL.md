@@ -3,7 +3,7 @@ name: docs-maintainer
 description: Automatically maintain project documentation after code changes. Use proactively after any code modification to keep docs in sync.
 metadata:
   author: AlgoChanakya
-  version: "1.0"
+  version: "2.0"
 ---
 
 # Documentation Maintainer
@@ -651,6 +651,159 @@ Temporary Files (1):
 - **Every time:** After completing documentation updates
 - **Exception:** Skip if user just ran cleanup (avoid redundant alerts)
 - **Throttle:** If same orphans detected multiple times in short period, mention once per session
+
+---
+
+## Pre-Commit Validation Mode
+
+**Trigger:** Before `git commit` or when user runs `/docs-maintainer validate`
+
+Run these checks before allowing a commit that includes documentation changes:
+
+### Check 1: Stale Timestamps
+```bash
+# Find REQUIREMENTS.md files with "Last updated" older than 30 days
+grep -rl "Last updated:" docs/features/*/REQUIREMENTS.md | while read f; do
+  date=$(grep -oP 'Last updated:\s*\K[\d-]+' "$f")
+  echo "$f: $date"
+done
+```
+Flag any REQUIREMENTS.md where `Last updated` is > 30 days old AND the corresponding code files were modified recently.
+
+### Check 2: Missing CHANGELOG Entries
+```bash
+# Get files changed since last commit
+git diff --cached --name-only | while read f; do
+  # For each changed code file, check if its feature CHANGELOG was also updated
+  feature=$(python -c "
+import yaml
+with open('docs/feature-registry.yaml') as fh:
+    reg = yaml.safe_load(fh)
+for name, data in reg.get('features', {}).items():
+    files = data.get('backend_files', []) + data.get('frontend_files', [])
+    if '$f' in files:
+        print(name)
+        break
+" 2>/dev/null)
+  if [ -n "$feature" ]; then
+    changelog="docs/features/$feature/CHANGELOG.md"
+    if ! git diff --cached --name-only | grep -q "$changelog"; then
+      echo "⚠ $f changed but $changelog not updated"
+    fi
+  fi
+done
+```
+
+### Check 3: Broken Doc Links
+```bash
+# Scan staged .md files for broken relative links
+git diff --cached --name-only --diff-filter=AM -- '*.md' | while read f; do
+  grep -oP '\[.*?\]\(\K[^)]+' "$f" | grep -v '^http' | while read link; do
+    target=$(dirname "$f")/"$link"
+    [ ! -e "$target" ] && echo "⚠ Broken link in $f: $link"
+  done
+done
+```
+
+### Check 4: Orphan Detection
+Run the existing orphan detection logic (from Proactive Orphan Detection section) on staged files only.
+
+**Output format:**
+```
+📋 Pre-Commit Validation
+  ✓ Timestamps: All current
+  ⚠ CHANGELOG: 2 features missing entries
+  ✓ Links: No broken links
+  ✓ Orphans: None detected
+
+  Result: 1 warning — proceed with commit? (y/n)
+```
+
+---
+
+## Continuous Monitoring Mode
+
+**Trigger:** On session start (via `start-session` skill integration) or `/docs-maintainer monitor`
+
+Collects documentation health metrics without blocking the user's workflow.
+
+### Metric 1: CLAUDE.md Modification Frequency
+```bash
+# Count CLAUDE.md modifications in last 20 commits
+claude_changes=$(git log --oneline -20 --diff-filter=M -- CLAUDE.md | wc -l)
+echo "CLAUDE.md changed in $claude_changes of last 20 commits"
+# Threshold: > 5 changes = high churn, consider splitting
+```
+
+### Metric 2: Feature Doc Coverage
+```bash
+# For each feature in registry, check if all 3 required docs exist
+python -c "
+import yaml, os
+with open('docs/feature-registry.yaml') as f:
+    reg = yaml.safe_load(f)
+for name, data in reg.get('features', {}).items():
+    folder = data.get('docs_folder', f'docs/features/{name}/')
+    missing = []
+    for doc in ['README.md', 'REQUIREMENTS.md', 'CHANGELOG.md']:
+        if not os.path.exists(os.path.join(folder, doc)):
+            missing.append(doc)
+    if missing:
+        print(f'⚠ {name}: missing {", ".join(missing)}')
+"
+```
+
+### Metric 3: Cross-Reference Staleness
+Check if key cross-references are still valid:
+- Port numbers in CLAUDE.md match `backend/.env` and `frontend/.env.local`
+- API URLs in frontend config match backend config
+- Broker implementation status in comparison-matrix.md matches actual adapter files
+
+**Output format:**
+```
+📊 Documentation Health (Session Start)
+  CLAUDE.md churn:     3/20 commits (normal)
+  Feature doc coverage: 8/10 features complete
+  Cross-ref staleness:  1 stale reference found
+
+  💡 Run `/docs-maintainer validate` for detailed check
+```
+
+---
+
+## Cross-Reference Audit Matrix
+
+Expanded cross-reference validation covering all critical documentation consistency points.
+
+| Source Doc | Must Match | Field/Section |
+|-----------|------------|---------------|
+| `CLAUDE.md` Development Environment table | `backend/.env` PORT value | Dev Backend port |
+| `CLAUDE.md` Development Environment table | `frontend/.env.local` VITE_API_BASE_URL | Frontend API URL |
+| `CLAUDE.md` Implementation Status | `docs/IMPLEMENTATION-CHECKLIST.md` Progress | Feature completion % |
+| `comparison-matrix.md` Section 11 | Actual adapter files in `backend/app/services/brokers/` | Broker implementation status |
+| Broker expert skill `last_verified` | Current date | Freshness (< 30 days) |
+| `docs/feature-registry.yaml` file lists | Actual files on filesystem | File existence |
+| `frontend/CLAUDE.md` fixture exports | Actual exports in `tests/e2e/fixtures/auth.fixture.js` | Named export list |
+| `docs/testing/e2e-test-rules.md` | `tests/e2e/helpers/wait-helpers.js` exports | Helper function list |
+
+### Audit Workflow
+
+1. **Read** each source doc's relevant section
+2. **Read** the corresponding target file/directory
+3. **Compare** values — flag any mismatches
+4. **Report** with specific file:line references for easy fixing
+
+**Output format:**
+```
+🔍 Cross-Reference Audit
+  ✓ Ports: CLAUDE.md ↔ .env files consistent
+  ✓ API URLs: Frontend ↔ Backend consistent
+  ⚠ comparison-matrix.md: Lists 6 brokers, found 5 adapter dirs
+  ✓ Feature registry: All 47 files exist
+  ⚠ zerodha-expert: last_verified 45 days ago
+
+  2 issues found — see details above
+```
 
 ---
 

@@ -99,3 +99,32 @@ CREATE TABLE IF NOT EXISTS session_metrics (
     new_patterns_discovered INTEGER DEFAULT 0,
     rules_synthesized INTEGER DEFAULT 0
 );
+
+-- Skill lifecycle tracking (used by skill-evolver)
+CREATE TABLE IF NOT EXISTS skill_lifecycle (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    skill_name TEXT UNIQUE NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by TEXT DEFAULT 'manual',
+    source TEXT,
+    version TEXT DEFAULT '1.0',
+    status TEXT DEFAULT 'active',
+    invocation_count INTEGER DEFAULT 0,
+    success_count INTEGER DEFAULT 0,
+    failure_count INTEGER DEFAULT 0,
+    last_invoked_at TIMESTAMP,
+    last_evolved_at TIMESTAMP,
+    performance_score REAL,
+    notes TEXT
+);
+
+CREATE TABLE IF NOT EXISTS skill_evolution_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    skill_name TEXT NOT NULL,
+    evolution_type TEXT NOT NULL,
+    description TEXT,
+    before_version TEXT,
+    after_version TEXT,
+    evolved_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    evolved_by TEXT DEFAULT 'skill-evolver'
+);

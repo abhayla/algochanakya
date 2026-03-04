@@ -3,7 +3,7 @@ name: health-check
 description: Proactive codebase health scan. Detects stale imports, missing tests, risky files, and known error patterns. Use manually via /health-check or auto-triggered on session start.
 metadata:
   author: AlgoChanakya
-  version: "1.0"
+  version: "2.0"
 ---
 
 # Health Check Skill
@@ -25,7 +25,7 @@ Proactive codebase health scanning that identifies potential issues before they 
 
 ---
 
-## 8-Step Health Scan
+## 9-Step Health Scan
 
 ### 1. Stale Import Scan
 
@@ -50,14 +50,14 @@ grep -r "from app.services.greeks_calculator import" --include="*.py" . || echo 
 
 **Output:**
 ```
-[1/8] Stale Import Scan
+[1/9] Stale Import Scan
   ✓ No stale imports found
 ```
 
 Or:
 
 ```
-[1/8] Stale Import Scan
+[1/9] Stale Import Scan
   ⚠ 2 stale imports detected:
     - backend/app/api/routes/autopilot.py:15
       from app.services.kill_switch import KillSwitch
@@ -91,14 +91,14 @@ git diff --name-only HEAD~10..HEAD > /tmp/changed_files.txt
 
 **Output:**
 ```
-[2/8] Missing Test Coverage
+[2/9] Missing Test Coverage
   ✓ All changed files have recent test coverage
 ```
 
 Or:
 
 ```
-[2/8] Missing Test Coverage
+[2/9] Missing Test Coverage
   ⚠ 2 files changed without test updates:
     - frontend/src/views/StrategyBuilderView.vue (changed 3 days ago)
       Expected test: tests/e2e/specs/strategy/strategy.happy.spec.js (last updated 12 days ago)
@@ -124,7 +124,7 @@ cursor = conn.execute(
     'SELECT file_path, risk_score, error_count, revert_count FROM file_risk_scores WHERE risk_score > 0.5 ORDER BY risk_score DESC LIMIT 10'
 )
 
-print('[3/8] File Risk Report')
+print('[3/9] File Risk Report')
 rows = cursor.fetchall()
 if rows:
     print(f'  ⚠ {len(rows)} high-risk files detected:')
@@ -144,7 +144,7 @@ conn.close()
 
 **Output:**
 ```
-[3/8] File Risk Report
+[3/9] File Risk Report
   ⚠ 3 high-risk files detected:
     - backend/app/services/autopilot/suggestion_engine.py (risk: 0.85, errors: 8, reverts: 2)
     - tests/e2e/specs/positions/exit.spec.js (risk: 0.72, errors: 6, reverts: 1)
@@ -174,7 +174,7 @@ cursor = conn.execute(
        LIMIT 5'''
 )
 
-print('[4/8] Unresolved Error Patterns')
+print('[4/9] Unresolved Error Patterns')
 rows = cursor.fetchall()
 if rows:
     print(f'  ⚠ {len(rows)} recurring unresolved errors:')
@@ -190,7 +190,7 @@ conn.close()
 
 **Output:**
 ```
-[4/8] Unresolved Error Patterns
+[4/9] Unresolved Error Patterns
   ⚠ 2 recurring unresolved errors:
     - ImportError: cannot import name 'X' from 'X'
       Fingerprint: abc123def456, Seen 3 times, Never resolved
@@ -222,7 +222,7 @@ cursor = conn.execute(
        LIMIT 5'''
 )
 
-print('[5/8] Strategy Effectiveness Review')
+print('[5/9] Strategy Effectiveness Review')
 rows = cursor.fetchall()
 if rows:
     print(f'  ⚠ {len(rows)} ineffective strategies (score < 0.2):')
@@ -238,7 +238,7 @@ conn.close()
 
 **Output:**
 ```
-[5/8] Strategy Effectiveness Review
+[5/9] Strategy Effectiveness Review
   ⚠ 2 ineffective strategies (score < 0.2):
     - Fix Circular Import (ImportError)
       Score: 0.15, Success: 1/8 attempts
@@ -264,7 +264,7 @@ from db_helper import synthesize_rules, get_connection
 # Run synthesis check
 new_rules = synthesize_rules(min_confidence=0.7, min_evidence=5)
 
-print('[6/8] Synthesized Rules Check')
+print('[6/9] Synthesized Rules Check')
 if new_rules:
     print(f'  ✨ {len(new_rules)} new rules synthesized:')
     for rule in new_rules:
@@ -283,7 +283,7 @@ conn.close()
 
 **Output:**
 ```
-[6/8] Synthesized Rules Check
+[6/9] Synthesized Rules Check
   ✨ 2 new rules synthesized:
     - Auto: Update Stale Selector (83.3% confidence, 10 evidence)
     - Auto: Fix Missing Import (87.5% confidence, 7 evidence)
@@ -294,7 +294,7 @@ conn.close()
 
 ---
 
-### 7. Git Health Check (Step 7 of 8)
+### 7. Git Health Check (Step 7 of 9)
 
 **Purpose:** Check for uncommitted changes, stale branches, and large files.
 
@@ -315,7 +315,7 @@ git rev-list --objects --all | \
 
 **Output:**
 ```
-[7/8] Git Health Check
+[7/9] Git Health Check
   ⚠ 3 uncommitted files:
     - backend/app/services/autopilot/suggestion_engine.py (modified)
     - frontend/src/stores/strategy.js (modified)
@@ -342,7 +342,7 @@ node tests/e2e/scripts/audit-testids.js --fail-below=70
 
 **Output:**
 ```
-[8/8] data-testid Coverage Audit
+[8/9] data-testid Coverage Audit
   Overall: 64% coverage (threshold: 70%) — ⚠ BELOW THRESHOLD
 
   🔴 HIGH (61 files) — buttons/inputs/selects missing data-testid:
@@ -359,6 +359,96 @@ node tests/e2e/scripts/audit-testids.js --fail-below=70
 
 ---
 
+### 9. Documentation Validation Audit
+
+**Purpose:** Detect documentation drift, stale cross-references, and inconsistencies between docs and code.
+
+**Process:**
+
+**9a. Broker comparison-matrix.md vs actual adapters:**
+```bash
+# Check that comparison-matrix.md section 11 lists all adapters that actually exist
+ls backend/app/services/brokers/market_data/*_adapter.py backend/app/services/brokers/order/*_adapter.py 2>/dev/null | \
+  sed 's/.*\///' | sed 's/_adapter.py//' | sort > /tmp/actual_adapters.txt
+
+grep -oP '(?<=\| )\w+(?= +\| (Complete|Planned|In Progress))' .claude/skills/broker-shared/comparison-matrix.md | \
+  tr '[:upper:]' '[:lower:]' | sort > /tmp/documented_adapters.txt
+
+diff /tmp/actual_adapters.txt /tmp/documented_adapters.txt || echo "⚠ Adapter mismatch detected"
+```
+
+**9b. Broker expert skill freshness:**
+```bash
+# Check last_verified dates in broker expert skills (warn if > 30 days old)
+for skill in angelone-expert zerodha-expert upstox-expert dhan-expert fyers-expert paytm-expert; do
+  date=$(grep -oP 'last_verified:\s*"\K[^"]+' .claude/skills/$skill/SKILL.md 2>/dev/null)
+  if [ -n "$date" ]; then
+    days_old=$(( ($(date +%s) - $(date -d "$date" +%s)) / 86400 ))
+    [ $days_old -gt 30 ] && echo "⚠ $skill last verified $days_old days ago"
+  fi
+done
+```
+
+**9c. Feature registry file existence:**
+```bash
+# Verify files listed in feature-registry.yaml actually exist
+python -c "
+import yaml
+with open('docs/feature-registry.yaml') as f:
+    registry = yaml.safe_load(f)
+missing = []
+for feature, data in registry.get('features', {}).items():
+    for f in data.get('backend_files', []) + data.get('frontend_files', []):
+        import os
+        if not os.path.exists(f):
+            missing.append(f'{feature}: {f}')
+if missing:
+    print(f'⚠ {len(missing)} registered files missing:')
+    for m in missing[:10]:
+        print(f'  - {m}')
+else:
+    print('✓ All registered files exist')
+"
+```
+
+**9d. CLAUDE.md drift detection:**
+```bash
+# Check if CLAUDE.md has high churn (3+ changes in last 5 commits)
+claude_changes=$(git log --oneline -5 --diff-filter=M -- CLAUDE.md | wc -l)
+if [ "$claude_changes" -ge 3 ]; then
+  echo "⚠ CLAUDE.md modified in $claude_changes of last 5 commits (high churn)"
+  echo "  Consider stabilizing or splitting into sub-docs"
+else
+  echo "✓ CLAUDE.md churn is normal ($claude_changes changes in last 5 commits)"
+fi
+```
+
+**9e. Rate limit consistency:**
+```bash
+# Cross-check rate limits in comparison-matrix vs broker expert skills
+for skill in angelone-expert zerodha-expert upstox-expert dhan-expert fyers-expert paytm-expert; do
+  skill_limit=$(grep -oP 'Rate Limit.*?(\d+)' .claude/skills/$skill/SKILL.md 2>/dev/null | head -1)
+  matrix_limit=$(grep -A1 "$(echo $skill | sed 's/-expert//')" .claude/skills/broker-shared/comparison-matrix.md 2>/dev/null | grep -oP '\d+ req' | head -1)
+  if [ -n "$skill_limit" ] && [ -n "$matrix_limit" ]; then
+    [ "$skill_limit" != "$matrix_limit" ] && echo "⚠ Rate limit mismatch for $skill"
+  fi
+done
+```
+
+**Output:**
+```
+[9/9] Documentation Validation Audit
+  9a. Broker adapters vs docs        ✓ All 6 brokers documented
+  9b. Expert skill freshness         ⚠ 2 skills stale (> 30 days)
+  9c. Feature registry files         ✓ All files exist
+  9d. CLAUDE.md churn                ✓ Normal (1 change in 5 commits)
+  9e. Rate limit consistency         ✓ All consistent
+
+  Summary: 1 warning (broker expert freshness)
+```
+
+---
+
 ## Complete Health Report Format
 
 ```
@@ -368,17 +458,18 @@ node tests/e2e/scripts/audit-testids.js --fail-below=70
 Date: 2026-02-13 14:23:45
 Scan Duration: 3.2 seconds
 
-[1/8] Stale Import Scan               ✓ Clean
-[2/8] Missing Test Coverage            ⚠ 2 issues
-[3/8] File Risk Report                 ⚠ 3 high-risk files
-[4/8] Unresolved Error Patterns        ⚠ 2 patterns
-[5/8] Strategy Effectiveness           ⚠ 2 ineffective
-[6/8] Synthesized Rules Check          ✨ 2 new rules
-[7/8] Git Health                       ⚠ 3 uncommitted files
-[8/8] data-testid Coverage             ⚠ 64% (below 70% threshold)
+[1/9] Stale Import Scan               ✓ Clean
+[2/9] Missing Test Coverage            ⚠ 2 issues
+[3/9] File Risk Report                 ⚠ 3 high-risk files
+[4/9] Unresolved Error Patterns        ⚠ 2 patterns
+[5/9] Strategy Effectiveness           ⚠ 2 ineffective
+[6/9] Synthesized Rules Check          ✨ 2 new rules
+[7/9] Git Health                       ⚠ 3 uncommitted files
+[8/9] data-testid Coverage             ⚠ 64% (below 70% threshold)
+[9/9] Documentation Validation         ⚠ 2 sub-checks warned
 
 ==============================================
-Summary: 5 warnings, 2 clean, 2 new rules
+Summary: 6 warnings, 2 clean, 2 new rules
 ==============================================
 
 Details:
@@ -452,24 +543,25 @@ To enable automatic health check on session start, add to your session startup w
 
 ```bash
 # In start-session integration
-/health-check --quick  # Quick scan (steps 3, 4, 6 only)
-/health-check          # Full scan (all 7 steps)
+/health-check --quick  # Quick scan (steps 3, 4, 6, 9 only)
+/health-check          # Full scan (all 9 steps)
 ```
 
 **Quick Scan** (30 seconds):
 - File Risk Report
 - Unresolved Error Patterns
 - Synthesized Rules Check
+- Documentation Validation Audit
 
 **Full Scan** (2-3 minutes):
-- All 7 steps
+- All 9 steps
 
 ---
 
 ## Manual Commands
 
 ```bash
-/health-check              # Run full health scan (all 7 steps)
+/health-check              # Run full health scan (all 9 steps)
 /health-check --quick      # Quick scan (3 critical checks)
 /health-check --step=3     # Run specific step only
 /health-check --fix        # Auto-fix issues where possible

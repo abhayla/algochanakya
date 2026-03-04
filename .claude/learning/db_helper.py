@@ -660,6 +660,61 @@ def seed_strategies():
         conn.close()
 
 
+def seed_skill_lifecycle():
+    """Scan .claude/skills/*/SKILL.md and register each skill in skill_lifecycle table."""
+    skills_dir = Path(__file__).parent.parent / "skills"
+    if not skills_dir.exists():
+        print(f"[ERROR] Skills directory not found: {skills_dir}")
+        return 0
+
+    conn = get_connection()
+    try:
+        inserted = 0
+        for skill_dir in sorted(skills_dir.iterdir()):
+            skill_md = skill_dir / "SKILL.md"
+            if not skill_dir.is_dir() or not skill_md.exists():
+                continue
+
+            skill_name = skill_dir.name
+            version = "1.0"
+
+            # Parse YAML frontmatter for name and version
+            with open(skill_md, 'r', encoding='utf-8') as f:
+                content = f.read()
+
+            fm_match = re.match(r'^---\s*\n(.*?)\n---', content, re.DOTALL)
+            if fm_match:
+                fm_text = fm_match.group(1)
+                name_match = re.search(r'^name:\s*(.+)$', fm_text, re.MULTILINE)
+                if name_match:
+                    skill_name = name_match.group(1).strip().strip('"').strip("'")
+                ver_match = re.search(r'version:\s*["\']?([^"\'\n]+)', fm_text)
+                if ver_match:
+                    version = ver_match.group(1).strip()
+
+            # Check if already exists
+            cursor = conn.execute(
+                "SELECT id FROM skill_lifecycle WHERE skill_name = ?",
+                (skill_name,)
+            )
+            if cursor.fetchone():
+                continue
+
+            conn.execute(
+                """INSERT INTO skill_lifecycle
+                   (skill_name, created_by, source, version, status)
+                   VALUES (?, 'manual', 'pre-existing', ?, 'active')""",
+                (skill_name, version)
+            )
+            inserted += 1
+
+        conn.commit()
+        print(f"[OK] Registered {inserted} skills in skill_lifecycle")
+        return inserted
+    finally:
+        conn.close()
+
+
 def get_synthesized_rules(auto_fix_eligible: bool = False, error_type: str = None) -> List[Dict]:
     """
     Query synthesized rules, optionally filtered by auto_fix_eligible or error_type.
@@ -723,6 +778,14 @@ def get_stats() -> Dict:
         cursor = conn.execute("SELECT COUNT(*) as count FROM file_risk_scores WHERE risk_score > 0.5")
         stats['risky_files'] = cursor.fetchone()['count']
 
+        # Check if skill_lifecycle table exists
+        cursor = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='skill_lifecycle'"
+        )
+        if cursor.fetchone():
+            cursor = conn.execute("SELECT COUNT(*) as count FROM skill_lifecycle")
+            stats['total_skills'] = cursor.fetchone()['count']
+
         return stats
     finally:
         conn.close()
@@ -732,7 +795,7 @@ if __name__ == "__main__":
     import sys
 
     if len(sys.argv) < 2:
-        print("Usage: python db_helper.py [init|seed|stats]")
+        print("Usage: python db_helper.py [init|seed|seed-skills|stats]")
         sys.exit(1)
 
     command = sys.argv[1]
@@ -743,6 +806,10 @@ if __name__ == "__main__":
         if not DB_PATH.exists():
             init_db()
         seed_strategies()
+    elif command == "seed-skills":
+        if not DB_PATH.exists():
+            init_db()
+        seed_skill_lifecycle()
     elif command == "stats":
         if not DB_PATH.exists():
             print("Database not initialized. Run 'python db_helper.py init' first.")
@@ -755,6 +822,8 @@ if __name__ == "__main__":
         print(f"Failed Fixes:        {stats['failed_fixes']}")
         print(f"Synthesized Rules:   {stats['active_rules']}")
         print(f"Risky Files:         {stats['risky_files']}")
+        if 'total_skills' in stats:
+            print(f"Registered Skills:   {stats['total_skills']}")
         print("==================================\n")
     else:
         print(f"Unknown command: {command}")
