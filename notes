@@ -2,29 +2,38 @@ Start both frontend (port 5173) and backend (port 8000), then open the dashboard
 
 update .gitignore, commit and sync. sync notes file also into git
 
-Perform comprehensive testing of AI Autopilot feature. Currently market is open, so use paper trading feature to place order and exist with all possible permutations and combinations. Fix any issues that you find and test. Do not stop until you fully test Ai Autopilot feature. Perform testing as if you are human. Use (using playwright and Claude Chrome) in headed mode as every human does. Testing should be done in browser. You can use multiple browser window to speed up the testing. Perform all feature testing, UI testing. 
+Perform comprehensive testing of AI Autopilot feature. Currently market is open, so use paper trading feature to place order and exist with all possible permutations and combinations. Fix any issues that you find and test. Do not stop until you fully test Ai Autopilot feature. Perform testing as if you are human. Use (using playwright and Claude Chrome) in headed mode as every human does. Testing should be done in browser. You can use multiple browser window to speed up the testing. Perform all feature testing, UI testing.
 
 Add this condition to Passing criteria - take screenshot after each testing, analyze the screenshot to verify it matches with the expected output. Do not pass the test until this is done. Check if you have Claude Chrome access or use it?
-If any issue or error found then fix it and retest it. Do this in loop until the issue is fixed and test passes. 
+If any issue or error found then fix it and retest it. Do this in loop until the issue is fixed and test passes.
 
-***
+---
+
 ## Approach
 
-Do not proceed until you have 100% confidence of what I want. Ask me questions until you reach that confidence. Tell me the approximate number of questions you are going to ask.
+Before starting, clarify requirements by asking me questions one at a time.  
+How to ask:
 
-For each question:
-- State your recommendation based on best practices
-- Show evidence from the codebase supporting your analysis
+- State how many questions remain (e.g., "Question 3 of ~6")
+- For each question, provide your recommendation with reasoning (cite industry standards, codebase patterns, or docs
+  you've read)
+- Before each question, read relevant files/docs in the codebase to ground your recommendation in what actually exists —
+  don't ask me things you can answer by reading code
+- Present the plan section by section for my review (not all at once)
+- For each section, wait for my approval or feedback before showing the next
+- Only finalize the complete plan after all sections are approved
 
-After each response, before the next question:
-- Check industry standards for Claude Code workflow automation
-- Cross-reference with the existing codebase and docs
+What NOT to do:
 
-Run through your final plan with me section by section for approval before implementing.
+- Don't ask generic questions you could resolve by reading the codebase (e.g., "What tech stack do you use?" — that's in
+  CLAUDE.md)
+- Don't ask me to confirm things that have obvious best-practice answers — just state your recommendation and ask if I  
+  disagree
+- Don't present the entire plan in one shot expecting blanket approval
 
-***
+---
 
-test all 8 implementation phases completed (using playwright and Claude Chrome) and fix any issues found then retest. Do this in loop until all issues are fixed and all test pass 
+test all 8 implementation phases completed (using playwright and Claude Chrome) and fix any issues found then retest. Do this in loop until all issues are fixed and all test pass
 
 Navigate to /autopilot/strategies/new
 Fill basic info (name, underlying=NIFTY)
@@ -37,418 +46,430 @@ In each iteration, Use the same strategy for testing
 
 You are the owner of this App which you are building for humans them earn huge profits from Indian stock markets by trading in options. What will you change/update to the current codebase and add to this App. CReate a comprehensive plan with that list. Ensure that this should automate as many actions/tasks as possible for humans inorder to multiply the profits for them.
 
-
-Errors/Issues: 
+Errors/Issues:
 While creating a new AutoPilot strategy for Iron condor (check for other types also), CMP is not showing for the legs. CMP is getting correctly populated on Strategy screen. Issue is only on AutoPilot.  
 Remove Option Chain button from the AutoPilot screen
 There is "Network Error" message on the Order screen of AutoPilot
 On AutoPilot Dashboard screen, These values are BLANK - NIFTY, BANKNIFTY, VIX
-Find a better way to show "Strategies" on the AutoPilot Dashboard screen, as new button etc. 
-Find a better way to show "Recent Activity" on the AutoPilot Dashboard screen, as new button etc. 
+Find a better way to show "Strategies" on the AutoPilot Dashboard screen, as new button etc.
+Find a better way to show "Recent Activity" on the AutoPilot Dashboard screen, as new button etc.
 Underlying - NIFTY, BANKNIFTY, FINNIFTY, SENSEX - All these should be present across the App. Strategy screen does not have all 4 Underlying
 Clicked "Resume Strategy" button on the Strategies cards to which resumed the strategy. But when I click on the Exit Strategy button on the same strategy then the "Exit Strategy" confirmation window opens but "Exit Strategy" button does not works.
 Add Pause, Clone, What-If links on Strategy Cards like "View Details", "Resume Strategy" and "Exit Strategy" button exists
 
+Sources
 
-  Sources
+- https://claude.com/blog/claude-for-chrome
+- https://code.claude.com/docs/en/chrome
+- https://support.claude.com/en/articles/12012173-getting-started-with-claude-in-chrome
+- https://chromewebstore.google.com/detail/claude/fcoeoabgfenejglbffodgkkbkcdhcgfn
+- https://www.engadget.com/ai/claudes-chrome-plugin-is-now-available-to-all-paid-users-221024295.html
+- https://www.datacamp.com/tutorial/claude-for-chrome-ai-powered-browser-assistance-automation
 
-  - https://claude.com/blog/claude-for-chrome
-  - https://code.claude.com/docs/en/chrome
-  - https://support.claude.com/en/articles/12012173-getting-started-with-claude-in-chrome
-  - https://chromewebstore.google.com/detail/claude/fcoeoabgfenejglbffodgkkbkcdhcgfn
-  - https://www.engadget.com/ai/claudes-chrome-plugin-is-now-available-to-all-paid-users-221024295.html
-  - https://www.datacamp.com/tutorial/claude-for-chrome-ai-powered-browser-assistance-automation
+  Saved Plans
 
+1. Technical Implementation Plan
 
-    Saved Plans
+Location: C:\Users\Administrator\.claude\plans\shiny-launching-raccoon.md
 
-  1. Technical Implementation Plan
+- 500 lines
+- Contains database schemas, file paths, API designs
+- For developers during implementation
 
-  Location: C:\Users\Administrator\.claude\plans\shiny-launching-raccoon.md
-  - 500 lines
-  - Contains database schemas, file paths, API designs
-  - For developers during implementation
+2. External Review Document
 
-  2. External Review Document
+Location: C:\Abhay\VideCoding\algochanakya\docs\ENHANCEMENT_PLAN_REVIEW.md
 
-  Location: C:\Abhay\VideCoding\algochanakya\docs\ENHANCEMENT_PLAN_REVIEW.md
-  - ~600 lines
-  - User-friendly with ASCII UI mockups
-  - For stakeholders unfamiliar with the codebase
-  - Includes glossary, success metrics, and review questions
+- ~600 lines
+- User-friendly with ASCII UI mockups
+- For stakeholders unfamiliar with the codebase
+- Includes glossary, success metrics, and review questions
 
 AutoPilot Automation Plan:
 File Name: serialized-discovering-shannon.md
 Location: C:\Users\Administrator\.claude\plans\serialized-discovering-shannon.md
 
+🚀 Implementation Prompt for AutoPilot AI Autonomous Trading System
 
-  🚀 Implementation Prompt for AutoPilot AI Autonomous Trading System
+Implement the AutoPilot AI Autonomous Trading System as specified in:
+d:\Abhay\VibeCoding\algochanakya\docs\plans\autopilot-ai-autonomous-implementation-plan.md
 
-  Implement the AutoPilot AI Autonomous Trading System as specified in:
-  d:\Abhay\VibeCoding\algochanakya\docs\plans\autopilot-ai-autonomous-implementation-plan.md
+## Goal
 
-  ## Goal
-  Build a 100% autonomous AI trading system for Indian options that:
-  - Classifies market regime (Trending/Rangebound/Volatile/Pre-Event)
-  - Auto-deploys strategies at 9:20 AM based on regime + confidence
-  - Syncs positions with broker in real-time via WebSocket + 60s polling
-  - Uses Claude API for pre/post-market analysis and explanations
-  - Self-learns from trade outcomes with multi-factor scoring
-  - Graduates from paper to live after validation (15 days, 25 trades, 55% win rate)
+Build a 100% autonomous AI trading system for Indian options that:
 
-  ## Implementation Order (Start with Week 1)
+- Classifies market regime (Trending/Rangebound/Volatile/Pre-Event)
+- Auto-deploys strategies at 9:20 AM based on regime + confidence
+- Syncs positions with broker in real-time via WebSocket + 60s polling
+- Uses Claude API for pre/post-market analysis and explanations
+- Self-learns from trade outcomes with multi-factor scoring
+- Graduates from paper to live after validation (15 days, 25 trades, 55% win rate)
 
-  ### Week 1: Market Intelligence Engine
-  Create these files:
-  1. `backend/app/services/ai/__init__.py`
-  2. `backend/app/services/ai/historical_data.py` - Kite Historical API wrapper with Redis caching
-  3. `backend/app/services/ai/indicators.py` - RSI, ADX, EMA, ATR, Bollinger Bands
-  4. `backend/app/services/ai/market_regime.py` - Rule-based regime classifier
+## Implementation Order (Start with Week 1)
 
-  Database migration for `ai_market_snapshots` table.
+### Week 1: Market Intelligence Engine
 
-  API endpoints:
-  - `GET /api/v1/ai/regime/current` - Current market regime
-  - `GET /api/v1/ai/regime/indicators` - All calculated indicators
+Create these files:
 
-  ### Key Architectural Decisions
-  - **Regime Rules**: ADX>25 = trending, ADX<20 = rangebound, VIX>20 = volatile
-  - **Position Sync**: WebSocket order updates (real-time) + 60-sec reconciliation backup
-  - **Position Sizing**: Tiered by confidence (60-74: 1x, 75-84: 1.5x, 85-100: 2x)
-  - **Data Source**: Kite Historical API primary, NSE Bhavcopy backup
-  - **Learning Score**: P&L (40%) + Risk (25%) + Entry (15%) + Adjustment (15%) + Exit (5%)
+1. `backend/app/services/ai/__init__.py`
+2. `backend/app/services/ai/historical_data.py` - Kite Historical API wrapper with Redis caching
+3. `backend/app/services/ai/indicators.py` - RSI, ADX, EMA, ATR, Bollinger Bands
+4. `backend/app/services/ai/market_regime.py` - Rule-based regime classifier
 
-  ### Existing Files to Integrate With
-  - `backend/app/services/market_data.py` - Add historical OHLC fetching
-  - `backend/app/services/strategy_monitor.py` - Add AI hooks
-  - `backend/app/services/kite_ticker.py` - Add order update handler
-  - `backend/app/websocket/manager.py` - Add POSITION_SYNC_ALERT, EXTERNAL_ORDER_DETECTED
-  - `backend/app/main.py` - Register AI router
+Database migration for `ai_market_snapshots` table.
 
-  ### Project Conventions
-  - Use trading constants from `app/constants/trading.py` (never hardcode lot sizes)
-  - Follow existing API patterns in `backend/app/api/v1/autopilot/`
-  - Use Pinia stores pattern from `frontend/src/stores/`
-  - All Vue components need `data-testid` attributes
-  - After code changes, invoke `auto-verify` skill
+API endpoints:
 
-  ### Dependencies to Add
-  - `anthropic` - Claude API client
-  - `scikit-learn` - ML utilities
-  - `xgboost` or `lightgbm` - Strategy scorer (Week 5+)
-  - `apscheduler` - Daily job scheduling
+- `GET /api/v1/ai/regime/current` - Current market regime
+- `GET /api/v1/ai/regime/indicators` - All calculated indicators
 
-  Start with Week 1 deliverables. After completing Week 1, proceed to Week 2.
+### Key Architectural Decisions
 
+- **Regime Rules**: ADX>25 = trending, ADX<20 = rangebound, VIX>20 = volatile
+- **Position Sync**: WebSocket order updates (real-time) + 60-sec reconciliation backup
+- **Position Sizing**: Tiered by confidence (60-74: 1x, 75-84: 1.5x, 85-100: 2x)
+- **Data Source**: Kite Historical API primary, NSE Bhavcopy backup
+- **Learning Score**: P&L (40%) + Risk (25%) + Entry (15%) + Adjustment (15%) + Exit (5%)
+
+### Existing Files to Integrate With
+
+- `backend/app/services/market_data.py` - Add historical OHLC fetching
+- `backend/app/services/strategy_monitor.py` - Add AI hooks
+- `backend/app/services/kite_ticker.py` - Add order update handler
+- `backend/app/websocket/manager.py` - Add POSITION_SYNC_ALERT, EXTERNAL_ORDER_DETECTED
+- `backend/app/main.py` - Register AI router
+
+### Project Conventions
+
+- Use trading constants from `app/constants/trading.py` (never hardcode lot sizes)
+- Follow existing API patterns in `backend/app/api/v1/autopilot/`
+- Use Pinia stores pattern from `frontend/src/stores/`
+- All Vue components need `data-testid` attributes
+- After code changes, invoke `auto-verify` skill
+
+### Dependencies to Add
+
+- `anthropic` - Claude API client
+- `scikit-learn` - ML utilities
+- `xgboost` or `lightgbm` - Strategy scorer (Week 5+)
+- `apscheduler` - Daily job scheduling
+
+Start with Week 1 deliverables. After completing Week 1, proceed to Week 2.
 
 Create a new page 'OFO' which means Options For Options. Add its link on the menu.  
-On this page, I want to provide the best stragety options to user every 15 mins (configurable) for all strategy types, for all expiries and for all underlyings indexes. User will select underlying and expiry (like optionchain screen), show 3 cards for each strategy type for the selected underlying and expiry. Calculation for the each strategy card should be done based on the all CE/PE data in the option chain, which is not 0, 0.5 or Null. For e.g. For NIFTY, current week expiry i.e 6-Jan-20226, for calculating best Iron condor strategy card, create Iron Condor strategy for all rows (where CMP is not 0, 0.5 or Null) and calculate net profit. Then create cards for the Iron Condor strategy which has the top 3 profits. Do the same for all other strategies. 
-Provide a multi-select drop down option (after expiry drop down) to select strategies and see their corresponding top 3 profit cards. Each card will have option to open the strategy in strategy builder, place order with the logged in broker. 
+On this page, I want to provide the best stragety options to user every 15 mins (configurable) for all strategy types, for all expiries and for all underlyings indexes. User will select underlying and expiry (like optionchain screen), show 3 cards for each strategy type for the selected underlying and expiry. Calculation for the each strategy card should be done based on the all CE/PE data in the option chain, which is not 0, 0.5 or Null. For e.g. For NIFTY, current week expiry i.e 6-Jan-20226, for calculating best Iron condor strategy card, create Iron Condor strategy for all rows (where CMP is not 0, 0.5 or Null) and calculate net profit. Then create cards for the Iron Condor strategy which has the top 3 profits. Do the same for all other strategies.
+Provide a multi-select drop down option (after expiry drop down) to select strategies and see their corresponding top 3 profit cards. Each card will have option to open the strategy in strategy builder, place order with the logged in broker.
 Find out how much time does it takes for you to perform these calculatios starting from selecting underlyings, expiry, Strategy to displaying cards on the screen. If it takes less than 1 second then we can add this functionality on needed basis else we will limit it to 15 minutes or some other configurable time interval.
-Card should have a row for each leg of strategy type with Columns - Expiry, CE/PE, Buy/Sell, Strike Price, CMP, Lots, Qty, P/L 
+Card should have a row for each leg of strategy type with Columns - Expiry, CE/PE, Buy/Sell, Strike Price, CMP, Lots, Qty, P/L
 
-Calculation for these strategies should happen every 15 mins starting 9:30 AM  IST to 3:15 PM IST on days when market is open. 
+Calculation for these strategies should happen every 15 mins starting 9:30 AM IST to 3:15 PM IST on days when market is open.
 If market is closed and/or before next 15 min calculation, all the last calculated strategies should be displayed until new calulation is done.
-
 
 https://medevel.com/19-os-flutter-projects-samples/
 
-
 Refactor to use MarketDataBrokerAdapter for consistency with the rest of the codebase. The WebSocket route should:
-  1. Use get_market_data_adapter() to get the appropriate adapter
-  2. The adapter should handle token translation internally
-  3. The websocket.py should remain broker-agnostic
 
+1. Use get_market_data_adapter() to get the appropriate adapter
+2. The adapter should handle token translation internally
+3. The websocket.py should remain broker-agnostic
 
+Singleton ticker services are a specific architectural pattern used in AlgoChanakya for managing WebSocket connections efficiently. Let me break this down:  
+ What is a Singleton? A singleton is a design pattern where only one instance of a class exists throughout the entire application lifecycle. Everyone shares that single instance.
 
-Singleton ticker services are a specific architectural pattern used in AlgoChanakya for managing     WebSocket connections efficiently. Let me break this down:                                                         
-                                                                                                                       What is a Singleton?                                                                                                                                                                                                                      A singleton is a design pattern where only one instance of a class exists throughout the entire application          lifecycle. Everyone shares that single instance.                                                                   
+Why Singleton for WebSocket Ticker Services?
 
-  Why Singleton for WebSocket Ticker Services?
+WebSocket connections are expensive and persistent:
 
-  WebSocket connections are expensive and persistent:
-  - They take time to establish
-  - They maintain a continuous connection to the broker (SmartAPI/Kite)
-  - Creating one per user would be wasteful and hit broker API limits
+- They take time to establish
+- They maintain a continuous connection to the broker (SmartAPI/Kite)
+- Creating one per user would be wasteful and hit broker API limits
 
-  Solution: Create one shared WebSocket connection that all users subscribe through.
+Solution: Create one shared WebSocket connection that all users subscribe through.
 
-  The Two Singleton Ticker Services
+The Two Singleton Ticker Services
 
-  From the codebase:
+From the codebase:
 
-  1. SmartAPI Ticker Service
+1. SmartAPI Ticker Service
 
-  # backend/app/services/legacy/smartapi_ticker.py (line 492)
-  smartapi_ticker_service = SmartAPITickerService()  # Global singleton
+# backend/app/services/legacy/smartapi_ticker.py (line 492)
 
-  2. Kite Ticker Service
+smartapi_ticker_service = SmartAPITickerService() # Global singleton
 
-  # backend/app/services/legacy/kite_ticker.py (similar pattern)
-  kite_ticker_service = KiteTickerService()  # Global singleton
+2. Kite Ticker Service
 
-  How It Works
+# backend/app/services/legacy/kite_ticker.py (similar pattern)
 
-  Architecture:
-                  ┌─────────────────────────┐
-                  │  SmartAPI/Kite Broker   │
-                  │   (WebSocket Server)    │
-                  └───────────┬─────────────┘
-                              │
-                      One WebSocket Connection
-                              │
-                  ┌───────────▼─────────────┐
-                  │  Singleton Ticker       │
-                  │  (smartapi_ticker_      │
-                  │   service)              │
-                  └───────────┬─────────────┘
-                              │
-              ┌───────────────┼───────────────┐
-              │               │               │
-       ┌──────▼──────┐ ┌─────▼──────┐ ┌─────▼──────┐
-       │  User 1 WS  │ │  User 2 WS │ │  User 3 WS │
-       │  Client     │ │  Client    │ │  Client    │
-       └─────────────┘ └────────────┘ └────────────┘
+kite_ticker_service = KiteTickerService() # Global singleton
 
+How It Works
 
-before asking questions, you understand the frammework being used for this App.                                    
-  Multibroker infra is being setup for two purpose
+Architecture:
+┌─────────────────────────┐
+│ SmartAPI/Kite Broker │
+│ (WebSocket Server) │
+└───────────┬─────────────┘
+│
+One WebSocket Connection
+│
+┌───────────▼─────────────┐
+│ Singleton Ticker │
+│ (smartapi*ticker* │
+│ service) │
+└───────────┬─────────────┘
+│
+┌───────────────┼───────────────┐
+│ │ │
+┌──────▼──────┐ ┌─────▼──────┐ ┌─────▼──────┐
+│ User 1 WS │ │ User 2 WS │ │ User 3 WS │
+│ Client │ │ Client │ │ Client │
+└─────────────┘ └────────────┘ └────────────┘
+
+before asking questions, you understand the frammework being used for this App.  
+ Multibroker infra is being setup for two purpose
+
 1. Any user can login to App and view live market data, OHLC from any available broker API like AngelOne SmartAPI, Zerodha Kite, Dhan API etc where logged in user won't have to provide his own broker login details. Here pp  
-   App owner's API (free or paid) for these brokers will beused.                                                      
-2. Any user can login to App using their own broker credentials where he will see the market data from App     
-  Owner's API from any available broker but to place order, logged in User's broker API for that logged in user      
-  will be used. To make this happen, you need to capture logged in user's refresh token and other needed details     
-   to allow him to place orders
+   App owner's API (free or paid) for these brokers will beused.
+2. Any user can login to App using their own broker credentials where he will see the market data from App  
+   Owner's API from any available broker but to place order, logged in User's broker API for that logged in user  
+   will be used. To make this happen, you need to capture logged in user's refresh token and other needed details  
+    to allow him to place orders
 
-  My Updated Understanding
-                                                                                                                     
-  ┌─────────────────────────────────────────────────────┐
-  │  TIER 1: Market Data (APP OWNER's APIs)             │
-  │                                                      │
-  │  App owner has accounts with AngelOne, Zerodha, etc.│
-  │  ONE shared connection per broker → serves ALL users │
-  │  Users see live ticks, OHLC without their own creds │
-  │  Cost: App owner pays (SmartAPI=FREE, Kite=₹500/mo) │
-  └─────────────────────────────────────────────────────┘
+My Updated Understanding
 
-  ┌─────────────────────────────────────────────────────┐
-  │  TIER 2: Order Execution (USER's OWN Broker)        │
-  │                                                      │
-  │  User logs in with THEIR OWN broker credentials     │
-  │  App captures refresh_token for persistent access   │
-  │  Orders placed via USER's broker API                │
-  │  Market data still from Tier 1 (app owner's APIs)   │
-  └─────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────┐
+│ TIER 1: Market Data (APP OWNER's APIs) │
+│ │
+│ App owner has accounts with AngelOne, Zerodha, etc.│
+│ ONE shared connection per broker → serves ALL users │
+│ Users see live ticks, OHLC without their own creds │
+│ Cost: App owner pays (SmartAPI=FREE, Kite=₹500/mo) │
+└─────────────────────────────────────────────────────┘
 
+┌─────────────────────────────────────────────────────┐
+│ TIER 2: Order Execution (USER's OWN Broker) │
+│ │
+│ User logs in with THEIR OWN broker credentials │
+│ App captures refresh_token for persistent access │
+│ Orders placed via USER's broker API │
+│ Market data still from Tier 1 (app owner's APIs) │
+└─────────────────────────────────────────────────────┘
 
-  Documentation Created
-                                                                                                                       1. Architecture Decision Record (ADR-003) ✅                                                                       
+Documentation Created 1. Architecture Decision Record (ADR-003) ✅
 
-  File: docs/decisions/003-multi-broker-ticker-architecture.md
+File: docs/decisions/003-multi-broker-ticker-architecture.md
 
-  Contains:
-  - Context & problem statement (hardcoded singletons blocking multi-broker support)
-  - Detailed architecture decision (Multiton pattern + adapter wrappers)
-  - Core components: MultiTenantTickerService, NormalizedTick, TickerServiceManager, SystemBrokerSession
-  - 3-phase implementation plan (Core Infrastructure → Market Data Adapters → Order Execution)
-  - Consequences (positive: 72% route reduction, negative: migration complexity)
-  - Risks & mitigations (threading model, token mapping, credentials)
-  - Alternatives considered & rejected
-  - Rollback plan
+Contains:
 
-  2. Implementation Guide ✅
+- Context & problem statement (hardcoded singletons blocking multi-broker support)
+- Detailed architecture decision (Multiton pattern + adapter wrappers)
+- Core components: MultiTenantTickerService, NormalizedTick, TickerServiceManager, SystemBrokerSession
+- 3-phase implementation plan (Core Infrastructure → Market Data Adapters → Order Execution)
+- Consequences (positive: 72% route reduction, negative: migration complexity)
+- Risks & mitigations (threading model, token mapping, credentials)
+- Alternatives considered & rejected
+- Rollback plan
 
-  File: docs/architecture/multi-broker-ticker-implementation.md
+2. Implementation Guide ✅
 
-  Contains:
-  - Phase 1 (Core Infrastructure): 8 detailed steps with code samples
-    - Add missing BrokerType enum values
-    - System broker credentials in .env
-    - system_broker_sessions database table
-    - MultiTenantTickerService interface
-    - TickerServiceManager multiton
-    - System auth service
-    - Health monitor extension
-  - Phase 2 (Market Data Adapters): 8 steps
-    - Complete SmartAPITickerAdapter implementation
-    - Complete KiteTickerAdapter implementation
-    - 4 stub adapters (Upstox, Dhan, Fyers, Paytm)
-    - WebSocket route refactor (534→150 lines)
-    - Deprecation warnings for legacy singletons
-  - Phase 3 (Order Execution): Summary of order broker expansion
-  - Verification checklists for each phase
-  - Troubleshooting guide (5 common issues + fixes)
-  - Rollback procedures for each phase
+File: docs/architecture/multi-broker-ticker-implementation.md
 
-  3. API Reference ✅
+Contains:
 
-  File: docs/api/multi-broker-ticker-api.md
+- Phase 1 (Core Infrastructure): 8 detailed steps with code samples
+  - Add missing BrokerType enum values
+  - System broker credentials in .env
+  - system_broker_sessions database table
+  - MultiTenantTickerService interface
+  - TickerServiceManager multiton
+  - System auth service
+  - Health monitor extension
+- Phase 2 (Market Data Adapters): 8 steps
+  - Complete SmartAPITickerAdapter implementation
+  - Complete KiteTickerAdapter implementation
+  - 4 stub adapters (Upstox, Dhan, Fyers, Paytm)
+  - WebSocket route refactor (534→150 lines)
+  - Deprecation warnings for legacy singletons
+- Phase 3 (Order Execution): Summary of order broker expansion
+- Verification checklists for each phase
+- Troubleshooting guide (5 common issues + fixes)
+- Rollback procedures for each phase
 
-  Contains:
-  - Complete MultiTenantTickerService interface documentation
-    - All methods with signatures, parameters, return types
-    - Usage examples for each method
-  - NormalizedTick dataclass with field descriptions
-  - TickerServiceManager API
-    - All class methods documented
-    - Registry pattern explanation
-  - System Auth Service functions
-  - Full adapter implementations:
-    - SmartAPITickerAdapter (complete 400+ line implementation)
-    - KiteTickerAdapter (complete 300+ line implementation)
-    - Stub adapter template
-  - Health monitoring API (MultiProviderHealthMonitor)
-  - Database model (SystemBrokerSession)
-  - Refactored WebSocket route (~150 lines)
-  - Migration summary (15 new files, 7 modified, 3 deprecated)
+3. API Reference ✅
 
-  4. Updated Existing Docs ✅
+File: docs/api/multi-broker-ticker-api.md
 
-  Updated: docs/architecture/broker-abstraction.md
-  - Added "Ticker Service Abstraction" section with ADR-003 reference
-  - Linked to implementation guide and API reference
-  - Marked status as "📋 Planned"
+Contains:
 
-  Updated: CLAUDE.md
-  - Added multi-broker ticker documentation to PRIMARY DOCS section
-  - Links to ADR-003, implementation guide, and API reference
+- Complete MultiTenantTickerService interface documentation
+  - All methods with signatures, parameters, return types
+  - Usage examples for each method
+- NormalizedTick dataclass with field descriptions
+- TickerServiceManager API
+  - All class methods documented
+  - Registry pattern explanation
+- System Auth Service functions
+- Full adapter implementations:
+  - SmartAPITickerAdapter (complete 400+ line implementation)
+  - KiteTickerAdapter (complete 300+ line implementation)
+  - Stub adapter template
+- Health monitoring API (MultiProviderHealthMonitor)
+- Database model (SystemBrokerSession)
+- Refactored WebSocket route (~150 lines)
+- Migration summary (15 new files, 7 modified, 3 deprecated)
 
-  ---
-  Documentation Structure
+4. Updated Existing Docs ✅
 
-  docs/
-  ├── decisions/
-  │   ├── 001-tech-stack.md
-  │   ├── 002-broker-abstraction.md
-  │   └── 003-multi-broker-ticker-architecture.md    ← NEW (ADR)
-  ├── architecture/
-  │   ├── broker-abstraction.md                      ← UPDATED
-  │   ├── multi-broker-ticker-implementation.md      ← NEW (Guide)
-  │   └── websocket.md
-  ├── api/
-  │   ├── multi-broker-ticker-api.md                 ← NEW (API Ref)
-  │   ├── openapi.yaml
-  │   └── README.md
-  └── CLAUDE.md
+Updated: docs/architecture/broker-abstraction.md
 
+- Added "Ticker Service Abstraction" section with ADR-003 reference
+- Linked to implementation guide and API reference
+- Marked status as "📋 Planned"
 
-    All 9 Tasks Complete - 6 Broker API Expert Skills Delivered                                                                                                                                                                                                                                       
-  Summary                                                                                                                                         
-  
-  ┌─────┬─────────────────────────────────────┬────────┐
-  │  #  │                Task                 │ Status │
-  ├─────┼─────────────────────────────────────┼────────┤
-  │ 1   │ SmartAPI Expert (SKILL.md + 5 refs) │ Done   │
-  ├─────┼─────────────────────────────────────┼────────┤
-  │ 2   │ Kite Expert (SKILL.md + 5 refs)     │ Done   │
-  ├─────┼─────────────────────────────────────┼────────┤
-  │ 3   │ Comparison Matrix (13 tables)       │ Done   │
-  ├─────┼─────────────────────────────────────┼────────┤
-  │ 4   │ Upstox Expert (SKILL.md + 5 refs)   │ Done   │
-  ├─────┼─────────────────────────────────────┼────────┤
-  │ 5   │ Dhan Expert (SKILL.md + 5 refs)     │ Done   │
-  ├─────┼─────────────────────────────────────┼────────┤
-  │ 6   │ Fyers Expert (SKILL.md + 5 refs)    │ Done   │
-  ├─────┼─────────────────────────────────────┼────────┤
-  │ 7   │ Paytm Expert (SKILL.md + 5 refs)    │ Done   │
-  ├─────┼─────────────────────────────────────┼────────┤
-  │ 8   │ CLAUDE.md updated (6 entries)       │ Done   │
-  ├─────┼─────────────────────────────────────┼────────┤
-  │ 9   │ Verification (all 37 files)         │ Done   │
-  └─────┴─────────────────────────────────────┴────────┘
+Updated: CLAUDE.md
 
-  Verification Results
+- Added multi-broker ticker documentation to PRIMARY DOCS section
+- Links to ADR-003, implementation guide, and API reference
 
-  - 37/37 files exist in correct paths
-  - 6/6 SKILL.md files have valid YAML frontmatter (name + description)
-  - 6/6 skill entries added to CLAUDE.md (lines 615-620)
-  - 11/11 codebase cross-reference paths verified (all broker adapter files exist)
-  - Quality spot-check passed on agent-written reference files (Dhan, Fyers, Paytm)
-  - All 6 skills visible in Claude Code skill system
+---
 
- │     Architecture      │ Multi-Broker │ Scalability │ Testability │ Maintainability │ Complexity │ Resource Efficiency │
-  ├───────────────────────┼──────────────┼─────────────┼─────────────┼─────────────────┼────────────┼─────────────────────┤
-  │ Single Global         │ ❌           │ Low         │ Medium      │ High            │ Low        │ High                │
-  ├───────────────────────┼──────────────┼─────────────┼─────────────┼─────────────────┼────────────┼─────────────────────┤
-  │ Per-User              │ ✅           │ Very Low    │ High        │ High            │ Low        │ Very Low            │
-  ├───────────────────────┼──────────────┼─────────────┼─────────────┼─────────────────┼────────────┼─────────────────────┤
-  │ Broker Pool           │ Partial      │ Medium      │ Medium      │ Low             │ High       │ Medium              │
-  ├───────────────────────┼──────────────┼─────────────┼─────────────┼─────────────────┼────────────┼─────────────────────┤
-  │ Message Queue         │ ✅           │ Very High   │ High        │ Medium          │ Very High  │ High                │
-  ├───────────────────────┼──────────────┼─────────────┼─────────────┼─────────────────┼────────────┼─────────────────────┤
-  │ Hierarchical (Chosen) │ ✅           │ High        │ Very High   │ Very High       │ Medium     │ Very High           │
-  ├───────────────────────┼──────────────┼─────────────┼─────────────┼─────────────────┼────────────┼─────────────────────┤
-  │ Proxy Pattern         │ ✅           │ Medium      │ Low         │ Low             │ Low        │ High                │
-  ├───────────────────────┼──────────────┼─────────────┼─────────────┼─────────────────┼────────────┼─────────────────────┤
-  │ Actor Model           │ ✅           │ Very High   │ Medium      │ Medium          │ Very High  │ High                │
-  └───────────────────────┴──────────────┴─────────────┴─────────────┴─────────────────┴────────────┴─────────────────────┘
+Documentation Structure
+
+docs/
+├── decisions/
+│ ├── 001-tech-stack.md
+│ ├── 002-broker-abstraction.md
+│ └── 003-multi-broker-ticker-architecture.md ← NEW (ADR)
+├── architecture/
+│ ├── broker-abstraction.md ← UPDATED
+│ ├── multi-broker-ticker-implementation.md ← NEW (Guide)
+│ └── websocket.md
+├── api/
+│ ├── multi-broker-ticker-api.md ← NEW (API Ref)
+│ ├── openapi.yaml
+│ └── README.md
+└── CLAUDE.md
+
+    All 9 Tasks Complete - 6 Broker API Expert Skills Delivered
+
+Summary
+
+┌─────┬─────────────────────────────────────┬────────┐
+│ # │ Task │ Status │
+├─────┼─────────────────────────────────────┼────────┤
+│ 1 │ SmartAPI Expert (SKILL.md + 5 refs) │ Done │
+├─────┼─────────────────────────────────────┼────────┤
+│ 2 │ Kite Expert (SKILL.md + 5 refs) │ Done │
+├─────┼─────────────────────────────────────┼────────┤
+│ 3 │ Comparison Matrix (13 tables) │ Done │
+├─────┼─────────────────────────────────────┼────────┤
+│ 4 │ Upstox Expert (SKILL.md + 5 refs) │ Done │
+├─────┼─────────────────────────────────────┼────────┤
+│ 5 │ Dhan Expert (SKILL.md + 5 refs) │ Done │
+├─────┼─────────────────────────────────────┼────────┤
+│ 6 │ Fyers Expert (SKILL.md + 5 refs) │ Done │
+├─────┼─────────────────────────────────────┼────────┤
+│ 7 │ Paytm Expert (SKILL.md + 5 refs) │ Done │
+├─────┼─────────────────────────────────────┼────────┤
+│ 8 │ CLAUDE.md updated (6 entries) │ Done │
+├─────┼─────────────────────────────────────┼────────┤
+│ 9 │ Verification (all 37 files) │ Done │
+└─────┴─────────────────────────────────────┴────────┘
+
+Verification Results
+
+- 37/37 files exist in correct paths
+- 6/6 SKILL.md files have valid YAML frontmatter (name + description)
+- 6/6 skill entries added to CLAUDE.md (lines 615-620)
+- 11/11 codebase cross-reference paths verified (all broker adapter files exist)
+- Quality spot-check passed on agent-written reference files (Dhan, Fyers, Paytm)
+- All 6 skills visible in Claude Code skill system
+
+│ Architecture │ Multi-Broker │ Scalability │ Testability │ Maintainability │ Complexity │ Resource Efficiency │
+├───────────────────────┼──────────────┼─────────────┼─────────────┼─────────────────┼────────────┼─────────────────────┤
+│ Single Global │ ❌ │ Low │ Medium │ High │ Low │ High │
+├───────────────────────┼──────────────┼─────────────┼─────────────┼─────────────────┼────────────┼─────────────────────┤
+│ Per-User │ ✅ │ Very Low │ High │ High │ Low │ Very Low │
+├───────────────────────┼──────────────┼─────────────┼─────────────┼─────────────────┼────────────┼─────────────────────┤
+│ Broker Pool │ Partial │ Medium │ Medium │ Low │ High │ Medium │
+├───────────────────────┼──────────────┼─────────────┼─────────────┼─────────────────┼────────────┼─────────────────────┤
+│ Message Queue │ ✅ │ Very High │ High │ Medium │ Very High │ High │
+├───────────────────────┼──────────────┼─────────────┼─────────────┼─────────────────┼────────────┼─────────────────────┤
+│ Hierarchical (Chosen) │ ✅ │ High │ Very High │ Very High │ Medium │ Very High │
+├───────────────────────┼──────────────┼─────────────┼─────────────┼─────────────────┼────────────┼─────────────────────┤
+│ Proxy Pattern │ ✅ │ Medium │ Low │ Low │ Low │ High │
+├───────────────────────┼──────────────┼─────────────┼─────────────┼─────────────────┼────────────┼─────────────────────┤
+│ Actor Model │ ✅ │ Very High │ Medium │ Medium │ Very High │ High │
+└───────────────────────┴──────────────┴─────────────┴─────────────┴─────────────────┴────────────┴─────────────────────┘
 
 Documentation Sync Summary
 
-  All documentation now consistently references:
+All documentation now consistently references:
 
-  ┌────────────────────────────────┬───────────────┬─────────┬──────────────┬───────────────────────────────────┐
-  │            Document            │    Status     │ Version │     Date     │              Details              │
-  ├────────────────────────────────┼───────────────┼─────────┼──────────────┼───────────────────────────────────┤
-  │ TICKER-DESIGN-SPEC.md          │ ✅ Current    │ v2.1.0  │ Feb 14, 2026 │ 5-component design, Decimal types │
-  ├────────────────────────────────┼───────────────┼─────────┼──────────────┼───────────────────────────────────┤
-  │ TICKER-IMPLEMENTATION-GUIDE.md │ ✅ Current    │ -       │ Feb 16, 2026 │ 3,868 lines, complete code        │
-  ├────────────────────────────────┼───────────────┼─────────┼──────────────┼───────────────────────────────────┤
-  │ multi-broker-ticker-api.md     │ ✅ Current    │ v2.1.0  │ Feb 14, 2026 │ API contracts, interfaces         │
-  ├────────────────────────────────┼───────────────┼─────────┼──────────────┼───────────────────────────────────┤
-  │ ticker-documentation-index.md  │ ✅ Current    │ -       │ Feb 16, 2026 │ Navigation guide                  │
-  ├────────────────────────────────┼───────────────┼─────────┼──────────────┼───────────────────────────────────┤
-  │ broker-abstraction.md          │ ✅ Updated    │ -       │ Feb 16, 2026 │ Phase 4 links, NormalizedTick     │
-  ├────────────────────────────────┼───────────────┼─────────┼──────────────┼───────────────────────────────────┤
-  │ ADR-002                        │ ✅ Updated    │ -       │ Feb 16, 2026 │ NormalizedTick definition         │
-  ├────────────────────────────────┼───────────────┼─────────┼──────────────┼───────────────────────────────────┤
-  │ ADR-003 v2                     │ ⚠️ Superseded │ v2.0.0  │ Jan 2026     │ Historical reference only         │
-  ├────────────────────────────────┼───────────────┼─────────┼──────────────┼───────────────────────────────────┤
-  │ Old Implementation Guide       │ ⚠️ Superseded │ -       │ Jan 2026     │ Historical reference only         │
-  └────────────────────────────────┴───────────────┴─────────┴──────────────┴───────────────────────────────────┘
+┌────────────────────────────────┬───────────────┬─────────┬──────────────┬───────────────────────────────────┐
+│ Document │ Status │ Version │ Date │ Details │
+├────────────────────────────────┼───────────────┼─────────┼──────────────┼───────────────────────────────────┤
+│ TICKER-DESIGN-SPEC.md │ ✅ Current │ v2.1.0 │ Feb 14, 2026 │ 5-component design, Decimal types │
+├────────────────────────────────┼───────────────┼─────────┼──────────────┼───────────────────────────────────┤
+│ TICKER-IMPLEMENTATION-GUIDE.md │ ✅ Current │ - │ Feb 16, 2026 │ 3,868 lines, complete code │
+├────────────────────────────────┼───────────────┼─────────┼──────────────┼───────────────────────────────────┤
+│ multi-broker-ticker-api.md │ ✅ Current │ v2.1.0 │ Feb 14, 2026 │ API contracts, interfaces │
+├────────────────────────────────┼───────────────┼─────────┼──────────────┼───────────────────────────────────┤
+│ ticker-documentation-index.md │ ✅ Current │ - │ Feb 16, 2026 │ Navigation guide │
+├────────────────────────────────┼───────────────┼─────────┼──────────────┼───────────────────────────────────┤
+│ broker-abstraction.md │ ✅ Updated │ - │ Feb 16, 2026 │ Phase 4 links, NormalizedTick │
+├────────────────────────────────┼───────────────┼─────────┼──────────────┼───────────────────────────────────┤
+│ ADR-002 │ ✅ Updated │ - │ Feb 16, 2026 │ NormalizedTick definition │
+├────────────────────────────────┼───────────────┼─────────┼──────────────┼───────────────────────────────────┤
+│ ADR-003 v2 │ ⚠️ Superseded │ v2.0.0 │ Jan 2026 │ Historical reference only │
+├────────────────────────────────┼───────────────┼─────────┼──────────────┼───────────────────────────────────┤
+│ Old Implementation Guide │ ⚠️ Superseded │ - │ Jan 2026 │ Historical reference only │
+└────────────────────────────────┴───────────────┴─────────┴──────────────┴───────────────────────────────────┘
 
-  ---
-  🎯 Key Updates Across All Files
+---
 
-  1. Consistent terminology: "5-component architecture" (not 6-component)
-  2. Correct design reference: TICKER-DESIGN-SPEC.md (not ADR-003 v2)
-  3. Decimal precision: All docs now mention Decimal (not float) for NormalizedTick
-  4. Complete documentation links: Every reference includes Implementation Guide, API Reference, and Documentation Index
-  5. Clear supersession notices: ADR-003 v2 and old implementation guide marked as historical
-  6. Accurate metrics: 494→90 lines (82% reduction) for websocket.py, 3,868 lines for implementation guide
-  7. Updated dates: All updated sections marked with Feb 16, 2026
+🎯 Key Updates Across All Files
 
-  ---
-  ✨ Next Steps
+1. Consistent terminology: "5-component architecture" (not 6-component)
+2. Correct design reference: TICKER-DESIGN-SPEC.md (not ADR-003 v2)
+3. Decimal precision: All docs now mention Decimal (not float) for NormalizedTick
+4. Complete documentation links: Every reference includes Implementation Guide, API Reference, and Documentation Index
+5. Clear supersession notices: ADR-003 v2 and old implementation guide marked as historical
+6. Accurate metrics: 494→90 lines (82% reduction) for websocket.py, 3,868 lines for implementation guide
+7. Updated dates: All updated sections marked with Feb 16, 2026
 
-  2. Implement the system: Follow TICKER-IMPLEMENTATION-GUIDE.md (3,868 lines with complete code)
-  3. Reference interfaces: Check multi-broker-ticker-api.md for contracts
-  4. Navigate docs: Use ticker-documentation-index.md as a guide
+---
 
-  The documentation is now production-ready and implementation can begin whenever you're ready! 🚀
+✨ Next Steps
 
-  Why [INFO] Instruments table has 117,972 records?
+2. Implement the system: Follow TICKER-IMPLEMENTATION-GUIDE.md (3,868 lines with complete code)
+3. Reference interfaces: Check multi-broker-ticker-api.md for contracts
+4. Navigate docs: Use ticker-documentation-index.md as a guide
+
+The documentation is now production-ready and implementation can begin whenever you're ready! 🚀
+
+Why [INFO] Instruments table has 117,972 records?
 
     │ DataSourceBadge visibility    │ Component exists but not placed in any view ❌    │ No — needs wiring first         │
-  ├───────────────────────────────┼───────────────────────────────────────────────────┼─────────────────────────────────┤
-  │ WebSocket after broker switch │ No auto-reconnect on switch ❌                    │ No — needs implementation first │
-  ├───────────────────────────────┼───────────────────────────────────────────────────┼─────────────────────────────────┤
-  │ OAuth flows                   │ OAuth buttons exist per broker in SettingsView    │ Partially — can mock 
 
+├───────────────────────────────┼───────────────────────────────────────────────────┼─────────────────────────────────┤
+│ WebSocket after broker switch │ No auto-reconnect on switch ❌ │ No — needs implementation first │
+├───────────────────────────────┼───────────────────────────────────────────────────┼─────────────────────────────────┤
+│ OAuth flows │ OAuth buttons exist per broker in SettingsView │ Partially — can mock
 
-  Now the summary of all 8 skips:
+Now the summary of all 8 skips:
 
-  ┌─────┬──────────────────────────────────────┬────────────────────────────────────────────────┬──────────────────────────────┐   
-  │  #  │                 Test                 │                     Reason                     │         Legitimate?          │ 
-  ├─────┼──────────────────────────────────────┼────────────────────────────────────────────────┼──────────────────────────────┤ 
-  │ 1   │ test_get_symbol_returns_canonical    │ db=None — by design in live tests              │ ✅ Yes                       │     ├─────┼──────────────────────────────────────┼────────────────────────────────────────────────┼──────────────────────────────┤   
-  │ 2–6 │ test_get_historical_* (5)            │ AngelOne AG8001 — historical API needs paid    │ ✅ Yes                       │   
-  │     │                                      │ plan                                           │                              │   
-  ├─────┼──────────────────────────────────────┼────────────────────────────────────────────────┼──────────────────────────────┤   
-  │ 7   │ test_place_and_cancel_order          │ AngelOne AG8001 — order API needs separate API │ ✅ Yes (now with clear       │   
-  │     │                                      │  key                                           │ message)                     │   
-  ├─────┼──────────────────────────────────────┼────────────────────────────────────────────────┼──────────────────────────────┤   
-  │ 8   │ test_option_chain_screen_with_broker │ No NIFTY instruments in DB for 2026-03-05      │ ✅ Yes                       │   
-  │     │                                      │ expiry                                         │                              │   
-  └─────┴──────────────────────────────────────┴────────────────────────────────────────────────┴──────────────────────────────┘                                                                                                                                      
-  All 8 skips are legitimate external/config limitations — none are test bugs. The 37 that pass are genuine test coverage.
+┌─────┬──────────────────────────────────────┬────────────────────────────────────────────────┬──────────────────────────────┐  
+ │ # │ Test │ Reason │ Legitimate? │
+├─────┼──────────────────────────────────────┼────────────────────────────────────────────────┼──────────────────────────────┤
+│ 1 │ test*get_symbol_returns_canonical │ db=None — by design in live tests │ ✅ Yes │ ├─────┼──────────────────────────────────────┼────────────────────────────────────────────────┼──────────────────────────────┤  
+ │ 2–6 │ test_get_historical*\* (5) │ AngelOne AG8001 — historical API needs paid │ ✅ Yes │  
+ │ │ │ plan │ │  
+ ├─────┼──────────────────────────────────────┼────────────────────────────────────────────────┼──────────────────────────────┤  
+ │ 7 │ test_place_and_cancel_order │ AngelOne AG8001 — order API needs separate API │ ✅ Yes (now with clear │  
+ │ │ │ key │ message) │  
+ ├─────┼──────────────────────────────────────┼────────────────────────────────────────────────┼──────────────────────────────┤  
+ │ 8 │ test_option_chain_screen_with_broker │ No NIFTY instruments in DB for 2026-03-05 │ ✅ Yes │  
+ │ │ │ expiry │ │  
+ └─────┴──────────────────────────────────────┴────────────────────────────────────────────────┴──────────────────────────────┘  
+ All 8 skips are legitimate external/config limitations — none are test bugs. The 37 that pass are genuine test coverage.
