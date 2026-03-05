@@ -1,14 +1,16 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(npx playwright:*)",
+      "Bash(curl:*)",
+      "Bash(npm run:*)"
+    ]
+  },
   "model": "opusplan",
   "modelProfiles": {
     "opusplan": {
       "planningModel": "claude-opus-4-5-20251101",
       "implementationModel": "claude-sonnet-4-5-20250929"
     }
-  },
-  "permissions": {
-    "allow": [
-      "Bash(npx playwright:*)"
-    ]
   }
 }

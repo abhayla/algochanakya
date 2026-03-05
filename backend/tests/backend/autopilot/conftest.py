@@ -80,7 +80,7 @@ from app.models.autopilot import (
     AutoPilotPositionLeg, AutoPilotAdjustmentSuggestion,
     PositionLegStatus, SuggestionType, SuggestionUrgency, SuggestionStatus
 )
-from app.utils.dependencies import get_current_user
+from app.utils.dependencies import get_current_user, get_current_broker_connection
 
 
 # Test database URL - SQLite in-memory
@@ -634,8 +634,16 @@ async def client(
     async def override_get_current_user():
         return test_user
 
+    def override_get_current_broker_connection():
+        mock_connection = MagicMock()
+        mock_connection.access_token = "test_token"
+        mock_connection.broker_type = "zerodha"
+        mock_connection.user_id = test_user.id
+        return mock_connection
+
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[get_current_user] = override_get_current_user
+    app.dependency_overrides[get_current_broker_connection] = override_get_current_broker_connection
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:

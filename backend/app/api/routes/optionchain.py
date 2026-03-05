@@ -286,36 +286,31 @@ async def get_option_chain(
 
         logger.info(f"[OptionChain] Organized {len(strikes_data)} strikes, fetching quotes for {len(token_to_symbol)} instruments")
 
-        # Fetch quotes in batches of 50 using tokens directly
+        # Fetch quotes via the broker-agnostic adapter interface (batches of 50)
         all_quotes = {}
-        tokens_list = list(token_to_symbol.keys())
-        for i in range(0, len(tokens_list), 50):
-            batch_tokens = tokens_list[i:i+50]
-            if batch_tokens:
+        canonical_symbols = list(token_to_symbol.values())
+        for i in range(0, len(canonical_symbols), 50):
+            batch_symbols = canonical_symbols[i:i+50]
+            if batch_symbols:
                 try:
-                    # Use SmartAPI market data service directly with tokens
-                    raw_quotes = await adapter._market_data.get_quote(
-                        exchange="NFO",
-                        tokens=batch_tokens,
-                        mode="FULL"
-                    )
-                    for token, quote_data in raw_quotes.items():
-                        canonical_symbol = token_to_symbol.get(token)
-                        if canonical_symbol:
-                            # Store with NFO: prefix for compatibility
-                            symbol_key = f"NFO:{canonical_symbol}"
-                            all_quotes[symbol_key] = {
-                                "last_price": float(quote_data.get("ltp", 0)),
-                                "oi": quote_data.get("oi", 0),
-                                "volume": quote_data.get("volume", 0),
-                                "ohlc": {
-                                    "open": float(quote_data.get("open", 0)),
-                                    "high": float(quote_data.get("high", 0)),
-                                    "low": float(quote_data.get("low", 0)),
-                                    "close": float(quote_data.get("close", 0))
-                                },
-                                "depth": quote_data.get("depth", {"buy": [], "sell": []})
+                    unified_quotes = await adapter.get_quote(batch_symbols)
+                    for canonical_symbol, uq in unified_quotes.items():
+                        symbol_key = f"NFO:{canonical_symbol}"
+                        all_quotes[symbol_key] = {
+                            "last_price": float(uq.last_price),
+                            "oi": uq.oi,
+                            "volume": uq.volume,
+                            "ohlc": {
+                                "open": float(uq.open),
+                                "high": float(uq.high),
+                                "low": float(uq.low),
+                                "close": float(uq.close)
+                            },
+                            "depth": {
+                                "buy": [{"price": float(uq.bid_price), "quantity": uq.bid_quantity}] if uq.bid_price else [],
+                                "sell": [{"price": float(uq.ask_price), "quantity": uq.ask_quantity}] if uq.ask_price else []
                             }
+                        }
                 except Exception as e:
                     logger.warning(f"[OptionChain] Quote batch failed: {e}")
                     continue

@@ -172,11 +172,45 @@ class TestEnsureBrokerCredentials:
         user = make_mock_user()
         db = make_mock_db()
 
+        # Mock DB to return empty results for both kite and smartapi token queries
+        # (triggers hardcoded index fallback)
+        mock_empty_result = MagicMock()
+        mock_empty_result.scalars.return_value.all.return_value = []
+        db.execute.return_value = mock_empty_result
+
         result = await _ensure_broker_credentials("smartapi", user, db)
         assert result is True
         assert "smartapi" in pool._credentials
         assert pool._credentials["smartapi"]["jwt_token"] == "test-jwt"
         assert pool._credentials["smartapi"]["feed_token"] == "test-feed"
+        # token_map must be present (either from DB or hardcoded fallback)
+        assert "token_map" in pool._credentials["smartapi"]
+
+    @pytest.mark.asyncio
+    @patch("app.api.routes.websocket.get_valid_smartapi_credentials")
+    async def test_smartapi_empty_db_uses_fallback_token_map(self, mock_get_creds):
+        """When DB returns no rows, hardcoded index token fallback is used."""
+        from app.services.brokers.market_data.ticker import TickerPool
+
+        creds = make_mock_smartapi_credentials()
+        mock_get_creds.return_value = creds
+
+        pool = TickerPool.get_instance()
+        user = make_mock_user()
+        db = make_mock_db()
+
+        mock_empty_result = MagicMock()
+        mock_empty_result.scalars.return_value.all.return_value = []
+        db.execute.return_value = mock_empty_result
+
+        result = await _ensure_broker_credentials("smartapi", user, db)
+        assert result is True
+        token_map = pool._credentials["smartapi"]["token_map"]
+        # Fallback must include NIFTY index token
+        assert 256265 in token_map, "NIFTY token 256265 missing from fallback token_map"
+        assert 260105 in token_map, "BANKNIFTY token 260105 missing from fallback token_map"
+        assert 257801 in token_map, "FINNIFTY token 257801 missing from fallback token_map"
+        assert 265 in token_map, "SENSEX token 265 missing from fallback token_map"
 
     @pytest.mark.asyncio
     @patch("app.api.routes.websocket.get_valid_smartapi_credentials")
@@ -282,5 +316,5 @@ class TestWebSocketRouteNoLegacyImports:
         import app.api.routes.websocket as ws_module
         with open(ws_module.__file__) as f:
             line_count = sum(1 for _ in f)
-        # Was 494 lines, now ~250 (includes credential loading logic)
-        assert line_count < 300, f"websocket.py is {line_count} lines (expected < 300)"
+        # Was 494 lines. Token map loading added ~50 lines for SmartAPI → ~350 lines now.
+        assert line_count < 400, f"websocket.py is {line_count} lines (expected < 400)"

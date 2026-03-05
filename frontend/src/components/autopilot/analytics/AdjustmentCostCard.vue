@@ -131,6 +131,8 @@
 </template>
 
 <script>
+import api from '@/services/api'
+
 export default {
   name: 'AdjustmentCostCard',
   props: {
@@ -171,23 +173,10 @@ export default {
       this.error = null
 
       try {
-        const response = await fetch(
-          `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/v1/autopilot/analytics/${this.strategyId}/adjustment-costs`,
-          {
-            headers: {
-              'Authorization': `Bearer ${localStorage.getItem('token')}`,
-              'Content-Type': 'application/json'
-            }
-          }
-        )
-
-        if (!response.ok) {
-          throw new Error(`Failed to fetch adjustment costs: ${response.statusText}`)
-        }
-
-        this.summary = await response.json()
+        const response = await api.get(`/api/v1/autopilot/analytics/${this.strategyId}/adjustment-costs`)
+        this.summary = response.data
       } catch (err) {
-        this.error = err.message || 'Failed to load adjustment costs'
+        this.error = err.response?.data?.detail || err.message || 'Failed to load adjustment costs'
         console.error('Error fetching adjustment costs:', err)
       } finally {
         this.loading = false

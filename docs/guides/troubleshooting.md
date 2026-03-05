@@ -221,6 +221,24 @@ Remote PostgreSQL server is blocking connections from your current IP address.
 3. KiteTickerService auto-reconnects, wait 5 seconds
 4. Fallback to HTTP `/api/orders/ltp` endpoint
 
+### Header Prices Show Initial Values But Never Update
+
+**Symptoms:**
+- Header index prices (NIFTY, BANKNIFTY, FINNIFTY, SENSEX) load once but stay frozen
+- Backend logs show `[SmartAPI] No broker token for canonical X — skipping` warnings
+- WebSocket connects but no live ticks flow
+
+**Root cause:** `_ensure_broker_credentials()` in `websocket.py` did not load a token map into SmartAPI credentials. Without it, `SmartAPITickerAdapter` cannot translate canonical tokens to SmartAPI tokens and subscribes to nothing.
+
+**Solution:**
+1. Check backend logs for `[SmartAPI] Loaded N token mappings` — should appear at WebSocket connect
+2. If `N=0` or missing: check `broker_instrument_tokens` table has SmartAPI rows:
+   ```sql
+   SELECT COUNT(*) FROM broker_instrument_tokens WHERE broker = 'smartapi';
+   ```
+3. If table is empty, the hardcoded index fallback is used automatically (NIFTY/BANKNIFTY/FINNIFTY/SENSEX only)
+4. If problem persists, restart backend to reload credentials with token map
+
 ### No Tick Data
 
 **Symptoms:**
@@ -230,8 +248,8 @@ Remote PostgreSQL server is blocking connections from your current IP address.
 **Solution:**
 1. Verify instrument tokens are correct
 2. Check market hours (9:15 AM - 3:30 PM IST)
-3. Ensure Kite access token is valid
-4. Check Kite WebSocket status on Zerodha
+3. Ensure SmartAPI or Kite credentials are valid
+4. Check broker WebSocket status
 
 ### "Invalid mode" Error
 

@@ -3,42 +3,43 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 **AlgoChanakya:** Multi-broker options trading platform (Indian markets)
-**Last Updated:** 2026-03-02
 **Working Directory:** `C:\Abhay\VideCoding\algochanakya` (development)
 
-## ⚡ Quick Reference Card
+## Quick Reference
 
 ```bash
-# Check status first (ALWAYS)
+# ALWAYS check status first
 git status && git log --oneline -5
 
-# Start dev environment
-cd backend && venv\Scripts\activate && python run.py  # Port 8001
-cd frontend && npm run dev                             # Port 5173
+# Start full dev stack (two terminals)
+cd backend && venv\Scripts\activate && python run.py  # Terminal 1 → http://localhost:8001
+cd frontend && npm run dev                             # Terminal 2 → http://localhost:5173
 
-# Run tests — E2E (from project root)
-npm test                                               # All E2E tests
+# E2E tests (from project root)
+npm test                                               # All
 npm run test:specs:positions                           # Single screen
 npx playwright test path/to/spec                       # Single file
-npx playwright test --grep "test name"                 # Single test by name
+npx playwright test --grep "test name"                 # Single test
 
-# Run tests — Backend (from backend/)
-pytest tests/ -v                                       # All backend tests
+# Backend tests (from backend/, venv active)
+pytest tests/ -v                                       # All
 pytest tests/backend/options/test_pnl_calculator.py -v # Single file
 pytest tests/backend/ai/test_market_regime.py::TestRegimeClassifier::test_bullish_regime -v  # Single test
 
-# Run tests — Frontend unit (from frontend/)
+# Frontend unit tests (from frontend/)
 npm run test:run                                       # Run once
 npm run test                                           # Watch mode
 
-# Dev ports: Backend=8001, Frontend=5173 | Production: Backend=8000, Frontend=3004
+# Database (from backend/, venv active)
+alembic upgrade head                                   # Apply pending migrations
+alembic revision --autogenerate -m "description"       # Create new migration
 ```
 
-**After code changes** (Claude Code skills — invoke via Skill tool, not shell):
+**After code changes** — invoke via Skill tool, not shell:
 - `auto-verify` — verify changes work
 - `test-fixer` — fix failing tests
 
-## 🚨 Most Common Mistakes (Fix These First!)
+## Most Common Mistakes
 
 1. **Wrong backend port:** `backend/.env` should have `PORT=8001` (NOT 8000)
 2. **Wrong frontend API URL:** `frontend/.env.local` must have `VITE_API_BASE_URL=http://localhost:8001`
@@ -56,30 +57,18 @@ npm run test                                           # Watch mode
 
 ---
 
-## 📋 Specialized Guides
+## Navigation
 
-- **Backend:** [backend/CLAUDE.md](backend/CLAUDE.md) — AutoPilot services, broker adapters, AI/ML, pytest markers
-- **Frontend:** [frontend/CLAUDE.md](frontend/CLAUDE.md) — E2E test rules, Vue patterns, data-testid conventions
-- **Quick commands:** [Developer Quick Reference](docs/DEVELOPER-QUICK-REFERENCE.md)
-- **Current tasks:** [Implementation Checklist](docs/IMPLEMENTATION-CHECKLIST.md)
-- **Root (this file):** Cross-cutting behaviors, production safety, multi-broker architecture
-
-## Quick Decision Tree
-
-**What are you working on?**
-- 🔴 **Production debugging?** → STOP! Check [Production vs Development](#0-production-vs-development---never-touch-production)
-- 🔧 **Backend code?** → See [backend/CLAUDE.md](backend/CLAUDE.md)
-- 🎨 **Frontend code?** → See [frontend/CLAUDE.md](frontend/CLAUDE.md)
-- 🧪 **Tests failing?** → Run `Skill(skill="test-fixer")` or see [Testing](#testing)
-- 🐛 **Bug fix?** → See [backend/CLAUDE.md](backend/CLAUDE.md) or [frontend/CLAUDE.md](frontend/CLAUDE.md)
-- ✨ **New feature?** → Read [Critical Behaviors](#critical-mandatory-behaviors) first
-- 📚 **Architecture questions?** → Check [Core Architecture](#core-purpose-multi-broker-architecture) or [docs/README.md](docs/README.md)
-
-## Current Work & Roadmap
-
-See **[docs/ROADMAP.md](docs/ROADMAP.md)** for active work, completed features, and planned roadmap.
-- **ROADMAP.md** = high-level milestones and release schedule (updated weekly)
-- **[IMPLEMENTATION-CHECKLIST.md](docs/IMPLEMENTATION-CHECKLIST.md)** = granular daily tasks for active work
+| Working on... | Go to |
+|---------------|-------|
+| Backend code | [backend/CLAUDE.md](backend/CLAUDE.md) |
+| Frontend code | [frontend/CLAUDE.md](frontend/CLAUDE.md) |
+| Tests failing | `Skill(skill="test-fixer")` or [Testing](#testing) |
+| New feature | [Mandatory Behaviors](#critical-mandatory-behaviors) first |
+| Architecture | [Multi-Broker Architecture](#core-purpose-multi-broker-architecture) |
+| Production issue | [Production Safety](#0-production-vs-development---never-touch-production) (read-only!) |
+| Roadmap / tasks | [ROADMAP.md](docs/ROADMAP.md) · [Implementation Checklist](docs/IMPLEMENTATION-CHECKLIST.md) |
+| All docs by topic | [Developer Quick Reference](docs/DEVELOPER-QUICK-REFERENCE.md) |
 
 ---
 
@@ -135,20 +124,24 @@ Before features/refactors/architecture changes:
 **Requirements:** Python 3.13+ | Node.js 24+ | PostgreSQL | Redis
 
 ```bash
-# Initial setup
+# 1. Environment files
 cd backend && copy .env.example .env
-# IMPORTANT: Edit .env and change PORT=8000 to PORT=8001
+# IMPORTANT: Edit backend/.env → change PORT=8000 to PORT=8001
+# IMPORTANT: Edit backend/.env → set DATABASE_URL to your dev database (e.g. algochanakya_dev)
 cd ../frontend && copy .env.example .env.local
-# Verify .env.local has VITE_API_BASE_URL=http://localhost:8001
+# IMPORTANT: Edit frontend/.env.local → set VITE_API_BASE_URL=http://localhost:8001
 
-# Start dev backend (from backend/)
-venv\Scripts\activate && python run.py    # Windows
+# 2. Database (PostgreSQL must be running)
+# Create dev database: CREATE DATABASE algochanakya_dev;
+cd backend && venv\Scripts\activate
+alembic upgrade head              # Apply all migrations
 
-# Start frontend (from frontend/)
-npm run dev
+# 3. Start dev stack (two terminals)
+# Terminal 1: backend
+cd backend && venv\Scripts\activate && python run.py
 
-# Database migration (from backend/)
-alembic revision --autogenerate -m "description" && alembic upgrade head
+# Terminal 2: frontend
+cd frontend && npm run dev
 ```
 
 **Full command reference:** [Developer Quick Reference](docs/DEVELOPER-QUICK-REFERENCE.md) | [backend/CLAUDE.md](backend/CLAUDE.md#development-commands) | [frontend/CLAUDE.md](frontend/CLAUDE.md#development-commands)
@@ -179,12 +172,6 @@ alembic revision --autogenerate -m "description" && alembic upgrade head
 
 ---
 
-## Common Workflows
-
-**Backend tasks:** [backend/CLAUDE.md](backend/CLAUDE.md) — API endpoints, database models, broker adapters, migrations
-**Frontend tasks:** [frontend/CLAUDE.md](frontend/CLAUDE.md) — Vue components, E2E tests, Pinia stores
-**Session management:** Use `save-session` / `start-session` skills. Sessions saved to `.claude/sessions/`
-
 ## Development Environment
 
 | Component | Port | URL | Notes |
@@ -210,7 +197,7 @@ alembic revision --autogenerate -m "description" && alembic upgrade head
 
 **Primary Goal:** Broker-agnostic platform where adding a new broker requires **zero core code changes** — only adapter implementation and factory registration.
 
-**Key design:** Dual-path market data (platform-default for all users, optional user upgrade) + per-user order execution. Platform failover chain: SmartAPI → Dhan → Fyers → Paytm → Upstox → Kite.
+**Key design:** Dual-path market data (platform-default for all users, optional user upgrade) + per-user order execution. Platform failover chain: SmartAPI → Dhan → Fyers → Paytm → Upstox → Kite. All 6 brokers fully implemented (order execution adapters + ticker adapters).
 
 **Complete architecture:** [Broker Abstraction Architecture](docs/architecture/broker-abstraction.md) | [Working Doc](docs/architecture/Working-Doc-AlgoChanakya-Multi-Broker-Architecture-Platform-Level.md) | [ADR-002](docs/decisions/002-broker-abstraction.md)
 
@@ -230,45 +217,19 @@ Multi-broker options trading platform for Indian markets. **Tech Stack:** FastAP
 
 ## Important Patterns
 
-### Architectural Rules (CRITICAL)
+### Architectural Rules
 
-**All architectural rules are consolidated in** [`.claude/rules.md`](.claude/rules.md):
-- Folder structure rules (enforced by PreToolUse hooks)
-- Cross-layer import rules (backend ↔ frontend isolation)
-- Protected files (production folder, .env, knowledge.db)
-- Security rules (encryption, validation)
-- Complete enforcement summary (which hook/agent enforces what)
+All rules consolidated in [`.claude/rules.md`](.claude/rules.md) (SSOT) — folder structure, cross-layer imports, broker abstraction, trading constants, protected files, security, enforcement summary. Rules are enforced by PreToolUse hooks and code-reviewer agent. When in doubt, check rules.md first.
 
-This is the **single source of truth** for architectural constraints. When in doubt, check rules.md first.
+### Key Cross-References
 
-### Folder Structure Rules (ENFORCED by hooks)
-
-All rules enforced by PreToolUse hooks. See [.claude/rules.md](.claude/rules.md) for complete rules.
-
-### Broker Abstraction (CRITICAL)
-
-See [`.claude/rules.md`](.claude/rules.md#broker-abstraction-rules) for the full rule with code examples. Quick summary: always use broker adapters via factories, never import `KiteConnect` or `SmartAPI` directly, use canonical symbol format internally.
-
-### Trading Constants (CRITICAL)
-
-See [`.claude/rules.md`](.claude/rules.md#trading-constants-rules) for the full rule with code examples. Quick summary: never hardcode lot sizes, strike steps, or index tokens — use `app.constants.trading` (backend) or `@/constants/trading` (frontend).
-
-### Database Patterns
-
-See [backend/CLAUDE.md](backend/CLAUDE.md#database-patterns) for models, routes, encryption, migrations.
-
-### Environment Variables
-
-**Setup:** Copy `.env.example` files to `.env` and update with actual values. Port configuration: see [Most Common Mistakes](#-most-common-mistakes-fix-these-first) and [Development Environment](#development-environment).
-
-**Full variable lists:** [backend/CLAUDE.md](backend/CLAUDE.md#environment-variables) | [frontend/CLAUDE.md](frontend/CLAUDE.md#environment-variables)
-
-### Authentication Error Handling
-
-**Backend:** `get_current_user` / `get_current_broker_connection` dependencies return 401 on invalid/expired tokens.
-**Frontend:** Axios interceptor in `src/services/api.js` clears token and redirects to `/login` on 401.
-
-**Details:** [frontend/CLAUDE.md](frontend/CLAUDE.md#authentication-frontend)
+| Pattern | Where to look |
+|---------|--------------|
+| Broker abstraction & code examples | [`.claude/rules.md`](.claude/rules.md#broker-abstraction-rules) |
+| Trading constants | [`.claude/rules.md`](.claude/rules.md#trading-constants-rules) |
+| Database models, routes, encryption | [backend/CLAUDE.md](backend/CLAUDE.md#database-patterns) |
+| Environment variables | [backend/CLAUDE.md](backend/CLAUDE.md#environment-variables) · [frontend/CLAUDE.md](frontend/CLAUDE.md#environment-variables) |
+| Auth error handling | [frontend/CLAUDE.md](frontend/CLAUDE.md#authentication-frontend) |
 
 ---
 
@@ -313,9 +274,21 @@ All other available skills (testing, code gen, broker experts, workflows) are li
 
 ---
 
-## Key URLs
+## Key URLs (Dev)
 
-Dashboard `/dashboard`, Watchlist `/watchlist`, Positions `/positions`, Option Chain `/optionchain`, Strategy `/strategy`, Strategy Library `/strategies`, AutoPilot `/autopilot`, AI `/ai`, OFO `/ofo`, Settings `/settings`
+| Screen | Path | Dev URL |
+|--------|------|---------|
+| Dashboard | `/dashboard` | `http://localhost:5173/dashboard` |
+| Watchlist | `/watchlist` | `http://localhost:5173/watchlist` |
+| Positions | `/positions` | `http://localhost:5173/positions` |
+| Option Chain | `/optionchain` | `http://localhost:5173/optionchain` |
+| Strategy | `/strategy` | `http://localhost:5173/strategy` |
+| Strategy Library | `/strategies` | `http://localhost:5173/strategies` |
+| AutoPilot | `/autopilot` | `http://localhost:5173/autopilot` |
+| AI | `/ai` | `http://localhost:5173/ai` |
+| OFO | `/ofo` | `http://localhost:5173/ofo` |
+| Settings | `/settings` | `http://localhost:5173/settings` |
+| API Health | `/api/health` | `http://localhost:8001/api/health` |
 
 ---
 
@@ -337,6 +310,23 @@ Dashboard `/dashboard`, Watchlist `/watchlist`, Positions `/positions`, Option C
 5. **Database errors?** → Run `alembic upgrade head` or check model imports in `alembic/env.py`
 
 **Complete troubleshooting guide:** [Troubleshooting Guide](docs/guides/troubleshooting.md)
+
+---
+
+## Git Workflow
+
+**Commit convention:** [Conventional Commits](https://www.conventionalcommits.org/) — `type(scope): description`
+
+| Type | When |
+|------|------|
+| `feat` | New feature |
+| `fix` | Bug fix |
+| `refactor` | Code restructuring (no behavior change) |
+| `docs` | Documentation only |
+| `chore` | Build, deps, config, cleanup |
+| `test` | Adding or fixing tests |
+
+**Branches:** `main` (production), `develop` (integration). Feature work branches off `main` or `develop`.
 
 ---
 

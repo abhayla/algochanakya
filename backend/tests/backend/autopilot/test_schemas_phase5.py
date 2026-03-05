@@ -37,28 +37,25 @@ class TestPositionLegSchemas:
         """Test PositionLegBase with valid data."""
         data = {
             "leg_id": "leg_1",
-            "underlying": "NIFTY",
-            "expiry": (date.today() + timedelta(days=7)).isoformat(),
+            "contract_type": "PE",
+            "action": "SELL",
             "strike": 25000,
-            "option_type": "PE",
-            "transaction_type": "SELL",
-            "quantity": 25,
-            "entry_price": 180.00
+            "expiry": date.today() + timedelta(days=7),
+            "lots": 1,
         }
         schema = PositionLegBase(**data)
         assert schema.strike == 25000
-        assert schema.quantity == 25
+        assert schema.lots == 1
 
     def test_position_leg_create_required_fields(self):
         """Test PositionLegCreate with required fields only."""
         data = {
             "leg_id": "leg_1",
-            "underlying": "NIFTY",
-            "expiry": date.today() + timedelta(days=7),
+            "contract_type": "PE",
+            "action": "SELL",
             "strike": 25000,
-            "option_type": "PE",
-            "transaction_type": "SELL",
-            "quantity": 25,
+            "expiry": date.today() + timedelta(days=7),
+            "lots": 1,
             "entry_price": 180.00
         }
         schema = PositionLegCreate(**data)
@@ -76,13 +73,18 @@ class TestPositionLegSchemas:
             "id": 1,
             "strategy_id": 1,
             "leg_id": "leg_1",
-            "underlying": "NIFTY",
-            "expiry": date.today() + timedelta(days=7),
+            "contract_type": "PE",
+            "action": "SELL",
             "strike": 25000,
-            "option_type": "PE",
-            "transaction_type": "SELL",
-            "quantity": 25,
+            "expiry": date.today() + timedelta(days=7),
+            "lots": 1,
             "entry_price": 180.00,
+            "entry_time": None,
+            "exit_price": None,
+            "exit_time": None,
+            "exit_reason": None,
+            "rolled_from_leg_id": None,
+            "rolled_to_leg_id": None,
             "status": "open",
             "delta": -0.15,
             "gamma": 0.002,
@@ -107,31 +109,22 @@ class TestOptionChainSchemas:
     def test_option_chain_entry_all_fields(self):
         """Test OptionChainEntry with all fields."""
         data = {
+            "instrument_token": 12345,
+            "tradingsymbol": "NIFTY24D2625000PE",
             "strike": 25000,
-            "ce": {
-                "ltp": 150.00,
-                "bid": 148.00,
-                "ask": 152.00,
-                "volume": 1000,
-                "oi": 50000,
-                "delta": 0.15,
-                "gamma": 0.002,
-                "theta": -12.00,
-                "vega": 8.50,
-                "iv": 0.17
-            },
-            "pe": {
-                "ltp": 145.00,
-                "bid": 143.00,
-                "ask": 147.00,
-                "volume": 1200,
-                "oi": 52000,
-                "delta": -0.15,
-                "gamma": 0.002,
-                "theta": -11.50,
-                "vega": 8.30,
-                "iv": 0.16
-            }
+            "option_type": "PE",
+            "expiry": date.today() + timedelta(days=7),
+            "ltp": 145.00,
+            "bid": 143.00,
+            "ask": 147.00,
+            "volume": 1200,
+            "oi": 52000,
+            "oi_change": None,
+            "delta": -0.15,
+            "gamma": 0.002,
+            "theta": -11.50,
+            "vega": 8.30,
+            "iv": 0.16
         }
         schema = OptionChainEntry(**data)
         assert schema.strike == 25000
@@ -140,9 +133,9 @@ class TestOptionChainSchemas:
         """Test OptionChainResponse structure."""
         data = {
             "underlying": "NIFTY",
+            "expiry": date.today() + timedelta(days=7),
             "spot_price": 25250,
-            "strikes": [],
-            "timestamp": datetime.utcnow()
+            "options": []
         }
         schema = OptionChainResponse(**data)
         assert schema.underlying == "NIFTY"
@@ -198,8 +191,12 @@ class TestOptionChainSchemas:
         """Test StrikeFindResponse structure."""
         data = {
             "strike": 25000,
+            "tradingsymbol": "NIFTY24D2625000PE",
+            "instrument_token": 12345,
+            "ltp": 185.00,
             "delta": 0.15,
-            "premium": 185.00
+            "iv": 0.17,
+            "distance_from_target": 0.01
         }
         schema = StrikeFindResponse(**data)
         assert schema.strike == 25000
@@ -253,12 +250,12 @@ class TestLegActionSchemas:
     def test_roll_leg_request(self):
         """Test RollLegRequest validation."""
         data = {
-            "target_expiry": "2024-02-01",
+            "target_expiry": date(2024, 2, 1),
             "target_strike": 25000,
             "execution_mode": "market"
         }
         schema = RollLegRequest(**data)
-        assert schema.target_expiry == "2024-02-01"
+        assert schema.target_expiry == date(2024, 2, 1)
 
     def test_break_trade_request(self):
         """Test BreakTradeRequest validation."""
@@ -274,11 +271,13 @@ class TestLegActionSchemas:
     def test_break_trade_response(self):
         """Test BreakTradeResponse structure."""
         data = {
+            "break_trade_id": "bt_001",
+            "exit_order": {"order_id": "123", "status": "complete"},
+            "new_positions": [{"leg": "PE", "strike": 24800}],
+            "recovery_premium": 70.00,
             "exit_cost": 140.00,
-            "recovery_premium_per_leg": 70.00,
-            "new_put_strike": 24800,
-            "new_call_strike": 25700,
-            "estimated_recovery": 3500.00
+            "net_cost": 70.00,
+            "status": "completed"
         }
         schema = BreakTradeResponse(**data)
         assert schema.exit_cost == Decimal("140.00")
@@ -294,28 +293,25 @@ class TestSuggestionSchemas:
     def test_suggestion_base_fields(self):
         """Test AdjustmentSuggestionBase validation."""
         data = {
+            "trigger_reason": "Premium decayed",
             "suggestion_type": "shift",
-            "title": "Shift leg closer",
-            "description": "Premium decayed",
+            "description": "Shift leg closer",
             "urgency": "medium",
-            "confidence": 0.75,
-            "expected_impact": {"premium_captured": 65},
-            "one_click_params": {"target_strike": 24900}
+            "confidence": 75,
+            "action_params": {"target_strike": 24900}
         }
         schema = AdjustmentSuggestionBase(**data)
-        assert schema.confidence == Decimal("0.75")
+        assert schema.confidence == 75
 
     def test_suggestion_create_validation(self):
         """Test AdjustmentSuggestionCreate validation."""
         data = {
-            "leg_id": 1,
+            "leg_id": "leg_1",
+            "trigger_reason": "Delta doubled",
             "suggestion_type": "break",
-            "title": "Execute break trade",
-            "description": "Delta doubled",
+            "description": "Execute break trade",
             "urgency": "critical",
-            "confidence": 0.85,
-            "expected_impact": {},
-            "one_click_params": {},
+            "confidence": 85,
             "expires_at": datetime.utcnow() + timedelta(hours=2)
         }
         schema = AdjustmentSuggestionCreate(**data)
@@ -326,37 +322,36 @@ class TestSuggestionSchemas:
         data = {
             "id": 1,
             "strategy_id": 1,
-            "leg_id": 1,
+            "leg_id": "leg_1",
+            "trigger_reason": "Delta exceeded threshold",
             "suggestion_type": "shift",
-            "title": "Test",
             "description": "Test",
             "urgency": "low",
-            "confidence": 0.50,
-            "expected_impact": {},
-            "one_click_params": {},
+            "confidence": 50,
             "status": "active",
-            "created_at": datetime.utcnow()
+            "created_at": datetime.utcnow(),
+            "expires_at": None,
+            "responded_at": None
         }
         schema = AdjustmentSuggestionResponse(**data)
         assert schema.id == 1
 
-    def test_suggestion_one_click_params(self):
-        """Test one_click_params structure."""
+    def test_suggestion_action_params(self):
+        """Test action_params structure."""
         data = {
+            "trigger_reason": "Test trigger",
             "suggestion_type": "shift",
-            "title": "Test",
             "description": "Test",
             "urgency": "medium",
-            "confidence": 0.70,
-            "expected_impact": {"cost": 15.00},
-            "one_click_params": {
+            "confidence": 70,
+            "action_params": {
                 "target_strike": 24900,
                 "execution_mode": "market",
                 "confirm_required": False
             }
         }
         schema = AdjustmentSuggestionBase(**data)
-        assert "target_strike" in schema.one_click_params
+        assert "target_strike" in schema.action_params
 
 
 # =============================================================================
@@ -369,60 +364,65 @@ class TestWhatIfSchemas:
     def test_whatif_scenario_validation(self):
         """Test WhatIfScenario validation."""
         data = {
-            "name": "Shift PE leg",
-            "action_type": "shift",
-            "parameters": {"leg_id": 1, "target_strike": 24900}
+            "spot_change": 100.00,
+            "iv_change": -2.0,
+            "days_forward": 1
         }
         schema = WhatIfScenario(**data)
-        assert schema.action_type == "shift"
+        assert schema.spot_change == Decimal("100.00")
 
     def test_whatif_request_structure(self):
         """Test WhatIfRequest structure."""
         data = {
+            "strategy_id": 1,
+            "adjustment_type": "shift",
+            "adjustment_params": {"leg_id": "leg_1", "target_strike": 24900},
             "scenarios": [
-                {
-                    "name": "Scenario 1",
-                    "action_type": "shift",
-                    "parameters": {}
-                }
+                {"spot_change": 100, "days_forward": 1}
             ]
         }
         schema = WhatIfRequest(**data)
         assert len(schema.scenarios) == 1
+        assert schema.adjustment_type == "shift"
 
     def test_position_metrics_fields(self):
         """Test PositionMetrics structure."""
         data = {
             "net_delta": 0.05,
             "net_theta": -25.00,
+            "net_gamma": 0.002,
+            "net_vega": 8.50,
             "max_profit": 5000.00,
             "max_loss": -3000.00,
             "breakeven_lower": 25100.00,
-            "breakeven_upper": 25400.00
+            "breakeven_upper": 25400.00,
+            "current_pnl": 1500.00
         }
         schema = PositionMetrics(**data)
         assert schema.net_delta == Decimal("0.05")
+        assert schema.current_pnl == Decimal("1500.00")
 
-    def test_whatif_response_before_after(self):
-        """Test WhatIfResponse before/after structure."""
+    def test_whatif_response_structure(self):
+        """Test WhatIfResponse structure."""
         metrics_data = {
             "net_delta": 0.05,
             "net_theta": -25.00,
+            "net_gamma": 0.002,
+            "net_vega": 8.50,
             "max_profit": 5000.00,
-            "max_loss": -3000.00
+            "max_loss": -3000.00,
+            "breakeven_lower": 25100.00,
+            "breakeven_upper": 25400.00,
+            "current_pnl": 1500.00
         }
         data = {
-            "scenario_name": "Test",
-            "before": PositionMetrics(**metrics_data),
-            "after": PositionMetrics(**metrics_data),
-            "impact": {
-                "delta_change": 0.02,
-                "risk_change": -500.00
-            },
-            "recommendation": "Execute"
+            "current_position": PositionMetrics(**metrics_data),
+            "after_adjustment": PositionMetrics(**metrics_data),
+            "comparison": {"delta_change": 0.02},
+            "scenario_results": []
         }
         schema = WhatIfResponse(**data)
-        assert schema.recommendation == "Execute"
+        assert schema.current_position.net_delta == Decimal("0.05")
 
 
 # =============================================================================
@@ -437,8 +437,6 @@ class TestPayoffSchemas:
         data = {
             "spot_price": 25250,
             "pnl": 1250.00,
-            "net_delta": 0.05,
-            "net_theta": -25.00
         }
         schema = PayoffDataPoint(**data)
         assert schema.spot_price == Decimal("25250")
@@ -447,32 +445,27 @@ class TestPayoffSchemas:
         """Test PayoffChartResponse structure."""
         data = {
             "current_spot": 25250,
-            "payoff_data": [
-                {
-                    "spot_price": 25000,
-                    "pnl": 1000.00
-                },
-                {
-                    "spot_price": 25500,
-                    "pnl": 800.00
-                }
+            "current_pnl": 0.00,
+            "data_points": [
+                {"spot_price": 25000, "pnl": 1000.00},
+                {"spot_price": 25500, "pnl": 800.00}
             ],
+            "breakeven_points": [25100.00, 25400.00],
             "max_profit": 5000.00,
             "max_loss": -3000.00,
-            "breakevens": [25100.00, 25400.00]
         }
         schema = PayoffChartResponse(**data)
-        assert len(schema.payoff_data) == 2
+        assert len(schema.data_points) == 2
 
     def test_risk_metrics_structure(self):
         """Test risk metrics in payoff response."""
         data = {
             "current_spot": 25250,
-            "payoff_data": [],
+            "current_pnl": 0.00,
+            "data_points": [],
+            "breakeven_points": [25100.00],
             "max_profit": 5000.00,
             "max_loss": -3000.00,
-            "breakevens": [25100.00],
-            "risk_reward_ratio": 1.67
         }
         schema = PayoffChartResponse(**data)
         assert schema.max_profit == Decimal("5000.00")

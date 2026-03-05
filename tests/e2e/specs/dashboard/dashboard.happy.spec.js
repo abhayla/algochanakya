@@ -67,4 +67,22 @@ test.describe('Dashboard - Happy Path @happy', () => {
     await authenticatedPage.waitForURL('**/strategies**');
     expect(authenticatedPage.url()).toContain('/strategies');
   });
+
+  test('header shows nifty50 price (not dashes)', async ({ authenticatedPage }) => {
+    const niftyPrice = authenticatedPage.getByTestId('kite-header-index-value-nifty50');
+    // Prices should appear within 5s (2s WebSocket delay + 2s API fallback + margin)
+    await expect(niftyPrice).not.toHaveText('--', { timeout: 5000 });
+
+    const text = await niftyPrice.textContent();
+    const numericValue = parseFloat(text.replace(/,/g, ''));
+    expect(numericValue).toBeGreaterThan(0);
+  });
+
+  test('header shows all four index prices', async ({ authenticatedPage }) => {
+    const indices = ['nifty50', 'niftybank', 'finnifty', 'sensex'];
+    for (const index of indices) {
+      const priceEl = authenticatedPage.getByTestId(`kite-header-index-value-${index}`);
+      await expect(priceEl).not.toHaveText('--', { timeout: 5000 });
+    }
+  });
 });

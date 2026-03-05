@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import api from '../services/api'
+import { getIndexToken, getAllIndexTokens } from '@/constants/trading'
 
 export const useWatchlistStore = defineStore('watchlist', () => {
   // State
@@ -31,10 +32,10 @@ export const useWatchlistStore = defineStore('watchlist', () => {
   })
 
   const indexTicks = computed(() => ({
-    nifty50: ticks.value[256265] || { ltp: null, change: null, change_percent: null },
-    niftyBank: ticks.value[260105] || { ltp: null, change: null, change_percent: null },
-    finnifty: ticks.value[257801] || { ltp: null, change: null, change_percent: null },
-    sensex: ticks.value[265] || { ltp: null, change: null, change_percent: null }
+    nifty50: ticks.value[getIndexToken('NIFTY')] || { ltp: null, change: null, change_percent: null },
+    niftyBank: ticks.value[getIndexToken('BANKNIFTY')] || { ltp: null, change: null, change_percent: null },
+    finnifty: ticks.value[getIndexToken('FINNIFTY')] || { ltp: null, change: null, change_percent: null },
+    sensex: ticks.value[getIndexToken('SENSEX')] || { ltp: null, change: null, change_percent: null }
   }))
 
   // Actions
@@ -175,7 +176,7 @@ export const useWatchlistStore = defineStore('watchlist', () => {
 
     // Construct WebSocket URL
     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const wsHost = import.meta.env.VITE_WS_URL || 'localhost:8000'
+    const wsHost = import.meta.env.VITE_WS_URL || 'localhost:8001'
     const wsUrl = `${wsProtocol}//${wsHost}/ws/ticks?token=${token}`
 
     try {
@@ -197,7 +198,7 @@ export const useWatchlistStore = defineStore('watchlist', () => {
 
         // Subscribe to indices after a brief delay to ensure connection is ready
         setTimeout(() => {
-          subscribeToTokens([256265, 260105], 'quote') // NIFTY 50, NIFTY BANK with full data
+          subscribeToTokens(getAllIndexTokens(), 'quote') // NIFTY 50, NIFTY BANK, FINNIFTY, SENSEX
 
           // Subscribe to watchlist instruments
           if (activeWatchlist.value) {

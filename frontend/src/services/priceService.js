@@ -5,12 +5,7 @@
  * Used across KiteHeader, WatchlistView, IndexHeader, Strategy Builder, and AutoPilot.
  */
 import api from '@/services/api'
-
-// Index token constants
-export const INDEX_TOKENS = {
-  NIFTY_50: 256265,
-  NIFTY_BANK: 260105
-}
+import { getIndexToken } from '@/constants/trading'
 
 /**
  * Convert API LTP response to tick format (basic, no change data)
@@ -125,17 +120,24 @@ export async function fetchOHLC(instruments) {
  * @param {Function} updateTickFn - Callback (token, tickData) to update store
  */
 export async function fetchIndexPrices(updateTickFn) {
-  const instruments = 'NSE:NIFTY 50,NSE:NIFTY BANK'
+  const instruments = 'NSE:NIFTY 50,NSE:NIFTY BANK,NSE:NIFTY FIN SERVICE,BSE:SENSEX'
+
+  // Map instrument string keys to token constants
+  const TOKEN_MAP = {
+    'NSE:NIFTY 50': getIndexToken('NIFTY'),
+    'NSE:NIFTY BANK': getIndexToken('BANKNIFTY'),
+    'NSE:NIFTY FIN SERVICE': getIndexToken('FINNIFTY'),
+    'BSE:SENSEX': getIndexToken('SENSEX')
+  }
 
   try {
     // Try quote first (works during market hours with full data)
     const data = await fetchQuote(instruments)
 
-    if (data['NSE:NIFTY 50']) {
-      updateTickFn(INDEX_TOKENS.NIFTY_50, toTickFormatFromQuote(data['NSE:NIFTY 50']))
-    }
-    if (data['NSE:NIFTY BANK']) {
-      updateTickFn(INDEX_TOKENS.NIFTY_BANK, toTickFormatFromQuote(data['NSE:NIFTY BANK']))
+    for (const [key, token] of Object.entries(TOKEN_MAP)) {
+      if (data[key]) {
+        updateTickFn(token, toTickFormatFromQuote(data[key]))
+      }
     }
   } catch (quoteError) {
     // Quote failed (likely outside market hours) - fallback to OHLC
@@ -144,11 +146,10 @@ export async function fetchIndexPrices(updateTickFn) {
     try {
       const ohlcData = await fetchOHLC(instruments)
 
-      if (ohlcData['NSE:NIFTY 50']) {
-        updateTickFn(INDEX_TOKENS.NIFTY_50, toTickFormatFromOHLC(ohlcData['NSE:NIFTY 50']))
-      }
-      if (ohlcData['NSE:NIFTY BANK']) {
-        updateTickFn(INDEX_TOKENS.NIFTY_BANK, toTickFormatFromOHLC(ohlcData['NSE:NIFTY BANK']))
+      for (const [key, token] of Object.entries(TOKEN_MAP)) {
+        if (ohlcData[key]) {
+          updateTickFn(token, toTickFormatFromOHLC(ohlcData[key]))
+        }
       }
     } catch (ohlcError) {
       console.error('Failed to fetch index prices (both quote and OHLC failed):', ohlcError)

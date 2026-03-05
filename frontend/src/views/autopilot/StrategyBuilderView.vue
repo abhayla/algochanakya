@@ -9,7 +9,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useAutopilotStore } from '@/stores/autopilot'
 import { useWatchlistStore } from '@/stores/watchlist'
 import { useStrategyTypes } from '@/constants/strategyTypes'
-import { getStrikeStep } from '@/constants/trading'
+import { getStrikeStep, getIndexToken } from '@/constants/trading'
 import AutoPilotLegsTable from '@/components/autopilot/builder/AutoPilotLegsTable.vue'
 import ProfitTargetConfig from '@/components/autopilot/builder/ProfitTargetConfig.vue'
 import DTEExitConfig from '@/components/autopilot/builder/DTEExitConfig.vue'
@@ -174,13 +174,7 @@ onMounted(async () => {
 
   // Subscribe to underlying index token for spot price
   if (watchlistStore.isConnected) {
-    const indexTokens = {
-      'NIFTY': 256265,
-      'BANKNIFTY': 260105,
-      'FINNIFTY': 257801,
-      'SENSEX': 265
-    }
-    const token = indexTokens[store.builder.strategy.underlying]
+    const token = getIndexToken(store.builder.strategy.underlying)
     if (token) {
       watchlistStore.subscribeToTokens([token], 'quote')
     }
@@ -209,13 +203,7 @@ watch(
   () => store.builder.strategy.underlying,
   (newUnderlying) => {
     if (watchlistStore.isConnected) {
-      const indexTokens = {
-        'NIFTY': 256265,
-        'BANKNIFTY': 260105,
-        'FINNIFTY': 257801,
-        'SENSEX': 265
-      }
-      const token = indexTokens[newUnderlying]
+      const token = getIndexToken(newUnderlying)
       if (token) {
         watchlistStore.subscribeToTokens([token], 'quote')
       }

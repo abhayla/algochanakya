@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models import User, BrokerConnection
+from app.models.broker_instrument_tokens import BrokerInstrumentToken
 from app.models.smartapi_credentials import SmartAPICredentials
 from app.models.user_preferences import MarketDataSource, UserPreferences
 from app.utils.jwt import verify_access_token
@@ -29,6 +30,10 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+
+def _exchange_type_for(exchange: str) -> int:
+    return {"NSE": 1, "NFO": 2, "BSE": 3, "BFO": 4, "MCX": 5}.get(exchange, 2)
 
 
 async def _authenticate_user(token: str, db: AsyncSession) -> User:
@@ -65,6 +70,11 @@ async def _ensure_broker_credentials(
     Returns True if credentials are available, False otherwise.
     For platform-level brokers, loads from .env or user credentials.
     Falls back to alternative broker if credentials unavailable.
+
+    For SmartAPI: also loads canonical→broker token map from broker_instrument_tokens
+    table. Without this, SmartAPITickerAdapter cannot translate canonical tokens to
+    SmartAPI tokens and subscribes to nothing. Hardcoded index fallback ensures
+    NIFTY/BANKNIFTY/FINNIFTY/SENSEX work even if the DB table is empty.
     """
     pool = TickerPool.get_instance()
 
@@ -76,11 +86,55 @@ async def _ensure_broker_credentials(
         # Try user-level SmartAPI credentials first
         credentials = await get_valid_smartapi_credentials(user.id, db, auto_refresh=True)
         if credentials and credentials.jwt_token and credentials.feed_token:
+            # Build token map: canonical int token → (smartapi_str_token, exchange_type)
+            # The broker_instrument_tokens table maps canonical_symbol (kite format) to
+            # broker-specific tokens. For kite broker rows, broker_token IS the canonical
+            # int token. Cross-reference with smartapi rows to build the full map.
+            token_map = {}
+            try:
+                # Get kite rows: canonical_symbol → canonical int token (broker_token)
+                kite_result = await db.execute(
+                    select(BrokerInstrumentToken).where(
+                        BrokerInstrumentToken.broker == "kite"
+                    )
+                )
+                kite_rows = kite_result.scalars().all()
+                kite_symbol_to_token = {row.canonical_symbol: row.broker_token for row in kite_rows}
+
+                # Get smartapi rows: canonical_symbol → (smartapi token str, exchange)
+                sa_result = await db.execute(
+                    select(BrokerInstrumentToken).where(
+                        BrokerInstrumentToken.broker == "smartapi"
+                    )
+                )
+                sa_rows = sa_result.scalars().all()
+
+                for row in sa_rows:
+                    canonical_int = kite_symbol_to_token.get(row.canonical_symbol)
+                    if canonical_int is not None:
+                        exchange_type = _exchange_type_for(row.exchange)
+                        token_map[int(canonical_int)] = (str(row.broker_token), exchange_type)
+
+                logger.info("[SmartAPI] Loaded %d token mappings from DB", len(token_map))
+            except Exception as e:
+                logger.warning("[SmartAPI] Failed to load token map from DB: %s", e)
+
+            # Fallback: hardcoded index tokens — ensures header prices always work
+            if not token_map:
+                token_map = {
+                    256265: ("99926000", 1),   # NIFTY 50 (NSE)
+                    260105: ("99926009", 1),   # NIFTY BANK (NSE)
+                    257801: ("99926037", 1),   # FINNIFTY (NSE)
+                    265: ("1", 3),             # SENSEX (BSE)
+                }
+                logger.info("[SmartAPI] Using hardcoded index token fallback (DB table empty)")
+
             pool.set_credentials("smartapi", {
                 "jwt_token": credentials.jwt_token,
                 "api_key": settings.ANGEL_API_KEY,
                 "client_id": credentials.client_id,
                 "feed_token": credentials.feed_token,
+                "token_map": token_map,
             })
             return True
         return False

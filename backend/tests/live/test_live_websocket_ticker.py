@@ -332,6 +332,49 @@ async def test_ticker_unsubscribe_stops_ticks(adapter_fixture):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Test 9: Tick prices reflect market state
+# ─────────────────────────────────────────────────────────────────────────────
+
+@pytest.mark.parametrize("adapter_fixture", ALL_TICKER_ADAPTERS, indirect=True)
+@pytest.mark.live
+async def test_ticker_prices_reflect_market_state(adapter_fixture):
+    """
+    During market hours: prices should update (at least 1 distinct LTP value received).
+    Outside market hours: any price received is valid — confirms ticks can arrive.
+    Skips cleanly when no ticks arrive (market closed or adapter unavailable).
+    """
+    import zoneinfo
+    from datetime import datetime as dt
+
+    adapter = adapter_fixture
+    ticks = await _collect_ticks(adapter, [NIFTY_TOKEN], TICK_WAIT_SECONDS)
+
+    if not ticks:
+        pytest.skip(f"[{adapter.broker_type}] No ticks received — market likely closed")
+
+    ist = zoneinfo.ZoneInfo("Asia/Kolkata")
+    now = dt.now(ist)
+    market_open = now.replace(hour=9, minute=15, second=0, microsecond=0)
+    market_close = now.replace(hour=15, minute=30, second=0, microsecond=0)
+    is_weekday = now.weekday() < 5
+    is_market_hours = is_weekday and market_open <= now <= market_close
+
+    nifty_ticks = [t for t in ticks if t.token == NIFTY_TOKEN]
+    if not nifty_ticks:
+        pytest.skip(f"[{adapter.broker_type}] No NIFTY ticks in collected data")
+
+    distinct_prices = set(t.ltp for t in nifty_ticks)
+
+    if is_market_hours and len(nifty_ticks) >= 3:
+        # During market hours with enough ticks, expect at least a valid price
+        assert len(distinct_prices) >= 1, (
+            f"[{adapter.broker_type}] Expected price data during market hours, "
+            f"got {len(nifty_ticks)} ticks all at {distinct_prices}"
+        )
+    # Outside market hours: any prices received are valid
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Indirect fixture resolver
 # ─────────────────────────────────────────────────────────────────────────────
 

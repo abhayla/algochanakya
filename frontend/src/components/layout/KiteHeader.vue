@@ -34,6 +34,24 @@
             {{ formatChange(indexTicks.niftyBank?.change) }} ({{ formatPct(indexTicks.niftyBank?.change_percent) }})
           </span>
         </div>
+        <div class="index-item" data-testid="kite-header-index-finnifty">
+          <span class="index-name">FIN NIFTY</span>
+          <span :class="['index-price', (indexTicks.finnifty?.change || 0) >= 0 ? 'up' : 'down']" data-testid="kite-header-index-value-finnifty">
+            {{ formatNumber(indexTicks.finnifty?.ltp) }}
+          </span>
+          <span :class="['index-change', (indexTicks.finnifty?.change || 0) >= 0 ? 'up' : 'down']">
+            {{ formatChange(indexTicks.finnifty?.change) }} ({{ formatPct(indexTicks.finnifty?.change_percent) }})
+          </span>
+        </div>
+        <div class="index-item" data-testid="kite-header-index-sensex">
+          <span class="index-name">SENSEX</span>
+          <span :class="['index-price', (indexTicks.sensex?.change || 0) >= 0 ? 'up' : 'down']" data-testid="kite-header-index-value-sensex">
+            {{ formatNumber(indexTicks.sensex?.ltp) }}
+          </span>
+          <span :class="['index-change', (indexTicks.sensex?.change || 0) >= 0 ? 'up' : 'down']">
+            {{ formatChange(indexTicks.sensex?.change) }} ({{ formatPct(indexTicks.sensex?.change_percent) }})
+          </span>
+        </div>
       </div>
     </div>
 
@@ -149,11 +167,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { useWatchlistStore } from '@/stores/watchlist';
-import { fetchIndexPrices } from '@/services/priceService';
+import { fetchIndexPrices, startPollingFallback, stopPollingFallback } from '@/services/priceService';
 
 const route = useRoute();
 const router = useRouter();
@@ -228,6 +246,11 @@ const logout = async () => {
   router.push('/login');
 };
 
+// Stop polling when WebSocket connects
+watch(() => watchlistStore.isConnected, (connected) => {
+  if (connected) stopPollingFallback();
+});
+
 onMounted(() => {
   document.addEventListener('click', closeDropdown);
 
@@ -237,11 +260,19 @@ onMounted(() => {
     if (!indexTicks.value.nifty50?.ltp) {
       fetchIndexPrices((token, tick) => watchlistStore.updateTick(token, tick));
     }
+    // Start polling if WebSocket is still not connected after 2s
+    if (!watchlistStore.isConnected) {
+      startPollingFallback(
+        () => fetchIndexPrices((token, tick) => watchlistStore.updateTick(token, tick)),
+        10000
+      );
+    }
   }, 2000);
 });
 
 onUnmounted(() => {
   document.removeEventListener('click', closeDropdown);
+  stopPollingFallback();
 });
 </script>
 

@@ -636,6 +636,7 @@ import { useRoute } from 'vue-router'
 import { useStrategyStore } from '../stores/strategy'
 import { useWatchlistStore } from '../stores/watchlist'
 import { useStrategyTypes } from '@/constants/strategyTypes'
+import { getIndexToken } from '@/constants/trading'
 import KiteLayout from '../components/layout/KiteLayout.vue'
 import ShareStrategyModal from '../components/strategy/ShareStrategyModal.vue'
 import BasketOrderModal from '../components/strategy/BasketOrderModal.vue'
@@ -1302,12 +1303,7 @@ onMounted(async () => {
 
   // Connect to WebSocket for live prices if watchlist store is available
   if (watchlistStore.isConnected) {
-    const indexTokens = {
-      'NIFTY': 256265,
-      'BANKNIFTY': 260105,
-      'FINNIFTY': 257801,
-    }
-    const token = indexTokens[strategyStore.underlying]
+    const token = getIndexToken(strategyStore.underlying)
     if (token) {
       watchlistStore.subscribeToTokens([token], 'quote')
     }
@@ -1333,12 +1329,7 @@ onUnmounted(() => {
 // Watch for underlying changes to update subscriptions
 watch(() => strategyStore.underlying, (newUnderlying) => {
   if (watchlistStore.isConnected) {
-    const indexTokens = {
-      'NIFTY': 256265,
-      'BANKNIFTY': 260105,
-      'FINNIFTY': 257801,
-    }
-    const token = indexTokens[newUnderlying]
+    const token = getIndexToken(newUnderlying)
     if (token) {
       watchlistStore.subscribeToTokens([token], 'quote')
     }

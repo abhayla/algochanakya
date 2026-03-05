@@ -9,7 +9,7 @@ import { useAutopilotStore } from '@/stores/autopilot'
 import { startPollingFallback, stopPollingFallback } from '@/services/priceService'
 import api from '@/services/api'
 
-const WS_BASE_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8000'
+const WS_BASE_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8001'
 
 // Shared state across all component instances
 const socket = ref(null)

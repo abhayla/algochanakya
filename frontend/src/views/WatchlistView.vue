@@ -210,6 +210,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useWatchlistStore } from '../stores/watchlist'
 import KiteLayout from '../components/layout/KiteLayout.vue'
 import { fetchWatchlistPrices } from '@/services/priceService'
+import { getAllIndexTokens } from '@/constants/trading'
 import BrokerUpgradeBanner from '../components/common/BrokerUpgradeBanner.vue'
 import DataSourceBadge from '../components/common/DataSourceBadge.vue'
 
@@ -335,7 +336,7 @@ onMounted(async () => {
   store.connectWebSocket()
   // Subscribe to indices
   setTimeout(() => {
-    store.subscribeToTokens([256265, 260105], 'quote')
+    store.subscribeToTokens(getAllIndexTokens(), 'quote')
   }, 1000)
   document.addEventListener('click', handleClickOutside)
 
