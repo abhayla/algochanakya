@@ -11,7 +11,7 @@ From `backend/`:
 
 ```bash
 venv\Scripts\activate          # Activate venv (Windows)
-python run.py                  # Start server (auto-downloads instruments if DB empty)
+python run.py                  # Start server (auto-refreshes instruments via InstrumentMasterService)
 alembic upgrade head           # Apply migrations (run after git pull)
 pytest tests/ -v               # Run backend tests
 pytest tests/ -v --cov=app     # With coverage
@@ -42,6 +42,10 @@ pytest tests/live/ -m "live and not slow" -v # Live tests excluding slow ones (e
 **Database:** Async PostgreSQL (asyncpg) + Redis for sessions. Run `alembic upgrade head` after git pull.
 
 ### Key Services
+
+**Instrument Data:**
+- `app/services/instrument_master.py` - `InstrumentMasterService` — broker-agnostic instrument population (downloads from any `MarketDataBrokerAdapter`, upserts to `instruments` DB table)
+- `app/services/instruments.py` - `InstrumentService` — Kite CSV instrument download (fallback)
 
 **Broker Adapters (Order Execution):**
 - `app/services/brokers/base.py` - `BrokerAdapter` interface, unified data models

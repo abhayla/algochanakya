@@ -279,6 +279,10 @@ class KiteMarketDataAdapter(MarketDataBrokerAdapter):
                     # Kite symbols are already canonical!
                     canonical_symbol = raw_inst["tradingsymbol"]
 
+                    raw_type = raw_inst.get("instrument_type", "")
+                    raw_strike = raw_inst.get("strike")
+                    raw_expiry = raw_inst.get("expiry")
+
                     instruments.append(Instrument(
                         canonical_symbol=canonical_symbol,
                         exchange=exchange,
@@ -286,8 +290,22 @@ class KiteMarketDataAdapter(MarketDataBrokerAdapter):
                         instrument_token=raw_inst["instrument_token"],
                         tradingsymbol=canonical_symbol,
                         name=raw_inst.get("name", canonical_symbol),
-                        instrument_type=raw_inst.get("instrument_type", ""),
+                        instrument_type=raw_type,
                         lot_size=raw_inst.get("lot_size", 1),
+                        option_type=(
+                            raw_type if raw_type in ("CE", "PE") else None
+                        ),
+                        strike=(
+                            Decimal(str(raw_strike))
+                            if raw_strike and float(raw_strike) > 0
+                            else None
+                        ),
+                        expiry=(
+                            raw_expiry.date()
+                            if hasattr(raw_expiry, "date")
+                            else raw_expiry
+                        ),
+                        underlying=raw_inst.get("name", ""),
                     ))
                 except Exception as e:
                     # Skip instruments that fail conversion

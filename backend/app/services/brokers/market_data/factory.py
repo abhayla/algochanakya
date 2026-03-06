@@ -451,3 +451,121 @@ async def get_user_market_data_adapter(user_id: UUID, db: AsyncSession) -> Marke
         broker_type = prefs.market_data_source
 
     return await get_market_data_adapter(broker_type, user_id, db)
+
+
+async def get_platform_market_data_adapter(db: AsyncSession) -> MarketDataBrokerAdapter:
+    """Create a market data adapter using platform credentials (no user context).
+
+    Tries brokers in the platform fallback chain. Many brokers download
+    public instrument CSVs that don't need auth, so credential-free brokers
+    are attempted first.
+
+    Returns:
+        MarketDataBrokerAdapter instance
+
+    Raises:
+        RuntimeError: If no platform adapter could be created
+    """
+    import os
+
+    errors: list[str] = []
+
+    # 1. SmartAPI — try any user's credentials
+    try:
+        from app.utils.smartapi_utils import get_valid_smartapi_credentials
+        from app.models.smartapi_credentials import SmartAPICredentials as SmartAPICreds
+
+        # Find any active SmartAPI credential
+        result = await db.execute(
+            select(SmartAPICreds).where(SmartAPICreds.jwt_token.isnot(None)).limit(1)
+        )
+        cred = result.scalar_one_or_none()
+
+        if cred:
+            creds = await get_valid_smartapi_credentials(cred.user_id, db, auto_refresh=True)
+            if creds:
+                credentials = SmartAPIMarketDataCredentials(
+                    broker_type="smartapi",
+                    user_id=cred.user_id,
+                    client_id=creds.client_id,
+                    jwt_token=creds.jwt_token,
+                    feed_token=creds.feed_token,
+                )
+                from app.services.brokers.market_data.smartapi_adapter import SmartAPIMarketDataAdapter
+                adapter = SmartAPIMarketDataAdapter(credentials, db)
+                await adapter.connect(skip_instrument_download=True)
+                logger.info("[Factory] Platform adapter: SmartAPI")
+                return adapter
+    except Exception as e:
+        errors.append(f"SmartAPI: {e}")
+
+    # 2-5. Brokers with env-based credentials (instrument CSVs are public)
+    env_brokers = [
+        ("dhan", "DHAN_CLIENT_ID", "DHAN_ACCESS_TOKEN", DhanMarketDataCredentials,
+         "app.services.brokers.market_data.dhan_adapter", "DhanMarketDataAdapter"),
+        ("fyers", "FYERS_APP_ID", "FYERS_ACCESS_TOKEN", FyersMarketDataCredentials,
+         "app.services.brokers.market_data.fyers_adapter", "FyersMarketDataAdapter"),
+        ("paytm", "PAYTM_API_KEY", "PAYTM_PUBLIC_ACCESS_TOKEN", PaytmMarketDataCredentials,
+         "app.services.brokers.market_data.paytm_adapter", "PaytmMarketDataAdapter"),
+        ("upstox", "UPSTOX_API_KEY", "UPSTOX_ACCESS_TOKEN", UpstoxMarketDataCredentials,
+         "app.services.brokers.market_data.upstox_adapter", "UpstoxMarketDataAdapter"),
+    ]
+
+    for broker_name, key1_env, key2_env, cred_cls, module_path, cls_name in env_brokers:
+        key1 = os.environ.get(key1_env, "")
+        key2 = os.environ.get(key2_env, "")
+
+        if not key1 and not key2:
+            continue
+
+        try:
+            import importlib
+            mod = importlib.import_module(module_path)
+            adapter_cls = getattr(mod, cls_name)
+
+            # Build credentials — field names vary per broker
+            if broker_name == "dhan":
+                creds = cred_cls(broker_type=broker_name, user_id=UUID(int=0),
+                                 client_id=key1, access_token=key2)
+            elif broker_name == "fyers":
+                creds = cred_cls(broker_type=broker_name, user_id=UUID(int=0),
+                                 app_id=key1, access_token=key2)
+            else:
+                creds = cred_cls(broker_type=broker_name, user_id=UUID(int=0),
+                                 api_key=key1, access_token=key2)
+
+            adapter = adapter_cls(creds, db)
+            await adapter.connect()
+            logger.info(f"[Factory] Platform adapter: {broker_name}")
+            return adapter
+        except Exception as e:
+            errors.append(f"{broker_name}: {e}")
+
+    # 6. Kite — requires active BrokerConnection (last resort)
+    try:
+        result = await db.execute(
+            select(BrokerConnection).where(
+                BrokerConnection.broker == "zerodha",
+                BrokerConnection.access_token.isnot(None),
+            ).limit(1)
+        )
+        conn = result.scalar_one_or_none()
+
+        if conn:
+            credentials = KiteMarketDataCredentials(
+                broker_type="kite",
+                user_id=conn.user_id,
+                api_key=conn.api_key,
+                access_token=conn.access_token,
+            )
+            from app.services.brokers.market_data.kite_adapter import KiteMarketDataAdapter
+            adapter = KiteMarketDataAdapter(credentials, db)
+            await adapter.connect()
+            logger.info("[Factory] Platform adapter: Kite (last resort)")
+            return adapter
+    except Exception as e:
+        errors.append(f"Kite: {e}")
+
+    raise RuntimeError(
+        f"[Factory] No platform market data adapter available. Errors: {'; '.join(errors)}"
+    )

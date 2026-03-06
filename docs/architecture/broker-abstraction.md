@@ -529,6 +529,18 @@ Full definitions in `backend/app/services/brokers/base.py` and `ticker/models.py
 **Historical (superseded):**
 - ~~[ADR-003 v2: Multi-Broker Ticker Architecture](../decisions/003-multi-broker-ticker-architecture.md)~~ — Original 6-component design (superseded by TICKER-DESIGN-SPEC)
 
+## Instrument Master Population
+
+The `InstrumentMasterService` (`backend/app/services/instrument_master.py`) uses the download-to-DB-on-startup model to populate the `instruments` table:
+
+1. **On startup**, `refresh_instrument_master_startup()` in `main.py` checks if instruments need refreshing (empty table or >24h stale)
+2. **Platform adapter** is obtained via `get_platform_market_data_adapter(db)` using the platform fallback chain (SmartAPI → Dhan → Fyers → Paytm → Upstox → Kite)
+3. **`InstrumentMasterService.refresh_from_adapter()`** calls `adapter.get_instruments("NFO")`, filters to CE/PE options with future expiry, and batch-upserts into the `instruments` table
+4. **DB schema** includes `source_broker` column tracking which broker populated the data, and `option_type` for explicit CE/PE storage
+5. **Fallback**: If no platform adapter is available, falls back to Kite CSV download via `InstrumentService`
+
+All 6 broker adapters implement `get_instruments(exchange) -> List[Instrument]` returning the standardized `Instrument` dataclass with `option_type`, `strike`, `expiry`, and `underlying` fields populated.
+
 ## References
 
 - [Angel One SmartAPI Docs](https://smartapi.angelbroking.com/docs/)

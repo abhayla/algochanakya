@@ -86,19 +86,29 @@ async def refresh_instrument_master(
         Status message
     """
     try:
-        from app.services.instruments import refresh_instrument_master
+        from app.services.instrument_master import InstrumentMasterService
+        from app.services.brokers.market_data.factory import get_platform_market_data_adapter
 
-        # In production, check if user is admin
-        # For now, allow all authenticated users
-
-        # Check if refresh is needed
-        should_refresh = await InstrumentService.should_refresh_instruments()
+        should_refresh = await InstrumentMasterService.should_refresh(db)
 
         if should_refresh:
-            # Trigger background refresh
-            # In production, use background tasks or celery
-            await refresh_instrument_master(db)
-            return {"message": "Instrument master refresh started", "status": "success"}
+            try:
+                adapter = await get_platform_market_data_adapter(db)
+                count = await InstrumentMasterService.refresh_from_adapter(
+                    adapter, adapter.broker_type, db
+                )
+                return {
+                    "message": f"Refreshed {count} instruments from {adapter.broker_type}",
+                    "status": "success",
+                }
+            except Exception as e:
+                # Fallback to Kite CSV
+                from app.services.instruments import refresh_instrument_master
+                await refresh_instrument_master(db)
+                return {
+                    "message": "Refreshed instruments from Kite CSV (fallback)",
+                    "status": "success",
+                }
         else:
             return {"message": "Instrument master is up to date", "status": "skipped"}
 

@@ -24,21 +24,34 @@ logging.basicConfig(
 )
 
 
-async def check_and_download_instruments():
-    """Check if instruments table is empty and download if needed."""
+async def refresh_instrument_master_startup():
+    """Download instruments from platform broker and populate DB."""
     try:
         async with AsyncSessionLocal() as db:
-            # Check count
-            result = await db.execute(select(func.count(Instrument.id)))
-            count = result.scalar()
+            from app.services.instrument_master import InstrumentMasterService
 
-            if count == 0:
-                print("[INFO] Instruments table is empty. Downloading from Kite...")
-                from app.services.instruments import refresh_instrument_master
-                await refresh_instrument_master(db)
-                print("[SUCCESS] Instruments downloaded successfully")
-            else:
-                print(f"[INFO] Instruments table has {count} records")
+            if not await InstrumentMasterService.should_refresh(db):
+                result = await db.execute(select(func.count(Instrument.id)))
+                count = result.scalar()
+                print(f"[INFO] Instruments table up-to-date ({count} records)")
+                return
+
+            # Try broker-agnostic refresh
+            try:
+                from app.services.brokers.market_data.factory import get_platform_market_data_adapter
+                adapter = await get_platform_market_data_adapter(db)
+                broker_name = adapter.broker_type
+                count = await InstrumentMasterService.refresh_from_adapter(
+                    adapter, broker_name, db, exchanges=["NFO"]
+                )
+                print(f"[SUCCESS] Instruments refreshed from {broker_name}: {count}")
+            except Exception as e:
+                # Fallback to Kite CSV download
+                print(f"[WARNING] Platform adapter failed ({e}), falling back to Kite CSV...")
+                from app.services.instruments import refresh_instrument_master as kite_refresh
+                await kite_refresh(db)
+                print("[SUCCESS] Instruments downloaded from Kite CSV (fallback)")
+
     except Exception as e:
         print(f"[WARNING] Could not check/download instruments: {e}")
 
@@ -54,7 +67,7 @@ async def lifespan(app: FastAPI):
     print(f"[SUCCESS] AutoPilot WebSocket: /ws/autopilot")
 
     # Auto-download instruments if needed
-    await check_and_download_instruments()
+    await refresh_instrument_master_startup()
 
     # Pre-warm SmartAPI instrument cache
     # Downloads 185k instruments (~20-30s) ONCE on startup

@@ -48,6 +48,7 @@ class InstrumentService:
                 for row in reader:
                     try:
                         # Parse instrument data
+                        inst_type = row.get("instrument_type", "")
                         instrument = {
                             "instrument_token": int(row["instrument_token"]),
                             "exchange_token": int(row["exchange_token"]) if row.get("exchange_token") else None,
@@ -55,11 +56,13 @@ class InstrumentService:
                             "name": row.get("name", ""),
                             "exchange": row["exchange"],
                             "segment": row.get("segment", ""),
-                            "instrument_type": row.get("instrument_type", ""),
+                            "instrument_type": inst_type,
+                            "option_type": inst_type if inst_type in ("CE", "PE") else None,
                             "strike": Decimal(row["strike"]) if row.get("strike") and row["strike"] != "0" else None,
                             "expiry": datetime.strptime(row["expiry"], "%Y-%m-%d").date() if row.get("expiry") else None,
                             "lot_size": int(row.get("lot_size", 1)),
                             "tick_size": Decimal(row.get("tick_size", "0.05")),
+                            "source_broker": "kite",
                         }
                         instruments.append(instrument)
                     except (ValueError, KeyError) as e:
@@ -101,7 +104,7 @@ class InstrumentService:
                 # Create insert statement with on conflict update
                 stmt = insert(Instrument).values(batch)
                 stmt = stmt.on_conflict_do_update(
-                    index_elements=['instrument_token'],
+                    constraint='uq_instrument_token_source_broker',
                     set_={
                         'exchange_token': stmt.excluded.exchange_token,
                         'tradingsymbol': stmt.excluded.tradingsymbol,
@@ -109,6 +112,7 @@ class InstrumentService:
                         'exchange': stmt.excluded.exchange,
                         'segment': stmt.excluded.segment,
                         'instrument_type': stmt.excluded.instrument_type,
+                        'option_type': stmt.excluded.option_type,
                         'strike': stmt.excluded.strike,
                         'expiry': stmt.excluded.expiry,
                         'lot_size': stmt.excluded.lot_size,

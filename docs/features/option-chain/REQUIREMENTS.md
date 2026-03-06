@@ -76,7 +76,7 @@
 ## Integration Requirements
 - [x] Live prices via WebSocket
 - [x] Integration with Strategy Builder
-- [x] Kite API for instrument data
+- [x] Broker-agnostic adapter for instrument data (via InstrumentMasterService)
 
 ---
 Last updated: 2025-12-22

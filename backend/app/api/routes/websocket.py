@@ -125,7 +125,7 @@ async def _ensure_broker_credentials(
                     256265: ("99926000", 1),   # NIFTY 50 (NSE)
                     260105: ("99926009", 1),   # NIFTY BANK (NSE)
                     257801: ("99926037", 1),   # FINNIFTY (NSE)
-                    265: ("1", 3),             # SENSEX (BSE)
+                    265: ("99919000", 3),      # SENSEX (BSE)
                 }
                 logger.info("[SmartAPI] Using hardcoded index token fallback (DB table empty)")
 

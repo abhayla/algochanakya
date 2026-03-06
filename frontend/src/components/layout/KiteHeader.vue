@@ -257,7 +257,9 @@ onMounted(() => {
   // Fetch index prices via API as initial data (fallback for WebSocket)
   // Wait a bit for WebSocket to potentially connect first
   setTimeout(() => {
-    if (!indexTicks.value.nifty50?.ltp) {
+    const ticks = indexTicks.value;
+    const anyMissing = !ticks.nifty50?.ltp || !ticks.niftyBank?.ltp || !ticks.finnifty?.ltp || !ticks.sensex?.ltp;
+    if (anyMissing) {
       fetchIndexPrices((token, tick) => watchlistStore.updateTick(token, tick));
     }
     // Start polling if WebSocket is still not connected after 2s

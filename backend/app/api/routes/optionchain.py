@@ -218,42 +218,50 @@ async def get_option_chain(
                 detail="Could not get spot price"
             )
 
-        # Get instruments for this expiry from adapter
-        print(f"[OptionChain DEBUG] Getting NFO instruments...")
-        all_instruments = await adapter.get_instruments("NFO")
-        print(f"[OptionChain DEBUG] Total NFO instruments: {len(all_instruments)}")
-        logger.info(f"[OptionChain] Total NFO instruments: {len(all_instruments)}")
+        # Get instruments for this expiry from DB (populated by InstrumentMasterService)
+        from sqlalchemy import select, and_
+        from app.models.instruments import Instrument as InstrumentModel
 
-        # Debug: Sample instruments
-        if all_instruments:
-            sample = all_instruments[:3]
-            for s in sample:
-                logger.info(f"[OptionChain] Sample: name={s.name}, option_type={s.option_type}, expiry={s.expiry}, strike={s.strike}")
+        query = select(InstrumentModel).where(
+            and_(
+                InstrumentModel.name == underlying,
+                InstrumentModel.exchange == "NFO",
+                InstrumentModel.instrument_type.in_(["CE", "PE"]),
+                InstrumentModel.expiry == expiry_date,
+                InstrumentModel.strike.isnot(None),
+            )
+        )
+        result = await db.execute(query)
+        db_instruments = result.scalars().all()
 
-        # Filter for our underlying and expiry
-        # Note: option_type is CE/PE, instrument_type is OPTIDX/OPTSTK
-        print(f"[OptionChain DEBUG] Filtering for {underlying} expiry {expiry_date}")
+        logger.info(f"[OptionChain] DB query returned {len(db_instruments)} instruments for {underlying} expiry {expiry_date}")
 
-        # Debug: Check sample instruments before filter
-        if all_instruments:
-            sample = all_instruments[:5]
-            for s in sample:
-                print(f"[OptionChain DEBUG] Sample: name='{s.name}', option_type='{s.option_type}', expiry={s.expiry}")
-
-        instruments = [
-            inst for inst in all_instruments
-            if inst.name == underlying and
-               inst.option_type in ["CE", "PE"] and
-               hasattr(inst, 'expiry') and inst.expiry == expiry_date
-        ]
-        print(f"[OptionChain DEBUG] After filter: {len(instruments)} instruments")
-        logger.info(f"[OptionChain] After filter: {len(instruments)} instruments for {underlying} expiry {expiry_date}")
-
-        if not instruments:
+        if not db_instruments:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"No instruments found for {underlying} expiry {expiry_date}"
             )
+
+        # Convert DB rows to namespace objects for compatibility with downstream code
+        class _Inst:
+            __slots__ = ("instrument_token", "canonical_symbol", "lot_size", "strike", "option_type")
+            def __init__(self, token, symbol, lot, strike, opt_type):
+                self.instrument_token = token
+                self.canonical_symbol = symbol
+                self.lot_size = lot
+                self.strike = strike
+                self.option_type = opt_type
+
+        instruments = [
+            _Inst(
+                token=inst.instrument_token,
+                symbol=inst.tradingsymbol,
+                lot=inst.lot_size,
+                strike=inst.strike,
+                opt_type=inst.instrument_type,
+            )
+            for inst in db_instruments
+        ]
 
         logger.info(f"[OptionChain] Found {len(instruments)} instruments for {underlying}")
 
