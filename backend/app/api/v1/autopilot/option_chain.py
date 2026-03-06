@@ -36,6 +36,53 @@ def get_kite_client(broker_connection: BrokerConnection = Depends(get_current_br
     return kite
 
 
+@router.get("/expiries/{underlying}")
+async def get_expiries(
+    underlying: str,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+    kite: KiteConnect = Depends(get_kite_client)
+):
+    """
+    Get available expiry dates for an underlying.
+
+    Args:
+        underlying: NIFTY, BANKNIFTY, FINNIFTY, or SENSEX
+
+    Returns:
+        List of available expiry dates
+    """
+    try:
+        import asyncio
+
+        # Fetch instruments from Kite
+        loop = asyncio.get_event_loop()
+        all_instruments = await loop.run_in_executor(
+            None,
+            kite.instruments,
+            "NFO"
+        )
+
+        # Filter for this underlying and get unique expiries
+        expiries = sorted(set(
+            inst['expiry']
+            for inst in all_instruments
+            if inst['name'] == underlying.upper()
+            and inst['instrument_type'] in ['CE', 'PE']
+        ))
+
+        return {
+            "underlying": underlying.upper(),
+            "expiries": [exp.strftime("%Y-%m-%d") for exp in expiries]
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching expiries: {str(e)}"
+        )
+
+
 @router.get("/{underlying}/{expiry}", response_model=OptionChainResponse)
 async def get_option_chain(
     underlying: str,
@@ -465,51 +512,4 @@ async def get_expected_move_range(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error fetching expected move range: {str(e)}"
-        )
-
-
-@router.get("/expiries/{underlying}")
-async def get_expiries(
-    underlying: str,
-    db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user),
-    kite: KiteConnect = Depends(get_kite_client)
-):
-    """
-    Get available expiry dates for an underlying.
-
-    Args:
-        underlying: NIFTY, BANKNIFTY, FINNIFTY, or SENSEX
-
-    Returns:
-        List of available expiry dates
-    """
-    try:
-        import asyncio
-
-        # Fetch instruments from Kite
-        loop = asyncio.get_event_loop()
-        all_instruments = await loop.run_in_executor(
-            None,
-            kite.instruments,
-            "NFO"
-        )
-
-        # Filter for this underlying and get unique expiries
-        expiries = sorted(set(
-            inst['expiry']
-            for inst in all_instruments
-            if inst['name'] == underlying.upper()
-            and inst['instrument_type'] in ['CE', 'PE']
-        ))
-
-        return {
-            "underlying": underlying.upper(),
-            "expiries": [exp.strftime("%Y-%m-%d") for exp in expiries]
-        }
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error fetching expiries: {str(e)}"
         )

@@ -641,9 +641,15 @@ async def client(
         mock_connection.user_id = test_user.id
         return mock_connection
 
+    # Override get_kite_client to avoid needing real KiteConnect credentials
+    from app.api.v1.autopilot.option_chain import get_kite_client
+    mock_kite = MagicMock()
+    mock_kite.instruments.return_value = []
+
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[get_current_user] = override_get_current_user
     app.dependency_overrides[get_current_broker_connection] = override_get_current_broker_connection
+    app.dependency_overrides[get_kite_client] = lambda: mock_kite
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
@@ -3337,9 +3343,10 @@ def get_sample_suggestion_data(strategy_id: int, leg_id: Optional[int] = None, *
 
 
 def get_mock_option_chain_response(underlying: str = "NIFTY", num_strikes: int = 20) -> Dict[str, Any]:
-    """Generate mock option chain data with Greeks."""
+    """Generate mock option chain data matching OptionChainResponse schema."""
     atm = 25250
-    strikes = []
+    expiry_date = date(2024, 1, 25)
+    options = []
 
     for i in range(-num_strikes // 2, num_strikes // 2 + 1):
         strike = atm + (i * 50)
@@ -3358,39 +3365,53 @@ def get_mock_option_chain_response(underlying: str = "NIFTY", num_strikes: int =
         ce_ltp = max(10, 200 - (abs(i) * 15))
         pe_ltp = max(10, 200 - (abs(i) * 15))
 
-        strikes.append({
+        # CE option entry
+        options.append({
+            "instrument_token": 100000 + i * 2,
+            "tradingsymbol": f"{underlying}24JAN{strike}CE",
             "strike": strike,
-            "ce": {
-                "ltp": ce_ltp,
-                "bid": ce_ltp - 2,
-                "ask": ce_ltp + 2,
-                "volume": 1000 + (i * 100),
-                "oi": 50000 + (i * 500),
-                "delta": round(ce_delta, 4),
-                "gamma": round(gamma, 4),
-                "theta": round(theta, 2),
-                "vega": round(vega, 2),
-                "iv": round(iv, 4)
-            },
-            "pe": {
-                "ltp": pe_ltp,
-                "bid": pe_ltp - 2,
-                "ask": pe_ltp + 2,
-                "volume": 1000 - (i * 50),
-                "oi": 50000 - (i * 300),
-                "delta": round(pe_delta, 4),
-                "gamma": round(gamma, 4),
-                "theta": round(theta, 2),
-                "vega": round(vega, 2),
-                "iv": round(iv, 4)
-            }
+            "option_type": "CE",
+            "expiry": expiry_date.isoformat(),
+            "ltp": ce_ltp,
+            "bid": ce_ltp - 2,
+            "ask": ce_ltp + 2,
+            "volume": 1000 + (i * 100),
+            "oi": 50000 + (i * 500),
+            "oi_change": None,
+            "delta": round(ce_delta, 4),
+            "gamma": round(gamma, 4),
+            "theta": round(theta, 2),
+            "vega": round(vega, 2),
+            "iv": round(iv, 4)
+        })
+
+        # PE option entry
+        options.append({
+            "instrument_token": 100001 + i * 2,
+            "tradingsymbol": f"{underlying}24JAN{strike}PE",
+            "strike": strike,
+            "option_type": "PE",
+            "expiry": expiry_date.isoformat(),
+            "ltp": pe_ltp,
+            "bid": pe_ltp - 2,
+            "ask": pe_ltp + 2,
+            "volume": 1000 - (i * 50),
+            "oi": 50000 - (i * 300),
+            "oi_change": None,
+            "delta": round(pe_delta, 4),
+            "gamma": round(gamma, 4),
+            "theta": round(theta, 2),
+            "vega": round(vega, 2),
+            "iv": round(iv, 4)
         })
 
     return {
         "underlying": underlying,
+        "expiry": expiry_date.isoformat(),
         "spot_price": atm,
-        "strikes": strikes,
-        "timestamp": datetime.utcnow().isoformat()
+        "options": options,
+        "cached": False,
+        "cached_at": None
     }
 
 
@@ -3448,15 +3469,18 @@ def assert_suggestion_response(response_data: Dict[str, Any]):
 
 
 def assert_option_chain_response(response_data: Dict[str, Any]):
-    """Assert option chain response structure."""
+    """Assert option chain response structure matching OptionChainResponse schema."""
     assert "underlying" in response_data
+    assert "expiry" in response_data
     assert "spot_price" in response_data
-    assert "strikes" in response_data
-    assert isinstance(response_data["strikes"], list)
-    if len(response_data["strikes"]) > 0:
-        strike_data = response_data["strikes"][0]
-        assert "strike" in strike_data
-        assert "ce" in strike_data
-        assert "pe" in strike_data
-        assert "ltp" in strike_data["ce"]
-        assert "delta" in strike_data["ce"]
+    assert "options" in response_data
+    assert "cached" in response_data
+    assert isinstance(response_data["options"], list)
+    if len(response_data["options"]) > 0:
+        entry = response_data["options"][0]
+        assert "instrument_token" in entry
+        assert "tradingsymbol" in entry
+        assert "strike" in entry
+        assert "option_type" in entry
+        assert "ltp" in entry
+        assert "delta" in entry
