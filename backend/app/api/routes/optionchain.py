@@ -294,13 +294,52 @@ async def get_option_chain(
 
         logger.info(f"[OptionChain] Organized {len(strikes_data)} strikes, fetching quotes for {len(token_to_symbol)} instruments")
 
-        # Fetch quotes via the broker-agnostic adapter interface (batches of 50)
+        # Fetch quotes using instrument tokens directly (bypasses token_manager lookup).
+        # token_to_symbol maps str(instrument_token) -> canonical_symbol.
+        # For SmartAPI, we pass these tokens straight to the REST quote API.
+        # For other adapters that don't expose _market_data, fall back to get_quote().
         all_quotes = {}
-        canonical_symbols = list(token_to_symbol.values())
-        for i in range(0, len(canonical_symbols), 50):
-            batch_symbols = canonical_symbols[i:i+50]
-            if batch_symbols:
-                try:
+        token_list = list(token_to_symbol.keys())  # str instrument tokens
+
+        # Detect SmartAPI adapter to use direct token-based quote fetch
+        from app.services.brokers.market_data.smartapi_adapter import SmartAPIMarketDataAdapter
+        is_smartapi = isinstance(adapter, SmartAPIMarketDataAdapter)
+
+        for i in range(0, len(token_list), 50):
+            batch_tokens = token_list[i:i+50]
+            if not batch_tokens:
+                continue
+            try:
+                if is_smartapi:
+                    # Use SmartAPI REST quote API directly with instrument tokens
+                    raw_quotes = await adapter._market_data.get_quote(
+                        exchange="NFO",
+                        tokens=batch_tokens,
+                        mode="FULL"
+                    )
+                    for token, raw_data in raw_quotes.items():
+                        canonical_symbol = token_to_symbol.get(str(token))
+                        if canonical_symbol:
+                            symbol_key = f"NFO:{canonical_symbol}"
+                            depth = raw_data.get("depth", {})
+                            all_quotes[symbol_key] = {
+                                "last_price": float(raw_data.get("ltp", 0) or 0),
+                                "oi": int(raw_data.get("oi", 0) or 0),
+                                "volume": int(raw_data.get("volume", 0) or 0),
+                                "ohlc": {
+                                    "open": float(raw_data.get("open", 0) or 0),
+                                    "high": float(raw_data.get("high", 0) or 0),
+                                    "low": float(raw_data.get("low", 0) or 0),
+                                    "close": float(raw_data.get("close", 0) or 0),
+                                },
+                                "depth": {
+                                    "buy": [{"price": float(b.get("price", 0)), "quantity": b.get("quantity", 0)} for b in depth.get("buy", [])],
+                                    "sell": [{"price": float(s.get("price", 0)), "quantity": s.get("quantity", 0)} for s in depth.get("sell", [])],
+                                }
+                            }
+                else:
+                    # Generic adapter path: pass canonical symbols
+                    batch_symbols = [token_to_symbol[t] for t in batch_tokens]
                     unified_quotes = await adapter.get_quote(batch_symbols)
                     for canonical_symbol, uq in unified_quotes.items():
                         symbol_key = f"NFO:{canonical_symbol}"
@@ -319,9 +358,11 @@ async def get_option_chain(
                                 "sell": [{"price": float(uq.ask_price), "quantity": uq.ask_quantity}] if uq.ask_price else []
                             }
                         }
-                except Exception as e:
-                    logger.warning(f"[OptionChain] Quote batch failed: {e}")
-                    continue
+            except Exception as e:
+                logger.warning(f"[OptionChain] Quote batch failed (tokens {batch_tokens[:3]}...): {e}")
+                continue
+
+        logger.info(f"[OptionChain] Fetched quotes for {len(all_quotes)}/{len(token_list)} instruments")
 
         if not strikes_data:
             raise HTTPException(

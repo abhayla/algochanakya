@@ -7,6 +7,7 @@ import { getDataExpectation, assertDataOrEmptyState } from '../../helpers/market
  * Tests core functionality under normal conditions
  */
 test.describe('Option Chain - Happy Path @happy', () => {
+  test.describe.configure({ timeout: 120000 });
   let optionChainPage;
 
   test.beforeEach(async ({ page }) => {

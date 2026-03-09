@@ -13,6 +13,7 @@ import { getDataExpectation, assertDataOrEmptyState } from '../../helpers/market
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 
 test.describe('Option Chain - Style & Accessibility Audit @audit', () => {
+  test.describe.configure({ timeout: 120000 });
   let optionChainPage;
   let audit;
 
@@ -72,9 +73,10 @@ test.describe('Option Chain - Style & Accessibility Audit @audit', () => {
   });
 
   test('ITM strikes use correct highlighting colors @audit', async ({ authenticatedPage }) => {
-    // ITM CE should have green tint, ITM PE should have red tint
-    const ceItmRows = authenticatedPage.locator('[data-testid^="optionchain-strike-row-"].bg-green-50');
-    const peItmRows = authenticatedPage.locator('[data-testid^="optionchain-strike-row-"].bg-red-50');
+    await optionChainPage.waitForChainLoad();
+    // ITM CE rows use class 'itm-ce', ITM PE rows use class 'itm-pe'
+    const ceItmRows = authenticatedPage.locator('[data-testid^="optionchain-strike-row-"].itm-ce');
+    const peItmRows = authenticatedPage.locator('[data-testid^="optionchain-strike-row-"].itm-pe');
 
     const ceCount = await ceItmRows.count();
     const peCount = await peItmRows.count();

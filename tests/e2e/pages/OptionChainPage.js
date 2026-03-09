@@ -102,7 +102,7 @@ export class OptionChainPage extends BasePage {
   }
 
   async waitForPageLoad() {
-    await this.waitForTestId('optionchain-page');
+    await this.waitForTestId('optionchain-page', { timeout: 30000 });
   }
 
   /**
@@ -114,8 +114,8 @@ export class OptionChainPage extends BasePage {
     // This indicates the API call has completed and Vue has rendered
     try {
       await Promise.race([
-        this.page.locator('[data-testid="optionchain-table"] tbody tr').first().waitFor({ state: 'visible', timeout: 15000 }),
-        this.page.locator('[data-testid="optionchain-empty-state"]').waitFor({ state: 'visible', timeout: 15000 })
+        this.page.locator('[data-testid="optionchain-table"] tbody tr').first().waitFor({ state: 'visible', timeout: 30000 }),
+        this.page.locator('[data-testid="optionchain-empty-state"]').waitFor({ state: 'visible', timeout: 30000 })
       ]);
     } catch {
       // If neither appears within timeout, continue anyway
@@ -126,8 +126,8 @@ export class OptionChainPage extends BasePage {
   async waitForChainLoad() {
     // Wait for table or empty state - used by tests that need full data
     await Promise.race([
-      this.waitForTestId('optionchain-table'),
-      this.waitForTestId('optionchain-empty-state')
+      this.waitForTestId('optionchain-table', { timeout: 30000 }),
+      this.waitForTestId('optionchain-empty-state', { timeout: 30000 })
     ]);
   }
 
@@ -222,7 +222,7 @@ export class OptionChainPage extends BasePage {
   // Strike Finder methods
   async openStrikeFinder() {
     await this.strikeFinderBtn.click();
-    await this.page.waitForSelector('[data-testid="optionchain-strike-finder-mode"]', { timeout: 5000 });
+    await this.page.waitForSelector('[data-testid="optionchain-strike-finder-mode"]', { timeout: 10000 });
   }
 
   async closeStrikeFinder() {

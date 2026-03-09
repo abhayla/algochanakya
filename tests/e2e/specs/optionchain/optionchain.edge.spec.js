@@ -7,6 +7,7 @@ import { getDataExpectation, assertDataOrEmptyState } from '../../helpers/market
  * Tests boundary conditions and error handling
  */
 test.describe('Option Chain - Edge Cases @edge', () => {
+  test.describe.configure({ timeout: 180000 });
   let optionChainPage;
 
   test.beforeEach(async ({ page }) => {

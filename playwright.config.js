@@ -2,7 +2,7 @@ import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests/e2e',
-  timeout: 30000, // 30 seconds - increased for stability with multiple browser contexts
+  timeout: 90000, // 90 seconds - SmartAPI option chain can take 20-30s to load with parallel workers
   retries: process.env.CI ? 1 : 0,
 
   // 4 workers locally (headless), 2 in CI for stability

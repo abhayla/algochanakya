@@ -456,6 +456,16 @@ token = await token_manager.get_broker_token("NIFTY25APR25000CE", "smartapi")
 
 12. **Index quotes don't need instrument master** - Use `get_index_quote()` for NIFTY/BANKNIFTY - no token lookup required. See `SmartAPIMarketDataAdapter.INDEX_SYMBOLS`.
 
+13. **`broker_instrument_tokens` table is NOT auto-populated for SmartAPI** — This is a critical architectural gap. The `instruments` table is populated by `InstrumentMasterService` on startup, but `broker_instrument_tokens` has **0 SmartAPI entries** by default. `SmartAPIMarketDataAdapter.get_quote()` uses `token_manager.get_token(canonical_symbol)` which queries `broker_instrument_tokens` — it always returns `None` → no tokens → no REST quote request → **all LTPs silently return 0**. This affects the option chain route.
+
+    **Workaround in use (optionchain.py):** The option chain route has `instrument_token` directly from the `instruments` DB table, so it bypasses `token_manager` and calls `adapter._market_data.get_quote(exchange="NFO", tokens=[...])` directly with the raw SmartAPI tokens. This works because the `instruments` table stores SmartAPI `instrument_token` values.
+
+    **Correct fix (not yet implemented):** Either populate `broker_instrument_tokens` from `instruments` table on startup, or add a `get_quote_by_tokens()` method to the adapter interface that accepts tokens directly.
+
+14. **JWT token expiry causes "Could not get spot price" 500 error** — SmartAPI JWT expires every ~8 hours. When expired, `adapter.get_ltp([underlying])` returns `{underlying: 0}` → `spot_price = 0` → `optionchain.py` raises `HTTPException(500, "Could not get spot price")` → frontend shows "Failed to load option chain". The adapter has `auto_refresh=True` in `_create_smartapi_adapter()` but if refresh fails (wrong PIN, TOTP issue), the adapter is created with an expired token. **Fix:** Re-authenticate via `POST /api/smartapi/authenticate` from the Settings page, or re-run `global-setup.js` to get a fresh token for tests.
+
+15. **Never restart PM2 to apply dev code changes** — PM2 manages the **production** app at port 8000. Dev backend runs separately on port 8001 (started manually: `cd backend && venv\Scripts\activate && python run.py`). Restarting PM2 disrupts the production service.
+
 ---
 
 ## 6. Related Skills

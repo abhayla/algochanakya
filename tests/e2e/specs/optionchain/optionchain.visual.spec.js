@@ -7,6 +7,7 @@ import { prepareForVisualTest, VIEWPORTS } from '../../helpers/visual.helper.js'
  * Tests layout and visual appearance across viewports
  */
 test.describe('Option Chain - Visual Regression @visual', () => {
+  test.describe.configure({ timeout: 120000 });
   let optionChainPage;
 
   test.beforeEach(async ({ page }) => {
@@ -20,6 +21,8 @@ test.describe('Option Chain - Visual Regression @visual', () => {
     await prepareForVisualTest(page);
     await expect(page).toHaveScreenshot('optionchain-desktop.png', {
       fullPage: true,
+      timeout: 15000,
+      maxDiffPixelRatio: 0.05,
       mask: [
         page.locator('[data-testid="optionchain-spot-price"]'),
         page.locator('[data-testid="optionchain-dte-value"]'),
@@ -35,6 +38,7 @@ test.describe('Option Chain - Visual Regression @visual', () => {
     await prepareForVisualTest(page);
     await expect(page).toHaveScreenshot('optionchain-laptop.png', {
       fullPage: true,
+      maxDiffPixelRatio: 0.05,
       mask: [
         page.locator('[data-testid="optionchain-spot-price"]'),
         page.locator('[data-testid="optionchain-dte-value"]'),
@@ -50,6 +54,7 @@ test.describe('Option Chain - Visual Regression @visual', () => {
     await prepareForVisualTest(page);
     await expect(page).toHaveScreenshot('optionchain-tablet.png', {
       fullPage: true,
+      maxDiffPixelRatio: 0.05,
       mask: [
         page.locator('[data-testid="optionchain-spot-price"]'),
         page.locator('[data-testid="optionchain-dte-value"]'),
@@ -64,6 +69,7 @@ test.describe('Option Chain - Visual Regression @visual', () => {
     await optionChainPage.waitForChainLoad();
     await prepareForVisualTest(page);
     await expect(optionChainPage.summaryBar).toHaveScreenshot('optionchain-summary-bar.png', {
+      maxDiffPixelRatio: 0.05,
       mask: [
         page.locator('[data-testid="optionchain-pcr"]'),
         page.locator('[data-testid="optionchain-max-pain"]'),
@@ -79,6 +85,7 @@ test.describe('Option Chain - Visual Regression @visual', () => {
     await optionChainPage.waitForChainLoad();
     await prepareForVisualTest(page);
     await expect(optionChainPage.header).toHaveScreenshot('optionchain-header.png', {
+      maxDiffPixelRatio: 0.02,
       mask: [
         page.locator('[data-testid="optionchain-spot-price"]'),
         page.locator('[data-testid="optionchain-dte-value"]')

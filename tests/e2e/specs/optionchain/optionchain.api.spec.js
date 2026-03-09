@@ -8,6 +8,7 @@ import { waitForApiResponse } from '../../helpers/wait-helpers.js';
  * Tests API interactions and data loading
  */
 test.describe('Option Chain - API @api', () => {
+  test.describe.configure({ timeout: 180000 });
   let optionChainPage;
 
   test.beforeEach(async ({ authenticatedPage }) => {
@@ -17,7 +18,7 @@ test.describe('Option Chain - API @api', () => {
   test('should fetch expiries on page load', async ({ authenticatedPage }) => {
     const expiryResponsePromise = authenticatedPage.waitForResponse(
       response => response.url().includes('/api/options/expiries') || response.url().includes('/api/optionchain'),
-      { timeout: 15000 }
+      { timeout: 30000 }
     );
 
     await optionChainPage.navigate();
@@ -29,7 +30,7 @@ test.describe('Option Chain - API @api', () => {
     const chainResponsePromise = waitForApiResponse(
       authenticatedPage,
       '/api/optionchain/chain',
-      { timeout: 15000 }
+      { timeout: 30000 }
     );
 
     await optionChainPage.navigate();
@@ -48,7 +49,7 @@ test.describe('Option Chain - API @api', () => {
     const chainResponsePromise = waitForApiResponse(
       authenticatedPage,
       '/api/optionchain/chain',
-      { timeout: 15000 }
+      { timeout: 30000 }
     );
 
     await optionChainPage.selectUnderlying('BANKNIFTY');
@@ -72,7 +73,7 @@ test.describe('Option Chain - API @api', () => {
       const chainResponsePromise = waitForApiResponse(
         authenticatedPage,
         '/api/optionchain/chain',
-        { timeout: 15000 }
+        { timeout: 30000 }
       );
 
       const secondOption = await options[1].getAttribute('value');
@@ -93,11 +94,12 @@ test.describe('Option Chain - API @api', () => {
     // Start navigation and check that either loading state, table, or empty state appears
     const navigationPromise = optionChainPage.navigate();
 
-    // At least one of these must appear: loading spinner, table, or empty state
-    await Promise.race([
+    // At least one of these must appear: loading spinner (fast), table, or empty state (slower)
+    // Use Promise.any so ONE resolving is sufficient; no rejection if loading indicator skipped
+    await Promise.any([
       authenticatedPage.waitForSelector('[data-testid="optionchain-loading"]', { timeout: 2000 }),
-      authenticatedPage.waitForSelector('[data-testid="optionchain-table"]', { timeout: 10000 }),
-      authenticatedPage.waitForSelector('[data-testid="optionchain-empty-state"]', { timeout: 10000 })
+      authenticatedPage.waitForSelector('[data-testid="optionchain-table"]', { timeout: 30000 }),
+      authenticatedPage.waitForSelector('[data-testid="optionchain-empty-state"]', { timeout: 30000 })
     ]);
 
     await navigationPromise;
