@@ -145,12 +145,12 @@ async def test_option_chain_atm_instruments_found(adapter_fixture):
         and abs(float(i.strike) - atm_strike) <= 2 * step
     ]
     if not atm_options:
-        # Just confirm any options were found — ATM filter may be too strict
-        import warnings
-        warnings.warn(
+        # ATM options not found — infrastructure limitation (stale instrument master),
+        # not a code bug. Skip cleanly instead of silently passing via warnings.warn().
+        pytest.skip(
             f"[{adapter.broker_type}] Found {len(options)} NIFTY options but none "
             f"within 2 strikes of ATM={atm_strike} (spot={spot}). "
-            f"Options may be for a different expiry."
+            f"Instrument master may be stale — try running during market hours."
         )
 
 

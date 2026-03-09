@@ -8,6 +8,7 @@
 import { test, expect } from '../../fixtures/auth.fixture.js';
 import { OptionChainPage } from '../../pages/OptionChainPage.js';
 import { StyleAudit, DESIGN_TOKENS } from '../../helpers/style-audit.helper.js';
+import { getDataExpectation, assertDataOrEmptyState } from '../../helpers/market-status.helper.js';
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 
@@ -59,16 +60,15 @@ test.describe('Option Chain - Style & Accessibility Audit @audit', () => {
     const tabs = authenticatedPage.locator('[data-testid="optionchain-underlying-tabs"] button');
     const count = await tabs.count();
 
-    if (count > 0) {
-      const fontSizes = [];
-      for (let i = 0; i < count; i++) {
-        const fontSize = await tabs.nth(i).evaluate(el =>
-          window.getComputedStyle(el).fontSize
-        );
-        fontSizes.push(fontSize);
-      }
-      expect(new Set(fontSizes).size).toBe(1);
+    expect(count).toBeGreaterThan(0);
+    const fontSizes = [];
+    for (let i = 0; i < count; i++) {
+      const fontSize = await tabs.nth(i).evaluate(el =>
+        window.getComputedStyle(el).fontSize
+      );
+      fontSizes.push(fontSize);
     }
+    expect(new Set(fontSizes).size).toBe(1);
   });
 
   test('ITM strikes use correct highlighting colors @audit', async ({ authenticatedPage }) => {
@@ -76,14 +76,17 @@ test.describe('Option Chain - Style & Accessibility Audit @audit', () => {
     const ceItmRows = authenticatedPage.locator('[data-testid^="optionchain-strike-row-"].bg-green-50');
     const peItmRows = authenticatedPage.locator('[data-testid^="optionchain-strike-row-"].bg-red-50');
 
-    // Just verify they exist or are styled correctly
     const ceCount = await ceItmRows.count();
     const peCount = await peItmRows.count();
 
-    // At least one should exist if options are loaded
-    // This is a soft check - just verifying the pattern is possible
-    expect(ceCount >= 0).toBe(true);
-    expect(peCount >= 0).toBe(true);
+    const expectation = getDataExpectation();
+    if (expectation === 'LIVE' || expectation === 'LAST_KNOWN') {
+      // During live/last-known hours, ITM rows must exist (chain has data)
+      expect(ceCount + peCount).toBeGreaterThan(0);
+    } else {
+      // Outside market hours: chain may be empty — asserting counts are non-negative is enough
+      await assertDataOrEmptyState(authenticatedPage, 'optionchain-table', 'optionchain-empty-state', expect);
+    }
   });
 
   test('full style audit passes @audit', async ({ authenticatedPage }) => {

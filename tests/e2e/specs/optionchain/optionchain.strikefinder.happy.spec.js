@@ -1,5 +1,7 @@
 import { test, expect } from '../../fixtures/auth.fixture.js';
 import { OptionChainPage } from '../../pages/OptionChainPage.js';
+import { getDataExpectation } from '../../helpers/market-status.helper.js';
+import { waitForApiResponse } from '../../helpers/wait-helpers.js';
 
 /**
  * Option Chain - Strike Finder Happy Path Tests
@@ -64,91 +66,87 @@ test.describe('Option Chain - Strike Finder Happy Path @happy', () => {
     await expect(optionChainPage.strikeFinderPremiumInput).toBeVisible();
   });
 
-  test('should search strike by delta with API mock', async ({ page }) => {
-    // Mock the API response
-    await page.route('**/api/optionchain/find-by-delta', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          strike: 24500,
-          ltp: 145.50,
-          delta: 0.30,
-          iv: 0.1523,
-          distance_from_target: 0.001
-        })
-      });
-    });
+  test('should search strike by delta', async ({ page }) => {
+    const expectation = getDataExpectation();
+    if (expectation === 'PRE_OPEN' || expectation === 'CLOSED') {
+      test.skip('Strike Finder requires live market data');
+      return;
+    }
 
     await optionChainPage.openStrikeFinder();
     await optionChainPage.setStrikeFinderMode('delta');
     await optionChainPage.setStrikeFinderType('CE');
     await optionChainPage.enterTargetDelta(0.30);
-    await optionChainPage.searchStrike();
 
-    // Wait for result
+    const responsePromise = waitForApiResponse(page, '/api/optionchain/find-by-delta', { timeout: 10000 });
+    await optionChainPage.searchStrike();
+    const response = await responsePromise;
+    expect(response.status()).toBe(200);
+
+    // Verify result is shown
     await expect(optionChainPage.strikeFinderResult).toBeVisible({ timeout: 5000 });
+    const result = await response.json();
+    expect(typeof result.strike === 'number' || !isNaN(parseInt(result.strike))).toBe(true);
+    expect(result.ltp).toBeGreaterThan(0);
   });
 
-  test('should search strike by premium with API mock', async ({ page }) => {
-    // Mock the API response
-    await page.route('**/api/optionchain/find-by-premium', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          strike: 24550,
-          ltp: 180.25,
-          delta: 0.35,
-          iv: 0.1445,
-          distance_from_target: 0.25
-        })
-      });
-    });
+  test('should search strike by premium', async ({ page }) => {
+    const expectation = getDataExpectation();
+    if (expectation === 'PRE_OPEN' || expectation === 'CLOSED') {
+      test.skip('Strike Finder requires live market data');
+      return;
+    }
 
     await optionChainPage.openStrikeFinder();
     await optionChainPage.setStrikeFinderMode('premium');
     await optionChainPage.setStrikeFinderType('PE');
     await optionChainPage.enterTargetPremium(180);
-    await optionChainPage.searchStrike();
 
-    // Wait for result
+    const responsePromise = waitForApiResponse(page, '/api/optionchain/find-by-premium', { timeout: 10000 });
+    await optionChainPage.searchStrike();
+    const response = await responsePromise;
+    expect(response.status()).toBe(200);
+
+    // Verify result is shown
     await expect(optionChainPage.strikeFinderResult).toBeVisible({ timeout: 5000 });
+    const result = await response.json();
+    expect(typeof result.strike === 'number' || !isNaN(parseInt(result.strike))).toBe(true);
+    expect(result.ltp).toBeGreaterThan(0);
   });
 
   test('should display strike result with all details', async ({ page }) => {
-    // Mock the API response
-    await page.route('**/api/optionchain/find-by-delta', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          strike: 24500,
-          ltp: 145.50,
-          delta: 0.30,
-          iv: 0.1523,
-          distance_from_target: 0.001
-        })
-      });
-    });
+    const expectation = getDataExpectation();
+    if (expectation === 'PRE_OPEN' || expectation === 'CLOSED') {
+      test.skip('Strike Finder requires live market data');
+      return;
+    }
 
     await optionChainPage.openStrikeFinder();
     await optionChainPage.setStrikeFinderMode('delta');
     await optionChainPage.setStrikeFinderType('CE');
     await optionChainPage.enterTargetDelta(0.30);
-    await optionChainPage.searchStrike();
 
-    // Wait for result
+    const responsePromise = waitForApiResponse(page, '/api/optionchain/find-by-delta', { timeout: 10000 });
+    await optionChainPage.searchStrike();
+    const response = await responsePromise;
+    expect(response.status()).toBe(200);
+
+    const result = await response.json();
+
+    // Verify result panel is shown
     await expect(optionChainPage.strikeFinderResult).toBeVisible({ timeout: 5000 });
 
-    // Verify strike value is displayed
+    // Validate result fields with regex patterns
     const strikeText = await optionChainPage.getStrikeFinderResultStrike();
-    expect(strikeText).toContain('24500');
+    expect(strikeText).toMatch(/\d+/); // strike is a numeric value
 
-    // Verify result contains LTP, Delta, and IV
     const resultText = await optionChainPage.strikeFinderResult.textContent();
-    expect(resultText).toContain('145.50'); // LTP
-    expect(resultText).toContain('0.30'); // Delta
-    expect(resultText).toMatch(/15\.\d%/); // IV percentage
+    // LTP should be a decimal number
+    expect(resultText).toMatch(/\d+\.\d+/);
+    // Delta should be present (0.xx format)
+    expect(result.delta).toBeGreaterThan(0);
+    expect(result.delta).toBeLessThanOrEqual(1);
+    // IV should be present and positive
+    expect(result.iv).toBeGreaterThan(0);
   });
 });

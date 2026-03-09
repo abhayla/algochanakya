@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures/auth.fixture.js';
 import { OptionChainPage } from '../../pages/OptionChainPage.js';
+import { getDataExpectation, assertDataOrEmptyState } from '../../helpers/market-status.helper.js';
 
 /**
  * Option Chain Screen - Happy Path Tests
@@ -53,11 +54,14 @@ test.describe('Option Chain - Happy Path @happy', () => {
     await expect(optionChainPage.summaryBar).toBeVisible();
   });
 
-  test('should display option chain table or empty state', async () => {
+  test('should display option chain table or empty state', async ({ page }) => {
     await optionChainPage.waitForChainLoad();
-    const hasTable = await optionChainPage.table.isVisible().catch(() => false);
-    const hasEmpty = await optionChainPage.emptyState.isVisible().catch(() => false);
-    expect(hasTable || hasEmpty).toBeTruthy();
+    const expectation = getDataExpectation();
+    if (expectation === 'LIVE' || expectation === 'LAST_KNOWN') {
+      await expect(optionChainPage.table).toBeVisible();
+    } else {
+      await assertDataOrEmptyState(page, 'optionchain-table', 'optionchain-empty-state', expect);
+    }
   });
 
   test('should switch underlying tabs', async () => {

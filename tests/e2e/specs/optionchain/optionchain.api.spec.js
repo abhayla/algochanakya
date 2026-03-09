@@ -1,128 +1,125 @@
 import { test, expect } from '../../fixtures/auth.fixture.js';
 import { OptionChainPage } from '../../pages/OptionChainPage.js';
+import { getDataExpectation, assertDataOrEmptyState } from '../../helpers/market-status.helper.js';
+import { waitForApiResponse } from '../../helpers/wait-helpers.js';
 
 /**
  * Option Chain Screen - API Tests
  * Tests API interactions and data loading
  */
-// Skip: API tests require authenticated backend connection
-test.describe.skip('Option Chain - API @api', () => {
+test.describe('Option Chain - API @api', () => {
   let optionChainPage;
 
-  test.beforeEach(async ({ page }) => {
-    optionChainPage = new OptionChainPage(page);
+  test.beforeEach(async ({ authenticatedPage }) => {
+    optionChainPage = new OptionChainPage(authenticatedPage);
   });
 
-  test('should fetch expiries on page load', async ({ page }) => {
-    // Listen for expiries API call
-    const expiryPromise = page.waitForResponse(
+  test('should fetch expiries on page load', async ({ authenticatedPage }) => {
+    const expiryResponsePromise = authenticatedPage.waitForResponse(
       response => response.url().includes('/api/options/expiries') || response.url().includes('/api/optionchain'),
-      { timeout: 10000 }
-    ).catch(() => null);
-
-    await optionChainPage.navigate();
-    const response = await expiryPromise;
-
-    if (response) {
-      expect(response.status()).toBe(200);
-    }
-  });
-
-  test('should fetch option chain data', async ({ page }) => {
-    // Listen for chain API call
-    const chainPromise = page.waitForResponse(
-      response => response.url().includes('/api/optionchain/chain'),
       { timeout: 15000 }
-    ).catch(() => null);
+    );
 
     await optionChainPage.navigate();
-    const response = await chainPromise;
-
-    if (response) {
-      expect(response.status()).toBe(200);
-      const data = await response.json();
-      expect(data).toBeDefined();
-    }
+    const response = await expiryResponsePromise;
+    expect(response.status()).toBe(200);
   });
 
-  test('should fetch new chain on underlying change', async ({ page }) => {
+  test('should fetch option chain data', async ({ authenticatedPage }) => {
+    const chainResponsePromise = waitForApiResponse(
+      authenticatedPage,
+      '/api/optionchain/chain',
+      { timeout: 15000 }
+    );
+
+    await optionChainPage.navigate();
+    const response = await chainResponsePromise;
+    expect(response.status()).toBe(200);
+
+    const data = await response.json();
+    expect(data).toBeDefined();
+    expect(typeof data).toBe('object');
+  });
+
+  test('should fetch new chain on underlying change', async ({ authenticatedPage }) => {
     await optionChainPage.navigate();
     await optionChainPage.waitForChainLoad();
 
-    // Listen for new chain request
-    const chainPromise = page.waitForResponse(
-      response => response.url().includes('/api/optionchain/chain'),
+    const chainResponsePromise = waitForApiResponse(
+      authenticatedPage,
+      '/api/optionchain/chain',
       { timeout: 15000 }
-    ).catch(() => null);
+    );
 
     await optionChainPage.selectUnderlying('BANKNIFTY');
-    const response = await chainPromise;
-
-    if (response) {
-      expect(response.status()).toBe(200);
-    }
+    const response = await chainResponsePromise;
+    expect(response.status()).toBe(200);
   });
 
-  test('should fetch new chain on expiry change', async ({ page }) => {
+  test('should fetch new chain on expiry change', async ({ authenticatedPage }) => {
     await optionChainPage.navigate();
     await optionChainPage.waitForChainLoad();
 
-    // Get expiry options
     const expirySelect = optionChainPage.expirySelect;
     const options = await expirySelect.locator('option').all();
 
-    if (options.length > 1) {
-      // Listen for chain request
-      const chainPromise = page.waitForResponse(
-        response => response.url().includes('/api/optionchain/chain'),
-        { timeout: 15000 }
-      ).catch(() => null);
+    const expectation = getDataExpectation();
+    if (expectation === 'LIVE' || expectation === 'LAST_KNOWN') {
+      expect(options.length).toBeGreaterThan(1);
+    }
 
-      // Select second expiry
+    if (options.length > 1) {
+      const chainResponsePromise = waitForApiResponse(
+        authenticatedPage,
+        '/api/optionchain/chain',
+        { timeout: 15000 }
+      );
+
       const secondOption = await options[1].getAttribute('value');
       await expirySelect.selectOption(secondOption);
 
-      const response = await chainPromise;
-      if (response) {
-        expect(response.status()).toBe(200);
-      }
+      const response = await chainResponsePromise;
+      expect(response.status()).toBe(200);
     }
   });
 
-  test('should handle API errors gracefully', async ({ page }) => {
-    // Navigate normally (can't easily simulate API errors without mocking)
+  test('should handle API errors gracefully', async ({ authenticatedPage }) => {
+    // Navigate normally — page must remain stable even if API returns errors
     await optionChainPage.navigate();
-
-    // Page should be visible regardless
     await optionChainPage.assertPageVisible();
   });
 
-  test('should display loading state during fetch', async ({ page }) => {
-    // This might be too fast to catch, but we try
+  test('should display loading state during fetch', async ({ authenticatedPage }) => {
+    // Start navigation and check that either loading state, table, or empty state appears
     const navigationPromise = optionChainPage.navigate();
 
-    // Check for loading or page
+    // At least one of these must appear: loading spinner, table, or empty state
     await Promise.race([
-      page.waitForSelector('[data-testid="optionchain-loading"]', { timeout: 2000 }),
-      page.waitForSelector('[data-testid="optionchain-table"]', { timeout: 10000 }),
-      page.waitForSelector('[data-testid="optionchain-empty-state"]', { timeout: 10000 })
-    ]).catch(() => {});
+      authenticatedPage.waitForSelector('[data-testid="optionchain-loading"]', { timeout: 2000 }),
+      authenticatedPage.waitForSelector('[data-testid="optionchain-table"]', { timeout: 10000 }),
+      authenticatedPage.waitForSelector('[data-testid="optionchain-empty-state"]', { timeout: 10000 })
+    ]);
 
     await navigationPromise;
     await optionChainPage.assertPageVisible();
   });
 
-  test('should populate summary bar from API data', async ({ page }) => {
+  test('should populate summary bar from API data', async ({ authenticatedPage }) => {
     await optionChainPage.navigate();
     await optionChainPage.waitForChainLoad();
 
-    const hasTable = await optionChainPage.table.isVisible().catch(() => false);
-    if (hasTable) {
-      // Check summary values are populated
+    const expectation = getDataExpectation();
+    if (expectation === 'LIVE' || expectation === 'LAST_KNOWN') {
+      // Table must be visible and summary bar must have real values
+      await expect(optionChainPage.table).toBeVisible();
       await expect(optionChainPage.summaryBar).toBeVisible();
-      // PCR, Max Pain should have values
+
+      // PCR value must be non-empty
       const pcrText = await optionChainPage.pcrValue.textContent();
-      expect(pcrText.length).toBeGreaterThan(0);
+      expect(pcrText.trim().length).toBeGreaterThan(0);
+      expect(pcrText.trim()).not.toBe('-');
+    } else {
+      await assertDataOrEmptyState(authenticatedPage, 'optionchain-table', 'optionchain-empty-state', expect);
     }
   });
 });

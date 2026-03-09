@@ -1,5 +1,7 @@
 import { test, expect } from '../../fixtures/auth.fixture.js';
 import { OptionChainPage } from '../../pages/OptionChainPage.js';
+import { getDataExpectation, assertDataOrEmptyState } from '../../helpers/market-status.helper.js';
+import { assertValidPrice } from '../../helpers/assertions.js';
 
 /**
  * Option Chain Screen - WebSocket Tests
@@ -43,11 +45,16 @@ test.describe('Option Chain - WebSocket @websocket', () => {
     await authenticatedPage.waitForLoadState('domcontentloaded');
     await optionChainPage.waitForChainLoad();
 
-    // Check for live dot (may not appear if WebSocket not connected)
     const hasLiveDot = await optionChainPage.isLiveDotVisible();
-    // Live dot appears when WebSocket is connected
-    // This test validates the UI element exists
-    expect(typeof hasLiveDot).toBe('boolean');
+    const expectation = getDataExpectation();
+
+    if (expectation === 'LIVE') {
+      // During market hours, WebSocket should be connected and live dot should show
+      expect(hasLiveDot).toBe(true);
+    } else {
+      // Outside market hours, WebSocket may not stream — either state is valid
+      expect(hasLiveDot === true || hasLiveDot === false).toBe(true);
+    }
   });
 
   test('should hide live dot when live updates disabled', async ({ authenticatedPage }) => {
@@ -62,14 +69,13 @@ test.describe('Option Chain - WebSocket @websocket', () => {
     expect(hasLiveDot).toBe(false);
   });
 
-  test('should display spot price from WebSocket or API', async () => {
+  test('should display spot price from WebSocket or API', async ({ authenticatedPage }) => {
     await optionChainPage.waitForChainLoad();
 
     // Spot price should be displayed
     await expect(optionChainPage.spotPrice).toBeVisible();
     const spotPriceText = await optionChainPage.spotPrice.textContent();
-    expect(spotPriceText).not.toBe('-');
-    expect(spotPriceText.length).toBeGreaterThan(0);
+    assertValidPrice(spotPriceText, 'spot price');
   });
 
   test('should update option chain after refresh', async ({ authenticatedPage }) => {
@@ -86,8 +92,8 @@ test.describe('Option Chain - WebSocket @websocket', () => {
     const newSpotText = await optionChainPage.spotPrice.textContent();
 
     // Both should be valid numbers (not dashes)
-    expect(initialSpotText).not.toBe('-');
-    expect(newSpotText).not.toBe('-');
+    assertValidPrice(initialSpotText, 'initial spot price');
+    assertValidPrice(newSpotText, 'refreshed spot price');
   });
 
   test('should maintain live toggle state after underlying change', async () => {
@@ -114,6 +120,12 @@ test.describe('Option Chain - WebSocket @websocket', () => {
     const expirySelect = optionChainPage.expirySelect;
     const options = await expirySelect.locator('option').all();
 
+    // During LIVE/LAST_KNOWN there must be at least 2 expiries available
+    const expectation = getDataExpectation();
+    if (expectation === 'LIVE' || expectation === 'LAST_KNOWN') {
+      expect(options.length).toBeGreaterThan(1);
+    }
+
     if (options.length > 1) {
       const secondOption = await options[1].getAttribute('value');
       await optionChainPage.selectExpiry(secondOption);
@@ -124,13 +136,14 @@ test.describe('Option Chain - WebSocket @websocket', () => {
     }
   });
 
-  test('should display LTP values in option chain table', async () => {
+  test('should display LTP values in option chain table', async ({ authenticatedPage }) => {
     await optionChainPage.waitForChainLoad();
+    const expectation = getDataExpectation();
 
-    // Check if table is visible
-    const hasTable = await optionChainPage.table.isVisible().catch(() => false);
+    if (expectation === 'LIVE' || expectation === 'LAST_KNOWN') {
+      // Table must be visible
+      await expect(optionChainPage.table).toBeVisible();
 
-    if (hasTable) {
       // Get first row with LTP
       const rows = await optionChainPage.table.locator('tbody tr').all();
       expect(rows.length).toBeGreaterThan(0);
@@ -139,11 +152,17 @@ test.describe('Option Chain - WebSocket @websocket', () => {
       const firstRow = rows[0];
       const ltpCells = await firstRow.locator('[data-testid="optionchain-ltp-cell"]').all();
       expect(ltpCells.length).toBeGreaterThanOrEqual(2); // CE and PE LTP
+
+      // Validate at least the first LTP cell has a real price
+      const ltpText = await ltpCells[0].textContent();
+      assertValidPrice(ltpText, 'option LTP');
+    } else {
+      await assertDataOrEmptyState(authenticatedPage, 'optionchain-table', 'optionchain-empty-state', expect);
     }
   });
 
   test('should subscribe to WebSocket when chain loads', async ({ authenticatedPage }) => {
-    // Listen for WebSocket messages
+    // Listen for WebSocket subscription log
     const wsMessages = [];
     authenticatedPage.on('console', msg => {
       if (msg.text().includes('[OptionChain] Subscribed')) {
@@ -154,9 +173,14 @@ test.describe('Option Chain - WebSocket @websocket', () => {
     await optionChainPage.waitForChainLoad();
     await authenticatedPage.waitForLoadState('domcontentloaded');
 
-    // Should see subscription log (if WebSocket connected)
-    // This validates the subscription logic runs
-    // Note: May not appear if WebSocket is not available
+    const expectation = getDataExpectation();
+    if (expectation === 'LIVE') {
+      // During live market hours, WebSocket must be subscribed
+      expect(wsMessages.length).toBeGreaterThan(0);
+    } else {
+      // Outside market hours, subscription log may not appear — ensure page is stable
+      await optionChainPage.assertPageVisible();
+    }
   });
 });
 
@@ -194,27 +218,33 @@ test.describe('Option Chain - Live Price Updates @websocket', () => {
     expect(maxPainText).not.toBe('-');
   });
 
-  test('chain data should have valid structure', async () => {
-    const hasTable = await optionChainPage.table.isVisible().catch(() => false);
+  test('chain data should have valid structure', async ({ authenticatedPage }) => {
+    const expectation = getDataExpectation();
 
-    if (hasTable) {
-      // Check table header
+    if (expectation === 'LIVE' || expectation === 'LAST_KNOWN') {
+      // Table must be visible with expected headers
+      await expect(optionChainPage.table).toBeVisible();
       const headers = await optionChainPage.table.locator('thead th').allTextContents();
       expect(headers).toContain('LTP');
       expect(headers).toContain('STRIKE');
       expect(headers).toContain('OI');
+    } else {
+      await assertDataOrEmptyState(authenticatedPage, 'optionchain-table', 'optionchain-empty-state', expect);
     }
   });
 
-  test('should display ATM strike row', async () => {
-    const hasTable = await optionChainPage.table.isVisible().catch(() => false);
+  test('should display ATM strike row', async ({ authenticatedPage }) => {
+    const expectation = getDataExpectation();
 
-    if (hasTable) {
-      // Look for ATM row (highlighted row) or ATM badge
+    if (expectation === 'LIVE' || expectation === 'LAST_KNOWN') {
+      // Table must be visible and ATM row/badge must exist
+      await expect(optionChainPage.table).toBeVisible();
       const atmRow = optionChainPage.table.locator('[data-atm-row]');
       const atmBadge = optionChainPage.table.locator('[data-testid="optionchain-atm-badge"]');
       const hasAtm = await atmRow.count() > 0 || await atmBadge.count() > 0;
       expect(hasAtm).toBe(true);
+    } else {
+      await assertDataOrEmptyState(authenticatedPage, 'optionchain-table', 'optionchain-empty-state', expect);
     }
   });
 });

@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures/auth.fixture.js';
 import { OptionChainPage } from '../../pages/OptionChainPage.js';
+import { getDataExpectation, assertDataOrEmptyState } from '../../helpers/market-status.helper.js';
 
 /**
  * Option Chain Screen - Edge Case Tests
@@ -23,57 +24,55 @@ test.describe('Option Chain - Edge Cases @edge', () => {
 
   test('should handle strike selection and deselection', async ({ page }) => {
     await optionChainPage.waitForChainLoad();
-    const hasTable = await optionChainPage.table.isVisible().catch(() => false);
-    if (hasTable) {
-      // Find a strike row
+    const expectation = getDataExpectation();
+
+    if (expectation === 'LIVE' || expectation === 'LAST_KNOWN') {
+      // Data must be present — require the table and at least one strike row
+      await expect(optionChainPage.table).toBeVisible();
       const strikeRow = page.locator('[data-testid^="optionchain-strike-row-"]').first();
-      if (await strikeRow.isVisible()) {
-        const testId = await strikeRow.getAttribute('data-testid');
-        const strike = testId.replace('optionchain-strike-row-', '');
+      await expect(strikeRow).toBeVisible();
 
-        // Select CE
-        await optionChainPage.selectCE(strike);
-        await expect(optionChainPage.selectedBar).toBeVisible();
+      const testId = await strikeRow.getAttribute('data-testid');
+      const strike = testId.replace('optionchain-strike-row-', '');
 
-        // Clear selection
-        await optionChainPage.clearSelection();
-        await optionChainPage.assertSelectedBarHidden();
-      } else {
-        // Table loaded but no strike rows — chain data is loading or expiry unavailable
-        await expect(optionChainPage.table).toBeVisible();
-      }
+      // Select CE
+      await optionChainPage.selectCE(strike);
+      await expect(optionChainPage.selectedBar).toBeVisible();
+
+      // Clear selection
+      await optionChainPage.clearSelection();
+      await optionChainPage.assertSelectedBarHidden();
     } else {
-      // No table — page must still show a loading state or status indicator
-      await optionChainPage.assertPageVisible();
+      await assertDataOrEmptyState(page, 'optionchain-table', 'optionchain-empty-state', expect);
     }
   });
 
   test('should handle multiple strike selections', async ({ page }) => {
     await optionChainPage.waitForChainLoad();
-    const hasTable = await optionChainPage.table.isVisible().catch(() => false);
-    if (hasTable) {
-      const strikeRows = await page.locator('[data-testid^="optionchain-strike-row-"]').all();
-      if (strikeRows.length >= 2) {
-        const testId1 = await strikeRows[0].getAttribute('data-testid');
-        const strike1 = testId1.replace('optionchain-strike-row-', '');
+    const expectation = getDataExpectation();
 
-        const testId2 = await strikeRows[1].getAttribute('data-testid');
-        const strike2 = testId2.replace('optionchain-strike-row-', '');
+    if (expectation === 'LIVE' || expectation === 'LAST_KNOWN') {
+      // Data must be present — require table and at least 2 strike rows
+      await expect(optionChainPage.table).toBeVisible();
+      const strikeRows = page.locator('[data-testid^="optionchain-strike-row-"]');
+      const rowCount = await strikeRows.count();
+      expect(rowCount).toBeGreaterThanOrEqual(2);
 
-        await optionChainPage.selectCE(strike1);
-        await optionChainPage.selectPE(strike2);
+      const testId1 = await strikeRows.nth(0).getAttribute('data-testid');
+      const strike1 = testId1.replace('optionchain-strike-row-', '');
 
-        const count = await optionChainPage.getSelectedCount();
-        expect(count).toBe(2);
+      const testId2 = await strikeRows.nth(1).getAttribute('data-testid');
+      const strike2 = testId2.replace('optionchain-strike-row-', '');
 
-        await optionChainPage.clearSelection();
-      } else {
-        // Fewer than 2 strike rows — chain data is partial; page should still be stable
-        await optionChainPage.assertPageVisible();
-      }
+      await optionChainPage.selectCE(strike1);
+      await optionChainPage.selectPE(strike2);
+
+      const count = await optionChainPage.getSelectedCount();
+      expect(count).toBe(2);
+
+      await optionChainPage.clearSelection();
     } else {
-      // No table — page must still be visible
-      await optionChainPage.assertPageVisible();
+      await assertDataOrEmptyState(page, 'optionchain-table', 'optionchain-empty-state', expect);
     }
   });
 
@@ -105,23 +104,29 @@ test.describe('Option Chain - Edge Cases @edge', () => {
 
   test('should maintain selection after refresh', async ({ page }) => {
     await optionChainPage.waitForChainLoad();
-    const hasTable = await optionChainPage.table.isVisible().catch(() => false);
-    if (hasTable) {
-      const strikeRow = page.locator('[data-testid^="optionchain-strike-row-"]').first();
-      if (await strikeRow.isVisible()) {
-        const testId = await strikeRow.getAttribute('data-testid');
-        const strike = testId.replace('optionchain-strike-row-', '');
+    const expectation = getDataExpectation();
 
-        await optionChainPage.selectCE(strike);
-        // Note: Selection might or might not persist after refresh depending on implementation
-        await optionChainPage.assertPageVisible();
-      } else {
-        // Table loaded but no strike rows yet
-        await expect(optionChainPage.table).toBeVisible();
-      }
-    } else {
-      // No table — page must still be visible
+    if (expectation === 'LIVE' || expectation === 'LAST_KNOWN') {
+      await expect(optionChainPage.table).toBeVisible();
+      const strikeRow = page.locator('[data-testid^="optionchain-strike-row-"]').first();
+      await expect(strikeRow).toBeVisible();
+
+      const testId = await strikeRow.getAttribute('data-testid');
+      const strike = testId.replace('optionchain-strike-row-', '');
+
+      // Select CE then click refresh
+      await optionChainPage.selectCE(strike);
+      await expect(optionChainPage.selectedBar).toBeVisible();
+
+      await optionChainPage.refresh();
+      await optionChainPage.waitForChainLoad();
+
+      // After refresh, the selection bar visibility is implementation-dependent;
+      // but the page must be stable and the chain must still be loaded
       await optionChainPage.assertPageVisible();
+      await expect(optionChainPage.table).toBeVisible();
+    } else {
+      await assertDataOrEmptyState(page, 'optionchain-table', 'optionchain-empty-state', expect);
     }
   });
 });
