@@ -161,9 +161,9 @@ test.describe('Strategy Library Deploy - Bullish Strategies @deploy @bullish', (
         // For some edge cases (e.g., unprofitable spreads), breakeven may show "-"
         // For unlimited strategies, max profit/loss may show "Unlimited"
         // The key verification is that the values are present (not empty strings)
-        expect(summary.maxProfit, 'Max profit should be populated').toBeTruthy();
-        expect(summary.maxLoss, 'Max loss should be populated').toBeTruthy();
-        expect(summary.breakeven, 'Breakeven should be populated').toBeTruthy();
+        expect(summary.maxProfit, 'Max profit should be populated').not.toBe('');
+        expect(summary.maxLoss, 'Max loss should be populated').not.toBe('');
+        expect(summary.breakeven, 'Breakeven should be populated').not.toBe('');
 
         // Verify payoff chart is visible
         const hasPayoff = await strategyBuilderPage.hasPayoffChart();

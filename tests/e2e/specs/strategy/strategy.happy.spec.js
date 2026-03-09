@@ -131,7 +131,7 @@ test.describe('Strategy Builder - Happy Path @happy', () => {
     // Note: If market is closed, spot price API may fail, and strike may remain null
     // In that case, the test will fail which is expected behavior
     expect(strikeValue).not.toBeNull();
-    expect(typeof strikeValue).toBe('number');
+    expect(Number.isFinite(strikeValue)).toBe(true);
     expect(strikeValue).toBeGreaterThan(0);
   });
 
@@ -181,8 +181,6 @@ test.describe('Strategy Builder - Happy Path @happy', () => {
     // STRENGTHENED: Verify max profit/loss are actual numbers (not zero for a single leg sell)
     const maxProfit = await strategyPage.getMaxProfit();
     const maxLoss = await strategyPage.getMaxLoss();
-    expect(typeof maxProfit).toBe('number');
-    expect(typeof maxLoss).toBe('number');
     // For a naked put (default), max profit is limited (premium), max loss can be large
     // At minimum, both should not be NaN
     expect(Number.isNaN(maxProfit)).toBe(false);
@@ -208,8 +206,8 @@ test.describe('Strategy Builder - Happy Path @happy', () => {
 
     const initialMaxProfit = await strategyPage.getMaxProfit();
     const initialMaxLoss = await strategyPage.getMaxLoss();
-    expect(typeof initialMaxProfit).toBe('number');
-    expect(typeof initialMaxLoss).toBe('number');
+    expect(Number.isNaN(initialMaxProfit)).toBe(false);
+    expect(Number.isNaN(initialMaxLoss)).toBe(false);
 
     // Remove 1 row (delete the first row via checkbox selection)
     const legRow = await strategyPage.getLegRow(0);
@@ -228,8 +226,8 @@ test.describe('Strategy Builder - Happy Path @happy', () => {
     // Verify new values exist (calculation completed successfully)
     const finalMaxProfit = await strategyPage.getMaxProfit();
     const finalMaxLoss = await strategyPage.getMaxLoss();
-    expect(typeof finalMaxProfit).toBe('number');
-    expect(typeof finalMaxLoss).toBe('number');
+    expect(Number.isNaN(finalMaxProfit)).toBe(false);
+    expect(Number.isNaN(finalMaxLoss)).toBe(false);
   });
 
   test('should auto-recalculate P/L when changing leg field', async ({ authenticatedPage }) => {

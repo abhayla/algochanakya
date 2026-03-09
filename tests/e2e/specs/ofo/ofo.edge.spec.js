@@ -38,7 +38,7 @@ test.describe('OFO - Edge Cases @edge', () => {
       // We just verify the input received the value (frontend doesn't clamp automatically)
       const value = await ofoPage.lotsInput.inputValue();
       // Either clamped to 1 or still shows -5 (which is invalid)
-      expect(value).toBeTruthy();
+      expect(value.trim().length).toBeGreaterThan(0);
     });
   });
 
@@ -47,7 +47,7 @@ test.describe('OFO - Edge Cases @edge', () => {
       const hasEmpty = await ofoPage.hasEmptyState();
       const hasResults = await ofoPage.hasResults();
       // Initially either empty state or no results
-      expect(!hasResults || hasEmpty).toBeTruthy();
+      expect(!hasResults || hasEmpty).toBe(true);
     });
 
     test('should handle no strategies selected', async () => {
@@ -60,7 +60,7 @@ test.describe('OFO - Edge Cases @edge', () => {
 
       // Should show empty state prompting to select strategies
       const hasEmpty = await ofoPage.hasEmptyState();
-      expect(hasEmpty).toBeTruthy();
+      expect(hasEmpty).toBe(true);
     });
   });
 

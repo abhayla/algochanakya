@@ -126,7 +126,7 @@ test.describe('Strategy Library - API Validation @api', () => {
       expect(category).toHaveProperty('category');
       expect(category).toHaveProperty('count');
       expect(category).toHaveProperty('display_name');
-      expect(typeof category.count).toBe('number');
+      expect(Number.isFinite(category.count)).toBe(true);
     }
   });
 

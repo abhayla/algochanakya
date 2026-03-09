@@ -35,7 +35,7 @@ test.describe('AI AutoPilot - Complete Paper Trading Flow', () => {
 
     // Handle replace legs modal
     const replaceModal = page.getByTestId('autopilot-replace-legs-modal')
-    if (await replaceModal.isVisible({ timeout: 2000 }).catch(() => false)) {
+    if (await replaceModal.isVisible()) {
       await page.getByTestId('autopilot-replace-legs-confirm').click()
     }
 
@@ -263,7 +263,7 @@ test.describe('AI AutoPilot - Complete Paper Trading Flow', () => {
 
       // Confirm exit modal if appears
       const exitModal = page.getByTestId('autopilot-exit-modal')
-      if (await exitModal.isVisible({ timeout: 2000 }).catch(() => false)) {
+      if (await exitModal.isVisible()) {
         const confirmExitBtn = page.getByTestId('autopilot-exit-confirm')
         if (await confirmExitBtn.isVisible()) {
           await confirmExitBtn.click()

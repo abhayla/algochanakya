@@ -133,7 +133,7 @@ test.describe('AutoPilot Dashboard - Phase 2 Enhancements', () => {
   test('displays market countdown timer', async () => {
     await expect(dashboardPage.marketCountdown).toBeVisible();
     const countdown = await dashboardPage.getMarketCountdown();
-    expect(countdown).toBeTruthy();
+    expect(countdown.trim().length).toBeGreaterThan(0);
   });
 
   test('shows NIFTY index price', async () => {
@@ -179,7 +179,7 @@ test.describe('AutoPilot Dashboard - Phase 2 Enhancements', () => {
   test('displays broker sync timestamp', async () => {
     await expect(dashboardPage.brokerSyncTime).toBeVisible();
     const syncTime = await dashboardPage.getBrokerSyncTime();
-    expect(syncTime).toBeTruthy();
+    expect(syncTime.trim().length).toBeGreaterThan(0);
   });
 
   // Activity Timeline Enhanced Tests

@@ -179,9 +179,8 @@ test.describe('Strategy Library - Edge Cases @edge', () => {
     await authenticatedPage.keyboard.press('Escape');
     await strategyLibraryPage.wizardModal.waitFor({ state: 'hidden', timeout: 2000 }).catch(() => {});
 
-    const isVisible = await strategyLibraryPage.wizardModal.isVisible().catch(() => false);
-    // May or may not close on escape depending on implementation
-    expect(typeof isVisible).toBe('boolean');
+    // Either the modal closed (hidden) or remained open — page must still be stable
+    await expect(strategyLibraryPage.pageContainer).toBeVisible();
   });
 
   // ==================== Deploy Modal Edge Cases ====================
@@ -193,11 +192,11 @@ test.describe('Strategy Library - Edge Cases @edge', () => {
     await deployButton.click();
     await strategyLibraryPage.setDeployLots(0);
 
-    // Should show validation error or prevent submission
+    // Should show validation error or prevent submission — assert input is accessible
     const lotsInput = strategyLibraryPage.deployLotsInput;
     const value = await lotsInput.inputValue();
-    // Either prevented or shows error
-    expect(parseInt(value) >= 0).toBe(true);
+    // Value must be parseable as a non-negative integer
+    expect(parseInt(value)).toBeGreaterThanOrEqual(0);
   });
 
   test('should validate lots input - maximum', async ({ authenticatedPage }) => {
@@ -231,12 +230,8 @@ test.describe('Strategy Library - Edge Cases @edge', () => {
     await deployButton.click();
 
     // Try to deploy without selecting expiry
-    const deployButtonModal = strategyLibraryPage.deployButton;
-
-    // Should be disabled or show error
-    const isEnabled = await deployButtonModal.isEnabled().catch(() => true);
-    // Either button is disabled or it will show validation error
-    expect(typeof isEnabled).toBe('boolean');
+    // The deploy button should be visible (disabled or enabled with validation)
+    await expect(strategyLibraryPage.deployButton).toBeVisible();
   });
 
   // ==================== Comparison Edge Cases ====================
@@ -283,13 +278,15 @@ test.describe('Strategy Library - Edge Cases @edge', () => {
     await compareCheckbox.click();
     await authenticatedPage.waitForLoadState('domcontentloaded');
 
-    const comparisonBar = await strategyLibraryPage.comparisonBar.isVisible().catch(() => false);
+    const comparisonBar = await strategyLibraryPage.comparisonBar.isVisible();
 
     if (comparisonBar) {
       const compareButton = strategyLibraryPage.comparisonCompareButton;
-      const isEnabled = await compareButton.isEnabled().catch(() => true);
-      // Should be disabled with only 1 strategy
-      expect(typeof isEnabled).toBe('boolean');
+      // Should be disabled with only 1 strategy selected
+      await expect(compareButton).toBeDisabled();
+    } else {
+      // If comparison bar isn't shown after one selection, page must still be stable
+      await expect(strategyLibraryPage.pageContainer).toBeVisible();
     }
   });
 
@@ -320,9 +317,12 @@ test.describe('Strategy Library - Edge Cases @edge', () => {
 
     // Open deploy from within details
     const deployFromDetails = strategyLibraryPage.detailsDeployButton;
-    if (await deployFromDetails.isVisible().catch(() => false)) {
+    if (await deployFromDetails.isVisible()) {
       await deployFromDetails.click();
       await strategyLibraryPage.assertDeployModalVisible();
+    } else {
+      // Deploy button not present in details — page must still be stable
+      await expect(strategyLibraryPage.detailsModal).toBeVisible();
     }
   });
 
@@ -373,8 +373,8 @@ test.describe('Strategy Library - Edge Cases @edge', () => {
     await authenticatedPage.goto('/strategies');
 
     // Should show loading or content
-    const pageVisible = await strategyLibraryPage.pageContainer.isVisible().catch(() => false);
-    const loadingVisible = await strategyLibraryPage.loadingSpinner.isVisible().catch(() => false);
+    const pageVisible = await strategyLibraryPage.pageContainer.isVisible();
+    const loadingVisible = await strategyLibraryPage.loadingSpinner.isVisible();
 
     expect(pageVisible || loadingVisible).toBe(true);
   });
@@ -416,11 +416,11 @@ test.describe('Strategy Library - Edge Cases @edge', () => {
 
     // Wait for the response to be processed
     await authenticatedPage.waitForLoadState('domcontentloaded');
-    const successVisible = await strategyLibraryPage.deploySuccess.isVisible().catch(() => false);
+    const successVisible = await strategyLibraryPage.deploySuccess.isVisible();
     expect(successVisible).toBe(false);
 
     // Page should remain usable
-    const modalVisible = await strategyLibraryPage.deployModal.isVisible().catch(() => false);
+    const modalVisible = await strategyLibraryPage.deployModal.isVisible();
     expect(modalVisible).toBe(true);
   });
 
@@ -509,7 +509,7 @@ test.describe('Strategy Library - Edge Cases @edge', () => {
     await strategyLibraryPage.deployModal.waitFor({ state: 'hidden', timeout: 2000 }).catch(() => {});
 
     // Modal should be closed
-    const isVisible = await strategyLibraryPage.deployModal.isVisible().catch(() => false);
+    const isVisible = await strategyLibraryPage.deployModal.isVisible();
     expect(isVisible).toBe(false);
   });
 

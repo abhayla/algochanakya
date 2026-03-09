@@ -34,7 +34,7 @@ test.describe('OFO - API Tests @api', () => {
       // API returns { strategies: [...] }
       expect(json).toHaveProperty('strategies');
       const data = json.strategies;
-      expect(Array.isArray(data)).toBeTruthy();
+      expect(Array.isArray(data)).toBe(true);
       expect(data.length).toBeGreaterThan(0);
 
       // Check structure of first strategy

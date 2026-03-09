@@ -8,8 +8,7 @@ import { test, expect } from '../../fixtures/auth.fixture.js';
 
 const API_BASE = process.env.API_BASE || 'http://localhost:8001';
 
-// Skip: API tests require running backend
-test.describe.skip('Login - API Validation @api', () => {
+test.describe('Login - API Validation @api', () => {
 
   test('GET /api/auth/zerodha/login returns valid login URL', async ({ request }) => {
     const response = await request.get(`${API_BASE}/api/auth/zerodha/login`);

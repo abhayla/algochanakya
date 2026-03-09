@@ -59,9 +59,9 @@ test.describe('AI Implementation Phases - E2E Tests', () => {
       expect(data).toHaveProperty('total_pnl')
       expect(data).toHaveProperty('avg_pnl_per_trade')  // Fixed: correct field name
 
-      // Verify data types
-      expect(typeof data.total_trades).toBe('number')
-      expect(typeof data.win_rate).toBe('number')
+      // Verify data types are numeric
+      expect(Number.isFinite(data.total_trades)).toBe(true)
+      expect(Number.isFinite(data.win_rate)).toBe(true)
     })
 
     test('GET /api/v1/ai/analytics/by-regime returns real data', async ({ request }) => {
@@ -144,7 +144,7 @@ test.describe('AI Implementation Phases - E2E Tests', () => {
       const data = await response.json()
 
       // Fixed: /learning returns a single object (LearningProgressMetrics), not an array
-      expect(typeof data).toBe('object')
+      expect(data).not.toBeNull()
       expect(data).toHaveProperty('model_version')
       expect(data).toHaveProperty('accuracy')
       expect(data).toHaveProperty('performance_trend')

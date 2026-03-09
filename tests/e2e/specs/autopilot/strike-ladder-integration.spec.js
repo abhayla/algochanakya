@@ -112,9 +112,9 @@ test.describe('StrikeLadder Integration', () => {
     expect(responseBody.data).toHaveProperty('symbol')
     expect(responseBody.data.symbol).toBe('NIFTY')
 
-    // Verify LTP is a number and realistic
+    // Verify LTP is a finite positive number
     const ltp = responseBody.data.ltp
-    expect(typeof ltp).toBe('number')
+    expect(Number.isFinite(ltp)).toBe(true)
     expect(ltp).toBeGreaterThan(0)
     expect(ltp).toBeLessThan(100000) // Sanity check
   })
@@ -254,7 +254,7 @@ test.describe('StrikeLadder Integration', () => {
 
     // Should have logged the error
     await authenticatedPage.waitForLoadState('domcontentloaded')
-    expect(consoleMessages.some(msg => msg.includes('Error fetching spot price'))).toBeTruthy()
+    expect(consoleMessages.some(msg => msg.includes('Error fetching spot price'))).toBe(true)
   })
 
   test('should work with multiple legs independently', async ({ authenticatedPage }) => {

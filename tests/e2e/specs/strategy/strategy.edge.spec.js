@@ -364,7 +364,7 @@ test.describe('Strategy Builder - Edge Cases @edge', () => {
 
     // Verify we have valid P/L values
     const finalMaxProfit = await strategyPage.getMaxProfit();
-    expect(typeof finalMaxProfit).toBe('number');
+    expect(Number.isNaN(finalMaxProfit)).toBe(false);
 
     // ENHANCED: Comprehensive state verification after delete
     const stateAfter = await verifyStrategyState(page, strategyPage, 'after bulk delete', {

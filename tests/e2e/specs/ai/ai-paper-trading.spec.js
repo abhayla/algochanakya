@@ -169,9 +169,9 @@ test.describe('AI Paper Trading - Comprehensive Tests', () => {
 
       // Verify table columns
       const tradeData = await paperTradingPage.getTradeDataFromRow(rows[0])
-      expect(tradeData.strategy).toBeTruthy()
-      expect(tradeData.regime).toBeTruthy()
-      expect(tradeData.confidence).toBeTruthy()
+      expect(tradeData.strategy).not.toBe('')
+      expect(tradeData.regime).not.toBe('')
+      expect(typeof tradeData.confidence === 'number' && !isNaN(tradeData.confidence)).toBe(true)
 
       // Screenshot
       await paperTradingPage.takeScreenshot('TC06-trade-row-fixed')
@@ -349,7 +349,7 @@ test.describe('AI Paper Trading - Comprehensive Tests', () => {
 
       // Verify P&L calculated
       const summary = await paperTradingPage.getSummaryStats()
-      expect(summary['Total P&L']).toBeTruthy()
+      expect(summary['Total P&L']).not.toBe('')
 
       // Screenshot
       await paperTradingPage.takeScreenshot('TC13-exit-kelly')

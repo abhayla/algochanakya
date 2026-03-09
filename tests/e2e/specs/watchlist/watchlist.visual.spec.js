@@ -76,11 +76,13 @@ test.describe('Watchlist - Visual Regression @visual', () => {
   test('should match empty state appearance', async ({ page }) => {
     await page.setViewportSize(VIEWPORTS.desktop);
     await watchlistPage.navigate();
-    // If empty state is visible, capture it
-    const hasEmptyState = await watchlistPage.emptyState.isVisible().catch(() => false);
+    const hasEmptyState = await watchlistPage.emptyState.isVisible();
     if (hasEmptyState) {
       await prepareForVisualTest(page);
       await expect(watchlistPage.emptyState).toHaveScreenshot('watchlist-empty-state.png');
+    } else {
+      // Instruments are loaded — assert the instruments container is visible
+      await expect(watchlistPage.instrumentsContainer).toBeVisible();
     }
   });
 });

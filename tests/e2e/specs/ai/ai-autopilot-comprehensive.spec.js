@@ -14,7 +14,7 @@ test.describe('AI AutoPilot Comprehensive Testing', () => {
   // Phase 1: Environment Setup & Verification
   test('Phase 1.1: Verify backend health', async ({ request }) => {
     const response = await request.get(`${API_BASE}/api/health`);
-    expect(response.ok()).toBeTruthy();
+    expect(response.ok()).toBe(true);
     const data = await response.json();
     expect(data.status).toBe('healthy');
     expect(data.database).toBe('connected');

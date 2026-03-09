@@ -117,12 +117,12 @@ test.describe('AutoPilot - Adjustment Rule Builder (Happy Path)', () => {
     const options = await triggerSelect.locator('option').allTextContents()
 
     // Verify all trigger types are present
-    expect(options.some(opt => opt.includes('P&L Based'))).toBeTruthy()
-    expect(options.some(opt => opt.includes('Delta Based'))).toBeTruthy()
-    expect(options.some(opt => opt.includes('Time Based'))).toBeTruthy()
-    expect(options.some(opt => opt.includes('Premium Based'))).toBeTruthy()
-    expect(options.some(opt => opt.includes('VIX Based'))).toBeTruthy()
-    expect(options.some(opt => opt.includes('Spot Based'))).toBeTruthy()
+    expect(options.some(opt => opt.includes('P&L Based'))).toBe(true)
+    expect(options.some(opt => opt.includes('Delta Based'))).toBe(true)
+    expect(options.some(opt => opt.includes('Time Based'))).toBe(true)
+    expect(options.some(opt => opt.includes('Premium Based'))).toBe(true)
+    expect(options.some(opt => opt.includes('VIX Based'))).toBe(true)
+    expect(options.some(opt => opt.includes('Spot Based'))).toBe(true)
   })
 
   test('should display all action types in dropdown', async ({ authenticatedPage }) => {
@@ -133,13 +133,13 @@ test.describe('AutoPilot - Adjustment Rule Builder (Happy Path)', () => {
     const options = await actionSelect.locator('option').allTextContents()
 
     // Verify all action types are present
-    expect(options.some(opt => opt.includes('Exit All'))).toBeTruthy()
-    expect(options.some(opt => opt.includes('Add Hedge'))).toBeTruthy()
-    expect(options.some(opt => opt.includes('Close Leg'))).toBeTruthy()
-    expect(options.some(opt => opt.includes('Roll Strike'))).toBeTruthy()
-    expect(options.some(opt => opt.includes('Roll Expiry'))).toBeTruthy()
-    expect(options.some(opt => opt.includes('Scale Down'))).toBeTruthy()
-    expect(options.some(opt => opt.includes('Scale Up'))).toBeTruthy()
+    expect(options.some(opt => opt.includes('Exit All'))).toBe(true)
+    expect(options.some(opt => opt.includes('Add Hedge'))).toBe(true)
+    expect(options.some(opt => opt.includes('Close Leg'))).toBe(true)
+    expect(options.some(opt => opt.includes('Roll Strike'))).toBe(true)
+    expect(options.some(opt => opt.includes('Roll Expiry'))).toBe(true)
+    expect(options.some(opt => opt.includes('Scale Down'))).toBe(true)
+    expect(options.some(opt => opt.includes('Scale Up'))).toBe(true)
   })
 
   test('should cancel rule creation', async ({ authenticatedPage }) => {

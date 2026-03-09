@@ -16,23 +16,24 @@ test.describe('Watchlist - Edge Cases @edge', () => {
   test('should handle empty search query', async () => {
     await watchlistPage.search('');
     // Dropdown should not appear for empty query
-    const isVisible = await watchlistPage.searchDropdown.isVisible().catch(() => false);
+    const isVisible = await watchlistPage.searchDropdown.isVisible();
     expect(isVisible).toBe(false);
   });
 
   test('should handle single character search', async () => {
     await watchlistPage.search('N');
     // Dropdown should not appear for single character
-    const isVisible = await watchlistPage.searchDropdown.isVisible().catch(() => false);
+    const isVisible = await watchlistPage.searchDropdown.isVisible();
     expect(isVisible).toBe(false);
   });
 
   test('should handle search with no results', async ({ page }) => {
     await watchlistPage.search('XYZNONEXISTENT123');
     await page.waitForLoadState('domcontentloaded');
-    const noResults = await watchlistPage.noResultsMessage.isVisible().catch(() => false);
-    // Either no results or empty dropdown
-    expect(noResults || !(await watchlistPage.searchDropdown.isVisible().catch(() => false))).toBeTruthy();
+    const noResults = await watchlistPage.noResultsMessage.isVisible();
+    const dropdownVisible = await watchlistPage.searchDropdown.isVisible();
+    // Either no-results message is shown, or dropdown is absent
+    expect(noResults || !dropdownVisible).toBe(true);
   });
 
   test('should handle special characters in search', async ({ page }) => {

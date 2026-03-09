@@ -58,8 +58,8 @@ test.describe('OFO - Calculate Button Tests @calculate', () => {
       });
 
       // Check if we got results or an error
-      const hasResults = await ofoPage.resultsSection.isVisible().catch(() => false);
-      const hasError = await ofoPage.errorAlert.isVisible().catch(() => false);
+      const hasResults = await ofoPage.resultsSection.isVisible();
+      const hasError = await ofoPage.errorAlert.isVisible();
 
       if (hasError) {
         const errorText = await ofoPage.errorAlert.textContent();
@@ -74,7 +74,7 @@ test.describe('OFO - Calculate Button Tests @calculate', () => {
       // Either results or empty state should be visible (no error for valid strategies)
       if (!hasError) {
         const strategyGroup = ofoPage.getStrategyGroup(strategy.key);
-        const groupVisible = await strategyGroup.isVisible().catch(() => false);
+        const groupVisible = await strategyGroup.isVisible();
 
         if (groupVisible) {
           // Strategy group should have results
@@ -84,12 +84,12 @@ test.describe('OFO - Calculate Button Tests @calculate', () => {
           // Verify group contains strategy name
           await expect(strategyGroup).toContainText(strategy.name);
 
-          // Check for result count
+          // Check for result count — must have at least 1 result if group is visible
           const resultCountMatch = groupText.match(/\((\d+) results?\)/);
           if (resultCountMatch) {
             const count = parseInt(resultCountMatch[1]);
             console.log(`[${strategy.name}] Result count: ${count}`);
-            expect(count).toBeGreaterThanOrEqual(0);
+            expect(count).toBeGreaterThan(0);
           }
         } else {
           console.log(`[${strategy.name}] No results displayed (possibly no valid combinations found)`);
@@ -127,8 +127,8 @@ test.describe('OFO - Calculate Button Tests @calculate', () => {
     });
 
     // Check results
-    const hasResults = await ofoPage.resultsSection.isVisible().catch(() => false);
-    const hasError = await ofoPage.errorAlert.isVisible().catch(() => false);
+    const hasResults = await ofoPage.resultsSection.isVisible();
+    const hasError = await ofoPage.errorAlert.isVisible();
 
     if (hasError) {
       const errorText = await ofoPage.errorAlert.textContent();
@@ -145,7 +145,7 @@ test.describe('OFO - Calculate Button Tests @calculate', () => {
     if (hasResults) {
       let visibleGroups = 0;
       for (const strategy of strategies) {
-        const groupVisible = await ofoPage.getStrategyGroup(strategy.key).isVisible().catch(() => false);
+        const groupVisible = await ofoPage.getStrategyGroup(strategy.key).isVisible();
         if (groupVisible) {
           visibleGroups++;
           console.log(`[All Strategies] ${strategy.name}: visible`);
@@ -169,7 +169,7 @@ test.describe('OFO - Calculate Button Tests @calculate', () => {
     await page.waitForSelector('[data-testid="ofo-loading"]', { state: 'hidden', timeout: 60000 }).catch(() => {});
 
     // Verify calc time is displayed
-    const calcTimeVisible = await ofoPage.calcTime.isVisible().catch(() => false);
+    const calcTimeVisible = await ofoPage.calcTime.isVisible();
     if (calcTimeVisible) {
       const calcTimeText = await ofoPage.calcTime.textContent();
       console.log(`Calculation time: ${calcTimeText}`);
@@ -205,7 +205,7 @@ test.describe('OFO - Calculate Button Tests @calculate', () => {
       fullPage: true
     });
 
-    const hasError = await ofoPage.errorAlert.isVisible().catch(() => false);
+    const hasError = await ofoPage.errorAlert.isVisible();
     expect(hasError).toBe(false);
   });
 
@@ -231,7 +231,7 @@ test.describe('OFO - Calculate Button Tests @calculate', () => {
       fullPage: true
     });
 
-    const hasError = await ofoPage.errorAlert.isVisible().catch(() => false);
+    const hasError = await ofoPage.errorAlert.isVisible();
     expect(hasError).toBe(false);
   });
 
@@ -260,7 +260,7 @@ test.describe('OFO - Calculate Button Tests @calculate', () => {
       fullPage: true
     });
 
-    const hasError = await ofoPage.errorAlert.isVisible().catch(() => false);
+    const hasError = await ofoPage.errorAlert.isVisible();
     expect(hasError).toBe(false);
   });
 
@@ -288,7 +288,7 @@ test.describe('OFO - Calculate Button Tests @calculate', () => {
       fullPage: true
     });
 
-    const hasError = await ofoPage.errorAlert.isVisible().catch(() => false);
+    const hasError = await ofoPage.errorAlert.isVisible();
     expect(hasError).toBe(false);
   });
 });

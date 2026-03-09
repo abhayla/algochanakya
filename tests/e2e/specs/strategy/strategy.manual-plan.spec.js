@@ -223,7 +223,7 @@ test.describe('Strategy Builder Manual Test Plan', () => {
 
     // Check for errors and take diagnostic screenshot
     const errorAlert = page.locator('[data-testid="strategy-error"]');
-    if (await errorAlert.isVisible().catch(() => false)) {
+    if (await errorAlert.isVisible()) {
       const errorText = await errorAlert.textContent();
       console.log(`Error on page: ${errorText}`);
       await takeScreenshot(page, 'error_on_load');
@@ -715,7 +715,7 @@ test.describe('Strategy Builder Manual Test Plan', () => {
       // Handle "Replace Existing Legs?" confirmation modal if legs exist
       await page.waitForLoadState('domcontentloaded');
       const replaceModal = page.locator('[data-testid="strategy-replace-legs-modal"]');
-      if (await replaceModal.isVisible().catch(() => false)) {
+      if (await replaceModal.isVisible()) {
         console.log('Handling Replace Legs modal...');
         await page.locator('[data-testid="strategy-replace-legs-confirm"]').click();
         await page.waitForLoadState('domcontentloaded');

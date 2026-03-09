@@ -29,28 +29,22 @@ test.describe('Strategy Builder - API @api', () => {
     const expiryPromise = authenticatedPage.waitForResponse(
       response => response.url().includes('/api/options/expiries'),
       { timeout: 10000 }
-    ).catch(() => null);
+    );
 
     await strategyPage.navigate();
     const response = await expiryPromise;
-
-    if (response) {
-      expect(response.status()).toBe(200);
-    }
+    expect(response.status()).toBe(200);
   });
 
   test('should fetch saved strategies on page load', async ({ authenticatedPage }) => {
     const strategiesPromise = authenticatedPage.waitForResponse(
       response => response.url().includes('/api/strategies'),
       { timeout: 10000 }
-    ).catch(() => null);
+    );
 
     await strategyPage.navigate();
     const response = await strategiesPromise;
-
-    if (response) {
-      expect([200, 401]).toContain(response.status());
-    }
+    expect([200, 401]).toContain(response.status());
   });
 
   test('should fetch strikes when expiry is selected', async () => {
@@ -71,16 +65,14 @@ test.describe('Strategy Builder - API @api', () => {
       const calculatePromise = authenticatedPage.waitForResponse(
         response => response.url().includes('/api/strategies/calculate'),
         { timeout: 15000 }
-      ).catch(() => null);
+      );
 
       // Try to recalculate (may fail if leg not complete)
       const isDisabled = await strategyPage.recalculateButton.isDisabled();
       if (!isDisabled) {
         await strategyPage.recalculate();
         const response = await calculatePromise;
-        if (response) {
-          expect([200, 400, 422]).toContain(response.status());
-        }
+        expect([200, 400, 422]).toContain(response.status());
       }
     }
   });
@@ -93,10 +85,8 @@ test.describe('Strategy Builder - API @api', () => {
     // Save button should be visible
     await expect(strategyPage.saveButton).toBeVisible();
 
-    // Verify save button is enabled when conditions are met
-    const isDisabled = await strategyPage.saveButton.isDisabled();
-    // Save may be disabled if leg is incomplete - this is expected
-    expect(typeof isDisabled).toBe('boolean');
+    // Save button state is meaningful — either enabled or disabled based on leg completeness
+    // The key assertion is it's visible (already asserted above)
   });
 
   test('should fetch LTP for instruments with valid prices', async ({ authenticatedPage }) => {
@@ -105,38 +95,35 @@ test.describe('Strategy Builder - API @api', () => {
     const ltpPromise = page.waitForResponse(
       response => response.url().includes('/api/orders/ltp'),
       { timeout: 10000 }
-    ).catch(() => null);
+    );
 
     await strategyPage.navigate();
     await strategyPage.addRow();
     await strategyPage.waitForLegCount(1);
 
-    // LTP might be called for leg instruments
+    // LTP is called for leg instruments
     const response = await ltpPromise;
+    expect(response.status()).toBe(200);
 
-    if (response) {
-      expect(response.status()).toBe(200);
+    // Validate LTP response contains valid price data
+    const data = await response.json();
 
-      // Validate LTP response contains valid price data
-      const data = await response.json();
+    // LTP endpoint should return valid price data
+    // Structure: { instruments: [{token, ltp, ...}] } or similar
+    if (data && typeof data === 'object') {
+      // If data contains LTP values, they should be positive numbers
+      const hasValidLtp = Object.values(data).some(item => {
+        if (typeof item === 'number') {
+          return item > 0;
+        }
+        if (typeof item === 'object' && item !== null && 'ltp' in item) {
+          return item.ltp > 0;
+        }
+        return false;
+      });
 
-      // LTP endpoint should return valid price data
-      // Structure: { instruments: [{token, ltp, ...}] } or similar
-      if (data && typeof data === 'object') {
-        // If data contains LTP values, they should be positive numbers
-        const hasValidLtp = Object.values(data).some(item => {
-          if (typeof item === 'number') {
-            return item > 0;
-          }
-          if (typeof item === 'object' && item !== null && 'ltp' in item) {
-            return item.ltp > 0;
-          }
-          return false;
-        });
-
-        // Test will fail if Kite broker token is expired and no valid LTP data
-        expect(hasValidLtp || Object.keys(data).length === 0).toBeTruthy();
-      }
+      // Either data has valid LTP values, or the response is empty (no positions)
+      expect(hasValidLtp || Object.keys(data).length === 0).toBe(true);
     }
 
     // ENHANCED: Verify UI CMP matches API data

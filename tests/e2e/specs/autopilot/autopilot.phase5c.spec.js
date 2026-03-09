@@ -103,8 +103,8 @@ test.describe('AutoPilot Phase 5C - SD Strike Selection', () => {
     const strikeDisplay = builderPage.page.getByTestId('autopilot-leg-selected-strike-0');
     const errorMessage = builderPage.page.getByText(/not found|error/i);
 
-    const strikeVisible = await strikeDisplay.isVisible().catch(() => false);
-    const errorVisible = await errorMessage.isVisible().catch(() => false);
+    const strikeVisible = await strikeDisplay.isVisible();
+    const errorVisible = await errorMessage.isVisible();
 
     // At least one should be visible
     expect(strikeVisible || errorVisible).toBe(true);
@@ -188,8 +188,8 @@ test.describe('AutoPilot Phase 5C - Expected Move Strike Selection', () => {
     const errorMessage = builderPage.page.getByText(/not found|error/i);
 
     // One of these should be visible
-    const strikeVisible = await strikeDisplay.isVisible().catch(() => false);
-    const errorVisible = await errorMessage.isVisible().catch(() => false);
+    const strikeVisible = await strikeDisplay.isVisible();
+    const errorVisible = await errorMessage.isVisible();
     expect(strikeVisible || errorVisible).toBe(true);
   });
 
@@ -208,8 +208,8 @@ test.describe('AutoPilot Phase 5C - Expected Move Strike Selection', () => {
     const strikeDisplay = builderPage.page.getByTestId('autopilot-leg-selected-strike-0');
     const errorMessage = builderPage.page.getByText(/not found|error/i);
 
-    const strikeVisible = await strikeDisplay.isVisible().catch(() => false);
-    const errorVisible = await errorMessage.isVisible().catch(() => false);
+    const strikeVisible = await strikeDisplay.isVisible();
+    const errorVisible = await errorMessage.isVisible();
     expect(strikeVisible || errorVisible).toBe(true);
   });
 

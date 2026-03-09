@@ -103,7 +103,7 @@ test.describe('AutoPilot Phase 4 - Risk Overview Panel', () => {
 
       // Check if it has a color (red, orange, or green)
       const color = await marginValue.evaluate(el => window.getComputedStyle(el).color);
-      expect(color).toBeTruthy();
+      expect(color).not.toBe('');
     }
   });
 });
@@ -191,7 +191,7 @@ test.describe('AutoPilot Phase 4 - Activity Timeline', () => {
 
       // Check if marker has background color
       const bgColor = await markerIcon.evaluate(el => window.getComputedStyle(el).background);
-      expect(bgColor).toBeTruthy();
+      expect(bgColor).not.toBe('');
     }
   });
 
@@ -259,7 +259,7 @@ test.describe('AutoPilot Phase 4 - Enhanced Strategy Cards', () => {
       const gridColumns = await strategyGrid.evaluate(el =>
         window.getComputedStyle(el).gridTemplateColumns
       );
-      expect(gridColumns).toBeTruthy();
+      expect(gridColumns).not.toBe('');
     }
   });
 
@@ -302,7 +302,7 @@ test.describe('AutoPilot Phase 4 - Enhanced Strategy Cards', () => {
 
         // Check if P&L has color (green or red)
         const color = await pnlValue.evaluate(el => window.getComputedStyle(el).color);
-        expect(color).toBeTruthy();
+        expect(color).not.toBe('');
       }
     }
   });
@@ -594,14 +594,14 @@ test.describe('AutoPilot Phase 4 - Condition Builder Tree View', () => {
     const rootLabel = builderPage.page.locator('[data-testid="autopilot-condition-tree-root"] [data-testid="autopilot-condition-tree-node-label"]');
     if (await rootLabel.count() > 0) {
       const bg = await rootLabel.evaluate(el => window.getComputedStyle(el).background);
-      expect(bg).toBeTruthy();
+      expect(bg).not.toBe('');
     }
 
     // Check group node has purple gradient
     const groupLabel = builderPage.page.locator('[data-testid^="autopilot-condition-tree-group-"] [data-testid="autopilot-condition-tree-node-label"]');
     if (await groupLabel.count() > 0) {
       const bg = await groupLabel.evaluate(el => window.getComputedStyle(el).background);
-      expect(bg).toBeTruthy();
+      expect(bg).not.toBe('');
     }
   });
 });
@@ -801,7 +801,7 @@ test.describe('AutoPilot Phase 4 - Strategy Detail Charts Tab', () => {
     const gridColumns = await greeksGrid.evaluate(el =>
       window.getComputedStyle(el).gridTemplateColumns
     );
-    expect(gridColumns).toBeTruthy();
+    expect(gridColumns).not.toBe('');
   });
 });
 

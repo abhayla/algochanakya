@@ -102,14 +102,14 @@ for (const broker of ALL_BROKERS) {
 
     // Find a price cell in the watchlist
     const priceLocator = authenticatedPage.locator('[data-testid*="watchlist-price"], [data-testid*="ltp"]').first();
-    const isVisible = await priceLocator.isVisible().catch(() => false);
+    const isVisible = await priceLocator.isVisible();
 
     if (!isVisible) {
       // No instruments in watchlist — add NIFTY first
       await watchlist.search('NIFTY 50');
       await authenticatedPage.waitForLoadState('domcontentloaded');
       const firstResult = authenticatedPage.locator('[data-testid*="watchlist-search-result"]').first();
-      if (await firstResult.isVisible().catch(() => false)) {
+      if (await firstResult.isVisible()) {
         await firstResult.click();
         await authenticatedPage.waitForLoadState('domcontentloaded');
       }
@@ -152,7 +152,7 @@ for (const broker of ALL_BROKERS) {
 
     // Assert ATM strike shows a real price (CE side)
     const atmRow = authenticatedPage.locator('[data-testid*="optionchain-atm"], [data-testid*="strike-atm"]').first();
-    const atmVisible = await atmRow.isVisible().catch(() => false);
+    const atmVisible = await atmRow.isVisible();
 
     if (atmVisible) {
       const cePrice = await authenticatedPage.locator('[data-testid*="optionchain-ce-ltp"], [data-testid*="ce-price"]').first().textContent().catch(() => '');
@@ -182,9 +182,9 @@ for (const broker of ALL_BROKERS) {
     await authenticatedPage.waitForLoadState('domcontentloaded');
 
     // Should show either positions table OR empty state — NOT an error
-    const hasTable = await authenticatedPage.locator('[data-testid="positions-table"], [data-testid*="positions-row"]').first().isVisible().catch(() => false);
-    const hasEmpty = await authenticatedPage.locator('[data-testid="positions-empty"], [data-testid*="empty-state"]').first().isVisible().catch(() => false);
-    const hasError = await authenticatedPage.locator('[data-testid*="positions-error"], [data-testid*="error-message"]').first().isVisible().catch(() => false);
+    const hasTable = await authenticatedPage.locator('[data-testid="positions-table"], [data-testid*="positions-row"]').first().isVisible();
+    const hasEmpty = await authenticatedPage.locator('[data-testid="positions-empty"], [data-testid*="empty-state"]').first().isVisible();
+    const hasError = await authenticatedPage.locator('[data-testid*="positions-error"], [data-testid*="error-message"]').first().isVisible();
 
     expect(hasError, `[${broker.label}] Positions screen shows error state`).toBe(false);
     expect(
@@ -210,7 +210,7 @@ for (const broker of ALL_BROKERS) {
 
     // Assert NIFTY index card is visible
     const niftyCard = authenticatedPage.locator('[data-testid*="dashboard-nifty"], [data-testid*="index-nifty"]').first();
-    const niftyVisible = await niftyCard.isVisible().catch(() => false);
+    const niftyVisible = await niftyCard.isVisible();
 
     if (niftyVisible) {
       // Get NIFTY price from card
@@ -222,9 +222,9 @@ for (const broker of ALL_BROKERS) {
 
     // Data source badge should show the active broker
     const badge = authenticatedPage.locator('[data-testid*="data-source-badge"]').first();
-    const badgeVisible = await badge.isVisible().catch(() => false);
+    const badgeVisible = await badge.isVisible();
     if (badgeVisible) {
-      const badgeText = await badge.textContent().catch(() => '');
+      const badgeText = await badge.textContent();
       expect(
         badgeText.toLowerCase(),
         `[${broker.label}] Data source badge should show broker name`

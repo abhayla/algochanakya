@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures/auth.fixture.js';
 import { WatchlistPage } from '../../pages/WatchlistPage.js';
+import { assertDataOrEmptyState } from '../../helpers/market-status.helper.js';
 
 /**
  * Watchlist Screen - Happy Path Tests
@@ -34,10 +35,8 @@ test.describe('Watchlist - Happy Path @happy', () => {
     await watchlistPage.search('NIFTY');
     // Wait for search results
     await page.waitForLoadState('domcontentloaded');
-    // Either dropdown appears or no results
-    const hasResults = await watchlistPage.searchDropdown.isVisible().catch(() => false);
-    const hasNoResults = await watchlistPage.noResultsMessage.isVisible().catch(() => false);
-    expect(hasResults || hasNoResults).toBeTruthy();
+    // Either dropdown appears or no results — assert one is visible
+    await assertDataOrEmptyState(page, 'watchlist-search-dropdown', 'watchlist-no-results', expect);
   });
 
   test('should open create watchlist modal', async () => {
@@ -52,11 +51,9 @@ test.describe('Watchlist - Happy Path @happy', () => {
     await watchlistPage.assertCreateModalHidden();
   });
 
-  test('should display instruments list or empty state', async () => {
+  test('should display instruments list or empty state', async ({ page }) => {
     await watchlistPage.waitForInstruments();
-    const hasInstruments = await watchlistPage.instrumentsContainer.isVisible().catch(() => false);
-    const hasEmptyState = await watchlistPage.emptyState.isVisible().catch(() => false);
-    expect(hasInstruments || hasEmptyState).toBeTruthy();
+    await assertDataOrEmptyState(page, 'watchlist-instruments-container', 'watchlist-empty-state', expect);
   });
 
   test('should show new group button', async () => {

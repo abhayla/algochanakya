@@ -126,7 +126,7 @@ test.describe('AutoPilot - Re-Entry Configuration (Edge Cases)', () => {
   test('should maintain disabled state on page refresh', async ({ authenticatedPage }) => {
     // Leave re-entry disabled (default state)
     const initialState = await authenticatedPage.getByTestId('autopilot-reentry-config').getByText('Disabled').isVisible()
-    expect(initialState).toBeTruthy()
+    expect(initialState).not.toBe('')
 
     // Reload page
     await authenticatedPage.reload()

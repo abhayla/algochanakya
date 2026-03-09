@@ -162,11 +162,11 @@ test.describe('AutoPilot Strategy Lifecycle - Edge Cases', () => {
     await dashboardPage.waitForDashboardLoad();
 
     // Verify dashboard shows strategies/summary section or error state
-    const summaryVisible = await dashboardPage.summarySection.isVisible().catch(() => false);
-    const errorVisible = await authenticatedPage.locator('[data-testid="autopilot-error"]').isVisible().catch(() => false);
+    const summaryVisible = await dashboardPage.summarySection.isVisible();
+    const errorVisible = await authenticatedPage.locator('[data-testid="autopilot-error"]').isVisible();
 
     // Dashboard should show either summary (success) or error state
-    expect(summaryVisible || errorVisible).toBeTruthy();
+    expect(summaryVisible || errorVisible).toBe(true);
   });
 
   test('handles deleting active strategy', async ({ authenticatedPage }) => {
@@ -241,8 +241,8 @@ test.describe('AutoPilot Dashboard - Edge Cases', () => {
 
     // P&L can be negative, should display correctly
     const pnl = await dashboardPage.getTodayPnl();
-    // Should be a number (positive or negative)
-    expect(typeof pnl).toBe('number');
+    // Should be a finite number (positive or negative)
+    expect(Number.isFinite(pnl)).toBe(true);
   });
 
   test('handles large P&L values', async () => {
@@ -498,8 +498,7 @@ test.describe('AutoPilot Error Recovery', () => {
 // CONDITION BUILDER EDGE CASES
 // =============================================================================
 
-// Skip: Condition Builder UI not yet implemented
-test.describe.skip('AutoPilot Condition Builder - Edge Cases', () => {
+test.describe('AutoPilot Condition Builder - Edge Cases', () => {
   let builderPage;
 
   test.beforeEach(async ({ authenticatedPage }) => {
@@ -536,14 +535,15 @@ test.describe.skip('AutoPilot Condition Builder - Edge Cases', () => {
   });
 
   test('validates condition value types', async () => {
-    // Add time condition
+    // Add time condition with invalid value
     await builderPage.addCondition({
       variable: 'TIME.CURRENT',
       operator: 'greater_than',
       value: 'invalid_time'
     });
 
-    // Should show validation error for invalid time format
+    // Should show validation error for invalid time format — page must remain stable
+    await expect(builderPage.validationErrors.first()).toBeVisible();
   });
 });
 
@@ -552,8 +552,7 @@ test.describe.skip('AutoPilot Condition Builder - Edge Cases', () => {
 // LEG BUILDER EDGE CASES
 // =============================================================================
 
-// Skip: Leg Builder edge cases - covered in autopilot.legs.edge.spec.js
-test.describe.skip('AutoPilot Leg Builder - Edge Cases', () => {
+test.describe('AutoPilot Leg Builder - Edge Cases', () => {
   let builderPage;
 
   test.beforeEach(async ({ authenticatedPage }) => {
@@ -578,8 +577,8 @@ test.describe.skip('AutoPilot Leg Builder - Edge Cases', () => {
       await builderPage.addLeg({ optionType: i % 2 === 0 ? 'CE' : 'PE' });
     }
 
-    // Add leg button should be disabled at max
-    // (depends on implementation limit)
+    const legCount = await builderPage.getLegCount();
+    expect(legCount).toBe(4);
   });
 
   test('handles duplicate leg configurations', async () => {
@@ -642,7 +641,7 @@ test.describe('AutoPilot Strategy Types - Strike Auto-Population', () => {
 
     // Handle replace legs modal if it appears
     const replaceModal = page.getByTestId('autopilot-replace-legs-modal')
-    if (await replaceModal.isVisible({ timeout: 1000 }).catch(() => false)) {
+    if (await replaceModal.isVisible()) {
       await page.getByTestId('autopilot-replace-legs-confirm').click()
     }
 
@@ -670,11 +669,11 @@ test.describe('AutoPilot Strategy Types - Strike Auto-Population', () => {
         previewError.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {})
       ])
 
-      const hasPreview = await preview.isVisible().catch(() => false)
-      const hasError = await previewError.isVisible().catch(() => false)
+      const hasPreview = await preview.isVisible()
+      const hasError = await previewError.isVisible()
 
       // At least one should be visible (either preview or error)
-      expect(hasPreview || hasError).toBeTruthy()
+      expect(hasPreview || hasError).toBe(true)
 
       if (hasPreview) {
         // If preview is visible, verify it has valid strike data
@@ -682,7 +681,7 @@ test.describe('AutoPilot Strategy Types - Strike Auto-Population', () => {
         await expect(strikeValue).toBeVisible()
 
         const strikeText = await strikeValue.textContent()
-        expect(strikeText).toBeTruthy()
+        expect(strikeText.trim().length).toBeGreaterThan(0)
         expect(strikeText.trim()).not.toBe('')
 
         // Verify strike text contains a number and CE/PE
@@ -734,7 +733,7 @@ test.describe('AutoPilot Strategy Types - Strike Auto-Population', () => {
 
     // Handle replace legs modal if it appears
     const replaceModal = page.getByTestId('autopilot-replace-legs-modal')
-    if (await replaceModal.isVisible({ timeout: 1000 }).catch(() => false)) {
+    if (await replaceModal.isVisible()) {
       await page.getByTestId('autopilot-replace-legs-confirm').click()
     }
 
@@ -759,16 +758,16 @@ test.describe('AutoPilot Strategy Types - Strike Auto-Population', () => {
         previewError.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {})
       ])
 
-      const hasPreview = await preview.isVisible().catch(() => false)
-      const hasError = await previewError.isVisible().catch(() => false)
+      const hasPreview = await preview.isVisible()
+      const hasError = await previewError.isVisible()
 
-      expect(hasPreview || hasError).toBeTruthy()
+      expect(hasPreview || hasError).toBe(true)
 
       if (hasPreview) {
         const strikeValue = preview.locator('[data-testid="autopilot-strike-value"]')
         await expect(strikeValue).toBeVisible()
         const strikeText = await strikeValue.textContent()
-        expect(strikeText).toBeTruthy()
+        expect(strikeText.trim().length).toBeGreaterThan(0)
         expect(strikeText.trim()).not.toBe('')
         expect(strikeText).toMatch(/\d+\s+(CE|PE)/)
       } else {
@@ -813,7 +812,7 @@ test.describe('AutoPilot Strategy Types - Strike Auto-Population', () => {
     await page.getByTestId('autopilot-builder-strategy-type').selectOption('short_straddle')
 
     const replaceModal = page.getByTestId('autopilot-replace-legs-modal')
-    if (await replaceModal.isVisible({ timeout: 1000 }).catch(() => false)) {
+    if (await replaceModal.isVisible()) {
       await page.getByTestId('autopilot-replace-legs-confirm').click()
     }
 
@@ -834,16 +833,16 @@ test.describe('AutoPilot Strategy Types - Strike Auto-Population', () => {
         previewError.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {})
       ])
 
-      const hasPreview = await preview.isVisible().catch(() => false)
-      const hasError = await previewError.isVisible().catch(() => false)
+      const hasPreview = await preview.isVisible()
+      const hasError = await previewError.isVisible()
 
-      expect(hasPreview || hasError).toBeTruthy()
+      expect(hasPreview || hasError).toBe(true)
 
       if (hasPreview) {
         const strikeValue = preview.locator('[data-testid="autopilot-strike-value"]')
         await expect(strikeValue).toBeVisible()
         const strikeText = await strikeValue.textContent()
-        expect(strikeText).toBeTruthy()
+        expect(strikeText.trim().length).toBeGreaterThan(0)
         expect(strikeText.trim()).not.toBe('')
         expect(strikeText).toMatch(/\d+\s+(CE|PE)/)
       } else {
@@ -888,7 +887,7 @@ test.describe('AutoPilot Strategy Types - Strike Auto-Population', () => {
     await page.getByTestId('autopilot-builder-strategy-type').selectOption('long_strangle')
 
     const replaceModal = page.getByTestId('autopilot-replace-legs-modal')
-    if (await replaceModal.isVisible({ timeout: 1000 }).catch(() => false)) {
+    if (await replaceModal.isVisible()) {
       await page.getByTestId('autopilot-replace-legs-confirm').click()
     }
 
@@ -909,16 +908,16 @@ test.describe('AutoPilot Strategy Types - Strike Auto-Population', () => {
         previewError.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {})
       ])
 
-      const hasPreview = await preview.isVisible().catch(() => false)
-      const hasError = await previewError.isVisible().catch(() => false)
+      const hasPreview = await preview.isVisible()
+      const hasError = await previewError.isVisible()
 
-      expect(hasPreview || hasError).toBeTruthy()
+      expect(hasPreview || hasError).toBe(true)
 
       if (hasPreview) {
         const strikeValue = preview.locator('[data-testid="autopilot-strike-value"]')
         await expect(strikeValue).toBeVisible()
         const strikeText = await strikeValue.textContent()
-        expect(strikeText).toBeTruthy()
+        expect(strikeText.trim().length).toBeGreaterThan(0)
         expect(strikeText.trim()).not.toBe('')
         expect(strikeText).toMatch(/\d+\s+(CE|PE)/)
       } else {
@@ -963,7 +962,7 @@ test.describe('AutoPilot Strategy Types - Strike Auto-Population', () => {
     await page.getByTestId('autopilot-builder-strategy-type').selectOption('jade_lizard')
 
     const replaceModal = page.getByTestId('autopilot-replace-legs-modal')
-    if (await replaceModal.isVisible({ timeout: 1000 }).catch(() => false)) {
+    if (await replaceModal.isVisible()) {
       await page.getByTestId('autopilot-replace-legs-confirm').click()
     }
 
@@ -984,16 +983,16 @@ test.describe('AutoPilot Strategy Types - Strike Auto-Population', () => {
         previewError.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {})
       ])
 
-      const hasPreview = await preview.isVisible().catch(() => false)
-      const hasError = await previewError.isVisible().catch(() => false)
+      const hasPreview = await preview.isVisible()
+      const hasError = await previewError.isVisible()
 
-      expect(hasPreview || hasError).toBeTruthy()
+      expect(hasPreview || hasError).toBe(true)
 
       if (hasPreview) {
         const strikeValue = preview.locator('[data-testid="autopilot-strike-value"]')
         await expect(strikeValue).toBeVisible()
         const strikeText = await strikeValue.textContent()
-        expect(strikeText).toBeTruthy()
+        expect(strikeText.trim().length).toBeGreaterThan(0)
         expect(strikeText.trim()).not.toBe('')
         expect(strikeText).toMatch(/\d+\s+(CE|PE)/)
       } else {
@@ -1038,7 +1037,7 @@ test.describe('AutoPilot Strategy Types - Strike Auto-Population', () => {
     await page.getByTestId('autopilot-builder-strategy-type').selectOption('iron_butterfly')
 
     const replaceModal = page.getByTestId('autopilot-replace-legs-modal')
-    if (await replaceModal.isVisible({ timeout: 1000 }).catch(() => false)) {
+    if (await replaceModal.isVisible()) {
       await page.getByTestId('autopilot-replace-legs-confirm').click()
     }
 
@@ -1059,16 +1058,16 @@ test.describe('AutoPilot Strategy Types - Strike Auto-Population', () => {
         previewError.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {})
       ])
 
-      const hasPreview = await preview.isVisible().catch(() => false)
-      const hasError = await previewError.isVisible().catch(() => false)
+      const hasPreview = await preview.isVisible()
+      const hasError = await previewError.isVisible()
 
-      expect(hasPreview || hasError).toBeTruthy()
+      expect(hasPreview || hasError).toBe(true)
 
       if (hasPreview) {
         const strikeValue = preview.locator('[data-testid="autopilot-strike-value"]')
         await expect(strikeValue).toBeVisible()
         const strikeText = await strikeValue.textContent()
-        expect(strikeText).toBeTruthy()
+        expect(strikeText.trim().length).toBeGreaterThan(0)
         expect(strikeText.trim()).not.toBe('')
         expect(strikeText).toMatch(/\d+\s+(CE|PE)/)
       } else {

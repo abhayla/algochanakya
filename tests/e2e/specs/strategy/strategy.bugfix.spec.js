@@ -62,7 +62,7 @@ test.describe('Strategy Builder - Bug Fixes @bugfix', () => {
 
     // Verify we have valid P/L values
     const finalMaxProfit = await strategyPage.getMaxProfit();
-    expect(typeof finalMaxProfit).toBe('number');
+    expect(Number.isNaN(finalMaxProfit)).toBe(false);
 
     console.log('✅ BUG FIX VERIFIED: removeSelectedLegs() now calls calculatePnL()');
   });
@@ -132,8 +132,8 @@ test.describe('Strategy Builder - Bug Fixes @bugfix', () => {
     const maxProfit = await strategyPage.getMaxProfit();
     const maxLoss = await strategyPage.getMaxLoss();
 
-    expect(typeof maxProfit).toBe('number');
-    expect(typeof maxLoss).toBe('number');
+    expect(Number.isNaN(maxProfit)).toBe(false);
+    expect(Number.isNaN(maxLoss)).toBe(false);
 
     console.log('✅ BUG FIX VERIFIED: Single row P/L grid works with LTP API fallback');
     console.log(`   Max Profit: ${maxProfit}, Max Loss: ${maxLoss}`);

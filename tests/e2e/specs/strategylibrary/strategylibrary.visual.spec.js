@@ -224,15 +224,13 @@ test.describe('Strategy Library - Visual Regression @visual', () => {
       const deltaBadge = card.locator('[data-testid$="-delta"]');
 
       // At least one should exist on cards that have Greeks
-      const thetaVisible = await thetaBadge.isVisible().catch(() => false);
-      const vegaVisible = await vegaBadge.isVisible().catch(() => false);
-      const deltaVisible = await deltaBadge.isVisible().catch(() => false);
+      const thetaVisible = await thetaBadge.isVisible();
+      const vegaVisible = await vegaBadge.isVisible();
+      const deltaVisible = await deltaBadge.isVisible();
 
       // If any Greeks badges exist, they should be properly styled
-      if (thetaVisible || vegaVisible || deltaVisible) {
-        // Greeks are present
-        expect(thetaVisible || vegaVisible || deltaVisible).toBe(true);
-      }
+      // Assert that the page didn't crash (container still visible)
+      await expect(strategyLibraryPage.pageContainer).toBeVisible();
     }
   });
 
@@ -266,12 +264,15 @@ test.describe('Strategy Library - Visual Regression @visual', () => {
     await authenticatedPage.waitForLoadState('domcontentloaded');
 
     const comparisonBar = strategyLibraryPage.comparisonBar;
-    const isVisible = await comparisonBar.isVisible().catch(() => false);
+    const isVisible = await comparisonBar.isVisible();
 
     if (isVisible) {
       // Should be visible at bottom of screen
       const barBox = await comparisonBar.boundingBox();
       expect(barBox.width).toBeGreaterThan(200);
+    } else {
+      // Comparison bar not shown — page must still be stable
+      await expect(strategyLibraryPage.pageContainer).toBeVisible();
     }
   });
 

@@ -292,7 +292,7 @@ test.describe('Strategy Library - Happy Path @happy', () => {
 
     await strategyLibraryPage.closeDetails();
 
-    const isVisible = await strategyLibraryPage.detailsModal.isVisible().catch(() => false);
+    const isVisible = await strategyLibraryPage.detailsModal.isVisible();
     expect(isVisible).toBe(false);
   });
 
@@ -343,7 +343,7 @@ test.describe('Strategy Library - Happy Path @happy', () => {
 
     await strategyLibraryPage.closeDeploy();
 
-    const isVisible = await strategyLibraryPage.deployModal.isVisible().catch(() => false);
+    const isVisible = await strategyLibraryPage.deployModal.isVisible();
     expect(isVisible).toBe(false);
   });
 
@@ -456,20 +456,19 @@ test.describe('Strategy Library - Happy Path @happy', () => {
     // Click Deploy on first recommendation using POM method
     const deployBtn = strategyLibraryPage.getWizardRecommendationDeploy(0);
 
-    // If deploy button exists in recommendation, click it
-    if (await deployBtn.isVisible().catch(() => false)) {
-      await deployBtn.click();
-      await strategyLibraryPage.assertDeployModalVisible();
+    // Deploy button must be present in recommendation
+    await expect(deployBtn).toBeVisible();
+    await deployBtn.click();
+    await strategyLibraryPage.assertDeployModalVisible();
 
-      // Configure and deploy
-      await strategyLibraryPage.selectDeployUnderlying('NIFTY');
-      await authenticatedPage.waitForLoadState('domcontentloaded');
-      await strategyLibraryPage.setDeployLots(1);
-      await strategyLibraryPage.confirmDeploy();
+    // Configure and deploy
+    await strategyLibraryPage.selectDeployUnderlying('NIFTY');
+    await authenticatedPage.waitForLoadState('domcontentloaded');
+    await strategyLibraryPage.setDeployLots(1);
+    await strategyLibraryPage.confirmDeploy();
 
-      // Verify success
-      await expect(strategyLibraryPage.deploySuccess).toBeVisible();
-    }
+    // Verify success
+    await expect(strategyLibraryPage.deploySuccess).toBeVisible();
   });
 
   test('should show correct lot size calculation in deploy modal', async ({ authenticatedPage }) => {

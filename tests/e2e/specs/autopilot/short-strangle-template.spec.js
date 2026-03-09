@@ -67,7 +67,7 @@ test.describe('AutoPilot - SHORT-STRANGLE-ADJUSTMENTS-Template', () => {
 
     // Handle legs replacement modal if it appears (strategy type change triggers this)
     const replaceModal = page.getByTestId('autopilot-replace-legs-modal')
-    if (await replaceModal.isVisible({ timeout: 1000 }).catch(() => false)) {
+    if (await replaceModal.isVisible()) {
       await page.getByTestId('autopilot-replace-legs-confirm').click()
       await expect(replaceModal).not.toBeVisible()
     }
@@ -420,27 +420,27 @@ test.describe('AutoPilot - SHORT-STRANGLE-ADJUSTMENTS-Template', () => {
 
       // Check if there's a network error displayed
       const networkError = page.getByText('Network Error')
-      if (await networkError.isVisible({ timeout: 1000 }).catch(() => false)) {
+      if (await networkError.isVisible()) {
         console.log('Network error detected - backend may not be responding correctly')
       }
 
       // Check for error banner (store.error in StrategyBuilderView)
       const errorBanner = page.locator('.error-banner')
-      if (await errorBanner.isVisible({ timeout: 1000 }).catch(() => false)) {
+      if (await errorBanner.isVisible()) {
         const errorText = await errorBanner.textContent()
         console.log('Error banner found:', errorText)
       }
 
       // Also check for toast notifications
       const toast = page.locator('.toast, [class*="toast"], [class*="notification"]')
-      if (await toast.first().isVisible({ timeout: 1000 }).catch(() => false)) {
+      if (await toast.first().isVisible()) {
         const toastText = await toast.first().textContent()
         console.log('Toast message:', toastText)
       }
 
       // Check for other error messages
       const errorMessage = page.locator('.error-message, .toast-error, [class*="error"]')
-      if (await errorMessage.isVisible({ timeout: 500 }).catch(() => false)) {
+      if (await errorMessage.isVisible()) {
         const errorText = await errorMessage.textContent()
         console.log('Error message found:', errorText)
       }
@@ -551,7 +551,7 @@ test.describe('AutoPilot - SHORT-STRANGLE-ADJUSTMENTS-Template', () => {
 
     // Handle modal if appears
     const replaceModal = page.getByTestId('autopilot-replace-legs-modal')
-    if (await replaceModal.isVisible({ timeout: 1000 }).catch(() => false)) {
+    if (await replaceModal.isVisible()) {
       await page.getByTestId('autopilot-replace-legs-confirm').click()
     }
 

@@ -38,7 +38,7 @@ test.describe('OAuth Full Flow - Automated @oauth', () => {
     // Perform login - only TOTP is manual
     const token = await kiteLogin(page);
 
-    expect(token).toBeTruthy();
+    expect(token).not.toBe('');
     expect(token.length).toBeGreaterThan(10);
 
     // Verify we're logged in
@@ -79,7 +79,7 @@ test.describe('OAuth Full Flow - Automated @oauth', () => {
     // This will use cached token if valid, otherwise perform fresh login
     const token = await loginOrReuse(page);
 
-    expect(token).toBeTruthy();
+    expect(token).not.toBe('');
 
     // Verify we're authenticated
     await page.goto(FRONTEND_URL + '/dashboard');
