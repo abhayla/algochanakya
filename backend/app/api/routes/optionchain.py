@@ -13,10 +13,10 @@ import math
 import logging
 
 from app.database import get_db
-from app.models import User, BrokerConnection
+from app.models import User
 from app.services.brokers.market_data import get_user_market_data_adapter
 from app.services.autopilot.strike_finder_service import StrikeFinderService
-from app.utils.dependencies import get_current_user, get_current_broker_connection
+from app.utils.dependencies import get_current_user
 from app.schemas.autopilot import (
     StrikeFindByDeltaRequest,
     StrikeFindByPremiumRequest,
@@ -167,7 +167,6 @@ async def get_option_chain(
     underlying: str = Query(..., description="NIFTY, BANKNIFTY, or FINNIFTY"),
     expiry: str = Query(..., description="Expiry date in YYYY-MM-DD format"),
     user: User = Depends(get_current_user),
-    broker: BrokerConnection = Depends(get_current_broker_connection),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -294,75 +293,40 @@ async def get_option_chain(
 
         logger.info(f"[OptionChain] Organized {len(strikes_data)} strikes, fetching quotes for {len(token_to_symbol)} instruments")
 
-        # Fetch quotes using instrument tokens directly (bypasses token_manager lookup).
-        # token_to_symbol maps str(instrument_token) -> canonical_symbol.
-        # For SmartAPI, we pass these tokens straight to the REST quote API.
-        # For other adapters that don't expose _market_data, fall back to get_quote().
+        # Fetch quotes via unified adapter.get_quote() — broker-agnostic path.
+        # The adapter resolves canonical symbols to broker tokens internally,
+        # handles paise→rupees conversion, and returns UnifiedQuote objects.
         all_quotes = {}
-        token_list = list(token_to_symbol.keys())  # str instrument tokens
+        canonical_symbols = list(token_to_symbol.values())  # canonical symbol list
 
-        # Detect SmartAPI adapter to use direct token-based quote fetch
-        from app.services.brokers.market_data.smartapi_adapter import SmartAPIMarketDataAdapter
-        is_smartapi = isinstance(adapter, SmartAPIMarketDataAdapter)
-
-        for i in range(0, len(token_list), 50):
-            batch_tokens = token_list[i:i+50]
-            if not batch_tokens:
+        for i in range(0, len(canonical_symbols), 50):
+            batch_symbols = canonical_symbols[i:i+50]
+            if not batch_symbols:
                 continue
             try:
-                if is_smartapi:
-                    # Use SmartAPI REST quote API directly with instrument tokens
-                    raw_quotes = await adapter._market_data.get_quote(
-                        exchange="NFO",
-                        tokens=batch_tokens,
-                        mode="FULL"
-                    )
-                    for token, raw_data in raw_quotes.items():
-                        canonical_symbol = token_to_symbol.get(str(token))
-                        if canonical_symbol:
-                            symbol_key = f"NFO:{canonical_symbol}"
-                            depth = raw_data.get("depth", {})
-                            all_quotes[symbol_key] = {
-                                "last_price": float(raw_data.get("ltp", 0) or 0),
-                                "oi": int(raw_data.get("oi", 0) or 0),
-                                "volume": int(raw_data.get("volume", 0) or 0),
-                                "ohlc": {
-                                    "open": float(raw_data.get("open", 0) or 0),
-                                    "high": float(raw_data.get("high", 0) or 0),
-                                    "low": float(raw_data.get("low", 0) or 0),
-                                    "close": float(raw_data.get("close", 0) or 0),
-                                },
-                                "depth": {
-                                    "buy": [{"price": float(b.get("price", 0)), "quantity": b.get("quantity", 0)} for b in depth.get("buy", [])],
-                                    "sell": [{"price": float(s.get("price", 0)), "quantity": s.get("quantity", 0)} for s in depth.get("sell", [])],
-                                }
-                            }
-                else:
-                    # Generic adapter path: pass canonical symbols
-                    batch_symbols = [token_to_symbol[t] for t in batch_tokens]
-                    unified_quotes = await adapter.get_quote(batch_symbols)
-                    for canonical_symbol, uq in unified_quotes.items():
-                        symbol_key = f"NFO:{canonical_symbol}"
-                        all_quotes[symbol_key] = {
-                            "last_price": float(uq.last_price),
-                            "oi": uq.oi,
-                            "volume": uq.volume,
-                            "ohlc": {
-                                "open": float(uq.open),
-                                "high": float(uq.high),
-                                "low": float(uq.low),
-                                "close": float(uq.close)
-                            },
-                            "depth": {
-                                "buy": [{"price": float(uq.bid_price), "quantity": uq.bid_quantity}] if uq.bid_price else [],
-                                "sell": [{"price": float(uq.ask_price), "quantity": uq.ask_quantity}] if uq.ask_price else []
-                            }
-                        }
+                unified_quotes = await adapter.get_quote(batch_symbols)
+                for canonical_symbol, uq in unified_quotes.items():
+                    symbol_key = f"NFO:{canonical_symbol}"
+                    all_quotes[symbol_key] = {
+                        "last_price": float(uq.last_price),
+                        "oi": uq.oi,
+                        "volume": uq.volume,
+                        "ohlc": {
+                            "open": float(uq.open),
+                            "high": float(uq.high),
+                            "low": float(uq.low),
+                            "close": float(uq.close),
+                        },
+                        "depth": {
+                            "buy": [{"price": float(uq.bid_price), "quantity": uq.bid_quantity}] if uq.bid_price else [],
+                            "sell": [{"price": float(uq.ask_price), "quantity": uq.ask_quantity}] if uq.ask_price else [],
+                        },
+                    }
             except Exception as e:
-                logger.warning(f"[OptionChain] Quote batch failed (tokens {batch_tokens[:3]}...): {e}")
+                logger.warning(f"[OptionChain] Quote batch failed: {e}")
                 continue
 
-        logger.info(f"[OptionChain] Fetched quotes for {len(all_quotes)}/{len(token_list)} instruments")
+        logger.info(f"[OptionChain] Fetched quotes for {len(all_quotes)}/{len(canonical_symbols)} instruments")
 
         if not strikes_data:
             raise HTTPException(
@@ -502,13 +466,6 @@ async def get_option_chain(
     except HTTPException:
         raise
     except Exception as e:
-        # Check if it's an authentication error
-        error_msg = str(e).lower()
-        if any(keyword in error_msg for keyword in ["token", "auth", "session", "unauthorized"]):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=f"Broker session expired. Please login again. ({str(e)})"
-            )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to fetch option chain: {str(e)}"
@@ -520,7 +477,6 @@ async def get_oi_analysis(
     underlying: str = Query(..., description="NIFTY, BANKNIFTY, or FINNIFTY"),
     expiry: str = Query(..., description="Expiry date"),
     user: User = Depends(get_current_user),
-    broker: BrokerConnection = Depends(get_current_broker_connection),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -528,7 +484,7 @@ async def get_oi_analysis(
 
     Returns simplified OI data for visualization.
     """
-    chain_data = await get_option_chain(underlying, expiry, user, broker, db)
+    chain_data = await get_option_chain(underlying, expiry, user, db)
 
     oi_data = []
     for row in chain_data["chain"]:
@@ -555,7 +511,6 @@ async def get_oi_analysis(
 async def find_strike_by_delta(
     request: StrikeFindByDeltaRequest,
     user: User = Depends(get_current_user),
-    broker: BrokerConnection = Depends(get_current_broker_connection),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -563,20 +518,10 @@ async def find_strike_by_delta(
 
     Searches for the strike with delta closest to the target value.
     Optionally prefers round strikes (divisible by 100).
-
-    Note: StrikeFinderService currently uses Kite-specific implementation.
-    Full adapter refactoring will be done in a future phase.
     """
     try:
-        from app.services.brokers.factory import get_broker_adapter
-        from app.services.brokers.base import BrokerType
-
-        # Get broker adapter and extract Kite client for StrikeFinderService
-        # TODO: Refactor StrikeFinderService to accept adapter directly
-        adapter = await get_broker_adapter(BrokerType.KITE, broker.access_token)
-        kite = adapter.get_kite_client()
-
-        strike_finder = StrikeFinderService(kite, db)
+        adapter = await get_user_market_data_adapter(user.id, db)
+        strike_finder = StrikeFinderService(adapter, db)
 
         result = await strike_finder.find_strike_by_delta(
             underlying=request.underlying,
@@ -598,12 +543,6 @@ async def find_strike_by_delta(
     except HTTPException:
         raise
     except Exception as e:
-        error_msg = str(e).lower()
-        if any(keyword in error_msg for keyword in ["token", "auth", "session", "unauthorized"]):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=f"Broker session expired. Please login again. ({str(e)})"
-            )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to find strike by delta: {str(e)}"
@@ -614,7 +553,6 @@ async def find_strike_by_delta(
 async def find_strike_by_premium(
     request: StrikeFindByPremiumRequest,
     user: User = Depends(get_current_user),
-    broker: BrokerConnection = Depends(get_current_broker_connection),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -622,20 +560,10 @@ async def find_strike_by_premium(
 
     Searches for the strike with premium closest to the target value.
     Optionally prefers round strikes (divisible by 100).
-
-    Note: StrikeFinderService currently uses Kite-specific implementation.
-    Full adapter refactoring will be done in a future phase.
     """
     try:
-        from app.services.brokers.factory import get_broker_adapter
-        from app.services.brokers.base import BrokerType
-
-        # Get broker adapter and extract Kite client for StrikeFinderService
-        # TODO: Refactor StrikeFinderService to accept adapter directly
-        adapter = await get_broker_adapter(BrokerType.KITE, broker.access_token)
-        kite = adapter.get_kite_client()
-
-        strike_finder = StrikeFinderService(kite, db)
+        adapter = await get_user_market_data_adapter(user.id, db)
+        strike_finder = StrikeFinderService(adapter, db)
 
         result = await strike_finder.find_strike_by_premium(
             underlying=request.underlying,
@@ -657,12 +585,6 @@ async def find_strike_by_premium(
     except HTTPException:
         raise
     except Exception as e:
-        error_msg = str(e).lower()
-        if any(keyword in error_msg for keyword in ["token", "auth", "session", "unauthorized"]):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=f"Broker session expired. Please login again. ({str(e)})"
-            )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to find strike by premium: {str(e)}"

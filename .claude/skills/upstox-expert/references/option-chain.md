@@ -219,3 +219,28 @@ Same as Get Option Contracts: `instrument_key` + `expiry_date`.
 - `PoP` (Probability of Profit) is unique to Upstox — not available from other brokers' APIs
 - Use `prev_oi` vs `oi` to detect OI buildup/unwinding in strategy logic
 - MCX instruments do NOT support option chain — guard against MCX instrument keys
+
+## AlgoChanakya Token Resolution (Internal)
+
+### Upstox instrument_key Format
+
+Upstox uses a composite `instrument_key` format: `NSE_FO|{numeric_token}` (e.g., `NSE_FO|56789`). This is **NOT** the symbol name — it's a numeric token with an exchange prefix. Do NOT pass Kite tokens to Upstox APIs.
+
+### broker_instrument_tokens Table
+
+When Upstox is integrated as a data source, `broker_instrument_tokens` must be populated with:
+
+| Column | Value |
+|--------|-------|
+| `canonical_symbol` | Kite-format symbol (e.g., `NIFTY25FEB22000CE`) |
+| `broker` | `upstox` |
+| `broker_token` | Upstox instrument key (e.g., `NSE_FO|56789`) |
+| `broker_symbol` | Same as `broker_token` for Upstox |
+
+### Current Status
+
+Upstox ticker adapter is implemented as a stub in `backend/app/services/brokers/market_data/ticker/adapters/upstox.py` (raises `NotImplementedError`). Token map loading for Upstox WebSocket subscriptions is deferred until the adapter is fully implemented.
+
+### Future: Native Option Chain Integration
+
+Use `/v2/option/chain` instead of assembling from quotes — it returns full Greeks + PoP natively, includes bid/ask depth, and is the richest option chain API among all 6 brokers. The native endpoint eliminates the need for in-house Black-Scholes Greeks calculation.

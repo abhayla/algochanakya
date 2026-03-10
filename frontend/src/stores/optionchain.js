@@ -184,6 +184,7 @@ export const useOptionChainStore = defineStore('optionchain', () => {
     underlying.value = ul.toUpperCase()
     lotSize.value = getLotSize(underlying.value)
     expiry.value = '' // Reset expiry when underlying changes
+    error.value = null // Clear previous error when switching underlying
     chain.value = []
     summary.value = {
       total_ce_oi: 0,

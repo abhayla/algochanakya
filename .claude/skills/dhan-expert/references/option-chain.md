@@ -142,3 +142,28 @@ Response:
 - Dhan Option Chain API is **NOT yet integrated** into AlgoChanakya
 - AlgoChanakya uses SmartAPI for option chain data (platform default)
 - Future: Could use Dhan as fallback option chain source
+
+## AlgoChanakya Token Resolution (Internal)
+
+### Dhan Security IDs vs Kite Tokens
+
+Dhan uses numeric `security_id` values (e.g., `45679`) for instrument identification. These are **different** from Kite instrument tokens (e.g., `11612162`). Do NOT pass Kite tokens to the Dhan API.
+
+### broker_instrument_tokens Table
+
+When Dhan is eventually integrated as a data source, the `broker_instrument_tokens` table must be populated with:
+
+| Column | Value |
+|--------|-------|
+| `canonical_symbol` | Kite-format symbol (e.g., `NIFTY25FEB22000CE`) |
+| `broker` | `dhan` |
+| `broker_token` | Dhan security_id (int, e.g., `45679`) |
+| `broker_symbol` | Dhan trading symbol (e.g., `NIFTY-FEB2025-22000-CE`) |
+
+### Current Status
+
+Dhan ticker adapter is implemented as a stub in `backend/app/services/brokers/market_data/ticker/adapters/dhan.py` (raises `NotImplementedError`). Token map loading for Dhan WebSocket subscriptions is deferred until the adapter is fully implemented.
+
+### Future: Native Option Chain Integration
+
+Use `/v2/optionchain` instead of assembling from individual quotes — it returns Greeks natively (no separate calculation needed), includes OI change, and requires only 1 req/3sec per underlying vs many individual quote calls.

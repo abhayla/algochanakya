@@ -144,6 +144,11 @@ class SmartAPIMarketDataAdapter(MarketDataBrokerAdapter):
                 tokens_map = {}  # smartapi_token -> canonical_symbol
                 for symbol in option_symbols:
                     token = await self._token_manager.get_token(symbol)
+                    if not token:
+                        # Fallback: direct lookup via SmartAPI instrument master
+                        token_str = await self._instruments.lookup_token(symbol, "NFO")
+                        if token_str:
+                            token = int(token_str)
                     if token:
                         tokens_map[str(token)] = symbol
                     else:

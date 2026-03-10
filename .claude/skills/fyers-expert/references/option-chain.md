@@ -144,3 +144,30 @@ MCX (commodity) option chains are **NOT supported** by this API.
 - Fyers Option Chain API is **NOT currently used** in AlgoChanakya
 - AlgoChanakya uses SmartAPI as primary option chain source
 - Fyers option chain could serve as a secondary/fallback source
+
+## AlgoChanakya Token Resolution (Internal)
+
+### Fyers Symbol Format
+
+Fyers uses `NSE:NIFTY25FEB22000CE` format (exchange prefix + colon + symbol). The numeric `id` field in the option chain response is the Fytoken (e.g., `23000`), which is Fyers' internal instrument identifier.
+
+Do NOT pass Kite tokens to Fyers APIs. Fyers uses symbol-string lookups (`NSE:SYMBOL`) primarily, not numeric token subscriptions for REST endpoints.
+
+### broker_instrument_tokens Table
+
+When Fyers is integrated as a data source, `broker_instrument_tokens` must be populated with:
+
+| Column | Value |
+|--------|-------|
+| `canonical_symbol` | Kite-format symbol (e.g., `NIFTY25FEB22000CE`) |
+| `broker` | `fyers` |
+| `broker_token` | Fytoken (int, e.g., `23000`) |
+| `broker_symbol` | Fyers symbol string (e.g., `NSE:NIFTY25FEB22000CE`) |
+
+### Current Status
+
+Fyers ticker adapter is implemented as a stub in `backend/app/services/brokers/market_data/ticker/adapters/fyers.py` (raises `NotImplementedError`). Token map loading for Fyers is deferred until the adapter is fully implemented.
+
+### Future: Native Option Chain Integration
+
+Use `/v3/optionchain` with `strikecount` parameter — it returns full Greeks (including rho, vanna, charm) natively across all expiries in a single call. This is more comprehensive than SmartAPI's per-expiry endpoint.

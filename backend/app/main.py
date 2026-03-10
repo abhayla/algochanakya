@@ -81,6 +81,18 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"[WARNING] SmartAPI pre-warm failed (will retry on first request): {e}")
 
+    # Populate broker_instrument_tokens table for SmartAPI
+    # Maps canonical symbols (kite format) → SmartAPI tokens so
+    # TokenManager and WebSocket ticker adapters can resolve tokens.
+    try:
+        from app.services.instrument_master import InstrumentMasterService
+        async with AsyncSessionLocal() as db:
+            print("[INFO] Populating SmartAPI token mappings...")
+            token_count = await InstrumentMasterService.populate_broker_token_mappings(db)
+            print(f"[SUCCESS] SmartAPI token mappings: {token_count} rows")
+    except Exception as e:
+        print(f"[WARNING] SmartAPI token mapping failed (option chain LTPs may be 0): {e}")
+
     # Note: Strategy Monitor requires a valid Kite session to start.
     # It will be initialized when a user with valid broker connection
     # activates a strategy. See app/services/strategy_monitor.py for details.

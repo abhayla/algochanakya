@@ -7,18 +7,19 @@ Provides strike lookup by delta and premium.
 import asyncio
 from datetime import datetime, date, timedelta
 from decimal import Decimal
-from typing import Optional, Dict, List, Any
+from typing import Optional, Dict, List, Any, TYPE_CHECKING
 from dataclasses import dataclass
 import logging
 
-from kiteconnect import KiteConnect
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
 
 from app.models.autopilot import AutoPilotOptionChainCache
 from app.services.options.greeks_calculator import GreeksCalculatorService
-from app.services.legacy.market_data import MarketDataService
 from app.database import AsyncSessionLocal
+
+if TYPE_CHECKING:
+    from app.services.brokers.market_data.market_data_base import MarketDataBrokerAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -53,11 +54,11 @@ class OptionChainService:
     # Cache TTL (time to live) in seconds
     CACHE_TTL = 2  # 2 seconds for option chain cache
 
-    def __init__(self, kite: KiteConnect, db: AsyncSession, user_id: Optional[str] = None):
-        self.kite = kite
+    def __init__(self, adapter_or_kite, db: AsyncSession, user_id: Optional[str] = None):
+        """Accept either a MarketDataBrokerAdapter or a legacy KiteConnect client."""
+        self.adapter = adapter_or_kite
         self.db = db
         self.greeks_calc = GreeksCalculatorService(db, user_id) if user_id else None
-        self.market_data = MarketDataService(kite)
 
     async def get_option_chain(
         self,
@@ -103,19 +104,18 @@ class OptionChainService:
             # Get spot price
             spot_price = await self._get_spot_price(underlying)
 
-            # Get LTPs for all instruments
+            # Get quotes for LTP, OI, volume, etc.
             instrument_keys = [f"NFO:{inst['tradingsymbol']}" for inst in instruments]
-            ltp_data = await self.market_data.get_ltp(instrument_keys)
-
-            # Get quotes for OI, volume, etc.
             quote_data = await self._get_quotes(instrument_keys)
 
             # Build option chain entries with Greeks
             options = []
             for inst in instruments:
                 key = f"NFO:{inst['tradingsymbol']}"
-                ltp = ltp_data.get(key)
                 quote = quote_data.get(key, {})
+                # Extract LTP from quotes (works for both adapter and legacy paths)
+                raw_ltp = quote.get('last_price') or quote.get('last_trade_price')
+                ltp = Decimal(str(raw_ltp)) if raw_ltp else None
 
                 # Calculate Greeks if we have price and spot
                 greeks = {}
@@ -184,31 +184,69 @@ class OptionChainService:
         strikes = sorted(set(Decimal(str(inst['strike'])) for inst in instruments))
         return strikes
 
+    def _is_adapter(self) -> bool:
+        """Check if self.adapter is a MarketDataBrokerAdapter (not legacy KiteConnect)."""
+        # MarketDataBrokerAdapter has get_ltp() as an async coroutine method
+        return hasattr(self.adapter, 'get_ltp') and hasattr(self.adapter, 'get_quote')
+
     async def _fetch_instruments(self, underlying: str, expiry: date) -> List[Dict]:
-        """Fetch instruments from Kite for underlying and expiry."""
-        loop = asyncio.get_event_loop()
-        all_instruments = await loop.run_in_executor(
-            None,
-            self.kite.instruments,
-            "NFO"
-        )
+        """Fetch instruments for underlying and expiry from the DB (adapter path)
+        or from Kite API (legacy path)."""
+        if self._is_adapter():
+            from sqlalchemy import select, and_
+            from app.models.instruments import Instrument as InstrumentModel
 
-        # Filter for this underlying and expiry
-        expiry_str = expiry.strftime("%Y-%m-%d")
-        filtered = [
-            inst for inst in all_instruments
-            if inst['name'] == underlying
-            and inst['expiry'].strftime("%Y-%m-%d") == expiry_str
-            and inst['instrument_type'] in ['CE', 'PE']
-        ]
-
-        return filtered
+            result = await self.db.execute(
+                select(InstrumentModel).where(
+                    and_(
+                        InstrumentModel.name == underlying,
+                        InstrumentModel.exchange == "NFO",
+                        InstrumentModel.instrument_type.in_(["CE", "PE"]),
+                        InstrumentModel.expiry == expiry,
+                        InstrumentModel.strike.isnot(None),
+                    )
+                )
+            )
+            rows = result.scalars().all()
+            return [
+                {
+                    "instrument_token": r.instrument_token,
+                    "tradingsymbol": r.tradingsymbol,
+                    "name": r.name,
+                    "expiry": r.expiry,
+                    "strike": float(r.strike),
+                    "instrument_type": r.instrument_type,
+                    "lot_size": r.lot_size,
+                }
+                for r in rows
+            ]
+        else:
+            # Legacy KiteConnect path
+            loop = asyncio.get_event_loop()
+            all_instruments = await loop.run_in_executor(
+                None, self.adapter.instruments, "NFO"
+            )
+            expiry_str = expiry.strftime("%Y-%m-%d")
+            return [
+                inst for inst in all_instruments
+                if inst['name'] == underlying
+                and inst['expiry'].strftime("%Y-%m-%d") == expiry_str
+                and inst['instrument_type'] in ['CE', 'PE']
+            ]
 
     async def _get_spot_price(self, underlying: str) -> Optional[Decimal]:
         """Get current spot price for underlying."""
         try:
-            spot_data = await self.market_data.get_spot_price(underlying)
-            return spot_data.ltp if spot_data else None
+            if self._is_adapter():
+                ltp_map = await self.adapter.get_ltp([underlying])
+                ltp = ltp_map.get(underlying)
+                return Decimal(str(ltp)) if ltp else None
+            else:
+                # Legacy KiteConnect path via MarketDataService
+                from app.services.legacy.market_data import MarketDataService
+                market_data = MarketDataService(self.adapter)
+                spot_data = await market_data.get_spot_price(underlying)
+                return spot_data.ltp if spot_data else None
         except Exception as e:
             logger.error(f"Error fetching spot price for {underlying}: {e}")
             return None
@@ -216,13 +254,33 @@ class OptionChainService:
     async def _get_quotes(self, instrument_keys: List[str]) -> Dict[str, Dict]:
         """Get full quotes for instruments."""
         try:
-            loop = asyncio.get_event_loop()
-            quote_data = await loop.run_in_executor(
-                None,
-                self.kite.quote,
-                instrument_keys
-            )
-            return quote_data
+            if self._is_adapter():
+                # Strip "NFO:" prefix — adapter expects canonical symbols
+                canonical_symbols = [k.replace("NFO:", "") for k in instrument_keys]
+                unified_quotes = await self.adapter.get_quote(canonical_symbols)
+                result = {}
+                for canonical_symbol, uq in unified_quotes.items():
+                    key = f"NFO:{canonical_symbol}"
+                    result[key] = {
+                        "last_price": float(uq.last_price),
+                        "oi": uq.oi,
+                        "volume": uq.volume,
+                        "ohlc": {
+                            "open": float(uq.open),
+                            "high": float(uq.high),
+                            "low": float(uq.low),
+                            "close": float(uq.close),
+                        },
+                        "depth": {
+                            "buy": [{"price": float(uq.bid_price), "quantity": uq.bid_quantity}] if uq.bid_price else [],
+                            "sell": [{"price": float(uq.ask_price), "quantity": uq.ask_quantity}] if uq.ask_price else [],
+                        },
+                    }
+                return result
+            else:
+                # Legacy KiteConnect path
+                loop = asyncio.get_event_loop()
+                return await loop.run_in_executor(None, self.adapter.quote, instrument_keys)
         except Exception as e:
             logger.error(f"Error fetching quotes: {e}")
             return {}

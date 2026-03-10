@@ -28,8 +28,15 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('access_token')
-      window.location.href = '/login'
+      const url = error.config?.url || ''
+      // Only logout if the 401 is from an auth endpoint (JWT expired/invalid).
+      // 401s from broker endpoints (e.g. optionchain, watchlist) mean broker
+      // credentials expired — those should NOT log the user out.
+      const isAuthEndpoint = url.includes('/api/auth/') || url.includes('/api/user/')
+      if (isAuthEndpoint) {
+        localStorage.removeItem('access_token')
+        window.location.href = '/login'
+      }
     }
     return Promise.reject(error)
   }

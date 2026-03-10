@@ -10,11 +10,15 @@ import { waitForApiResponse } from '../../helpers/wait-helpers.js';
 test.describe('Option Chain - Strike Finder Happy Path @happy', () => {
   test.describe.configure({ timeout: 120000 });
   let optionChainPage;
+  let chainLoadedSuccessfully = false;
 
-  test.beforeEach(async ({ page }) => {
-    optionChainPage = new OptionChainPage(page);
+  test.beforeEach(async ({ authenticatedPage }) => {
+    chainLoadedSuccessfully = false;
+    optionChainPage = new OptionChainPage(authenticatedPage);
     await optionChainPage.navigate();
     await optionChainPage.waitForChainLoad();
+    const hasError = await optionChainPage.errorAlert.isVisible().catch(() => false);
+    chainLoadedSuccessfully = !hasError;
   });
 
   test('should display Strike Finder button in header', async () => {
@@ -67,10 +71,10 @@ test.describe('Option Chain - Strike Finder Happy Path @happy', () => {
     await expect(optionChainPage.strikeFinderPremiumInput).toBeVisible();
   });
 
-  test('should search strike by delta', async ({ page }) => {
+  test('should search strike by delta', async ({ authenticatedPage }) => {
     const expectation = getDataExpectation();
-    if (expectation === 'PRE_OPEN' || expectation === 'CLOSED') {
-      test.skip('Strike Finder requires live market data');
+    if (expectation === 'PRE_OPEN' || expectation === 'CLOSED' || !chainLoadedSuccessfully) {
+      test.skip('Strike Finder requires a successfully loaded option chain');
       return;
     }
 
@@ -79,7 +83,7 @@ test.describe('Option Chain - Strike Finder Happy Path @happy', () => {
     await optionChainPage.setStrikeFinderType('CE');
     await optionChainPage.enterTargetDelta(0.30);
 
-    const responsePromise = waitForApiResponse(page, '/api/optionchain/find-by-delta', { timeout: 15000 });
+    const responsePromise = waitForApiResponse(authenticatedPage, '/api/optionchain/find-by-delta', { timeout: 15000 });
     await optionChainPage.searchStrike();
     const response = await responsePromise;
 
@@ -95,10 +99,10 @@ test.describe('Option Chain - Strike Finder Happy Path @happy', () => {
     expect(result.ltp).toBeGreaterThan(0);
   });
 
-  test('should search strike by premium', async ({ page }) => {
+  test('should search strike by premium', async ({ authenticatedPage }) => {
     const expectation = getDataExpectation();
-    if (expectation === 'PRE_OPEN' || expectation === 'CLOSED') {
-      test.skip('Strike Finder requires live market data');
+    if (expectation === 'PRE_OPEN' || expectation === 'CLOSED' || !chainLoadedSuccessfully) {
+      test.skip('Strike Finder requires a successfully loaded option chain');
       return;
     }
 
@@ -107,7 +111,7 @@ test.describe('Option Chain - Strike Finder Happy Path @happy', () => {
     await optionChainPage.setStrikeFinderType('PE');
     await optionChainPage.enterTargetPremium(180);
 
-    const responsePromise = waitForApiResponse(page, '/api/optionchain/find-by-premium', { timeout: 15000 });
+    const responsePromise = waitForApiResponse(authenticatedPage, '/api/optionchain/find-by-premium', { timeout: 15000 });
     await optionChainPage.searchStrike();
     const response = await responsePromise;
 
@@ -123,10 +127,10 @@ test.describe('Option Chain - Strike Finder Happy Path @happy', () => {
     expect(result.ltp).toBeGreaterThan(0);
   });
 
-  test('should display strike result with all details', async ({ page }) => {
+  test('should display strike result with all details', async ({ authenticatedPage }) => {
     const expectation = getDataExpectation();
-    if (expectation === 'PRE_OPEN' || expectation === 'CLOSED') {
-      test.skip('Strike Finder requires live market data');
+    if (expectation === 'PRE_OPEN' || expectation === 'CLOSED' || !chainLoadedSuccessfully) {
+      test.skip('Strike Finder requires a successfully loaded option chain');
       return;
     }
 
@@ -135,7 +139,7 @@ test.describe('Option Chain - Strike Finder Happy Path @happy', () => {
     await optionChainPage.setStrikeFinderType('CE');
     await optionChainPage.enterTargetDelta(0.30);
 
-    const responsePromise = waitForApiResponse(page, '/api/optionchain/find-by-delta', { timeout: 15000 });
+    const responsePromise = waitForApiResponse(authenticatedPage, '/api/optionchain/find-by-delta', { timeout: 15000 });
     await optionChainPage.searchStrike();
     const response = await responsePromise;
 

@@ -88,3 +88,25 @@ Building option chain from individual quotes is slow for large chains:
 - Requires 1-2 API calls per batch (500 instruments max)
 - Rate limit: 10 req/sec — manageable
 - Use LTP endpoint (`/quote/ltp`) instead of full quote to reduce payload size
+
+## AlgoChanakya Token Resolution (Internal)
+
+### Identity Token Mapping
+
+Kite uses integer instrument tokens (e.g., `11612162`) for WebSocket subscriptions. These tokens also serve as the canonical format internally — no separate `broker_instrument_tokens` lookup is needed for Kite's own data endpoints.
+
+However, Kite tokens **cannot** be passed to other brokers' APIs (e.g., SmartAPI REST quote API). Kite tokens from the `instruments` table have `source_broker='kite'` and are **only valid for Kite WebSocket and Kite quote REST**.
+
+### Token Flow for Option Chain
+
+Since AlgoChanakya uses SmartAPI as the platform default for option chain data (not Kite), the Kite instrument tokens must be cross-referenced to SmartAPI tokens at startup:
+
+1. `InstrumentMasterService.populate_broker_token_mappings()` runs at startup
+2. It queries all NFO options from `instruments` table (`source_broker='kite'`)
+3. For each canonical symbol, it calls `SmartAPIInstruments.lookup_token(symbol, "NFO")`
+4. The resolved SmartAPI token is stored in `broker_instrument_tokens` (broker=`smartapi`)
+5. `SmartAPIMarketDataAdapter.get_quote()` then uses these tokens for REST quote calls
+
+**Symptom of empty `broker_instrument_tokens`:** All option strike LTPs = 0 while spot price shows correctly.
+
+**Source:** `backend/app/services/instrument_master.py` — `populate_broker_token_mappings()`

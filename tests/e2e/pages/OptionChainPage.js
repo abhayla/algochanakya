@@ -124,11 +124,22 @@ export class OptionChainPage extends BasePage {
   }
 
   async waitForChainLoad() {
-    // Wait for table or empty state - used by tests that need full data
-    await Promise.race([
-      this.waitForTestId('optionchain-table', { timeout: 30000 }),
-      this.waitForTestId('optionchain-empty-state', { timeout: 30000 })
+    // Wait for table, empty state, or error — returns which state appeared
+    const result = await Promise.race([
+      this.waitForTestId('optionchain-table', { timeout: 30000 }).then(() => 'table'),
+      this.waitForTestId('optionchain-empty-state', { timeout: 30000 }).then(() => 'empty'),
+      this.waitForTestId('optionchain-error', { timeout: 30000 }).then(() => 'error'),
     ]);
+    return result;
+  }
+
+  async assertChainLoaded() {
+    // Asserts chain loaded successfully (table or empty state, not error)
+    const state = await this.waitForChainLoad();
+    if (state === 'error') {
+      throw new Error('Option chain failed to load (optionchain-error shown)');
+    }
+    return state;
   }
 
   async selectUnderlying(underlying) {

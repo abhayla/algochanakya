@@ -6,16 +6,17 @@ Implements round strike preference logic.
 """
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Optional, List, Dict, Any, Tuple
+from typing import Optional, List, Dict, Any, Tuple, TYPE_CHECKING
 import logging
 import math
 
-from kiteconnect import KiteConnect
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services.option_chain_service import OptionChainService, OptionChainEntry
 from app.services.options.expected_move_service import ExpectedMoveService
-from app.services.legacy.market_data import MarketDataService
+
+if TYPE_CHECKING:
+    from app.services.brokers.market_data.market_data_base import MarketDataBrokerAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -23,12 +24,12 @@ logger = logging.getLogger(__name__)
 class StrikeFinderService:
     """Service for finding option strikes by various criteria."""
 
-    def __init__(self, kite: KiteConnect, db: AsyncSession):
-        self.kite = kite
+    def __init__(self, adapter_or_kite, db: AsyncSession):
+        """Accept either a MarketDataBrokerAdapter or a legacy KiteConnect client."""
+        self.adapter = adapter_or_kite
         self.db = db
-        self.option_chain_service = OptionChainService(kite, db)
-        self.expected_move_service = ExpectedMoveService(kite, db)
-        self.market_data = MarketDataService(kite)
+        self.option_chain_service = OptionChainService(adapter_or_kite, db)
+        self.expected_move_service = ExpectedMoveService(adapter_or_kite, db)
 
     async def find_strike_by_delta(
         self,
@@ -792,18 +793,13 @@ class StrikeFinderService:
             # This gives ~68% probability both stay OTM
         """
         try:
-            # Get spot and expected move (check market_data for test mocks)
-            if hasattr(self.market_data, 'get_spot_price') and hasattr(self.market_data, 'get_expected_move'):
-                spot_obj = await self.market_data.get_spot_price(underlying)
-                spot_price = float(spot_obj.ltp)
-                expected_move = await self.market_data.get_expected_move(underlying)
-            else:
-                expiry_str = expiry.strftime("%Y-%m-%d")
-                move_range = await self.expected_move_service.get_expected_move_range(
-                    underlying, expiry_str
-                )
-                spot_price = move_range['spot']
-                expected_move = move_range['expected_move']
+            # Get spot and expected move via adapter + expected_move_service
+            expiry_str = expiry.strftime("%Y-%m-%d")
+            move_range = await self.expected_move_service.get_expected_move_range(
+                underlying, expiry_str
+            )
+            spot_price = move_range['spot']
+            expected_move = move_range['expected_move']
 
             if expected_move == 0:
                 logger.warning(f"Could not calculate expected move for {underlying} {expiry}")

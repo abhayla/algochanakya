@@ -197,3 +197,31 @@ The option chain REST API returns **RUPEES** for all price fields. This is diffe
 | WebSocket V2 (market data) | PAISE (divide by 100) |
 | Historical data REST | PAISE (divide by 100) |
 | Standard quote REST | RUPEES |
+
+## AlgoChanakya Token Resolution (Internal)
+
+### The Paise/Rupees Trap for NFO Quote REST API
+
+The `SmartAPIMarketDataAdapter.get_quote()` calls `SmartAPIMarketData.get_quote(exchange="NFO", tokens=[...], mode="FULL")`. This REST API returns prices **in PAISE** — the adapter's `_convert_to_unified_quote()` divides by 100. This is different from the dedicated Option Chain endpoint above (which returns rupees).
+
+**CRITICAL**: Do NOT bypass `adapter.get_quote()` with `adapter._market_data.get_quote()` directly — you will get raw paise values without conversion.
+
+### broker_instrument_tokens Table
+
+The `broker_instrument_tokens` table maps canonical symbols (kite format) to SmartAPI tokens. Without rows in this table, `TokenManager.get_token()` returns None and `get_quote()` returns empty results → all LTPs = 0.
+
+**Symptom**: Option chain loads correctly (spot price shows) but all strike LTPs are 0.
+
+**Fix**: At startup, `InstrumentMasterService.populate_broker_token_mappings()` in `backend/app/services/instrument_master.py` is called to populate this table using `SmartAPIInstruments.lookup_token()`.
+
+### lookup_token Fallback
+
+`SmartAPIMarketDataAdapter.get_quote()` uses `TokenManager.get_token()` first. If that returns None, it falls back to `SmartAPIInstruments.lookup_token(symbol, "NFO")` directly. This multi-tier lookup handles the case where `broker_instrument_tokens` is empty or has missing rows.
+
+**Source**: `backend/app/services/brokers/market_data/smartapi_adapter.py` lines ~139-155
+
+### Token Format
+
+SmartAPI tokens are string integers (e.g., `"37806"`). Kite tokens are also integers but different values (e.g., `11612162`). Do NOT pass Kite tokens to the SmartAPI REST quote API — it won't recognize them and returns empty results.
+
+Near-term weekly expiries often only have Kite tokens in the instruments table. The `lookup_token()` fallback resolves the correct SmartAPI token by parsing the canonical symbol and matching via underlying+expiry+strike+option_type.

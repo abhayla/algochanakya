@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.dialects.postgresql import insert
 
 from app.models.instruments import Instrument as InstrumentModel
+from app.models.broker_instrument_tokens import BrokerInstrumentToken
 from app.services.brokers.market_data.market_data_base import (
     MarketDataBrokerAdapter,
     Instrument as AdapterInstrument,
@@ -186,6 +187,106 @@ class InstrumentMasterService:
         except Exception as e:
             logger.warning(f"[InstrumentMaster] Could not check refresh status: {e}")
             return True
+
+    @staticmethod
+    async def populate_broker_token_mappings(db: AsyncSession) -> int:
+        """Populate broker_instrument_tokens for SmartAPI using the instrument master.
+
+        Queries all NFO options from the instruments table (source_broker='kite'),
+        resolves each canonical symbol to a SmartAPI token via the instrument master,
+        and upserts into broker_instrument_tokens.
+
+        Returns:
+            Number of SmartAPI token mappings stored.
+        """
+        try:
+            from app.services.legacy.smartapi_instruments import get_smartapi_instruments
+            smartapi_instr = get_smartapi_instruments()
+
+            # Ensure SmartAPI instrument master is loaded
+            if not smartapi_instr._instruments:
+                count = await smartapi_instr.download_master()
+                logger.info(f"[InstrumentMaster] Loaded {count} SmartAPI instruments")
+
+            today = date.today()
+
+            # Fetch all non-expired NFO options from DB
+            result = await db.execute(
+                select(InstrumentModel).where(
+                    and_(
+                        InstrumentModel.exchange == "NFO",
+                        InstrumentModel.instrument_type.in_(["CE", "PE"]),
+                        InstrumentModel.expiry >= today,
+                        InstrumentModel.source_broker == "kite",
+                    )
+                )
+            )
+            kite_instruments = result.scalars().all()
+            logger.info(
+                f"[InstrumentMaster] Resolving SmartAPI tokens for "
+                f"{len(kite_instruments)} kite instruments"
+            )
+
+            mappings: List[dict] = []
+            missing = 0
+
+            for inst in kite_instruments:
+                canonical_symbol = inst.tradingsymbol
+                token_str = await smartapi_instr.lookup_token(canonical_symbol, "NFO")
+                if not token_str:
+                    missing += 1
+                    continue
+
+                underlying = (
+                    InstrumentMasterService._extract_underlying(canonical_symbol) or ""
+                )
+                mappings.append({
+                    "canonical_symbol": canonical_symbol,
+                    "broker": "smartapi",
+                    "broker_symbol": canonical_symbol,  # SmartAPI uses same canonical format
+                    "broker_token": int(token_str),
+                    "exchange": "NFO",
+                    "underlying": underlying,
+                    "expiry": inst.expiry,
+                    "last_updated": datetime.utcnow(),
+                })
+
+            if not mappings:
+                logger.warning(
+                    f"[InstrumentMaster] No SmartAPI token mappings found "
+                    f"({missing} symbols unresolved)"
+                )
+                return 0
+
+            # Batch upsert
+            BATCH_SIZE = 2000
+            total_stored = 0
+            for i in range(0, len(mappings), BATCH_SIZE):
+                batch = mappings[i : i + BATCH_SIZE]
+                stmt = insert(BrokerInstrumentToken).values(batch)
+                stmt = stmt.on_conflict_do_update(
+                    constraint="uq_symbol_broker",
+                    set_={
+                        "broker_token": stmt.excluded.broker_token,
+                        "broker_symbol": stmt.excluded.broker_symbol,
+                        "expiry": stmt.excluded.expiry,
+                        "last_updated": stmt.excluded.last_updated,
+                    },
+                )
+                await db.execute(stmt)
+                total_stored += len(batch)
+
+            await db.commit()
+
+            logger.info(
+                f"[InstrumentMaster] Stored {total_stored} SmartAPI token mappings "
+                f"({missing} unresolved)"
+            )
+            return total_stored
+
+        except Exception as e:
+            logger.error(f"[InstrumentMaster] populate_broker_token_mappings failed: {e}")
+            return 0
 
     @staticmethod
     def _extract_underlying(symbol: str) -> Optional[str]:

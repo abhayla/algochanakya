@@ -23,7 +23,11 @@ test.describe('Option Chain - Happy Path @happy', () => {
     await expect(optionChainPage.underlyingTabs).toBeVisible();
     await expect(optionChainPage.niftyTab).toBeVisible();
     await expect(optionChainPage.bankniftyTab).toBeVisible();
-    await expect(optionChainPage.finniftyTab).toBeVisible();
+    // FINNIFTY was delisted by NSE in Nov 2024 — tab may not render if no instruments available
+    const finniftyCount = await optionChainPage.finniftyTab.count();
+    if (finniftyCount > 0) {
+      await expect(optionChainPage.finniftyTab).toBeVisible();
+    }
   });
 
   test('should display expiry selector', async () => {

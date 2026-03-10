@@ -25,7 +25,7 @@ Each broker uses a different symbol format. The platform uses a canonical format
 |--------|-------------------------------|-------|
 | Zerodha | `NIFTY2530625000CE` (exchange token) | Numeric instrument token for WebSocket |
 | AngelOne | `NIFTY25MAR25000CE` (symbol token) | Different date format from Zerodha |
-| Upstox | `NSE_FO|NIFTY25MAR25000CE` | Exchange prefix with pipe separator |
+| Upstox | `NSE_FO|12345` (numeric instrument key) | Exchange prefix + pipe + numeric token (NOT symbol name) |
 | Dhan | Security ID (numeric) | Separate security ID lookup required |
 | Fyers | `NSE:NIFTY2530625000CE` | Exchange prefix with colon |
 | Paytm | Script ID (numeric) | Similar to Dhan — numeric ID lookup |
@@ -38,9 +38,9 @@ Rate limits vary widely. Exceeding them can cause temporary bans.
 
 | Broker | Order API | Data API | WebSocket | Expert Skill |
 |--------|-----------|----------|-----------|--------------|
-| Zerodha | 10 req/s | 3 req/s | 3000 tokens | `/zerodha-expert` |
+| Zerodha | 10 req/s | 10 req/s | 3000 tokens | `/zerodha-expert` |
 | AngelOne | 10 req/s | 1 req/s (historical) | 9000 tokens | `/angelone-expert` |
-| Upstox | 25 req/s | 1 req/s (historical) | 4096 tokens | `/upstox-expert` |
+| Upstox | 50 req/s | 50 req/s | 4096 tokens | `/upstox-expert` |
 | Dhan | 25 req/s | 5 req/s | 100 instruments | `/dhan-expert` |
 | Fyers | 10 req/s | 1 req/s (historical) | 200 symbols | `/fyers-expert` |
 | Paytm | 10 req/s | 5 req/s | 200 instruments | `/paytm-expert` |

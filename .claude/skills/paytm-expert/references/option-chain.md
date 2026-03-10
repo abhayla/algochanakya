@@ -102,6 +102,31 @@ Paytm Money added BSE F&O instruments in 2025. BSE option chain should also be a
 - AlgoChanakya uses SmartAPI for option chain data
 - Given Paytm API maturity concerns, use as tertiary fallback only
 
+## AlgoChanakya Token Resolution (Internal)
+
+### Paytm Security IDs vs Kite Tokens
+
+Paytm uses numeric `security_id` values (e.g., `45679`). These are **different** from Kite instrument tokens. Do NOT pass Kite tokens to Paytm APIs.
+
+### broker_instrument_tokens Table
+
+When Paytm is integrated as a data source, `broker_instrument_tokens` must be populated with:
+
+| Column | Value |
+|--------|-------|
+| `canonical_symbol` | Kite-format symbol (e.g., `NIFTY25FEB22000CE`) |
+| `broker` | `paytm` |
+| `broker_token` | Paytm security_id (int, e.g., `45679`) |
+| `broker_symbol` | Paytm symbol string (e.g., `NIFTY25FEB22000CE`) |
+
+### Current Status
+
+Paytm ticker adapter is implemented as a stub in `backend/app/services/brokers/market_data/ticker/adapters/paytm.py` (raises `NotImplementedError`). Token map loading for Paytm is deferred until the adapter is fully implemented.
+
+### Price Units for Paytm
+
+Unlike the REST option chain endpoint (which returns prices in **rupees**), some Paytm WebSocket/streaming endpoints may return prices in **paisa** (×100). Always check the price unit documentation for the specific endpoint being used. See `common-gotchas.md` Section 5 for the price unit table.
+
 ## Important Caution
 
 Paytm Money API has a history of:
