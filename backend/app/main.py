@@ -84,14 +84,22 @@ async def lifespan(app: FastAPI):
     # Populate broker_instrument_tokens table for SmartAPI
     # Maps canonical symbols (kite format) → SmartAPI tokens so
     # TokenManager and WebSocket ticker adapters can resolve tokens.
+    # CRITICAL: if this step fails or returns 0, all option chain LTPs will be 0.
     try:
         from app.services.instrument_master import InstrumentMasterService
         async with AsyncSessionLocal() as db:
             print("[INFO] Populating SmartAPI token mappings...")
             token_count = await InstrumentMasterService.populate_broker_token_mappings(db)
-            print(f"[SUCCESS] SmartAPI token mappings: {token_count} rows")
+            if token_count == 0:
+                print("[WARNING] SmartAPI token mappings: 0 rows stored — option chain LTPs will be 0!")
+                print("[WARNING] Fix: ensure NFO instruments are in DB and ANGEL_API_KEY is set.")
+            else:
+                print(f"[SUCCESS] SmartAPI token mappings: {token_count} rows")
+    except RuntimeError as e:
+        print(f"[WARNING] SmartAPI token mapping failed — option chain LTPs will be 0: {e}")
+        print("[WARNING] Fix: check ANGEL_API_KEY in backend/.env and network connectivity.")
     except Exception as e:
-        print(f"[WARNING] SmartAPI token mapping failed (option chain LTPs may be 0): {e}")
+        print(f"[WARNING] SmartAPI token mapping failed (unexpected error): {e}")
 
     # Note: Strategy Monitor requires a valid Kite session to start.
     # It will be initialized when a user with valid broker connection

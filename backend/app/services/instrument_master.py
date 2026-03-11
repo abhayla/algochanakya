@@ -192,25 +192,39 @@ class InstrumentMasterService:
     async def populate_broker_token_mappings(db: AsyncSession) -> int:
         """Populate broker_instrument_tokens for SmartAPI using the instrument master.
 
-        Queries all NFO options from the instruments table (source_broker='kite'),
-        resolves each canonical symbol to a SmartAPI token via the instrument master,
-        and upserts into broker_instrument_tokens.
+        Queries all NFO options from the instruments table (preferring source_broker='kite',
+        falling back to all sources if none found), resolves each canonical symbol to a
+        SmartAPI token via the SmartAPI instrument master, and upserts into
+        broker_instrument_tokens.
 
         Returns:
             Number of SmartAPI token mappings stored.
+        Raises:
+            RuntimeError: If SmartAPI instrument master download fails and no instruments
+                          can be loaded. Callers should catch this and log as a warning.
         """
         try:
             from app.services.legacy.smartapi_instruments import get_smartapi_instruments
             smartapi_instr = get_smartapi_instruments()
 
-            # Ensure SmartAPI instrument master is loaded
+            # Ensure SmartAPI instrument master is loaded.
+            # If the in-memory singleton is empty (pre-warm didn't run or failed),
+            # download it now. Raise a clear error if the download fails so callers
+            # can log a meaningful warning instead of silently getting 0 mappings.
             if not smartapi_instr._instruments:
+                logger.info("[InstrumentMaster] SmartAPI instruments not in memory, downloading...")
                 count = await smartapi_instr.download_master()
+                if not count or not smartapi_instr._instruments:
+                    raise RuntimeError(
+                        "SmartAPI instrument master download returned 0 instruments. "
+                        "Check ANGEL_API_KEY and network connectivity."
+                    )
                 logger.info(f"[InstrumentMaster] Loaded {count} SmartAPI instruments")
 
             today = date.today()
 
-            # Fetch all non-expired NFO options from DB
+            # Fetch all non-expired NFO options from DB, preferring kite-sourced instruments.
+            # Kite instruments use canonical symbol format that SmartAPI lookup understands.
             result = await db.execute(
                 select(InstrumentModel).where(
                     and_(
@@ -222,9 +236,34 @@ class InstrumentMasterService:
                 )
             )
             kite_instruments = result.scalars().all()
+
+            # Fallback: if no kite-sourced instruments found, use all available sources.
+            # This handles dev environments where instruments were downloaded via SmartAPI adapter.
+            if not kite_instruments:
+                logger.warning(
+                    "[InstrumentMaster] No kite-sourced NFO instruments found in DB. "
+                    "Trying all source brokers as fallback..."
+                )
+                result = await db.execute(
+                    select(InstrumentModel).where(
+                        and_(
+                            InstrumentModel.exchange == "NFO",
+                            InstrumentModel.instrument_type.in_(["CE", "PE"]),
+                            InstrumentModel.expiry >= today,
+                        )
+                    )
+                )
+                kite_instruments = result.scalars().all()
+
+            if not kite_instruments:
+                raise RuntimeError(
+                    "No NFO option instruments found in DB for any source broker. "
+                    "Run InstrumentMasterService.refresh_from_adapter() first."
+                )
+
             logger.info(
                 f"[InstrumentMaster] Resolving SmartAPI tokens for "
-                f"{len(kite_instruments)} kite instruments"
+                f"{len(kite_instruments)} instruments"
             )
 
             mappings: List[dict] = []
@@ -284,9 +323,17 @@ class InstrumentMasterService:
             )
             return total_stored
 
+        except RuntimeError:
+            # Re-raise RuntimeError so callers get a descriptive message
+            raise
         except Exception as e:
-            logger.error(f"[InstrumentMaster] populate_broker_token_mappings failed: {e}")
-            return 0
+            logger.error(
+                f"[InstrumentMaster] populate_broker_token_mappings failed unexpectedly: {e}",
+                exc_info=True,
+            )
+            raise RuntimeError(
+                f"populate_broker_token_mappings failed: {e}"
+            ) from e
 
     @staticmethod
     def _extract_underlying(symbol: str) -> Optional[str]:

@@ -24,11 +24,12 @@ STRIKE_STEPS = {
 }
 
 # Lot sizes for each underlying
+# Updated November 2024 per NSE/BSE circular
 LOT_SIZES = {
-    "NIFTY": 25,
-    "BANKNIFTY": 15,
-    "FINNIFTY": 25,
-    "SENSEX": 10,
+    "NIFTY": 75,
+    "BANKNIFTY": 35,
+    "FINNIFTY": 65,
+    "SENSEX": 20,
     "MIDCPNIFTY": 75,
 }
 
@@ -97,9 +98,9 @@ def get_lot_size(underlying: str) -> int:
 
     Example:
         >>> get_lot_size("NIFTY")
-        25
+        75
         >>> get_lot_size("BANKNIFTY")
-        15
+        35
     """
     return LOT_SIZES.get(underlying.upper(), 25)
 
