@@ -141,6 +141,13 @@ class SmartAPIMarketDataAdapter(MarketDataBrokerAdapter):
                 if not self._instruments._instruments:
                     logger.info("[SmartAPI] Lazy-loading instrument master for option symbols")
                     await self._instruments.download_master()
+
+                # Pre-load all tokens in ONE bulk DB query instead of N sequential queries.
+                # load_cache() is idempotent — safe to call on every get_quote() invocation.
+                # Without this, each get_token() cache-miss fires a separate DB round-trip,
+                # causing 126+ sequential queries = 7+ second latency → Axios timeout.
+                await self._token_manager.load_cache()
+
                 tokens_map = {}  # smartapi_token -> canonical_symbol
                 for symbol in option_symbols:
                     token = await self._token_manager.get_token(symbol)
@@ -218,6 +225,9 @@ class SmartAPIMarketDataAdapter(MarketDataBrokerAdapter):
                 if not self._instruments._instruments:
                     logger.info("[SmartAPI] Lazy-loading instrument master for option symbols")
                     await self._instruments.download_master()
+
+                # Pre-load all tokens in ONE bulk DB query (same fix as get_quote above).
+                await self._token_manager.load_cache()
 
                 tokens_map = {}
                 for symbol in option_symbols:

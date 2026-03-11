@@ -39,6 +39,10 @@ alembic revision --autogenerate -m "description"       # Create new migration
 - `auto-verify` — verify changes work
 - `test-fixer` — fix failing tests
 
+## Bug Reporting Protocol
+
+When a bug is reported, don't start by trying to fix it. Instead, start by writing a test that reproduces the bug. Then have subagents try to fix the bug and prove it with a passing test.
+
 ## Most Common Mistakes
 
 1. **Wrong backend port:** `backend/.env` should have `PORT=8001` (NOT 8000)
@@ -253,7 +257,7 @@ All rules consolidated in [`.claude/rules.md`](.claude/rules.md) (SSOT) — fold
 
 **E2E auth model:** Auth token is injected via `storageState` in `playwright.config.js` (from `tests/config/.auth-state.json`, written by `global-setup.js`). The `authenticatedPage` fixture validates the token is live but does NOT navigate — each test's own `beforeEach` navigates to its screen. Isolated tests (`.isolated.spec.js`) skip `storageState` and get a fresh browser context.
 
-**Playwright workers/reporters:** 4 workers locally, 2 in CI (`process.env.CI`). Heavy reporters (JSON, JUnit, Allure) only run in CI to keep local runs fast.
+**Playwright workers/reporters:** 1 worker locally (prevents SmartAPI rate limits), 2 in CI (`process.env.CI`), `fullyParallel: false`. Heavy reporters (JSON, JUnit, Allure) only run in CI to keep local runs fast.
 
 **Backend test markers:** `@unit`, `@api`, `@integration`, `@slow` — see [backend/CLAUDE.md](backend/CLAUDE.md#development-commands)
 

@@ -16,7 +16,7 @@ import api from '@/services/api'
 
 export const tradingConstants = ref({
   underlyings: ['NIFTY', 'BANKNIFTY', 'FINNIFTY', 'SENSEX'],
-  lot_sizes: { NIFTY: 25, BANKNIFTY: 15, FINNIFTY: 25, SENSEX: 10 },
+  lot_sizes: { NIFTY: 75, BANKNIFTY: 35, FINNIFTY: 65, SENSEX: 20 },
   strike_steps: { NIFTY: 100, BANKNIFTY: 100, FINNIFTY: 100, SENSEX: 100 },
   index_tokens: { NIFTY: 256265, BANKNIFTY: 260105, FINNIFTY: 257801, SENSEX: 265 },
   index_exchanges: { NIFTY: 'NSE', BANKNIFTY: 'NSE', FINNIFTY: 'NSE', SENSEX: 'BSE' },

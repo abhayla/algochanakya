@@ -299,8 +299,8 @@ async def get_option_chain(
         all_quotes = {}
         canonical_symbols = list(token_to_symbol.values())  # canonical symbol list
 
-        for i in range(0, len(canonical_symbols), 50):
-            batch_symbols = canonical_symbols[i:i+50]
+        for i in range(0, len(canonical_symbols), 100):
+            batch_symbols = canonical_symbols[i:i+100]
             if not batch_symbols:
                 continue
             try:

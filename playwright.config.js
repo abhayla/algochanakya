@@ -5,9 +5,9 @@ export default defineConfig({
   timeout: 90000, // 90 seconds - SmartAPI option chain can take 20-30s to load with parallel workers
   retries: process.env.CI ? 1 : 0,
 
-  // 4 workers locally (headless), 2 in CI for stability
-  workers: process.env.CI ? 2 : 4,
-  fullyParallel: true,
+  // 1 worker locally (single browser window, prevents SmartAPI rate limit issues), 2 in CI
+  workers: process.env.CI ? 2 : 1,
+  fullyParallel: false,
 
   // Global setup runs once before all tests - handles login
   globalSetup: './tests/e2e/global-setup.js',

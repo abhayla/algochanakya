@@ -11,7 +11,7 @@ export const useOptionChainStore = defineStore('optionchain', () => {
   const expiries = ref([])
   const spotPrice = ref(0)
   const daysToExpiry = ref(0)
-  const lotSize = ref(75)
+  const lotSize = ref(getLotSize('NIFTY'))
   const chain = ref([])
   const summary = ref({
     total_ce_oi: 0,
@@ -229,7 +229,8 @@ export const useOptionChainStore = defineStore('optionchain', () => {
         params: {
           underlying: underlying.value,
           expiry: expiry.value
-        }
+        },
+        timeout: 30000  // Chain can be slow on cold start; override global 10s default
       })
 
       spotPrice.value = response.data.spot_price
@@ -425,7 +426,7 @@ export const useOptionChainStore = defineStore('optionchain', () => {
     expiries.value = []
     spotPrice.value = 0
     daysToExpiry.value = 0
-    lotSize.value = 75
+    lotSize.value = getLotSize('NIFTY')
     chain.value = []
     summary.value = {
       total_ce_oi: 0,

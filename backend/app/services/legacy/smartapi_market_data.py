@@ -4,6 +4,7 @@ SmartAPI Market Data Service
 REST API for on-demand quotes from AngelOne SmartAPI.
 Used for after-market price checks and one-time price requests.
 """
+import asyncio
 import logging
 from decimal import Decimal
 from typing import Dict, List, Optional, Any
@@ -100,8 +101,10 @@ class SmartAPIMarketData:
             # Rate limit: SmartAPI allows 1 request/second
             await broker_rate_limiters.acquire("smartapi")
 
-            # Call API with correct signature: getMarketData(mode, exchangeTokens)
-            response = api.getMarketData(mode_str, exchange_tokens)
+            # Run synchronous SDK call in thread pool to avoid blocking the async event loop.
+            # SmartAPI SDK uses synchronous requests — without this, each call blocks the entire
+            # event loop for the duration of the HTTP round-trip (~3-8s), making 3 batches take 25s+.
+            response = await asyncio.to_thread(api.getMarketData, mode_str, exchange_tokens)
 
             if not response or response.get('status') != True:
                 error_msg = response.get('message', 'Unknown error') if response else 'No response'
