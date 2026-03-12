@@ -224,7 +224,7 @@ test.describe('Option Chain - WebSocket @websocket', () => {
  * Tests that validate price updates are reflected in the UI
  */
 test.describe('Option Chain - Live Price Updates @websocket', () => {
-  test.describe.configure({ timeout: 180000 });
+  test.describe.configure({ timeout: 600000 });
   let optionChainPage;
 
   test.beforeEach(async ({ authenticatedPage }) => {

@@ -10,10 +10,11 @@
           <h1 class="page-title">Option Chain</h1>
 
           <!-- Underlying Tabs -->
-          <div class="underlying-tabs" data-testid="optionchain-underlying-tabs">
+          <div class="underlying-tabs" data-testid="optionchain-underlying-tabs" role="tablist">
             <button
               v-for="ul in ['NIFTY', 'BANKNIFTY', 'FINNIFTY']"
               :key="ul"
+              role="tab"
               :class="['tab-btn', { active: store.underlying === ul }]"
               @click="handleUnderlyingChange(ul)"
               :data-testid="'optionchain-underlying-' + ul.toLowerCase()"

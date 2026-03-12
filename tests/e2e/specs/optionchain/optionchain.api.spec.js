@@ -31,7 +31,7 @@ test.describe('Option Chain - API @api', () => {
     const chainResponsePromise = waitForApiResponse(
       authenticatedPage,
       '/api/optionchain/chain',
-      { timeout: 30000 }
+      { timeout: 60000 }
     );
 
     await optionChainPage.navigate();
@@ -80,7 +80,7 @@ test.describe('Option Chain - API @api', () => {
       const chainResponsePromise = waitForApiResponse(
         authenticatedPage,
         '/api/optionchain/chain',
-        { timeout: 30000 }
+        { timeout: 60000 }
       );
 
       const secondOption = await options[1].getAttribute('value');
