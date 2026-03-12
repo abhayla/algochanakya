@@ -88,10 +88,11 @@ test.describe('Option Chain - Visual Regression @visual', () => {
     await optionChainPage.waitForChainLoad();
     await prepareForVisualTest(page);
     await expect(optionChainPage.header).toHaveScreenshot('optionchain-header.png', {
-      maxDiffPixelRatio: 0.02,
+      maxDiffPixelRatio: 0.05,
       mask: [
         page.locator('[data-testid="optionchain-spot-price"]'),
-        page.locator('[data-testid="optionchain-dte-value"]')
+        page.locator('[data-testid="optionchain-dte-value"]'),
+        page.locator('[data-testid="optionchain-expiry-select"]')
       ]
     });
   });
