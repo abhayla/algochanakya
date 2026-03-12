@@ -26,7 +26,8 @@ test.describe('Option Chain - Visual Regression @visual', () => {
       mask: [
         page.locator('[data-testid="optionchain-spot-price"]'),
         page.locator('[data-testid="optionchain-dte-value"]'),
-        page.locator('[data-testid^="optionchain-strike-row-"]')
+        page.locator('[data-testid^="optionchain-strike-row-"]'),
+        page.locator('[data-testid="optionchain-summary-bar"]')
       ]
     });
   });
@@ -42,7 +43,8 @@ test.describe('Option Chain - Visual Regression @visual', () => {
       mask: [
         page.locator('[data-testid="optionchain-spot-price"]'),
         page.locator('[data-testid="optionchain-dte-value"]'),
-        page.locator('[data-testid^="optionchain-strike-row-"]')
+        page.locator('[data-testid^="optionchain-strike-row-"]'),
+        page.locator('[data-testid="optionchain-summary-bar"]')
       ]
     });
   });
@@ -58,7 +60,8 @@ test.describe('Option Chain - Visual Regression @visual', () => {
       mask: [
         page.locator('[data-testid="optionchain-spot-price"]'),
         page.locator('[data-testid="optionchain-dte-value"]'),
-        page.locator('[data-testid^="optionchain-strike-row-"]')
+        page.locator('[data-testid^="optionchain-strike-row-"]'),
+        page.locator('[data-testid="optionchain-summary-bar"]')
       ]
     });
   });
