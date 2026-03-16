@@ -325,8 +325,19 @@ GitHub Actions runs on push/PR to `main` and `develop`. Workflows: backend tests
 
 | Rule File | What It Covers |
 |-----------|---------------|
+| `rules/adjustment-offensive-defensive.md` | Adjustment Offensive Defensive |
+| `rules/alembic-model-import.md` | Alembic Model Import |
+| `rules/backend-services-subdirectory.md` | Backend Services Subdirectory |
+| `rules/broker-adapter-only.md` | Broker Adapter Only |
+| `rules/broker-name-mapping.md` | Broker Name Mapping |
+| `rules/canonical-symbol-format.md` | Canonical Symbol Format |
 | `rules/context-management.md` | Rules for managing context window, token usage, and documentation references. |
+| `rules/cross-layer-import-guard.md` | Cross Layer Import Guard |
+| `rules/decimal-not-float-prices.md` | Decimal Not Float Prices |
+| `rules/e2e-data-testid-only.md` | E2E Data Testid Only |
 | `rules/rule-writing-meta.md` | Meta-guidance for writing effective CLAUDE.md rules, choosing config file placement, and structuring project instructions. |
+| `rules/sqlite-test-compat.md` | Sqlite Test Compat |
+| `rules/trading-constants-centralized.md` | Trading Constants Centralized |
 
 ## Claude Code Configuration
 
