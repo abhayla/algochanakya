@@ -283,24 +283,6 @@ All other available skills (testing, code gen, broker experts, workflows) are li
 
 ---
 
-## Key URLs (Dev)
-
-| Screen | Path | Dev URL |
-|--------|------|---------|
-| Dashboard | `/dashboard` | `http://localhost:5173/dashboard` |
-| Watchlist | `/watchlist` | `http://localhost:5173/watchlist` |
-| Positions | `/positions` | `http://localhost:5173/positions` |
-| Option Chain | `/optionchain` | `http://localhost:5173/optionchain` |
-| Strategy | `/strategy` | `http://localhost:5173/strategy` |
-| Strategy Library | `/strategies` | `http://localhost:5173/strategies` |
-| AutoPilot | `/autopilot` | `http://localhost:5173/autopilot` |
-| AI | `/ai` | `http://localhost:5173/ai` |
-| OFO | `/ofo` | `http://localhost:5173/ofo` |
-| Settings | `/settings` | `http://localhost:5173/settings` |
-| API Health | `/api/health` | `http://localhost:8001/api/health` |
-
----
-
 ## Common Pitfalls
 
 **Backend:** [backend/CLAUDE.md - Pitfalls](backend/CLAUDE.md#backend-specific-pitfalls) — broker API usage, symbol format, alembic imports, async ops, trading constants
@@ -324,16 +306,7 @@ All other available skills (testing, code gen, broker experts, workflows) are li
 
 ## Git Workflow
 
-**Commit convention:** [Conventional Commits](https://www.conventionalcommits.org/) — `type(scope): description`
-
-| Type | When |
-|------|------|
-| `feat` | New feature |
-| `fix` | Bug fix |
-| `refactor` | Code restructuring (no behavior change) |
-| `docs` | Documentation only |
-| `chore` | Build, deps, config, cleanup |
-| `test` | Adding or fixing tests |
+**Commit convention:** [Conventional Commits](https://www.conventionalcommits.org/) — `type(scope): description` where type is `feat`, `fix`, `refactor`, `docs`, `chore`, or `test`.
 
 **Branches:** `main` (production), `develop` (integration). Feature work branches off `main` or `develop`.
 
@@ -341,13 +314,38 @@ All other available skills (testing, code gen, broker experts, workflows) are li
 
 ## CI/CD
 
-GitHub Actions runs automatically on push/PR to `main` and `develop`:
+GitHub Actions runs on push/PR to `main` and `develop`. Workflows: backend tests (pytest), E2E (Playwright, 30min timeout), hook parity, and deploy. See `.github/workflows/`. Allure reports deploy to GitHub Pages on main merges.
 
-| Workflow | File | Description |
-|----------|------|-------------|
-| **Backend Tests** | `.github/workflows/backend-tests.yml` | pytest with PostgreSQL/Redis services |
-| **E2E Tests** | `.github/workflows/e2e-tests.yml` | Playwright with full stack (30min timeout) |
-| **Hook Parity** | `.github/workflows/hook-parity.yml` | Validates hook/skill consistency |
-| **Deploy** | `.github/workflows/deploy.yml` | Production deployment pipeline |
+<!-- hub:best-practices:start -->
 
-Allure reports deploy to GitHub Pages on main branch merges.
+<!-- PROTECTED SECTION — managed by claude-best-practices hub. -->
+<!-- Do NOT condense, rewrite, reorganize, or remove.          -->
+<!-- Any /init or optimization request must SKIP this section.  -->
+
+## Rules for Claude
+
+1. **Bug Fixing**: Use `/fix-loop` or `/fix-issue`. Start by writing a test that reproduces the bug, then fix and prove with a passing test.
+
+### Rules Reference
+
+| Rule File | What It Covers |
+|-----------|---------------|
+| `rules/adjustment-offensive-defensive.md` | Adjustment Offensive Defensive |
+| `rules/alembic-model-import.md` | Alembic Model Import |
+| `rules/backend-services-subdirectory.md` | Backend Services Subdirectory |
+| `rules/broker-adapter-only.md` | Broker Adapter Only |
+| `rules/broker-name-mapping.md` | Broker Name Mapping |
+| `rules/canonical-symbol-format.md` | Canonical Symbol Format |
+| `rules/context-management.md` | Rules for managing context window, token usage, and documentation references. |
+| `rules/cross-layer-import-guard.md` | Cross Layer Import Guard |
+| `rules/decimal-not-float-prices.md` | Decimal Not Float Prices |
+| `rules/e2e-data-testid-only.md` | E2E Data Testid Only |
+| `rules/rule-writing-meta.md` | Meta-guidance for writing effective CLAUDE.md rules, choosing config file placement, and structuring project instructions. |
+| `rules/sqlite-test-compat.md` | Sqlite Test Compat |
+| `rules/trading-constants-centralized.md` | Trading Constants Centralized |
+
+## Claude Code Configuration
+
+The `.claude/` directory contains skills, agents, and rules for Claude Code.
+
+<!-- hub:best-practices:end -->
