@@ -16,6 +16,8 @@
 | 2024-06-01 | Historical data returns PAISE (confirmed behavior) | Divide by 100 required for historical candle data | Documented |
 | 2024-01-01 | Instrument master migrated from CSV to JSON | Old CSV endpoint deprecated — use JSON endpoint only | Documented |
 
+| 2026-03-12 | REST `get_quote` returns 0 LTP for illiquid option strikes — community confirmed | Use WebSocket V2 Snap Quote (Mode 3) for complete option chain data; dedicated `/optionChain` endpoint is an alternative to test | Yes — option-chain.md, websocket-protocol.md |
+
 ### Known Issues
 
 | Issue | Status | Workaround | Last Checked |

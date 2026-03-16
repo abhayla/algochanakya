@@ -221,7 +221,7 @@
                   <span>{{ formatOI(row.ce?.oi) }}</span>
                 </div>
               </td>
-              <td class="ce-col" :class="getChangeClass(row.ce?.oi_change)">{{ formatOIChange(row.ce?.oi_change) }}</td>
+              <td class="ce-col" :class="getChangeClass(row.ce?.change)">{{ formatChange(row.ce?.change) }}</td>
               <td class="ce-col text-muted">{{ formatOI(row.ce?.volume) }}</td>
               <td class="ce-col">{{ row.ce?.iv || '-' }}</td>
               <td v-if="store.showGreeks" class="ce-col text-muted" :data-testid="'optionchain-ce-delta-' + row.strike">{{ row.ce?.delta?.toFixed(2) || '-' }}</td>
@@ -246,7 +246,7 @@
               <td v-if="store.showGreeks" class="pe-col text-muted" :data-testid="'optionchain-pe-vega-' + row.strike">{{ row.pe?.vega?.toFixed(2) || '-' }}</td>
               <td class="pe-col">{{ row.pe?.iv || '-' }}</td>
               <td class="pe-col text-muted">{{ formatOI(row.pe?.volume) }}</td>
-              <td class="pe-col" :class="getChangeClass(row.pe?.oi_change)">{{ formatOIChange(row.pe?.oi_change) }}</td>
+              <td class="pe-col" :class="getChangeClass(row.pe?.change)">{{ formatChange(row.pe?.change) }}</td>
               <td class="pe-col oi-col">
                 <div class="oi-cell reverse">
                   <span>{{ formatOI(row.pe?.oi) }}</span>
@@ -346,6 +346,11 @@ const formatOI = (oi) => {
 const formatOIChange = (change) => {
   if (!change) return '-'
   return (change > 0 ? '+' : '') + formatOI(change)
+}
+
+const formatChange = (change) => {
+  if (!change && change !== 0) return '-'
+  return (change > 0 ? '+' : '') + change.toFixed(2)
 }
 
 const formatPct = (pct) => {
@@ -857,6 +862,7 @@ onUnmounted(() => {
 /* Chain Table */
 .chain-table-container {
   flex: 1;
+  min-height: 0;
   overflow: auto;
   background: white;
   border: 1px solid #e0e0e0;
@@ -975,7 +981,7 @@ onUnmounted(() => {
   min-width: 2px;
 }
 
-.oi-bar.ce { background: #ef9a9a; }
+.oi-bar.ce { background: #e53935; }
 .oi-bar.pe { background: #a5d6a7; }
 
 /* Add Button */

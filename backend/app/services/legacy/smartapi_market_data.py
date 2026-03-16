@@ -6,9 +6,11 @@ Used for after-market price checks and one-time price requests.
 """
 import asyncio
 import logging
+from datetime import date
 from decimal import Decimal
 from typing import Dict, List, Optional, Any
 
+import requests
 from SmartApi import SmartConnect
 
 from app.services.legacy.smartapi_instruments import get_smartapi_instruments
@@ -370,6 +372,87 @@ class SmartAPIMarketData:
             raise SmartAPIMarketDataError(f"Empty quote response for index {index}")
 
         return quote_data
+
+    async def get_option_chain(self, name: str, expiry_date: date) -> Optional[dict]:
+        """
+        Fetch full option chain via SmartAPI's dedicated /optionChain endpoint.
+
+        This endpoint returns all strikes in one call with live prices, OI, IV,
+        and Greeks. Unlike getMarketData, it returns data for all strikes regardless
+        of whether they traded in the current session — solving the zero-LTP problem.
+
+        Uses the SmartConnect SDK instance to obtain the correct authenticated headers
+        (same as all other SDK calls), then makes a GET request with query params.
+
+        Args:
+            name: Underlying name (e.g., "NIFTY", "BANKNIFTY", "FINNIFTY")
+            expiry_date: Python date object for the expiry
+
+        Returns:
+            Parsed response dict with 'data.fetched' list, or None on failure.
+            Prices in the response are in RUPEES (not paise).
+        """
+        # Format expiry date as DDMMMYYYY (e.g., date(2026,3,17) → "17MAR2026")
+        expiry_str = expiry_date.strftime("%d%b%Y").upper()
+
+        logger.info(f"[SmartAPI] Fetching /optionChain for {name} expiry {expiry_str}")
+
+        # Rate limit: SmartAPI allows 1 request/second
+        await broker_rate_limiters.acquire("smartapi")
+
+        def _do_request():
+            api = self._get_api()
+            # Build headers the same way the SDK does (requestHeaders + Authorization)
+            headers = api.requestHeaders()
+            if api.access_token:
+                headers["Authorization"] = f"Bearer {api.access_token}"
+            # Build URL from SDK root + path
+            from urllib.parse import urljoin
+            url = urljoin(api.root, "rest/secure/angelbroking/marketData/v1/optionChain")
+            # Pass query params as proper key-value pairs (not JSON-encoded)
+            query_params = {"name": name, "expirydate": expiry_str}
+            resp = requests.get(
+                url,
+                params=query_params,
+                headers=headers,
+                verify=not api.disable_ssl,
+                timeout=api.timeout,
+                proxies=api.proxies,
+            )
+            if resp.status_code != 200:
+                logger.error(
+                    f"[SmartAPI] /optionChain HTTP {resp.status_code}: {resp.text[:200]}"
+                )
+                return None
+            try:
+                return resp.json()
+            except Exception as parse_err:
+                logger.error(
+                    f"[SmartAPI] /optionChain JSON parse error: {parse_err}. "
+                    f"Response text: {resp.text[:200]}"
+                )
+                return None
+
+        try:
+            data = await asyncio.to_thread(_do_request)
+        except Exception as e:
+            logger.error(f"[SmartAPI] /optionChain error for {name} {expiry_str}: {e}")
+            return None
+
+        if not data:
+            logger.error(f"[SmartAPI] /optionChain returned empty/None response for {name} {expiry_str}")
+            return None
+
+        if not data.get("status"):
+            msg = data.get("message", "Unknown error")
+            logger.error(f"[SmartAPI] /optionChain API error for {name} {expiry_str}: {msg}")
+            return None
+
+        fetched = data.get("data", {}).get("fetched", [])
+        logger.info(
+            f"[SmartAPI] /optionChain returned {len(fetched)} strikes for {name} {expiry_str}"
+        )
+        return data
 
     def _group_by_exchange(self, instruments: List[str]) -> Dict[str, List[str]]:
         """

@@ -255,6 +255,50 @@ Fields NOT in PAISE: `volume`, `oi`, `quantity`, `orders` (count), timestamps.
 | Invalid token ID | No data received (silent failure) |
 | Wrong exchange type | No data or incorrect data |
 
+## Using WebSocket for Option Chain Data (Recommended Pattern)
+
+SmartAPI's REST `get_quote` returns 0 LTP for strikes with no trades today. The reliable alternative for option chain data is **WebSocket V2 Snap Quote (Mode 3)**. This is confirmed as the official recommended approach by AngelOne moderators (forum 2024).
+
+### Option Chain via WebSocket Pattern
+
+```python
+import json, time
+from smartapi import SmartWebSocketV2  # or use the low-level WS
+
+# Step 1: Build token list from scrip master (already in broker_instrument_tokens table)
+token_list = ["12345", "12346", "12347", ...]  # SmartAPI string tokens for NIFTY options
+
+# Step 2: Subscribe with Snap Quote mode (mode=3) on NFO (exchangeType=2)
+CORRELATION_ID = "optchain_snap"
+MODE = 3  # Snap Quote — includes OI, OHLC, depth, LTP
+TOKENS_AND_PROPERTIES = [{"exchangeType": 2, "tokens": token_list}]
+
+collected = {}
+def on_data(wsapp, message):
+    tick = parse_smartapi_tick(message)
+    collected[tick['token']] = tick
+    if len(collected) >= len(token_list):
+        wsapp.close()  # Got all ticks, stop
+
+sws = SmartWebSocketV2(jwt_token, api_key, client_id, feed_token)
+sws.on_data = on_data
+sws.subscribe(CORRELATION_ID, MODE, TOKENS_AND_PROPERTIES)
+# Wait up to 10 seconds for ticks; close and process
+```
+
+**Why this works when REST doesn't:** WebSocket streams data as soon as the exchange pushes any tick (including zero-activity strikes that had a tick earlier in the day). REST only returns data for strikes with activity since your session started.
+
+**Reference implementation:** [github.com/markov404/AngelOneOptionChainSmartApi](https://github.com/markov404/AngelOneOptionChainSmartApi)
+
+### Subscription Limits for Option Chain
+
+| Limit | Value | Notes |
+|-------|-------|-------|
+| Tokens per connection | **3000** | NIFTY weekly has ~241 strikes × 2 = ~482 tokens — well within limit |
+| Mode 3 token count | Counts as 1 subscription each | Mode 1+2+3 on same token = 3 subscriptions |
+| NFO exchange type | **2** | Must match token's actual exchange |
+| Scrip master update | Daily 8:30 AM IST | Re-download daily for fresh tokens |
+
 ## AlgoChanakya Integration
 
 ### Key Files

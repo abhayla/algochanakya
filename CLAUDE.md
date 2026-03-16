@@ -3,7 +3,7 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 **AlgoChanakya:** Multi-broker options trading platform (Indian markets)
-**Working Directory:** `C:\Abhay\VideCoding\algochanakya` (development)
+**Working Directory:** `D:\Abhay\VibeCoding\algochanakya` (development)
 
 ## Quick Reference
 
@@ -12,7 +12,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 git status && git log --oneline -5
 
 # Start full dev stack (two terminals)
-cd backend && venv\Scripts\activate && python run.py  # Terminal 1 → http://localhost:8001
+cd backend && source venv/Scripts/activate && python run.py  # Terminal 1 → http://localhost:8001
 cd frontend && npm run dev                             # Terminal 2 → http://localhost:5173
 
 # E2E tests (from project root)
@@ -41,7 +41,12 @@ alembic revision --autogenerate -m "description"       # Create new migration
 
 ## Bug Reporting Protocol
 
-When a bug is reported, don't start by trying to fix it. Instead, start by writing a test that reproduces the bug. Then have subagents try to fix the bug and prove it with a passing test.
+When a bug is reported:
+1. **Do NOT start by trying to fix it.**
+2. Write a test that reproduces the bug first.
+3. Have subagents try to fix the bug.
+4. Subagent must capture a new screenshot to prove the fix is working.
+5. **Verify the screenshot yourself** before confirming the fix to the user.
 
 ## Most Common Mistakes
 
@@ -80,7 +85,7 @@ When a bug is reported, don't start by trying to fix it. Instead, start by writi
 
 ### 0. Production vs Development - NEVER TOUCH PRODUCTION
 
-- **✅ Work here:** `C:\Abhay\VideCoding\algochanakya`
+- **✅ Work here:** `D:\Abhay\VibeCoding\algochanakya`
 - **❌ NEVER touch:** `C:\Apps\algochanakya` (production folder on same machine)
 
 **NEVER:**
@@ -137,12 +142,12 @@ cd ../frontend && copy .env.example .env.local
 
 # 2. Database (PostgreSQL must be running)
 # Create dev database: CREATE DATABASE algochanakya_dev;
-cd backend && venv\Scripts\activate
+cd backend && source venv/Scripts/activate
 alembic upgrade head              # Apply all migrations
 
 # 3. Start dev stack (two terminals)
 # Terminal 1: backend
-cd backend && venv\Scripts\activate && python run.py
+cd backend && source venv/Scripts/activate && python run.py
 
 # Terminal 2: frontend
 cd frontend && npm run dev

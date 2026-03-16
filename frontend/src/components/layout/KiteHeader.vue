@@ -25,24 +25,6 @@
             {{ formatChange(indexTicks.nifty50?.change) }} ({{ formatPct(indexTicks.nifty50?.change_percent) }})
           </span>
         </div>
-        <div class="index-item" data-testid="kite-header-index-niftybank">
-          <span class="index-name">NIFTY BANK</span>
-          <span :class="['index-price', (indexTicks.niftyBank?.change || 0) >= 0 ? 'up' : 'down']" data-testid="kite-header-index-value-niftybank">
-            {{ formatNumber(indexTicks.niftyBank?.ltp) }}
-          </span>
-          <span :class="['index-change', (indexTicks.niftyBank?.change || 0) >= 0 ? 'up' : 'down']">
-            {{ formatChange(indexTicks.niftyBank?.change) }} ({{ formatPct(indexTicks.niftyBank?.change_percent) }})
-          </span>
-        </div>
-        <div class="index-item" data-testid="kite-header-index-finnifty">
-          <span class="index-name">FIN NIFTY</span>
-          <span :class="['index-price', (indexTicks.finnifty?.change || 0) >= 0 ? 'up' : 'down']" data-testid="kite-header-index-value-finnifty">
-            {{ formatNumber(indexTicks.finnifty?.ltp) }}
-          </span>
-          <span :class="['index-change', (indexTicks.finnifty?.change || 0) >= 0 ? 'up' : 'down']">
-            {{ formatChange(indexTicks.finnifty?.change) }} ({{ formatPct(indexTicks.finnifty?.change_percent) }})
-          </span>
-        </div>
         <div class="index-item" data-testid="kite-header-index-sensex">
           <span class="index-name">SENSEX</span>
           <span :class="['index-price', (indexTicks.sensex?.change || 0) >= 0 ? 'up' : 'down']" data-testid="kite-header-index-value-sensex">

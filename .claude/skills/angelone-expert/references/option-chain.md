@@ -1,6 +1,6 @@
 # SmartAPI Option Chain Reference
 
-> Source: SmartAPI (Angel One) Official Docs | Last verified: 2026-02-25
+> Source: SmartAPI (Angel One) Official Docs + Community Research | Last verified: 2026-03-12
 
 ## Overview
 
@@ -186,6 +186,83 @@ nifty_expiries = sorted(set(
 | `AB8050` Data Not Found | Invalid underlying or date | Check supported underlyings list above |
 | Rate limit hit | 1 req/sec limit exceeded | Use a caching layer; do not poll faster than 1/sec |
 | Data delay during peak | REST is not real-time | LTP from this API may lag by ~15 sec; use WebSocket for live LTP |
+
+---
+
+## ⚠️ CRITICAL: Why LTP Returns 0 for Many Strikes (Community Research 2026-03-12)
+
+This section documents confirmed findings from the SmartAPI community forum and GitHub.
+
+### Root Cause: No Trades = No Data from REST API
+
+SmartAPI's REST `marketData` and `get_quote` endpoints **only return data when a trade has occurred** on that strike during the current session. For strikes with zero activity (deep OTM, deep ITM, low-liquidity), the API returns `ltp: 0`. This is confirmed by SmartAPI moderators.
+
+**Official moderator statement (forum topic 4518):**
+> "We provide Option Chain data in the Websocket. You can look for the specific tokens on the Scrip Master Json file and subscribe the requisite tokens in Websocket Streaming. In the full mode in websocket, you get the option chain data."
+
+### Other Confirmed Causes of Zero LTP
+
+| Cause | Description | Fix |
+|-------|-------------|-----|
+| No trades on strike today | Strike is illiquid/inactive — no exchange tick pushed | Use WebSocket Snap Quote (Mode 3) instead |
+| Wrong token series | Using BL series tokens (not active in NSE) | Use `EQ` or `OPTIDX`/`OPTSTK` series from scrip master |
+| `marketData` single-token limit | REST API officially supports 1 token per request | Pass arrays but officially unsupported; use WebSocket |
+| ~500 request rate cap | REST stops responding after ~500 calls in a session | Re-authenticate or use WebSocket |
+| Non-trading day | Blank responses on weekends/holidays | Check trading calendar before calls |
+
+### The Correct Approach: WebSocket V2 Snap Quote (Mode 3)
+
+For reliable option chain LTP data, **use WebSocket V2 with Snap Quote mode** instead of REST batch calls:
+
+```python
+# Step 1: Get tokens from scrip master
+import requests
+master = requests.get(
+    "https://margincalculator.angelbroking.com/OpenAPI_File/files/OpenAPIScripMaster.json"
+).json()
+token_list = [
+    item["token"] for item in master
+    if item["name"] == "NIFTY"
+    and item["instrumenttype"] == "OPTIDX"
+    and item["expiry"] == "17MAR2026"  # DDMMMYYYY
+]
+
+# Step 2: Subscribe via WebSocket V2, mode=3 (Snap Quote)
+# exchangeType=2 for NFO
+TOKENS_AND_PROPERTIES = [{"exchangeType": 2, "tokens": token_list}]
+sws.subscribe("oc_snap", mode=3, token_list=TOKENS_AND_PROPERTIES)
+# Collect ticks until all tokens respond or timeout
+```
+
+**Reference implementation:** [markov404/AngelOneOptionChainSmartApi](https://github.com/markov404/AngelOneOptionChainSmartApi) — opens WebSocket, subscribes all option tokens at once with Snap Quote mode, collects until all respond (or 3-min cycle).
+
+### WebSocket Limits for Option Chain Use
+
+| Limit | Value |
+|-------|-------|
+| Max tokens per connection | **3000** |
+| Max connections per client | **3** |
+| Subscription counting | LTP + Quote + Snap = 3 separate subscriptions per token |
+| Mode for option chain | **Mode 3 (Snap Quote)** — includes OI, depth, OHLC |
+
+### AlgoChanakya Current Approach vs Recommended
+
+| Approach | Speed | Completeness | Notes |
+|----------|-------|--------------|-------|
+| **Current**: `adapter.get_quote()` REST batches | ~12-37s | Partial (only active strikes) | After perf fix: ~12s, but 0 LTP for inactive strikes |
+| **Recommended**: WebSocket Snap Quote (Mode 3) | ~2-5s | Full (all strikes) | Subscribe all tokens, collect ticks until complete |
+| **Alternative**: Dedicated `/optionChain` endpoint | ~3-5s | Full (with Greeks) | Includes IV, Greeks server-side — try this first |
+
+### Action Item: Try `/optionChain` Endpoint First
+
+AlgoChanakya currently uses `adapter.get_quote()` for individual tokens. The **dedicated `/optionChain` endpoint** documented above returns all strikes in one call including live LTP, OI, and Greeks. This should be tested as a replacement for the token-by-token REST approach:
+
+```python
+# Test this endpoint first before switching to WebSocket:
+GET /rest/secure/angelbroking/marketData/v1/optionChain?name=NIFTY&expirydate=17MAR2026
+# If this returns non-zero LTP for all strikes → use this
+# If it also returns 0 for illiquid strikes → switch to WebSocket Snap Quote
+```
 
 ## Price Source Clarification
 

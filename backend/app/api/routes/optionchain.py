@@ -43,18 +43,18 @@ def calculate_iv(option_price: float, spot: float, strike: float,
 
     # Initial guess
     sigma = 0.3
+    converged = False
+
+    def norm_cdf(x):
+        return (1.0 + math.erf(x / math.sqrt(2.0))) / 2.0
+
+    def norm_pdf(x):
+        return math.exp(-0.5 * x ** 2) / math.sqrt(2 * math.pi)
 
     for _ in range(100):  # Max iterations
         try:
             d1 = (math.log(spot / strike) + (r + 0.5 * sigma ** 2) * T) / (sigma * math.sqrt(T))
             d2 = d1 - sigma * math.sqrt(T)
-
-            # Normal CDF approximation
-            def norm_cdf(x):
-                return (1.0 + math.erf(x / math.sqrt(2.0))) / 2.0
-
-            def norm_pdf(x):
-                return math.exp(-0.5 * x ** 2) / math.sqrt(2 * math.pi)
 
             if is_call:
                 price = spot * norm_cdf(d1) - strike * math.exp(-r * T) * norm_cdf(d2)
@@ -68,12 +68,18 @@ def calculate_iv(option_price: float, spot: float, strike: float,
 
             diff = option_price - price
             if abs(diff) < 0.01:
+                converged = True
                 break
 
             sigma += diff / vega
             sigma = max(0.01, min(sigma, 5.0))  # Bound sigma
         except (ValueError, ZeroDivisionError):
             break
+
+    # If the algorithm never converged (e.g. deep ITM where IV is meaningless),
+    # return 0.0 to indicate IV is unavailable rather than the min-bound artifact (1.0).
+    if not converged:
+        return 0.0
 
     return round(sigma * 100, 2)  # Return as percentage
 
@@ -264,10 +270,30 @@ async def get_option_chain(
 
         logger.info(f"[OptionChain] Found {len(instruments)} instruments for {underlying}")
 
+        # --- PERFORMANCE FIX: filter to ATM ± range before fetching quotes ---
+        # Fetching quotes for all 241 NIFTY strikes causes 5 SmartAPI batch calls
+        # (~37s total), exceeding the frontend's 30s timeout.
+        # We only fetch quotes for the ±25 strikes nearest to ATM.
+        QUOTE_FETCH_RANGE = 25  # strikes above and below ATM to fetch quotes for
+
+        all_strikes_sorted = sorted(set(float(inst.strike) for inst in instruments if hasattr(inst, 'strike') and inst.strike))
+        if all_strikes_sorted and spot_price:
+            atm_for_filter = min(all_strikes_sorted, key=lambda x: abs(x - spot_price))
+            atm_idx_for_filter = all_strikes_sorted.index(atm_for_filter)
+            start_idx = max(0, atm_idx_for_filter - QUOTE_FETCH_RANGE)
+            end_idx = min(len(all_strikes_sorted), atm_idx_for_filter + QUOTE_FETCH_RANGE + 1)
+            strikes_to_fetch = set(all_strikes_sorted[start_idx:end_idx])
+            instruments_for_quotes = [inst for inst in instruments if float(inst.strike) in strikes_to_fetch]
+            logger.info(f"[OptionChain] Filtered {len(instruments)} instruments to {len(instruments_for_quotes)} near ATM {atm_for_filter} for quote fetch")
+        else:
+            instruments_for_quotes = instruments
+        # --- END PERFORMANCE FIX ---
+
         # Organize by strike and collect tokens for quote fetch
         strikes_data = {}
         token_to_symbol = {}  # SmartAPI token -> canonical symbol mapping
 
+        # Build strikes_data for ALL instruments (all strikes shown in table)
         for inst in instruments:
             strike = float(inst.strike) if hasattr(inst, 'strike') else 0
             if strike <= 0:
@@ -287,46 +313,86 @@ async def get_option_chain(
             else:
                 strikes_data[strike]["pe"] = inst_data
 
-            # Map token to symbol for quote lookup
+        # Build token_to_symbol only for near-ATM instruments (performance fix)
+        for inst in instruments_for_quotes:
             if inst.instrument_token:
                 token_to_symbol[str(inst.instrument_token)] = inst.canonical_symbol
 
         logger.info(f"[OptionChain] Organized {len(strikes_data)} strikes, fetching quotes for {len(token_to_symbol)} instruments")
 
-        # Fetch quotes via unified adapter.get_quote() — broker-agnostic path.
-        # The adapter resolves canonical symbols to broker tokens internally,
-        # handles paise→rupees conversion, and returns UnifiedQuote objects.
+        # ── PRIMARY PATH: WebSocket V2 Snap Quote (Mode 3) ────────────────────
+        # WebSocket streams ticks for ALL strikes including illiquid/untraded ones.
+        # REST get_quote returns 0 for strikes that haven't traded yet this session.
         all_quotes = {}
-        canonical_symbols = list(token_to_symbol.values())  # canonical symbol list
+        canonical_symbols = list(token_to_symbol.values())
 
-        for i in range(0, len(canonical_symbols), 100):
-            batch_symbols = canonical_symbols[i:i+100]
-            if not batch_symbols:
-                continue
+        ws_quotes = {}
+        if hasattr(adapter, 'get_option_chain_snap') and token_to_symbol:
             try:
-                unified_quotes = await adapter.get_quote(batch_symbols)
-                for canonical_symbol, uq in unified_quotes.items():
-                    symbol_key = f"NFO:{canonical_symbol}"
-                    all_quotes[symbol_key] = {
-                        "last_price": float(uq.last_price),
-                        "oi": uq.oi,
-                        "volume": uq.volume,
-                        "ohlc": {
-                            "open": float(uq.open),
-                            "high": float(uq.high),
-                            "low": float(uq.low),
-                            "close": float(uq.close),
-                        },
-                        "depth": {
-                            "buy": [{"price": float(uq.bid_price), "quantity": uq.bid_quantity}] if uq.bid_price else [],
-                            "sell": [{"price": float(uq.ask_price), "quantity": uq.ask_quantity}] if uq.ask_price else [],
-                        },
-                    }
+                import time as _time
+                ws_start = _time.time()
+                # Pass the pre-built token_to_symbol dict directly — it maps
+                # instruments.instrument_token (SmartAPI token string) → canonical_symbol.
+                # This bypasses lookup_token which only understands Kite-format symbols.
+                ws_quotes = await adapter.get_option_chain_snap(
+                    canonical_symbols=[],
+                    timeout=7.0,
+                    token_to_symbol=token_to_symbol,
+                )
+                logger.info(
+                    f"[OptionChain] WebSocket snap: {len(ws_quotes)}/{len(token_to_symbol)} "
+                    f"in {_time.time()-ws_start:.1f}s"
+                )
             except Exception as e:
-                logger.warning(f"[OptionChain] Quote batch failed: {e}")
-                continue
+                logger.warning(f"[OptionChain] WebSocket snap failed, falling back to REST: {e}")
 
-        logger.info(f"[OptionChain] Fetched quotes for {len(all_quotes)}/{len(canonical_symbols)} instruments")
+        if ws_quotes:
+            # Convert WebSocket tick dict to the all_quotes format expected by downstream code
+            for canonical_symbol, tick in ws_quotes.items():
+                symbol_key = f"NFO:{canonical_symbol}"
+                all_quotes[symbol_key] = {
+                    "last_price": tick["ltp"],
+                    "oi": tick["oi"],
+                    "volume": tick["volume"],
+                    "ohlc": {
+                        "open": tick["open"],
+                        "high": tick["high"],
+                        "low": tick["low"],
+                        "close": tick["close"],
+                    },
+                    "depth": {"buy": [], "sell": []},
+                }
+        else:
+            # ── FALLBACK PATH: batched get_quote() calls ──────────────────────
+            # Used when WebSocket snap is unavailable (non-SmartAPI adapter, API error, etc.)
+            for i in range(0, len(canonical_symbols), 100):
+                batch_symbols = canonical_symbols[i:i+100]
+                if not batch_symbols:
+                    continue
+                try:
+                    unified_quotes = await adapter.get_quote(batch_symbols)
+                    for canonical_symbol, uq in unified_quotes.items():
+                        symbol_key = f"NFO:{canonical_symbol}"
+                        all_quotes[symbol_key] = {
+                            "last_price": float(uq.last_price),
+                            "oi": uq.oi,
+                            "volume": uq.volume,
+                            "ohlc": {
+                                "open": float(uq.open),
+                                "high": float(uq.high),
+                                "low": float(uq.low),
+                                "close": float(uq.close),
+                            },
+                            "depth": {
+                                "buy": [{"price": float(uq.bid_price), "quantity": uq.bid_quantity}] if uq.bid_price else [],
+                                "sell": [{"price": float(uq.ask_price), "quantity": uq.ask_quantity}] if uq.ask_price else [],
+                            },
+                        }
+                except Exception as e:
+                    logger.warning(f"[OptionChain] Quote batch failed: {e}")
+                    continue
+
+        logger.info(f"[OptionChain] Fetched quotes for {len(all_quotes)}/{len(list(token_to_symbol.values()))} instruments")
 
         if not strikes_data:
             raise HTTPException(
@@ -377,7 +443,6 @@ async def get_option_chain(
                 ce_bid = ce_depth.get("buy", [{}])[0].get("price", 0) if ce_depth.get("buy") else 0
                 ce_ask = ce_depth.get("sell", [{}])[0].get("price", 0) if ce_depth.get("sell") else 0
 
-                # Calculate IV and Greeks
                 ce_iv = calculate_iv(ce_ltp, spot_price, strike, days_to_expiry, True)
                 ce_greeks = calculate_greeks(spot_price, strike, days_to_expiry, ce_iv, True)
 
@@ -414,7 +479,6 @@ async def get_option_chain(
                 pe_bid = pe_depth.get("buy", [{}])[0].get("price", 0) if pe_depth.get("buy") else 0
                 pe_ask = pe_depth.get("sell", [{}])[0].get("price", 0) if pe_depth.get("sell") else 0
 
-                # Calculate IV and Greeks
                 pe_iv = calculate_iv(pe_ltp, spot_price, strike, days_to_expiry, False)
                 pe_greeks = calculate_greeks(spot_price, strike, days_to_expiry, pe_iv, False)
 

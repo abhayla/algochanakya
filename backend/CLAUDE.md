@@ -10,7 +10,7 @@
 From `backend/`:
 
 ```bash
-venv\Scripts\activate          # Activate venv (Windows)
+source venv/Scripts/activate   # Activate venv (bash on Windows)
 python run.py                  # Start server (auto-refreshes instruments via InstrumentMasterService)
 alembic upgrade head           # Apply migrations (run after git pull)
 pytest tests/ -v               # Run backend tests

@@ -10,7 +10,18 @@ export const useOptionChainStore = defineStore('optionchain', () => {
   const expiry = ref('')
   const expiries = ref([])
   const spotPrice = ref(0)
-  const daysToExpiry = ref(0)
+  const daysToExpiry = computed(() => {
+    if (!expiry.value) return 0
+    try {
+      const expiryDate = new Date(expiry.value)
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      const diff = Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24))
+      return Math.max(0, diff)
+    } catch {
+      return 0
+    }
+  })
   const lotSize = ref(getLotSize('NIFTY'))
   const chain = ref([])
   const summary = ref({
@@ -223,6 +234,8 @@ export const useOptionChainStore = defineStore('optionchain', () => {
 
     isLoading.value = true
     error.value = null
+    chain.value = []
+    summary.value = { total_ce_oi: 0, total_pe_oi: 0, pcr: 0, max_pain: 0, atm_strike: 0 }
 
     try {
       const response = await api.get('/api/optionchain/chain', {
@@ -234,7 +247,6 @@ export const useOptionChainStore = defineStore('optionchain', () => {
       })
 
       spotPrice.value = response.data.spot_price
-      daysToExpiry.value = response.data.days_to_expiry
       lotSize.value = response.data.lot_size
       chain.value = response.data.chain
       summary.value = response.data.summary
@@ -425,7 +437,6 @@ export const useOptionChainStore = defineStore('optionchain', () => {
     expiry.value = ''
     expiries.value = []
     spotPrice.value = 0
-    daysToExpiry.value = 0
     lotSize.value = getLotSize('NIFTY')
     chain.value = []
     summary.value = {

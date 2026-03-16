@@ -11,7 +11,10 @@ Key responsibilities:
 - Error translation to unified exceptions
 """
 
+import asyncio
 import logging
+import threading
+import time
 from datetime import date, datetime
 from decimal import Decimal
 from typing import List, Dict, Optional, Callable
@@ -257,6 +260,139 @@ class SmartAPIMarketDataAdapter(MarketDataBrokerAdapter):
         except Exception as e:
             logger.error(f"[SmartAPI] get_ltp error: {e}")
             raise BrokerAPIError("smartapi", f"Failed to get LTP: {str(e)}")
+
+    async def get_option_chain_snap(
+        self,
+        canonical_symbols: List[str],
+        timeout: float = 7.0,
+        token_to_symbol: Optional[Dict[str, str]] = None,
+    ) -> Dict[str, dict]:
+        """
+        Fetch option chain market data via WebSocket V2 Snap Quote (Mode 3).
+
+        Unlike REST get_quote (which returns 0 for untraded strikes), WebSocket
+        streams ticks for ALL strikes including illiquid ones.
+
+        Args:
+            canonical_symbols: List of canonical option symbols (e.g., NIFTY26MAR22000CE).
+                               Ignored when token_to_symbol is provided.
+            timeout: Max seconds to wait for all ticks (default 7s)
+            token_to_symbol: Optional pre-built dict of SmartAPI token string ->
+                             canonical symbol. When provided, skips the lookup_token
+                             step. Use this when the caller already has instrument tokens
+                             (e.g., from the instruments DB table).
+
+        Returns:
+            Dict mapping canonical_symbol -> {ltp, open, high, low, close, volume, oi}
+            Prices are in RUPEES (paise already divided).
+        """
+        from SmartApi.smartWebSocketV2 import SmartWebSocketV2
+
+        if token_to_symbol:
+            # Caller supplied a pre-built SmartAPI token → canonical symbol mapping.
+            # Use it directly; no instrument master lookup needed.
+            smartapi_token_to_symbol: Dict[str, str] = token_to_symbol
+        else:
+            # Load instrument master if not loaded
+            if not self._instruments._instruments:
+                logger.info("[SmartAPI WS] Lazy-loading instrument master for option chain snap")
+                await self._instruments.download_master()
+
+            # Look up SmartAPI tokens for each symbol
+            smartapi_token_to_symbol = {}
+            for symbol in canonical_symbols:
+                token_str = await self._instruments.lookup_token(symbol, "NFO")
+                if token_str:
+                    smartapi_token_to_symbol[token_str] = symbol
+                else:
+                    logger.warning("[SmartAPI WS] Token not found for symbol: %s", symbol)
+
+        if not smartapi_token_to_symbol:
+            logger.warning("[SmartAPI WS] No tokens found for option chain snap — returning empty")
+            return {}
+
+        collected: Dict[str, dict] = {}
+        all_done = threading.Event()
+        target_count = len(smartapi_token_to_symbol)
+
+        jwt = self._credentials.jwt_token.replace("Bearer ", "")
+        api_key = getattr(settings, 'ANGEL_API_KEY', '')
+        client_id = self._credentials.client_id
+        feed_token = self._credentials.feed_token
+
+        sws = SmartWebSocketV2(
+            auth_token=jwt,
+            api_key=api_key,
+            client_code=client_id,
+            feed_token=feed_token,
+        )
+
+        def on_data(wsapp, message):
+            try:
+                token_str = str(message.get("token", ""))
+                if not token_str or token_str not in smartapi_token_to_symbol:
+                    return
+                symbol = smartapi_token_to_symbol[token_str]
+                collected[symbol] = {
+                    "ltp": message.get("last_traded_price", 0) / 100.0,
+                    "open": message.get("open_price_of_the_day", 0) / 100.0,
+                    "high": message.get("high_price_of_the_day", 0) / 100.0,
+                    "low": message.get("low_price_of_the_day", 0) / 100.0,
+                    "close": message.get("closed_price", 0) / 100.0,
+                    "volume": message.get("volume_trade_for_the_day", 0) or 0,
+                    "oi": message.get("open_interest", 0) or 0,
+                }
+                if len(collected) >= target_count:
+                    all_done.set()
+                    try:
+                        wsapp.close_connection()
+                    except Exception:
+                        pass
+            except Exception as e:
+                logger.warning("[SmartAPI WS] on_data error: %s", e)
+
+        connected_event = threading.Event()
+
+        def on_open(wsapp):
+            connected_event.set()
+            token_list = list(smartapi_token_to_symbol.keys())
+            wsapp.subscribe("oc_snap", 3, [{"exchangeType": 2, "tokens": token_list}])
+
+        def on_error(*args):
+            logger.warning("[SmartAPI WS] option chain snap error: %s", args)
+            all_done.set()
+
+        def on_close(wsapp):
+            logger.info("[SmartAPI WS] option chain snap closed")
+            all_done.set()
+
+        sws.on_open = on_open
+        sws.on_data = on_data
+        sws.on_error = on_error
+        sws.on_close = on_close
+
+        ws_thread = threading.Thread(target=sws.connect, daemon=True, name="OC-Snap-WS")
+        ws_thread.start()
+
+        # Wait for connection
+        await asyncio.to_thread(connected_event.wait, 10.0)
+
+        # Wait for ticks
+        t_start = time.monotonic()
+        await asyncio.to_thread(all_done.wait, timeout)
+        elapsed = time.monotonic() - t_start
+
+        # Close WS
+        try:
+            sws.close_connection()
+        except Exception:
+            pass
+
+        logger.info(
+            "[SmartAPI WS] option chain snap: %d/%d ticks collected in %.1fs",
+            len(collected), target_count, elapsed
+        )
+        return collected
 
     # ═══════════════════════════════════════════════════════════════════════
     # WEBSOCKET TICKS
