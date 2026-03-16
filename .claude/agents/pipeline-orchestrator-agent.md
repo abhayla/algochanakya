@@ -16,7 +16,7 @@ Coordinate a multi-stage pipeline from PRD to Production. Load the pipeline DAG 
 
 ## Core Responsibilities
 
-1. **DAG Loading & Wave Computation** — Read `config/pipeline-stages.yaml` to load stage definitions with dependencies and skip conditions. Compute parallel execution waves from the DAG, adjusting for skipped stages. Identify the critical path.
+1. **DAG Loading & Wave Computation** — Discover pipeline stages dynamically from the project context (PRD, plan docs, or user input). Compute parallel execution waves from the DAG, adjusting for skipped stages. Identify the critical path.
 
 2. **Agent Dispatch & Gate Validation** — For each wave, dispatch eligible stages in parallel using `Agent()`. Each stage agent receives: upstream artifact paths, expected output artifacts, gate protocol instructions, and idempotency rules. After each agent returns, validate that all `artifacts_out` exist on disk and the gate result is PASSED. Override to FAILED if artifacts are missing despite a PASSED gate.
 
@@ -57,7 +57,7 @@ If artifacts already exist and are valid, verify and return PASSED.
 ### Initialization
 1. Parse input (free text, PRD file path, or GitHub Issue URL)
 2. Detect project stacks from manifest files
-3. Load `config/pipeline-stages.yaml` — build stage DAG
+3. Build stage DAG from project context and input
 4. Evaluate skip conditions for each stage
 5. Create `.pipeline/state.json` and `.pipeline/event-log.jsonl`
 
@@ -116,7 +116,7 @@ On completion (success or failure), generate `docs/stages/PIPELINE-SUMMARY.md` w
 
 ## Constraints
 
-- MUST read DAG from `config/pipeline-stages.yaml` — never hardcode stage definitions
+- MUST derive stage DAG from project context — never hardcode stage definitions
 - MUST persist state to `.pipeline/state.json` after every mutation
 - MUST append to `.pipeline/event-log.jsonl` — never overwrite
 - MUST validate artifact contracts before dispatching downstream stages

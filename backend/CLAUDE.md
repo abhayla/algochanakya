@@ -29,7 +29,7 @@ pytest tests/live/ -m "live and not slow" -v # Live tests excluding slow ones (e
 ## Architecture Overview
 
 **Key Modules:**
-- **Broker Abstraction** - Dual system: Market data brokers (SmartAPI, planned: Kite/Upstox) + Order execution brokers (Kite implemented, planned: Angel/Upstox). Factory pattern with unified data models (`UnifiedOrder`, `UnifiedPosition`, `UnifiedQuote`). See [Multi-Broker Architecture](../CLAUDE.md#core-purpose-multi-broker-architecture).
+- **Broker Abstraction** - Dual system: Market data brokers (all 6 implemented: SmartAPI, Kite, Dhan, Fyers, Paytm, Upstox) + Order execution brokers (all 6 implemented). Factory pattern with unified data models (`UnifiedOrder`, `UnifiedPosition`, `UnifiedQuote`). See [Multi-Broker Architecture](../CLAUDE.md#core-purpose-multi-broker-architecture).
 - **Authentication** - SmartAPI with auto-TOTP (default) or Zerodha OAuth. JWT stored in localStorage + Redis. Use `get_current_user` / `get_current_broker_connection` dependencies. SmartAPI credentials stored encrypted in `smartapi_credentials` table.
 - **WebSocket Live Prices** - Dev: `ws://localhost:8001/ws/ticks?token=<jwt>` | Prod: `wss://algochanakya.com/ws/ticks?token=<jwt>`. 5-component ticker architecture: TickerAdapter (per-broker WS) + TickerPool (lifecycle/ref-counting) + TickerRouter (user fan-out) + HealthMonitor + FailoverController. All 6 broker ticker adapters implemented. Legacy singletons (`SmartAPITickerService`, `KiteTickerService`) deprecated and moved to `services/deprecated/`. Index tokens: NIFTY=256265, BANKNIFTY=260105, FINNIFTY=257801, SENSEX=265. See [TICKER-DESIGN-SPEC.md](../docs/decisions/TICKER-DESIGN-SPEC.md)
   - **Token map loading (CRITICAL):** `_ensure_broker_credentials()` in `websocket.py` loads the canonical↔broker token mapping from `broker_instrument_tokens` table and passes it via `credentials["token_map"]`. Without this, `SmartAPITickerAdapter` cannot translate canonical tokens to SmartAPI tokens and subscribes to nothing (no ticks flow). Hardcoded index token fallback ensures NIFTY/BANKNIFTY/FINNIFTY/SENSEX work even if the DB table is empty.
@@ -135,10 +135,13 @@ data_adapter = get_market_data_adapter(user.market_data_broker_type, credentials
 quote = await data_adapter.get_live_quote(symbol)  # Returns UnifiedQuote
 historical = await data_adapter.get_historical_data(symbol, from_date, to_date, interval)
 
-# Backend - Token/Symbol Conversion (NEW)
-from app.services.brokers.market_data.token_manager import token_manager
-broker_token = await token_manager.get_broker_token("NIFTY 26 DEC 24000 CE", "smartapi")
-canonical_symbol = await token_manager.get_canonical_symbol(256265, "smartapi")
+# Backend - Token/Symbol Conversion
+from app.services.brokers.market_data.token_manager import TokenManager
+
+token_mgr = TokenManager(broker="smartapi", db=session)
+await token_mgr.load_cache()
+broker_token = await token_mgr.get_token("NIFTY25APR25000CE")      # canonical → broker token
+canonical_symbol = await token_mgr.get_symbol(256265)               # broker token → canonical
 ```
 
 **Unified Data Models** - All broker adapters convert to/from these broker-agnostic models:
@@ -204,7 +207,7 @@ Adding a new broker requires:
 
 ```python
 from app.constants.trading import get_lot_size, get_strike_step
-lot_size = get_lot_size("NIFTY")  # 25
+lot_size = get_lot_size("NIFTY")  # 75
 ```
 
 ---
@@ -288,7 +291,13 @@ See [.claude/rules.md](../.claude/rules.md) for all enforced folder structure ru
 
 **Setup:** Copy `.env.example` to `.env` and update with actual values.
 
-**Backend (`backend/.env`):** `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET`, `JWT_ALGORITHM`, `JWT_EXPIRY_HOURS`, `KITE_API_KEY`, `KITE_API_SECRET`, `KITE_REDIRECT_URL`, `ANTHROPIC_API_KEY` (for AI), `ANGEL_API_KEY` (for SmartAPI market data), `FRONTEND_URL`
+**Backend (`backend/.env`):** `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET`, `JWT_ALGORITHM`, `JWT_EXPIRY_HOURS`, `KITE_API_KEY`, `KITE_API_SECRET`, `KITE_REDIRECT_URL`, `ANTHROPIC_API_KEY` (for AI), `FRONTEND_URL`
+
+**AngelOne 3-key setup** (see [root CLAUDE.md - Common Mistakes](../CLAUDE.md#most-common-mistakes) for the full table):
+- `ANGEL_API_KEY` — live market data (WebSocket, quotes)
+- `ANGEL_HIST_API_KEY` — historical candle data only
+- `ANGEL_TRADE_API_KEY` — order execution only
+- Using the wrong key returns `AG8001 Invalid Token`
 
 ---
 
@@ -298,7 +307,7 @@ See [.claude/rules.md](../.claude/rules.md) for all enforced folder structure ru
 - **Hardcoded broker assumptions** - Don't assume Kite or SmartAPI; code should work with any broker via abstraction
 - **Bypassing market data abstraction** - Use `get_market_data_adapter()` instead of directly calling `SmartAPIMarketData`, `SmartAPIHistorical`, etc.
 - **Symbol format confusion** - Always use canonical format (Kite format) internally; use `SymbolConverter` for broker-specific symbols
-- **Token lookup without TokenManager** - Use `token_manager.get_broker_token()` instead of manual lookups; it handles caching and cross-broker mapping
+- **Token lookup without TokenManager** - Use `TokenManager.get_token()` / `get_symbol()` instead of manual lookups; it handles caching and cross-broker mapping
 - **Broker name mismatch** - BrokerConnection stores 'zerodha'/'angelone' but BrokerType uses 'kite'/'angel'. Use the broker name mapping utility when converting between DB values and enum values.
 - **Forgot to import model in `alembic/env.py`** - Autogenerate won't detect it
 - **Sync database operations** - All SQLAlchemy must use `async/await`

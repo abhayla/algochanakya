@@ -308,7 +308,9 @@ All other available skills (testing, code gen, broker experts, workflows) are li
 
 **Commit convention:** [Conventional Commits](https://www.conventionalcommits.org/) — `type(scope): description` where type is `feat`, `fix`, `refactor`, `docs`, `chore`, or `test`.
 
-**Branches:** `main` (production), `develop` (integration). Feature work branches off `main` or `develop`.
+**Common scopes:** `broker`, `autopilot`, `ai`, `ticker`, `options`, `auth`, `e2e`, `frontend`, `backend`, `db`. Use the module/feature name, not the file name.
+
+**Branches:** `main` (production), `develop` (integration). Feature branches: `feat/short-description`, `fix/short-description`. Branch off `main` or `develop`.
 
 ---
 

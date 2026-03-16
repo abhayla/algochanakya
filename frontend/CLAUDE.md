@@ -102,7 +102,7 @@ See [.claude/rules.md](../.claude/rules.md) for all enforced folder structure ru
 import { getLotSize, getStrikeStep, useTradingConstants } from '@/constants/trading'
 
 // Direct function calls
-const lotSize = getLotSize('NIFTY')  // 25
+const lotSize = getLotSize('NIFTY')  // 75
 
 // Or use the composable for reactive access
 const { LOT_SIZES, STRIKE_STEPS, loadTradingConstants } = useTradingConstants()

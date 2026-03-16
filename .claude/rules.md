@@ -241,18 +241,18 @@ quote = await data_adapter.get_live_quote(symbol)  # Returns UnifiedQuote
 ### Rule 2: Use Canonical Symbol Format
 
 **Internal representation:** ALL symbols MUST use canonical format (Kite format):
-- `NSE:NIFTY24FEB24000CE` (options)
-- `NSE:INFY` (equity)
+- `NIFTY25APR25000CE` (monthly options)
+- `NIFTY2541725000CE` (weekly options)
 
-**Broker-specific symbols:** Use `SymbolConverter` for broker APIs:
+**Broker-specific symbols:** Use `CanonicalSymbol` for broker APIs:
 ```python
-from app.utils.symbol_converter import SymbolConverter
+from app.services.brokers.market_data.symbol_converter import CanonicalSymbol
 
-# Convert canonical to broker-specific
-broker_symbol = SymbolConverter.to_broker_format(canonical_symbol, broker_type)
+# Parse from Kite format
+symbol = CanonicalSymbol.from_kite_symbol("NIFTY25APR25000CE")
 
-# Convert broker-specific to canonical
-canonical_symbol = SymbolConverter.to_canonical_format(broker_symbol, broker_type)
+# Convert to Kite canonical string
+kite_str = symbol.to_kite_symbol()
 ```
 
 ### Rule 3: Unified Data Models
@@ -260,36 +260,38 @@ canonical_symbol = SymbolConverter.to_canonical_format(broker_symbol, broker_typ
 **ALWAYS return unified models from broker operations:**
 
 ```python
-# Unified models (app/services/brokers/models.py)
+# Unified models (app/services/brokers/base.py)
 @dataclass
 class UnifiedOrder:
-    order_id: str
-    symbol: str  # Canonical format
-    transaction_type: str  # "BUY" or "SELL"
-    quantity: int
-    price: float
-    status: str  # "OPEN", "COMPLETE", "REJECTED", "CANCELLED"
-    broker_type: str  # "kite", "angel", etc.
+    order_id: Optional[str] = None
+    tradingsymbol: str = ""
+    exchange: str = "NFO"
+    side: OrderSide = OrderSide.BUY
+    order_type: OrderType = OrderType.MARKET
+    quantity: int = 0
+    price: Optional[Decimal] = None      # For LIMIT orders
+    status: OrderStatus = OrderStatus.PENDING
+    average_price: Optional[Decimal] = None
 
 @dataclass
 class UnifiedPosition:
-    symbol: str  # Canonical format
-    quantity: int
-    average_price: float
-    last_price: float
-    pnl: float
-    broker_type: str
+    tradingsymbol: str = ""
+    exchange: str = "NFO"
+    quantity: int = 0
+    average_price: Decimal = Decimal("0")
+    last_price: Decimal = Decimal("0")
+    pnl: Decimal = Decimal("0")
 
 @dataclass
 class UnifiedQuote:
-    symbol: str  # Canonical format
-    ltp: float
-    open: float
-    high: float
-    low: float
-    close: float
-    volume: int
-    broker_type: str
+    tradingsymbol: str = ""
+    exchange: str = ""
+    instrument_token: Optional[int] = None
+    last_price: Decimal = Decimal("0")
+    open: Decimal = Decimal("0")
+    high: Decimal = Decimal("0")
+    low: Decimal = Decimal("0")
+    close: Decimal = Decimal("0")
 ```
 
 ---
@@ -323,8 +325,8 @@ nifty_token = 256265
 ```python
 from app.constants.trading import get_lot_size, get_strike_step, INDEX_TOKENS
 
-lot_size = get_lot_size("NIFTY")  # 25
-strike_step = get_strike_step("NIFTY")  # 50
+lot_size = get_lot_size("NIFTY")  # 75
+strike_step = get_strike_step("NIFTY")  # 100
 nifty_token = INDEX_TOKENS["NIFTY"]  # 256265
 ```
 
@@ -332,12 +334,12 @@ nifty_token = INDEX_TOKENS["NIFTY"]  # 256265
 ```javascript
 import { getLotSize, getStrikeStep, INDEX_TOKENS } from '@/constants/trading'
 
-const lotSize = getLotSize('NIFTY')  // 25
-const strikeStep = getStrikeStep('NIFTY')  // 50
+const lotSize = getLotSize('NIFTY')  // 75
+const strikeStep = getStrikeStep('NIFTY')  // 100
 const niftyToken = INDEX_TOKENS.NIFTY  // 256265
 ```
 
-**Why:** Index parameters change (NIFTY lot size was 50, now 25). Centralized constants ensure consistency and easy updates.
+**Why:** Index parameters change (NIFTY lot size changed from 50 to 75 in Nov 2024). Centralized constants ensure consistency and easy updates.
 
 ---
 
@@ -364,7 +366,7 @@ const niftyToken = INDEX_TOKENS.NIFTY  // 256265
 - Run commands affecting this folder
 - Reference this path in any tool call
 
-**Development folder:** `C:\Abhay\VideCoding\algochanakya` - Work ONLY here.
+**Development folder:** `D:\Abhay\VibeCoding\algochanakya` - Work ONLY here.
 
 ---
 
