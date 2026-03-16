@@ -346,3 +346,26 @@ GitHub Actions runs automatically on push/PR to `main` and `develop`:
 | **Deploy** | `.github/workflows/deploy.yml` | Production deployment pipeline |
 
 Allure reports deploy to GitHub Pages on main branch merges.
+
+<!-- hub:best-practices:start -->
+
+<!-- PROTECTED SECTION — managed by claude-best-practices hub. -->
+<!-- Do NOT condense, rewrite, reorganize, or remove.          -->
+<!-- Any /init or optimization request must SKIP this section.  -->
+
+## Rules for Claude
+
+1. **Bug Fixing**: Use `/fix-loop` or `/fix-issue`. Start by writing a test that reproduces the bug, then fix and prove with a passing test.
+
+### Rules Reference
+
+| Rule File | What It Covers |
+|-----------|---------------|
+| `rules/context-management.md` | Rules for managing context window, token usage, and documentation references. |
+| `rules/rule-writing-meta.md` | Meta-guidance for writing effective CLAUDE.md rules, choosing config file placement, and structuring project instructions. |
+
+## Claude Code Configuration
+
+The `.claude/` directory contains skills, agents, and rules for Claude Code.
+
+<!-- hub:best-practices:end -->
