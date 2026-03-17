@@ -15,6 +15,10 @@ npm run build         # Production build
 npm run test          # Unit tests (watch mode)
 npm run test:run      # Unit tests (once)
 npm run test:coverage # Unit tests with coverage
+npm run lint          # ESLint check
+npm run lint:fix      # ESLint auto-fix
+npm run format        # Prettier format
+npm run format:check  # Prettier check (CI)
 ```
 
 ### E2E Tests (from project root)

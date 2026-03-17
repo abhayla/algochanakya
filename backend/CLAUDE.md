@@ -22,6 +22,12 @@ pytest tests/live/ -m live -v                # Run live broker tests (needs real
 pytest tests/live/ -m "live and not slow" -v # Live tests excluding slow ones (e.g. historical fetches)
 # Markers: @unit, @api, @integration, @slow, @live
 # @live — hits real broker APIs; skips cleanly when credentials are missing from .env
+pytest -p no:cov tests/test_file.py -v     # Skip coverage (pytest.ini enables it by default)
+
+# Linting & formatting (ruff)
+ruff check app/                            # Lint
+ruff check app/ --fix                      # Lint + auto-fix
+ruff format app/                           # Format
 ```
 
 ---

@@ -117,7 +117,7 @@ Before features/refactors/architecture changes:
 **Skip for:** Docs changes, obvious bugs, explicit instructions.
 
 **Good response:**
-> I understand you want a kill switch in Strategy Builder. AutoPilot has one at `backend/app/services/kill_switch.py`.
+> I understand you want a kill switch in Strategy Builder. AutoPilot has one at `backend/app/services/autopilot/kill_switch.py`.
 > Questions: Exit positions or just cancel orders? Add to StrategyActions or new button?
 
 **Bad response:**
@@ -344,6 +344,6 @@ GitHub Actions runs on push/PR to `main` and `develop`. Workflows: backend tests
 
 ## Claude Code Configuration
 
-The `.claude/` directory contains 78 skills, 12 agents, and 16 rules for Claude Code.
+The `.claude/` directory contains skills, agents, and rules for Claude Code.
 
 <!-- hub:best-practices:end -->
