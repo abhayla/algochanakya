@@ -336,10 +336,13 @@ GitHub Actions runs on push/PR to `main` and `develop`. Workflows: backend tests
 | `rules/cross-layer-import-guard.md` | Cross Layer Import Guard |
 | `rules/decimal-not-float-prices.md` | Decimal Not Float Prices |
 | `rules/e2e-data-testid-only.md` | E2E Data Testid Only |
+| `rules/fastapi-backend.md` | FastAPI backend development rules and patterns. |
+| `rules/fastapi-database.md` | Database and migration rules for FastAPI + SQLAlchemy + Alembic. |
 | `rules/sqlite-test-compat.md` | Sqlite Test Compat |
 | `rules/tdd.md` | Test-driven development workflow rules for red-green-refactor cycle. |
 | `rules/testing.md` | Testing conventions and best practices. |
 | `rules/trading-constants-centralized.md` | Trading Constants Centralized |
+| `rules/vue.md` | Vue 3 Composition API patterns and conventions. |
 | `rules/workflow.md` | Development workflow guidelines for structured feature implementation and bug fixes. |
 
 ## Claude Code Configuration
