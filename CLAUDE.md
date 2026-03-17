@@ -318,6 +318,19 @@ All other available skills (testing, code gen, broker experts, workflows) are li
 
 GitHub Actions runs on push/PR to `main` and `develop`. Workflows: backend tests (pytest), E2E (Playwright, 30min timeout), hook parity, and deploy. See `.github/workflows/`. Allure reports deploy to GitHub Pages on main merges.
 
+
+## Patterns We DON'T Use
+
+<!-- Document avoided patterns with alternatives to prevent them from being reintroduced -->
+
+| Pattern | Alternative | Why |
+|---------|------------|-----|
+| Raw `KiteConnect` / `SmartAPI` imports | Use `app.services.brokers/` adapters | Broker abstraction layer handles auth, rate limiting, and failover |
+| Synchronous SQLAlchemy queries | Use `async/await` with `select()` | All DB operations are async; sync queries block the event loop |
+| `float` for prices/quantities | Use `Decimal` from `decimal` module | Float precision errors cause financial calculation bugs |
+| Direct `axios` imports in frontend | Use shared `api.js` instance | Interceptors handle auth tokens, error formatting, and base URL |
+| `@playwright/test` direct import in E2E | Import from `auth.fixture.js` | Auth fixture provides pre-authenticated `test` context |
+
 <!-- hub:best-practices:start -->
 
 <!-- PROTECTED SECTION — managed by claude-best-practices hub. -->
@@ -338,13 +351,16 @@ GitHub Actions runs on push/PR to `main` and `develop`. Workflows: backend tests
 | `rules/broker-adapter-only.md` | Broker Adapter Only |
 | `rules/broker-name-mapping.md` | Broker Name Mapping |
 | `rules/canonical-symbol-format.md` | Canonical Symbol Format |
+| `rules/claude-behavior.md` | Universal behavioral rules for task approach, git hygiene, and code comments. |
 | `rules/context-management.md` | Rules for managing context window, token usage, and documentation references. |
 | `rules/cross-layer-import-guard.md` | Cross Layer Import Guard |
 | `rules/decimal-not-float-prices.md` | Decimal Not Float Prices |
 | `rules/e2e-data-testid-only.md` | E2E Data Testid Only |
-| `rules/rule-writing-meta.md` | Meta-guidance for writing effective CLAUDE.md rules, choosing config file placement, and structuring project instructions. |
 | `rules/sqlite-test-compat.md` | Sqlite Test Compat |
+| `rules/tdd.md` | Test-driven development workflow rules for red-green-refactor cycle. |
+| `rules/testing.md` | Testing conventions, flaky test prevention, coverage requirements, and structured test output. |
 | `rules/trading-constants-centralized.md` | Trading Constants Centralized |
+| `rules/workflow.md` | 7-step development workflow for structured feature implementation and bug fixes. |
 
 ## Claude Code Configuration
 
