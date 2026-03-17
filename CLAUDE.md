@@ -3,7 +3,7 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 **AlgoChanakya:** Multi-broker options trading platform (Indian markets)
-**Working Directory:** `D:\Abhay\VibeCoding\algochanakya` (development)
+**Working Directory:** `C:\Abhay\VideCoding\algochanakya` (development)
 
 ## Quick Reference
 
@@ -12,7 +12,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 git status && git log --oneline -5
 
 # Start full dev stack (two terminals)
-cd backend && source venv/Scripts/activate && python run.py  # Terminal 1 → http://localhost:8001
+cd backend && venv\Scripts\activate && python run.py  # Terminal 1 → http://localhost:8001
 cd frontend && npm run dev                             # Terminal 2 → http://localhost:5173
 
 # E2E tests (from project root)
@@ -41,12 +41,7 @@ alembic revision --autogenerate -m "description"       # Create new migration
 
 ## Bug Reporting Protocol
 
-When a bug is reported:
-1. **Do NOT start by trying to fix it.**
-2. Write a test that reproduces the bug first.
-3. Have subagents try to fix the bug.
-4. Subagent must capture a new screenshot to prove the fix is working.
-5. **Verify the screenshot yourself** before confirming the fix to the user.
+When a bug is reported, don't start by trying to fix it. Instead, start by writing a test that reproduces the bug. Then have subagents try to fix the bug and prove it with a passing test.
 
 ## Most Common Mistakes
 
@@ -85,7 +80,7 @@ When a bug is reported:
 
 ### 0. Production vs Development - NEVER TOUCH PRODUCTION
 
-- **✅ Work here:** `D:\Abhay\VibeCoding\algochanakya`
+- **✅ Work here:** `C:\Abhay\VideCoding\algochanakya`
 - **❌ NEVER touch:** `C:\Apps\algochanakya` (production folder on same machine)
 
 **NEVER:**
@@ -142,12 +137,12 @@ cd ../frontend && copy .env.example .env.local
 
 # 2. Database (PostgreSQL must be running)
 # Create dev database: CREATE DATABASE algochanakya_dev;
-cd backend && source venv/Scripts/activate
+cd backend && venv\Scripts\activate
 alembic upgrade head              # Apply all migrations
 
 # 3. Start dev stack (two terminals)
 # Terminal 1: backend
-cd backend && source venv/Scripts/activate && python run.py
+cd backend && venv\Scripts\activate && python run.py
 
 # Terminal 2: frontend
 cd frontend && npm run dev
@@ -308,28 +303,13 @@ All other available skills (testing, code gen, broker experts, workflows) are li
 
 **Commit convention:** [Conventional Commits](https://www.conventionalcommits.org/) — `type(scope): description` where type is `feat`, `fix`, `refactor`, `docs`, `chore`, or `test`.
 
-**Common scopes:** `broker`, `autopilot`, `ai`, `ticker`, `options`, `auth`, `e2e`, `frontend`, `backend`, `db`. Use the module/feature name, not the file name.
-
-**Branches:** `main` (production), `develop` (integration). Feature branches: `feat/short-description`, `fix/short-description`. Branch off `main` or `develop`.
+**Branches:** `main` (production), `develop` (integration). Feature work branches off `main` or `develop`.
 
 ---
 
 ## CI/CD
 
 GitHub Actions runs on push/PR to `main` and `develop`. Workflows: backend tests (pytest), E2E (Playwright, 30min timeout), hook parity, and deploy. See `.github/workflows/`. Allure reports deploy to GitHub Pages on main merges.
-
-
-## Patterns We DON'T Use
-
-<!-- Document avoided patterns with alternatives to prevent them from being reintroduced -->
-
-| Pattern | Alternative | Why |
-|---------|------------|-----|
-| Raw `KiteConnect` / `SmartAPI` imports | Use `app.services.brokers/` adapters | Broker abstraction layer handles auth, rate limiting, and failover |
-| Synchronous SQLAlchemy queries | Use `async/await` with `select()` | All DB operations are async; sync queries block the event loop |
-| `float` for prices/quantities | Use `Decimal` from `decimal` module | Float precision errors cause financial calculation bugs |
-| Direct `axios` imports in frontend | Use shared `api.js` instance | Interceptors handle auth tokens, error formatting, and base URL |
-| `@playwright/test` direct import in E2E | Import from `auth.fixture.js` | Auth fixture provides pre-authenticated `test` context |
 
 <!-- hub:best-practices:start -->
 
@@ -351,19 +331,19 @@ GitHub Actions runs on push/PR to `main` and `develop`. Workflows: backend tests
 | `rules/broker-adapter-only.md` | Broker Adapter Only |
 | `rules/broker-name-mapping.md` | Broker Name Mapping |
 | `rules/canonical-symbol-format.md` | Canonical Symbol Format |
-| `rules/claude-behavior.md` | Universal behavioral rules for task approach, git hygiene, and code comments. |
+| `rules/claude-behavior.md` | Universal behavioral rules for how Claude should approach all tasks. |
 | `rules/context-management.md` | Rules for managing context window, token usage, and documentation references. |
 | `rules/cross-layer-import-guard.md` | Cross Layer Import Guard |
 | `rules/decimal-not-float-prices.md` | Decimal Not Float Prices |
 | `rules/e2e-data-testid-only.md` | E2E Data Testid Only |
 | `rules/sqlite-test-compat.md` | Sqlite Test Compat |
 | `rules/tdd.md` | Test-driven development workflow rules for red-green-refactor cycle. |
-| `rules/testing.md` | Testing conventions, flaky test prevention, coverage requirements, and structured test output. |
+| `rules/testing.md` | Testing conventions and best practices. |
 | `rules/trading-constants-centralized.md` | Trading Constants Centralized |
-| `rules/workflow.md` | 7-step development workflow for structured feature implementation and bug fixes. |
+| `rules/workflow.md` | Development workflow guidelines for structured feature implementation and bug fixes. |
 
 ## Claude Code Configuration
 
-The `.claude/` directory contains skills, agents, and rules for Claude Code.
+The `.claude/` directory contains 78 skills, 12 agents, and 16 rules for Claude Code.
 
 <!-- hub:best-practices:end -->
