@@ -3,7 +3,7 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 **AlgoChanakya:** Multi-broker options trading platform (Indian markets)
-**Working Directory:** `C:\Abhay\VideCoding\algochanakya` (development)
+**Working Directory:** `D:\Abhay\VibeCoding\algochanakya` (development)
 
 ## Quick Reference
 
@@ -80,7 +80,7 @@ When a bug is reported, don't start by trying to fix it. Instead, start by writi
 
 ### 0. Production vs Development - NEVER TOUCH PRODUCTION
 
-- **✅ Work here:** `C:\Abhay\VideCoding\algochanakya`
+- **✅ Work here:** `D:\Abhay\VibeCoding\algochanakya`
 - **❌ NEVER touch:** `C:\Apps\algochanakya` (production folder on same machine)
 
 **NEVER:**

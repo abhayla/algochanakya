@@ -42,7 +42,10 @@ export default defineConfig({
     video: 'retain-on-failure',
     trace: 'on-first-retry',
 
-    viewport: { width: 1280, height: 800 },
+    viewport: null,
+    launchOptions: {
+      args: ['--start-maximized'],
+    },
 
     // Increase expect timeout for live broker data assertions (default 5s too tight)
     expect: { timeout: 10000 },
