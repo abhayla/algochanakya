@@ -2,15 +2,15 @@
 name: angelone-expert
 description: Angel One expert — broker overview, products, pricing, SmartAPI,
   and AlgoChanakya adapter guidance. Use for any Angel One or SmartAPI question.
-version: "3.0"
-last_verified: "2026-03-04"
+version: "3.1"
+last_verified: "2026-03-18"
 ---
 
 # Angel One Expert
 
 Angel One (formerly Angel Broking) is one of India's largest retail stockbrokers (25M+ clients), founded in 1996. It offers flat ₹20/order pricing and free equity delivery. Angel One's trading API is called **SmartAPI** — a FREE REST + binary WebSocket API with auto-TOTP authentication, option chain with Greeks, and an order update WebSocket.
 
-In AlgoChanakya, Angel One/SmartAPI is the **platform-default market data provider** (first in failover chain), offering FREE real-time WebSocket prices, REST quotes, and historical OHLCV data. All AlgoChanakya adapters for SmartAPI are **fully implemented**. SmartAPI also provides order execution via `AngelOneAdapter`. AlgoChanakya achieves ₹0/month total API cost by using SmartAPI for market data and Kite Connect (free Personal API) for order execution.
+In AlgoChanakya, Angel One/SmartAPI is the **default market data source** (first in failover chain), offering FREE real-time WebSocket prices, REST quotes, historical OHLCV data, and option chain with Greeks. Angel One is one of only **2 brokers** (with Upstox) offering FREE option chain data with Greeks in AlgoChanakya. All AlgoChanakya adapters for SmartAPI are **fully implemented**. SmartAPI also provides order execution via `AngelOneAdapter`. AlgoChanakya achieves ₹0/month total API cost by using SmartAPI for market data and Kite Connect (free Personal API) for order execution.
 
 ## When to Use
 
@@ -109,22 +109,46 @@ SmartAPI uses a 3-token system with auto-TOTP for hands-free authentication. **S
 | `feedToken` | WebSocket authentication | ~24 hours | Query param or WS header |
 | `refreshToken` | Refresh expired JWT | 15 days | Body of refresh endpoint |
 
-#### Auto-TOTP in AlgoChanakya
+#### Auto-TOTP in AlgoChanakya (Confirmed Working 2026-03-18)
+
+Auto-login is **fully working** with no manual input needed. The system generates TOTP codes automatically using `pyotp` and the `ANGEL_TOTP_SECRET` from `.env`:
 
 ```python
-# AlgoChanakya stores TOTP secret encrypted in smartapi_credentials table
+# Auto-TOTP — same mechanism used in smartapi_auth.py
 import pyotp
-totp = pyotp.TOTP(stored_totp_secret).now()  # 6-digit code, no manual entry
+totp = pyotp.TOTP(ANGEL_TOTP_SECRET).now()  # Generates valid 6-digit code automatically
 ```
+
+This is the same mechanism used by `SmartAPIAuth` in `backend/app/services/legacy/smartapi_auth.py`. No manual TOTP entry, no authenticator app interaction required at runtime.
+
+#### `.env` Configuration (AngelOne Keys)
+
+All AngelOne credentials in `backend/.env` (use placeholders, never real values):
+
+```
+ANGEL_API_KEY=your-angelone-live-api-key
+ANGEL_API_SECRET=your-angelone-live-api-secret
+ANGEL_HIST_API_KEY=your-angelone-historical-api-key
+ANGEL_HIST_API_SECRET=your-angelone-historical-api-secret
+ANGEL_TRADE_API_KEY=your-angelone-trade-api-key
+ANGEL_TRADE_API_SECRET=your-angelone-trade-api-secret
+ANGEL_CLIENT_ID=your-angelone-client-id
+ANGEL_PIN=your-angelone-trading-pin
+ANGEL_TOTP_SECRET=your-angelone-totp-base32-secret
+```
+
+See the [CLAUDE.md AngelOne 3-key table](../../../CLAUDE.md) for which key serves which purpose.
 
 #### Credential Storage
 
 | Field | Storage | Encryption |
 |-------|---------|------------|
-| `client_id` | `smartapi_credentials` table | Encrypted (AES) |
-| `password` | `smartapi_credentials` table | Encrypted (AES) |
-| `totp_secret` | `smartapi_credentials` table | Encrypted (AES) |
+| `client_id` | `smartapi_credentials` table + `.env` (`ANGEL_CLIENT_ID`) | Encrypted (AES) in DB, env var |
+| `password` | `smartapi_credentials` table + `.env` (`ANGEL_PIN`) | Encrypted (AES) in DB, env var |
+| `totp_secret` | `smartapi_credentials` table + `.env` (`ANGEL_TOTP_SECRET`) | Encrypted (AES) in DB, env var |
 | `api_key` | `backend/.env` (`ANGEL_API_KEY`) | Environment variable |
+| `hist_api_key` | `backend/.env` (`ANGEL_HIST_API_KEY`) | Environment variable |
+| `trade_api_key` | `backend/.env` (`ANGEL_TRADE_API_KEY`) | Environment variable |
 
 **Codebase:** `backend/app/services/legacy/smartapi_auth.py` handles authentication with auto-TOTP.
 
@@ -488,10 +512,10 @@ token = await token_manager.get_broker_token("NIFTY25APR25000CE", "smartapi")
 
 | Reference File | Last Verified | Check Frequency |
 |---|---|---|
-| SKILL.md | 2026-03-04 | Quarterly |
+| SKILL.md | 2026-03-18 | Quarterly |
 | angelone-overview.md | 2026-03-04 | Quarterly |
 | endpoints-catalog.md | 2026-02-25 | Quarterly |
-| auth-flow.md | 2026-02-25 | Quarterly |
+| auth-flow.md | 2026-03-18 | Quarterly |
 | error-codes.md | 2026-02-25 | Quarterly |
 | websocket-protocol.md | 2026-02-25 | Quarterly |
 | symbol-format.md | 2026-02-25 | Quarterly |
@@ -510,6 +534,7 @@ token = await token_manager.get_broker_token("NIFTY25APR25000CE", "smartapi")
 
 | Version | Date | Changes |
 |---|---|---|
+| 3.1 | 2026-03-18 | Confirmed auto-login fully working via pyotp (no manual TOTP needed). Documented AngelOne as default market data source and one of 2 brokers with FREE option chain + Greeks. Added complete .env configuration section with all 9 keys. Expanded credential storage table with hist/trade keys. Updated freshness date. |
 | 3.0 | 2026-03-04 | Renamed from `smartapi-expert` to `angelone-expert`. Restructured: Angel One overview + pricing sections added, SmartAPI content reorganized as subsection. New `angelone-overview.md` reference file. All existing API content preserved. Added 3-key API gotcha. |
 | 2.5 | 2026-02-25 | Static IP registration (Aug 2025), order rate limit 20/sec, order update WebSocket, GTT orders section, option chain section, webhook section, sandbox section, AG8008 error code, 4 new reference files, maintenance log |
 | 2.0 | 2026-02-25 | Implementation status corrected (all adapters Implemented), AngelOneAdapter added, ticker adapter row added, maintenance section added |

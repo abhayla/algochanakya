@@ -43,15 +43,15 @@ Comprehensive comparison of all 6 brokers supported by AlgoChanakya.
 | Feature | SmartAPI | Kite | Upstox | Dhan | Fyers | Paytm |
 |---------|---------|------|--------|------|-------|-------|
 | **Auth Type** | Client+PIN+TOTP | OAuth redirect | OAuth redirect | API token | OAuth redirect | OAuth redirect |
-| **Auto-Login** | **Yes** (auto-TOTP) | No (manual) | No (manual) | **Yes** (static token) | No (manual) | No (manual) |
+| **Auto-Login** | **Yes** (auto-TOTP) | No (manual) | **Yes** (auto-TOTP) | **Yes** (static token) | No (manual) | No (manual) |
 | **Token Validity** | ~24h | ~24h (until 6AM) | ~24h (until ~6:30AM) or 1yr (extended) | Until revoked | Until **midnight IST** | ~24h |
 | **Auto-Refresh** | **Yes** (refresh token, 15d) | **No** | Extended token (1yr, read-only) | N/A (long-lived) | **No** | **No** |
-| **TOTP Required** | Yes (auto-generated) | Yes (manual on Zerodha) | Yes (manual) | No | Yes (manual) | Yes (manual) |
+| **TOTP Required** | Yes (auto-generated) | Yes (manual on Zerodha) | Yes (auto-generated) | No | Yes (manual) | Yes (manual) |
 | **Token Types** | 3 (jwt, feed, refresh) | 2 (access, public) | 2 (access, extended) | 1 (access) | 1 (access) | 3 (access, public_access, read_access) |
 | **Header Format** | `Bearer {jwt}` | `token api:access` | `Bearer {token}` | `access-token: {t}` | `{appid}:{token}` | `x-jwt-token: {t}` |
 | **IP Whitelist** | **Yes** (since Aug 2025) | No | **Yes** (app settings) | No | No | No |
 
-**Best for auto-login:** SmartAPI (auto-TOTP) or Dhan (static token)
+**Best for auto-login:** SmartAPI (auto-TOTP), Upstox (auto-TOTP), or Dhan (static token)
 
 **Key gotchas:**
 - **SmartAPI:** Static IP registration required since Aug 2025 — 403 if not registered (up to 5 IPv4s)
@@ -191,7 +191,7 @@ BROKER_LIMITS = {
 | **Margin Calculator** | Yes | Yes | Yes | Yes | Yes | Limited |
 | **Paper/Virtual Trading** | No | No | **Yes** (Sandbox, Jan 2025) | No | **Yes** (built-in) | No |
 | **Extended/Long Token** | No | No | **Yes** (1yr, read-only) | N/A (permanent) | No | No |
-| **Auto-TOTP Login** | **Yes** | No | No | N/A | No | No |
+| **Auto-TOTP Login** | **Yes** | No | **Yes** | N/A | No | No |
 | **Option Greeks WS** | No | No | **Yes** | No | No | No |
 | **200-Level Depth** | No | No | No | **Yes** | No | No |
 | **HTTP Webhooks** | No | No | **Yes** (order POST) | **Yes** (Postback) | No | No |
@@ -287,7 +287,7 @@ BROKER_LIMITS = {
 | **Free orders** | Any (all free) | SmartAPI + Kite Personal API default |
 | **Highest REST rate limit** | Upstox | 50/sec (vs Kite 10, others 10) |
 | **Best documentation** | Kite | Most mature API, best SDK |
-| **Auto-login (no interaction)** | SmartAPI or Dhan | Auto-TOTP / static token |
+| **Auto-login (no interaction)** | SmartAPI, Upstox, or Dhan | Auto-TOTP (SmartAPI/Upstox) / static token (Dhan) |
 | **Deep market depth** | Dhan | 200-level depth (unique in India) |
 | **Real-time Greeks via WS** | Upstox | `option_greeks` WS mode |
 | **Highest WS symbol capacity** | Fyers | 5,000 symbols/conn |

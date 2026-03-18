@@ -1,6 +1,6 @@
 # Upstox Authentication Flow
 
-> Source: [Upstox API Docs](https://upstox.com/developer/api-documentation/open-api) | Last verified: 2026-02-25
+> Source: [Upstox API Docs](https://upstox.com/developer/api-documentation/open-api) | Last verified: 2026-03-18
 
 Complete OAuth 2.0 authentication sequence for Upstox API.
 

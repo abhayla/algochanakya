@@ -2,8 +2,8 @@
 name: upstox-expert
 description: Upstox expert — broker overview, products, pricing, Upstox API,
   and AlgoChanakya adapter guidance. Use for any Upstox question.
-version: "3.0"
-last_verified: "2026-03-04"
+version: "3.1"
+last_verified: "2026-03-18"
 ---
 
 # Upstox Expert
@@ -105,16 +105,40 @@ See [Upstox Plus page](https://upstox.com/plus/) for current pricing and benefit
 
 ### Authentication Flow
 
-Upstox uses standard **OAuth 2.0 authorization_code** flow with an optional **extended token** for long-lived access.
+Upstox uses standard **OAuth 2.0 authorization_code** flow with an optional **extended token** for long-lived access. **TOTP is supported** for automated login.
 
 ```
 1. Redirect user → https://api.upstox.com/v2/login/authorization/dialog
    ?client_id={api_key}&redirect_uri={redirect_url}&response_type=code
-2. User logs in on Upstox website
-3. Upstox redirects → {redirect_url}?code={authorization_code}
-4. POST /v2/login/authorization/token with code, client_id, client_secret, redirect_uri, grant_type
-5. Response: { access_token, extended_token (if requested) }
-6. Use: Authorization: Bearer {access_token}
+2. User logs in at login.upstox.com:
+   a. Enter phone number → Get OTP
+   b. Enter OTP (or TOTP if enabled) → Enter 6-digit PIN
+   c. Upstox redirects → {redirect_url}?code={authorization_code}
+3. POST /v2/login/authorization/token with code, client_id, client_secret, redirect_uri, grant_type
+4. Response: { access_token, extended_token (if requested) }
+5. Use: Authorization: Bearer {access_token}
+```
+
+#### TOTP Support (Verified 2026-03-18)
+
+Upstox supports Time-based OTP (TOTP) as an alternative to SMS OTP during login. This enables **fully automated login** without SMS dependency.
+
+**Setup location:** account.upstox.com → Profile → sidebar → "Time-based OTP (TOTP)"
+
+**Setup steps:**
+1. Navigate to TOTP settings page
+2. SMS OTP verification is required first
+3. QR code + secret key are displayed
+4. Click "Unable to scan? Click to copy the key" to get the base32 secret
+5. Enter a generated TOTP code to confirm setup
+6. **Warning:** Enabling TOTP logs out all active sessions
+
+**Auto-login flow** (with TOTP secret saved): API Key + API Secret + Phone + TOTP Secret + PIN enables fully automated OAuth login via Playwright or similar browser automation. Use `pyotp` to generate TOTP codes:
+
+```python
+import pyotp
+totp = pyotp.TOTP(totp_secret)
+code = totp.now()  # 6-digit TOTP code
 ```
 
 #### Token Types
@@ -126,7 +150,31 @@ Upstox uses standard **OAuth 2.0 authorization_code** flow with an optional **ex
 
 **Extended Token:** Valid 1 year, read-only (market data, instruments, portfolio view). Cannot place/modify/cancel orders. Ideal for market data adapter — no daily re-auth.
 
-See [auth-flow.md](./references/auth-flow.md) for complete request/response examples, sandbox tokens, IP whitelisting, and Access Token Flow (Beta).
+See [auth-flow.md](./references/auth-flow.md) for complete request/response examples, TOTP setup, sandbox tokens, IP whitelisting, and Access Token Flow (Beta).
+
+### Environment Configuration
+
+Required `.env` keys for Upstox integration (use placeholder values, never commit real credentials):
+
+```env
+UPSTOX_API_KEY=your-api-key-uuid
+UPSTOX_API_SECRET=your-api-secret
+UPSTOX_REDIRECT_URL=http://localhost:8001/api/auth/upstox/callback
+UPSTOX_LOGIN_PHONE=your-phone-number
+UPSTOX_LOGIN_PIN=your-6-digit-pin
+UPSTOX_USER_ID=your-user-id
+UPSTOX_TOTP_SECRET=your-totp-base32-secret
+```
+
+| Key | Purpose | Where to Find |
+|-----|---------|---------------|
+| `UPSTOX_API_KEY` | OAuth client_id | My Apps → App Details |
+| `UPSTOX_API_SECRET` | OAuth client_secret | My Apps → App Details |
+| `UPSTOX_REDIRECT_URL` | OAuth redirect URI | Must match My Apps config exactly |
+| `UPSTOX_LOGIN_PHONE` | Auto-login: phone number | Your registered phone |
+| `UPSTOX_LOGIN_PIN` | Auto-login: 6-digit PIN | Set during account creation |
+| `UPSTOX_USER_ID` | User identifier | Profile page or API profile response |
+| `UPSTOX_TOTP_SECRET` | Auto-login: TOTP base32 secret | TOTP setup page (copy key) |
 
 ### Key Endpoints Quick Reference
 
@@ -253,9 +301,11 @@ See [gtt-orders.md](./references/gtt-orders.md) for complete schemas, examples, 
 
 - `GET /v2/option/contract` — get option contracts for a given underlying + expiry
 - `GET /v2/option/chain` — full put/call option chain with real-time data + Greeks
+- **FREE** — confirmed working 2026-03-18: 133 strikes with full Greeks, no charges
 - **Greeks available:** delta, gamma, theta, vega, IV, PoP (Probability of Profit)
 - **Market data:** ltp, volume, OI, prev_OI, bid/ask
 - **MCX:** Option Chain not available for MCX instruments
+- **Note:** Upstox is one of only 2 brokers (with AngelOne) offering free option chain data with Greeks
 
 See [option-chain.md](./references/option-chain.md) for complete response schemas.
 
@@ -386,7 +436,7 @@ order_id = await adapter.place_order(order_params)
 
 | Reference File | Last Verified | Check Frequency |
 |---|---|---|
-| SKILL.md | 2026-03-04 | Quarterly |
+| SKILL.md | 2026-03-18 | Quarterly |
 | upstox-overview.md | 2026-03-04 | Quarterly |
 | endpoints-catalog.md | 2026-02-25 | Monthly |
 | auth-flow.md | 2026-02-25 | Quarterly |
@@ -417,6 +467,7 @@ order_id = await adapter.place_order(order_params)
 
 | Version | Date | Changes |
 |---|---|---|
+| 3.1 | 2026-03-18 | Added TOTP support (setup location, auto-login flow with pyotp), .env configuration section with all 7 keys, OAuth login flow details (Playwright-tested), confirmed free option chain with Greeks (133 strikes). Updated freshness dates. |
 | 3.0 | 2026-03-04 | Restructured: Upstox overview + pricing sections added, API content reorganized as subsection. New `upstox-overview.md` reference file. File renamed from `skill.md` to `SKILL.md`. All existing API content preserved. |
 | 2.0 | 2026-02-25 | Comprehensive overhaul: pricing FREE, v3 API, GTT/Option Chain/Webhook/Sandbox/MCP, implementation status updated to Implemented, rate limits corrected (50/sec), auto-improvement system added, 3 new reference files, 8 external URLs |
 | 1.0 | 2026-02-16 | Initial creation with broker skills batch |

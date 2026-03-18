@@ -13,14 +13,24 @@ Authentication requires: `client_id` (Angel One login ID), `password` (PIN), and
 
 ## Step 1: Generate TOTP
 
-AlgoChanakya uses **auto-TOTP** via the `pyotp` library. The TOTP secret is stored encrypted in the `smartapi_credentials` database table.
+AlgoChanakya uses **auto-TOTP** via the `pyotp` library. **Confirmed fully working as of 2026-03-18** -- no manual input needed for login. The TOTP secret is stored both encrypted in the `smartapi_credentials` database table and in `backend/.env` as `ANGEL_TOTP_SECRET`.
 
 ```python
 import pyotp
 
-# TOTP secret stored encrypted in smartapi_credentials table
+# Option 1: From .env (used by smartapi_auth.py)
+totp_code = pyotp.TOTP(os.environ["ANGEL_TOTP_SECRET"]).now()  # 6-digit code, valid 30 seconds
+
+# Option 2: From encrypted DB storage
 totp_secret = decrypt(stored_encrypted_totp_secret)
-totp_code = pyotp.TOTP(totp_secret).now()  # 6-digit code, valid 30 seconds
+totp_code = pyotp.TOTP(totp_secret).now()
+```
+
+**Required `.env` keys for auto-login:**
+```
+ANGEL_CLIENT_ID=your-angelone-client-id
+ANGEL_PIN=your-angelone-trading-pin
+ANGEL_TOTP_SECRET=your-angelone-totp-base32-secret
 ```
 
 **Important:** System clock must be NTP-synced. TOTP codes have a 30-second window. Clock drift >30s causes authentication failure.
