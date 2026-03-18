@@ -231,6 +231,17 @@ class UpstoxMarketDataAdapter(MarketDataBrokerAdapter):
     e.g. "NSE_FO|12345", "NSE_INDEX|Nifty 50"
     """
 
+    # Map bare index names to Upstox instrument_key format
+    INDEX_KEY_MAP = {
+        "NIFTY": "NSE_INDEX|Nifty 50",
+        "NIFTY 50": "NSE_INDEX|Nifty 50",
+        "BANKNIFTY": "NSE_INDEX|Nifty Bank",
+        "NIFTY BANK": "NSE_INDEX|Nifty Bank",
+        "FINNIFTY": "NSE_INDEX|Nifty Fin Service",
+        "NIFTY FIN SERVICE": "NSE_INDEX|Nifty Fin Service",
+        "SENSEX": "BSE_INDEX|SENSEX",
+    }
+
     def __init__(self, credentials: UpstoxMarketDataCredentials, db: AsyncSession):
         self._credentials = credentials
         self._db = db
@@ -284,6 +295,11 @@ class UpstoxMarketDataAdapter(MarketDataBrokerAdapter):
         # Map canonical symbols to instrument_keys
         key_to_canonical: Dict[str, str] = {}
         for sym in symbols:
+            # Check if it's a bare index name first
+            index_key = self.INDEX_KEY_MAP.get(sym.upper())
+            if index_key:
+                key_to_canonical[index_key] = sym
+                continue
             instr_key = await self._token_manager.get_token(sym)
             if instr_key is None:
                 raise InvalidSymbolError("upstox", sym)
@@ -304,9 +320,12 @@ class UpstoxMarketDataAdapter(MarketDataBrokerAdapter):
 
         result: Dict[str, Decimal] = {}
         for instr_key, item in resp.get("data", {}).items():
-            if instr_key not in key_to_canonical:
+            # Upstox returns keys with ":" separator but we store with "|"
+            normalized_key = instr_key.replace(":", "|")
+            lookup_key = instr_key if instr_key in key_to_canonical else normalized_key
+            if lookup_key not in key_to_canonical:
                 continue
-            canonical = key_to_canonical[instr_key]
+            canonical = key_to_canonical[lookup_key]
             result[canonical] = Decimal(str(item["last_price"]))
         return result
 
@@ -319,6 +338,11 @@ class UpstoxMarketDataAdapter(MarketDataBrokerAdapter):
         # Map canonical symbols to instrument_keys
         key_to_canonical: Dict[str, str] = {}
         for sym in symbols:
+            # Check if it's a bare index name first
+            index_key = self.INDEX_KEY_MAP.get(sym.upper())
+            if index_key:
+                key_to_canonical[index_key] = sym
+                continue
             instr_key = await self._token_manager.get_token(sym)
             if instr_key is None:
                 raise InvalidSymbolError("upstox", sym)
@@ -339,9 +363,12 @@ class UpstoxMarketDataAdapter(MarketDataBrokerAdapter):
 
         result: Dict[str, UnifiedQuote] = {}
         for instr_key, item in resp.get("data", {}).items():
-            if instr_key not in key_to_canonical:
+            # Upstox returns keys with ":" separator but we store with "|"
+            normalized_key = instr_key.replace(":", "|")
+            lookup_key = instr_key if instr_key in key_to_canonical else normalized_key
+            if lookup_key not in key_to_canonical:
                 continue
-            canonical = key_to_canonical[instr_key]
+            canonical = key_to_canonical[lookup_key]
 
             ohlc = item.get("ohlc", {})
             depth = item.get("depth", {})
