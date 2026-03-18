@@ -2,8 +2,8 @@
 name: dhan-expert
 description: Dhan expert — broker overview, products, pricing, DhanHQ API,
   and AlgoChanakya adapter guidance. Use for any Dhan question.
-version: "3.0"
-last_verified: "2026-03-04"
+version: "3.1"
+last_verified: "2026-03-18"
 ---
 
 # Dhan Expert
@@ -85,20 +85,31 @@ See [dhan-overview.md](./references/dhan-overview.md) for detailed charges and e
 | **REST Base URL** | `https://api.dhan.co/v2` |
 | **WebSocket URL (Market Data)** | `wss://api-feed.dhan.co` |
 | **WebSocket URL (Order Updates)** | `wss://api-order-update.dhan.co` |
-| **Auth Method** | API access token (from web dashboard) |
-| **Token Validity** | Until manually revoked or regenerated |
+| **Auth Method** | Dual: API Key+Secret (permanent) + Access Token (24h JWT) |
+| **Token Validity** | Access Token: **24 hours**. API Key: permanent (until revoked) |
 
 ### Authentication Flow
 
-Dhan uses a simple **API token** model - no OAuth redirect needed.
+Dhan has a **dual credential system** — both generated from `web.dhan.co` (NOT `developer.dhanhq.co`).
+
+#### Credentials Overview
+
+| Credential | Expiry | Generated Via |
+|-----------|--------|--------------|
+| **API Key + Secret** | Permanent | Dashboard → DhanHQ Trading APIs → toggle to "API Key" |
+| **Access Token** (JWT) | **24 hours** | Dashboard → DhanHQ Trading APIs → "Access Token" tab |
+| **TOTP** (optional) | Permanent | Dashboard → DhanHQ Trading APIs → "Set-up TOTP" |
+| **Static IP** (optional) | Permanent (7-day change cooldown) | Dashboard → DhanHQ Trading APIs → "Static IP Setting" |
 
 #### Step-by-Step
 
 ```
-1. Login to Dhan web dashboard (https://trade.dhan.co)
-2. Navigate to API settings
-3. Generate access_token (long-lived)
-4. Use token in all API calls: access-token: {token}
+1. Login to Dhan dashboard (https://login.dhan.co → Select "Dhan" platform)
+2. Click "Show login with Mobile" → Enter phone → OTP/TOTP → PIN
+3. Profile icon (top-right) → "DhanHQ Trading APIs"
+4. Access Token tab: Enter app name → "Generate Access Token" (24h JWT)
+5. Toggle to API Key tab: Enter app name + redirect URL → "Generate API Key" (permanent)
+6. Optional: Set up TOTP (for automated login) and Static IP (for order security)
 ```
 
 #### Auth Header
@@ -109,6 +120,8 @@ Content-Type: application/json
 ```
 
 **Note:** Header name is `access-token` (hyphenated, lowercase), NOT `Authorization: Bearer`.
+
+**IMPORTANT:** The DhanHQ Developer Portal (`developer.dhanhq.co`) is a SEPARATE system. It shows "Invalid Email" errors during registration. All credential generation is done from the trading dashboard (`web.dhan.co`).
 
 See [auth-flow.md](./references/auth-flow.md) for complete details.
 
@@ -477,6 +490,7 @@ order_id = await adapter.place_order(order_params)
 
 | Version | Date | Changes |
 |---|---|---|
+| 3.1 | 2026-03-18 | Auth flow corrected: dual credential system (API Key permanent + Access Token 24h), TOTP support documented, Static IP whitelisting documented, DevPortal vs trading dashboard clarified, Playwright-based token regeneration flow added, .env configuration documented with all 7 Dhan env vars. Updated SKILL.md auth section and auth-flow.md reference. |
 | 3.0 | 2026-03-04 | Restructured: Dhan overview + pricing sections added, DhanHQ API content reorganized as subsection. New `dhan-overview.md` reference file. All existing API content preserved. |
 | 2.6 | 2026-02-26 | Added Super Order section + `super-order.md` reference, Trader's Control section + `traders-control.md` reference; corrected WS connection URL (query params, not headers), added heartbeat/disconnect details, corrected 5000 instruments/connection limit; corrected rate limits to 4-tier table (Order/Data/Quote/Non-Trading); added 9 new gotchas; updated `gtt-orders.md`, `webhook.md`, `option-chain.md`, `websocket-protocol.md`, `endpoints-catalog.md` |
 | 2.5 | 2026-02-25 | Added Forever Orders (GTT) section, Option Chain section, Postback/Webhook section, Live Order Update WebSocket, `availabelBalance` typo gotcha, corrected multi-tier rate limits (10/sec, 250/min, 1000/hr, 7000/day), expanded Maintenance section with all 9 reference files, added 3 new reference files |
@@ -488,7 +502,7 @@ order_id = await adapter.place_order(order_params)
 ## References
 
 - [Dhan Overview](./references/dhan-overview.md) - Company profile, products, pricing, exchanges, differentiators
-- [Authentication Flow](./references/auth-flow.md) - API token setup
+- [Authentication Flow](./references/auth-flow.md) - Dual credentials (API Key + Access Token), TOTP setup, Static IP, Playwright automation
 - [Endpoints Catalog](./references/endpoints-catalog.md) - All REST endpoints
 - [WebSocket Protocol](./references/websocket-protocol.md) - Little Endian binary protocol
 - [Error Codes](./references/error-codes.md) - Error code reference

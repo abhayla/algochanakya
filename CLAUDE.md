@@ -45,7 +45,7 @@ When a bug is reported, don't start by trying to fix it. Instead, start by writi
 
 ## Most Common Mistakes
 
-1. **Wrong backend port:** `backend/.env` should have `PORT=8001` (NOT 8000)
+1. **Wrong backend port:** `run.py` defaults to 8001; if overriding, ensure it's NOT 8000 (production)
 2. **Wrong frontend API URL:** `frontend/.env.local` must have `VITE_API_BASE_URL=http://localhost:8001`
 3. **Touching production:** NEVER modify `C:\Apps\algochanakya` - only work in dev folder
 4. **Missing alembic import:** New models must be imported in `backend/alembic/env.py`
@@ -125,12 +125,12 @@ Before features/refactors/architecture changes:
 
 ## Quick Start
 
-**Requirements:** Python 3.13+ | Node.js 24+ | PostgreSQL | Redis
+**Requirements:** Python 3.13+ | Node.js 22+ | PostgreSQL | Redis
 
 ```bash
 # 1. Environment files
 cd backend && copy .env.example .env
-# IMPORTANT: Edit backend/.env → change PORT=8000 to PORT=8001
+# IMPORTANT: run.py defaults to port 8001 — no .env change needed for port
 # IMPORTANT: Edit backend/.env → set DATABASE_URL to your dev database (e.g. algochanakya_dev)
 cd ../frontend && copy .env.example .env.local
 # IMPORTANT: Edit frontend/.env.local → set VITE_API_BASE_URL=http://localhost:8001
@@ -211,7 +211,7 @@ cd frontend && npm run dev
 
 Multi-broker options trading platform for Indian markets. **Tech Stack:** FastAPI + Vue 3 + PostgreSQL + Redis + Playwright + pytest + Vitest. AutoPilot automated trading (26 services). AI-powered regime detection (35 AI services).
 
-**Three test layers:** Backend unit/integration (pytest, `backend/tests/backend/{module}/`), Frontend unit (Vitest, `frontend/tests/{stores,components,composables}/`), E2E (Playwright, `tests/e2e/specs/{screen}/`).
+**Three test layers:** Backend unit/integration (pytest, `backend/tests/backend/{module}/`), Frontend unit (Vitest, `frontend/tests/{stores,composables}/`), E2E (Playwright, `tests/e2e/specs/{screen}/`).
 
 **Details:** [backend/CLAUDE.md](backend/CLAUDE.md) | [docs/README.md](docs/README.md)
 
