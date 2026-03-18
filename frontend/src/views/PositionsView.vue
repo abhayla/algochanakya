@@ -4,6 +4,11 @@
 
       <BrokerUpgradeBanner screen="positions" />
 
+      <!-- Market Closed Banner (#1) -->
+      <div v-if="isMarketClosed" class="market-closed-banner" data-testid="positions-market-closed">
+        Market Closed — P&L and LTP values reflect last traded prices. Live data updates at 9:15 AM IST.
+      </div>
+
       <!-- Page Header -->
       <div class="page-header">
         <div class="header-left">
@@ -15,6 +20,7 @@
               :class="['toggle-btn', { active: store.positionType === 'day' }]"
               @click="store.setPositionType('day')"
               data-testid="positions-day-button"
+              title="Show only today's intraday trades"
             >
               Day
             </button>
@@ -22,6 +28,7 @@
               :class="['toggle-btn', { active: store.positionType === 'net' }]"
               @click="store.setPositionType('net')"
               data-testid="positions-net-button"
+              title="Show all open positions including carry-forward"
             >
               Net
             </button>
@@ -30,8 +37,8 @@
 
         <div class="header-right">
           <DataSourceBadge screen="positions" />
-          <!-- Total P&L Box -->
-          <div :class="['pnl-box', store.summary.total_pnl >= 0 ? 'profit' : 'loss']" data-testid="positions-pnl-box">
+          <!-- Total P&L Box (#5: muted when no positions) -->
+          <div v-if="store.positions.length > 0" :class="['pnl-box', store.summary.total_pnl >= 0 ? 'profit' : 'loss']" data-testid="positions-pnl-box">
             <span class="pnl-label">Total P&L</span>
             <span class="pnl-value">
               {{ store.summary.total_pnl >= 0 ? '+' : '' }}{{ formatNumber(store.summary.total_pnl) }}
@@ -40,24 +47,34 @@
               ({{ store.summary.total_pnl_pct >= 0 ? '+' : '' }}{{ store.summary.total_pnl_pct }}%)
             </span>
           </div>
+          <div v-else class="pnl-box pnl-empty" data-testid="positions-pnl-box">
+            <span class="pnl-label">Total P&L</span>
+            <span class="pnl-value">—</span>
+          </div>
 
-          <!-- Auto Refresh -->
-          <label class="auto-refresh-toggle">
+          <!-- Auto Refresh (#4: tooltip) -->
+          <label class="auto-refresh-toggle" title="Automatically refresh positions every 5 seconds">
             <input type="checkbox" v-model="autoRefresh" @change="toggleAutoRefresh" />
             <span>Auto Refresh</span>
           </label>
 
+          <!-- Last Updated (#10) -->
+          <span v-if="lastUpdated" class="last-updated" data-testid="positions-last-updated">
+            {{ lastUpdated }}
+          </span>
+
           <!-- Refresh Button -->
-          <button @click="store.fetchPositions()" class="refresh-btn" :disabled="store.isLoading" data-testid="positions-refresh-btn">
+          <button @click="handleRefresh" class="refresh-btn" :disabled="store.isLoading" data-testid="positions-refresh-btn">
             <span v-if="store.isLoading" class="spinner"></span>
             {{ store.isLoading ? '' : 'Refresh' }}
           </button>
 
-          <!-- Exit All -->
+          <!-- Exit All (#2: tooltip when disabled) -->
           <button
             @click="confirmExitAll = true"
             class="exit-all-btn"
             :disabled="store.positions.length === 0"
+            :title="store.positions.length === 0 ? 'No open positions to exit' : 'Close all open positions with market orders'"
           >
             Exit All
           </button>
@@ -224,9 +241,14 @@
           </div>
           <h3>No Open Positions</h3>
           <p>You don't have any open F&O positions.</p>
-          <router-link to="/optionchain" class="btn-primary">
-            Go to Option Chain
-          </router-link>
+          <div class="empty-actions">
+            <router-link to="/optionchain" class="btn-primary">
+              Go to Option Chain
+            </router-link>
+            <router-link to="/strategy" class="btn-secondary-link">
+              Strategy Builder
+            </router-link>
+          </div>
         </div>
 
         <!-- Loading State -->
@@ -277,7 +299,9 @@
                 type="number"
                 v-model.number="store.exitModal.price"
                 step="0.05"
+                min="0.05"
                 class="form-input"
+                placeholder="Enter limit price"
               />
             </div>
 
@@ -385,12 +409,18 @@
         </div>
       </div>
 
+      <!-- Toast Notification (#6) -->
+      <Transition name="toast-fade">
+        <div v-if="toast.show" :class="['toast-notification', toast.type]" data-testid="positions-toast">
+          {{ toast.message }}
+        </div>
+      </Transition>
     </div>
   </KiteLayout>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import KiteLayout from '@/components/layout/KiteLayout.vue';
 import AutoPilotBadge from '@/components/autopilot/positions/AutoPilotBadge.vue';
 import { usePositionsStore } from '@/stores/positions';
@@ -409,6 +439,40 @@ const confirmExitAll = ref(false);
 const isExiting = ref(false);
 const isAdding = ref(false);
 const isExitingAll = ref(false);
+const lastUpdated = ref(null);
+
+// Toast notification state
+const toast = ref({ show: false, message: '', type: 'success' });
+let toastTimer = null;
+
+function showToast(message, type = 'success') {
+  if (toastTimer) clearTimeout(toastTimer);
+  toast.value = { show: true, message, type };
+  toastTimer = setTimeout(() => { toast.value.show = false; }, 4000);
+}
+
+// #1: Market closed detection
+const isMarketClosed = computed(() => {
+  const now = new Date();
+  const ist = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+  const hours = ist.getHours();
+  const minutes = ist.getMinutes();
+  const day = ist.getDay();
+  const timeInMinutes = hours * 60 + minutes;
+  if (day === 0 || day === 6) return true;
+  return timeInMinutes < 555 || timeInMinutes > 930;
+});
+
+// #10: Update timestamp on refresh
+function updateTimestamp() {
+  const now = new Date();
+  lastUpdated.value = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+
+async function handleRefresh() {
+  await store.fetchPositions();
+  updateTimestamp();
+}
 
 // Formatters
 const formatNumber = (num) => {
@@ -440,9 +504,9 @@ const executeExit = async () => {
       store.exitModal.price
     );
     store.closeExitModal();
-    alert('Exit order placed successfully!');
+    showToast('Exit order placed successfully!');
   } catch (error) {
-    alert('Failed to exit: ' + (error.response?.data?.detail || error.message));
+    showToast('Failed to exit: ' + (error.response?.data?.detail || error.message), 'error');
   } finally {
     isExiting.value = false;
   }
@@ -459,9 +523,9 @@ const executeAdd = async () => {
       store.addModal.price
     );
     store.closeAddModal();
-    alert('Order placed successfully!');
+    showToast('Order placed successfully!');
   } catch (error) {
-    alert('Failed to place order: ' + (error.response?.data?.detail || error.message));
+    showToast('Failed to place order: ' + (error.response?.data?.detail || error.message), 'error');
   } finally {
     isAdding.value = false;
   }
@@ -473,17 +537,18 @@ const executeExitAll = async () => {
   try {
     const result = await store.exitAllPositions();
     confirmExitAll.value = false;
-    alert(result.message);
+    showToast(result.message);
   } catch (error) {
-    alert('Failed: ' + (error.response?.data?.detail || error.message));
+    showToast('Failed: ' + (error.response?.data?.detail || error.message), 'error');
   } finally {
     isExitingAll.value = false;
   }
 };
 
 // Lifecycle
-onMounted(() => {
-  store.fetchPositions();
+onMounted(async () => {
+  await store.fetchPositions();
+  updateTimestamp();
 });
 
 onUnmounted(() => {
@@ -1139,5 +1204,93 @@ onUnmounted(() => {
 .warning-text {
   font-size: 13px;
   margin-top: 8px;
+}
+
+/* Market Closed Banner (#1) */
+.market-closed-banner {
+  padding: 10px 16px;
+  background: #fff8e1;
+  border: 1px solid #ffe082;
+  border-radius: 4px;
+  color: #f57f17;
+  font-size: 13px;
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+/* Empty P&L (#5) */
+.pnl-empty {
+  background: #f5f5f5;
+}
+
+.pnl-empty .pnl-value {
+  color: #999;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+/* Last Updated (#10) */
+.last-updated {
+  font-size: 11px;
+  color: #6c757d;
+}
+
+/* Empty state actions (#7) */
+.empty-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.btn-secondary-link {
+  padding: 8px 20px;
+  font-size: 13px;
+  font-weight: 500;
+  background: white;
+  color: #6c757d;
+  border: 1px solid #e0e0e0;
+  border-radius: 3px;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.btn-secondary-link:hover {
+  background: #f5f5f5;
+  color: #212529;
+}
+
+/* Toast Notification (#6) */
+.toast-notification {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 12px 24px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  z-index: 2000;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+}
+
+.toast-notification.success {
+  background: #00b386;
+  color: white;
+}
+
+.toast-notification.error {
+  background: #e74c3c;
+  color: white;
+}
+
+.toast-fade-enter-active,
+.toast-fade-leave-active {
+  transition: all 0.3s ease;
+}
+
+.toast-fade-enter-from,
+.toast-fade-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(20px);
 }
 </style>
