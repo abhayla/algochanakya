@@ -12,6 +12,7 @@
           class="wizard-btn"
           @click="store.openWizard()"
           data-testid="strategy-library-wizard-button"
+          title="Answer questions about your market view to get personalized strategy recommendations"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M12 2L2 7l10 5 10-5-10-5z"/>
@@ -120,7 +121,7 @@
             <option value="advanced">Advanced</option>
           </select>
 
-          <label class="theta-toggle">
+          <label class="theta-toggle" title="Show only strategies that benefit from time decay (earn premium as time passes)">
             <input
               type="checkbox"
               :checked="store.activeFilters.thetaPositive === true"
@@ -130,6 +131,11 @@
           </label>
         </div>
       </div>
+    </div>
+
+    <!-- Results Count (#1) -->
+    <div v-if="!store.isLoading && !store.error" class="results-count" data-testid="strategy-library-results-count">
+      Showing {{ store.filteredTemplates.length }} {{ store.filteredTemplates.length === 1 ? 'strategy' : 'strategies' }}<span v-if="hasActiveFilters"> (filtered)</span>
     </div>
 
     <!-- Strategies Grid -->
@@ -184,6 +190,7 @@
             :disabled="!store.canCompare"
             @click="store.openCompare()"
             data-testid="strategy-comparison-compare-button"
+            :title="!store.canCompare ? 'Select at least 2 strategies to compare' : 'Open side-by-side comparison'"
           >
             Compare {{ store.comparisonCount }} Strategies
           </button>
@@ -201,7 +208,7 @@
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
+import { onMounted, computed } from 'vue'
 import { useStrategyLibraryStore } from '@/stores/strategyLibrary'
 import KiteLayout from '@/components/layout/KiteLayout.vue'
 import StrategyCard from '@/components/strategy/StrategyCard.vue'
@@ -211,6 +218,10 @@ import StrategyDeployModal from '@/components/strategy/StrategyDeployModal.vue'
 import StrategyCompareModal from '@/components/strategy/StrategyCompareModal.vue'
 
 const store = useStrategyLibraryStore()
+
+const hasActiveFilters = computed(() => {
+  return store.activeFilters.category || store.activeFilters.search || store.activeFilters.riskLevel || store.activeFilters.difficulty || store.activeFilters.thetaPositive
+})
 
 async function loadData() {
   await Promise.all([
@@ -485,6 +496,13 @@ onMounted(() => {
 
 .theta-toggle input {
   cursor: pointer;
+}
+
+/* Results Count (#1) */
+.results-count {
+  font-size: 13px;
+  color: #6c757d;
+  margin-bottom: 12px;
 }
 
 /* Strategies Grid */

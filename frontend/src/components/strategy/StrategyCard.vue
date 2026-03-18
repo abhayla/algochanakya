@@ -32,21 +32,21 @@
       <div class="metrics">
         <div class="metric">
           <span class="label">Max Profit</span>
-          <span class="value profit" :data-testid="`strategy-card-${template.name}-max-profit`">{{ formatMetric(template.max_profit) }}</span>
+          <span class="value profit" :title="formatMetric(template.max_profit)" :data-testid="`strategy-card-${template.name}-max-profit`">{{ formatMetric(template.max_profit) }}</span>
         </div>
         <div class="metric">
           <span class="label">Max Loss</span>
-          <span class="value loss" :data-testid="`strategy-card-${template.name}-max-loss`">{{ formatMetric(template.max_loss) }}</span>
+          <span class="value loss" :title="formatMetric(template.max_loss)" :data-testid="`strategy-card-${template.name}-max-loss`">{{ formatMetric(template.max_loss) }}</span>
         </div>
         <div class="metric">
           <span class="label">Win Rate</span>
-          <span class="value" :data-testid="`strategy-card-${template.name}-win-probability`">{{ template.win_probability || '--' }}</span>
+          <span class="value" :title="template.win_probability || '--'" :data-testid="`strategy-card-${template.name}-win-probability`">{{ template.win_probability || '--' }}</span>
         </div>
       </div>
 
       <!-- Tags -->
       <div class="tags">
-        <span :class="['tag', `risk-${template.risk_level}`]" :data-testid="`strategy-card-${template.name}-risk-level`">
+        <span :class="['tag', `risk-${template.risk_level}`]" :title="riskTooltip" :data-testid="`strategy-card-${template.name}-risk-level`">
           {{ template.risk_level }} risk
         </span>
         <span v-if="template.theta_positive" class="tag theta" :data-testid="`strategy-card-${template.name}-theta`">
@@ -133,9 +133,16 @@ const categoryColor = computed(() => categoryConfig.value.color || '#6c757d')
 const categoryIcon = computed(() => categoryConfig.value.icon || '')
 const categoryName = computed(() => categoryConfig.value.name || props.template.category)
 
+const RISK_TOOLTIPS = {
+  low: 'Low risk: Limited and defined maximum loss',
+  medium: 'Medium risk: Moderate loss potential, requires active monitoring',
+  high: 'High risk: Significant or unlimited loss potential',
+}
+
+const riskTooltip = computed(() => RISK_TOOLTIPS[props.template.risk_level] || '')
+
 function formatMetric(value) {
   if (!value) return '--'
-  // Truncate if too long
   if (value.length > 20) {
     return value.substring(0, 17) + '...'
   }
@@ -246,6 +253,9 @@ function formatMetric(value) {
   font-size: 12px;
   font-weight: 600;
   color: #212529;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .metric .value.profit {
