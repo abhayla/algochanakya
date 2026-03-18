@@ -36,7 +36,7 @@ ruff format app/                           # Format
 
 **Key Modules:**
 - **Broker Abstraction** - Dual system: Market data brokers (all 6 implemented: SmartAPI, Kite, Dhan, Fyers, Paytm, Upstox) + Order execution brokers (all 6 implemented). Factory pattern with unified data models (`UnifiedOrder`, `UnifiedPosition`, `UnifiedQuote`). See [Multi-Broker Architecture](../CLAUDE.md#core-purpose-multi-broker-architecture).
-- **Authentication** - SmartAPI with auto-TOTP (default) or Zerodha OAuth. JWT stored in localStorage + Redis. Use `get_current_user` / `get_current_broker_connection` dependencies. SmartAPI credentials stored encrypted in `smartapi_credentials` table.
+- **Authentication** - 6 broker login flows (OAuth redirect or inline credentials). JWT stored in localStorage + Redis. Login credentials are NOT stored — used once for authentication. Use `get_current_user` / `get_current_broker_connection` dependencies. Platform-level SmartAPI credentials (for universal market data) stored in `.env` with auto-TOTP. User-level market data API credentials stored encrypted in `smartapi_credentials` table (configured via Settings page).
 - **WebSocket Live Prices** - Dev: `ws://localhost:8001/ws/ticks?token=<jwt>` | Prod: `wss://algochanakya.com/ws/ticks?token=<jwt>`. 5-component ticker architecture: TickerAdapter (per-broker WS) + TickerPool (lifecycle/ref-counting) + TickerRouter (user fan-out) + HealthMonitor + FailoverController. All 6 broker ticker adapters implemented. Legacy singletons (`SmartAPITickerService`, `KiteTickerService`) deprecated and moved to `services/deprecated/`. Index tokens: NIFTY=256265, BANKNIFTY=260105, FINNIFTY=257801, SENSEX=265. See [TICKER-DESIGN-SPEC.md](../docs/decisions/TICKER-DESIGN-SPEC.md)
   - **Token map loading (CRITICAL):** `_ensure_broker_credentials()` in `websocket.py` loads the canonical↔broker token mapping from `broker_instrument_tokens` table and passes it via `credentials["token_map"]`. Without this, `SmartAPITickerAdapter` cannot translate canonical tokens to SmartAPI tokens and subscribes to nothing (no ticks flow). Hardcoded index token fallback ensures NIFTY/BANKNIFTY/FINNIFTY/SENSEX work even if the DB table is empty.
 - **Option Chain** - IV via Newton-Raphson, Greeks via Black-Scholes. Max Pain, PCR calculated.
@@ -240,7 +240,7 @@ lot_size = get_lot_size("NIFTY")  # 75
 - `market_data_source` - Which broker for market data (smartapi, kite, upstox, dhan, fyers, paytm)
 - Constraint updated to support 6 brokers (migration: `bc0dd372730d`)
 
-**`smartapi_credentials`** - Encrypted SmartAPI credentials for auto-TOTP authentication
+**`smartapi_credentials`** - Encrypted user-level SmartAPI API credentials for market data upgrade (configured via Settings page). NOT login credentials — login credentials are never stored. The platform-level SmartAPI credentials for universal market data are in `.env`.
 
 ### Adding New API Routes
 

@@ -195,12 +195,13 @@ Standard OAuth redirect flow. User authenticates on Kite login page, Zerodha red
 - **Callback:** `GET /api/auth/zerodha/callback?request_token=xxx`
 - **Cost:** Kite Connect API costs ₹500/month
 
-### AngelOne (SmartAPI) — Auto-TOTP
+### AngelOne (SmartAPI) — Inline Credentials
 
-No browser redirect. Backend authenticates directly using stored credentials (client_id, password, TOTP secret). Auto-generates TOTP — no manual entry needed. Takes 20-25 seconds.
+No browser redirect. User enters Client ID, PIN, and 6-digit TOTP (from their authenticator app) on the login page. Backend authenticates directly with SmartAPI.
 
-- **Login:** `POST /api/auth/angelone/login` (35s timeout required!)
-- **Credentials:** Encrypted in `smartapi_credentials` table
+- **Login:** `POST /api/auth/angelone/login` with `{client_id, pin, totp}` (user-provided)
+- **Credentials:** NOT stored — used once for authentication
+- **Note:** The platform's universal SmartAPI connection (`.env`) is separate from individual user login
 - **Cost:** FREE
 
 ### Upstox — OAuth 2.0
@@ -242,6 +243,63 @@ OAuth redirect similar to others, but returns 3 separate JWT tokens: access toke
 ### Auth Fallback Chain
 
 When a broker token expires, the system follows this fallback: refresh token → OAuth re-login → API key/secret (last resort). The frontend auth store tracks per-broker loading states.
+
+## Two Credential Systems: Login vs Market Data API
+
+AlgoChanakya has two distinct credential flows that serve different purposes. Understanding this distinction is critical.
+
+### 1. Login Credentials (Login Page → Order Execution)
+
+| Aspect | Detail |
+|--------|--------|
+| **Purpose** | Authenticate user for order execution with their broker |
+| **Entry point** | Login page — broker dropdown + credential fields |
+| **Stored?** | **NO** — used once to get session token, then discarded |
+| **What's stored** | Only the session token (JWT in localStorage + Redis) |
+| **Used for** | Placing orders, viewing positions/holdings, managing funds |
+| **Expiry** | Varies by broker (8h to 1 year). User must re-login when expired |
+
+**Login page flow:**
+1. User selects broker from dropdown
+2. Enters credentials (OAuth redirect, or inline Client ID + PIN + TOTP, or Client ID + Access Token)
+3. Backend authenticates with broker API, gets broker session token
+4. Backend generates AlgoChanakya JWT, stores in Redis
+5. Frontend stores JWT in localStorage — credentials are NOT persisted
+
+### 2. Market Data API Credentials (Settings Page → Live Data)
+
+| Aspect | Detail |
+|--------|--------|
+| **Purpose** | Provide live market data from user's own broker API (optional upgrade) |
+| **Entry point** | Settings page — per-broker API credential fields |
+| **Stored?** | **YES** — encrypted in database (needed for ongoing data fetching) |
+| **What's stored** | API keys, access tokens, secrets — encrypted via `app.utils.encryption` |
+| **Used for** | Live quotes, option chain, OHLC, WebSocket ticks |
+| **Default** | Platform-level universal API (SmartAPI) serves all users without configuration |
+
+**Market data architecture:**
+- **Platform Default (universal):** A shared AngelOne SmartAPI connection stored in `.env` provides market data to ALL users. No per-user setup needed.
+- **User Upgrade (optional):** Users can configure their own broker's API credentials in Settings to use their own data connection. The broker's API can be free or paid — the platform doesn't differentiate.
+- **Switching:** Settings → Market Data Source dropdown controls which source is active.
+
+### Key Distinction
+
+| | Login Page | Settings Page |
+|---|-----------|---------------|
+| **Purpose** | Authenticate for order execution | Configure market data API |
+| **Credential type** | Login credentials (OAuth, PIN, TOTP) | API credentials (API key, access token) |
+| **Stored in DB?** | No — JWT only | Yes — encrypted |
+| **When needed** | Every session (daily re-login) | One-time setup |
+| **Required?** | Yes — must login to use the app | No — platform default provides data |
+
+### Platform-Level Market Data (Universal API)
+
+The platform maintains a shared SmartAPI (AngelOne) connection configured in `backend/.env`. This is NOT tied to any individual user — it serves as the default market data source for ALL users.
+
+- **Credentials:** `ANGEL_API_KEY`, `ANGEL_HIST_API_KEY`, `ANGEL_TRADE_API_KEY`, `ANGEL_CLIENT_ID`, `ANGEL_PIN`, `ANGEL_TOTP_SECRET`
+- **Auto-TOTP:** Generates TOTP codes automatically via `pyotp` for unattended operation
+- **Failover chain:** SmartAPI → Dhan → Fyers → Paytm → Upstox → Kite
+- **No user interaction:** This runs entirely on the backend without any user involvement
 
 ## Implementation Files
 

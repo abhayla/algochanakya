@@ -59,6 +59,10 @@ When a bug is reported, don't start by trying to fix it. Instead, start by writi
 | `ANGEL_HIST_API_KEY` | Historical candle data only |
 | `ANGEL_TRADE_API_KEY` | Order execution only |
 
+
+8. **Login credentials vs API credentials:** Login page credentials are used once and NOT stored. Settings page API credentials ARE stored (encrypted) for ongoing market data. See [Authentication Architecture](docs/architecture/authentication.md#two-credential-systems-login-vs-market-data-api).
+9. **Platform market data vs user market data:** The AngelOne keys in `.env` are the **platform-level universal API** serving all users. Individual users configure their own market data API in Settings (optional). These are completely separate systems.
+
 ---
 
 ## Navigation

@@ -47,7 +47,14 @@ All users get market data via platform-level shared credentials by default:
 - Encouraged via persistent banner on all data screens
 - Most broker APIs are FREE (SmartAPI, Fyers, Dhan, Paytm) — low cost barrier
 
+**How users configure their own market data API:**
+- Navigate to **Settings → Broker API section** for the desired broker
+- Enter API credentials (API key, access token, etc.) — these are **stored encrypted** in the database
+- Switch the **Market Data Source** dropdown from "Platform Default" to their broker
+- These are **API credentials for data access**, NOT login credentials (login credentials are never stored)
+
 See [Working Doc](Working-Doc-AlgoChanakya-Multi-Broker-Architecture-Platform-Level.md) for complete dual-path architecture.
+See [Authentication Architecture](authentication.md#two-credential-systems-login-vs-market-data-api) for the distinction between login credentials and API credentials.
 
 ### 2. Order Execution Brokers (Always Per-User)
 **Purpose:** Placing orders, managing positions, account margins
