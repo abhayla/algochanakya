@@ -42,6 +42,7 @@
 
 | Date | Reviewer | Scope | Changes Made |
 |------|----------|-------|--------------|
+| 2026-03-18 | Claude (manual) | v3.0 → v3.1 | Confirmed auto-login via pyotp fully working. Documented AngelOne as default market data source, 1 of 2 brokers with FREE option chain + Greeks. Added .env config section with all 9 keys. Expanded credential storage table. Updated auth-flow.md with confirmed auto-TOTP and .env keys. |
 | 2026-02-25 | Claude (manual) | Full overhaul v2.0 → v2.5 | Static IP requirement (Aug 2025), rate limit 20/sec, Order Update WebSocket, GTT orders, option chain, webhook, AG8008 error code, 4 new reference files, maintenance log |
 | 2026-02-25 | Claude (manual) | v2.0 creation | Implementation status corrections, AngelOneAdapter added, ticker adapter row, maintenance section added |
 | 2026-02-16 | Claude (manual) | v1.0 creation | Initial file created |

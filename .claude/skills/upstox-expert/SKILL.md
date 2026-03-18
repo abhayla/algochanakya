@@ -439,7 +439,7 @@ order_id = await adapter.place_order(order_params)
 | SKILL.md | 2026-03-18 | Quarterly |
 | upstox-overview.md | 2026-03-04 | Quarterly |
 | endpoints-catalog.md | 2026-02-25 | Monthly |
-| auth-flow.md | 2026-02-25 | Quarterly |
+| auth-flow.md | 2026-03-18 | Quarterly |
 | error-codes.md | 2026-02-25 | Monthly |
 | websocket-protocol.md | 2026-02-25 | Monthly |
 | symbol-format.md | 2026-02-25 | Quarterly |

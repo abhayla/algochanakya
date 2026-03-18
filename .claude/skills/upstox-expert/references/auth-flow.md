@@ -21,6 +21,75 @@ https://api.upstox.com/v2/login/authorization/dialog
   &response_type=code
 ```
 
+### Login Page Flow (at login.upstox.com)
+
+Tested via Playwright on 2026-03-18:
+
+1. Enter phone number
+2. Click "Get OTP" (or use TOTP if enabled)
+3. Enter OTP/TOTP code
+4. Enter 6-digit PIN
+5. Redirects to `{redirect_url}?code={authorization_code}`
+
+---
+
+## Step 1.5: TOTP Setup (Optional, Enables Auto-Login)
+
+> Verified: 2026-03-18
+
+Upstox supports Time-based OTP (TOTP) as an alternative to SMS OTP. With TOTP enabled, the entire login flow can be automated without SMS dependency.
+
+### Setup Location
+
+account.upstox.com → Profile → sidebar → "Time-based OTP (TOTP)"
+
+### Setup Steps
+
+1. Navigate to TOTP settings page
+2. Complete SMS OTP verification (required first)
+3. QR code and secret key are displayed
+4. Click "Unable to scan? Click to copy the key" to get the base32 secret
+5. Enter a generated TOTP code to confirm setup
+
+**Warning:** Enabling TOTP logs out all active sessions.
+
+### Auto-Login Requirements
+
+With TOTP enabled, fully automated OAuth login is possible using:
+- API Key (`UPSTOX_API_KEY`)
+- API Secret (`UPSTOX_API_SECRET`)
+- Phone number (`UPSTOX_LOGIN_PHONE`)
+- TOTP secret (`UPSTOX_TOTP_SECRET`)
+- 6-digit PIN (`UPSTOX_LOGIN_PIN`)
+
+```python
+import pyotp
+totp = pyotp.TOTP(os.environ["UPSTOX_TOTP_SECRET"])
+code = totp.now()  # 6-digit TOTP code for login
+```
+
+### Environment Variables
+
+```env
+UPSTOX_API_KEY=your-api-key-uuid
+UPSTOX_API_SECRET=your-api-secret
+UPSTOX_REDIRECT_URL=http://localhost:8001/api/auth/upstox/callback
+UPSTOX_LOGIN_PHONE=your-phone-number
+UPSTOX_LOGIN_PIN=your-6-digit-pin
+UPSTOX_USER_ID=your-user-id
+UPSTOX_TOTP_SECRET=your-totp-base32-secret
+```
+
+| Key | Purpose | Where to Find |
+|-----|---------|---------------|
+| `UPSTOX_API_KEY` | OAuth client_id | My Apps → App Details |
+| `UPSTOX_API_SECRET` | OAuth client_secret | My Apps → App Details |
+| `UPSTOX_REDIRECT_URL` | OAuth redirect URI | Must match My Apps config exactly |
+| `UPSTOX_LOGIN_PHONE` | Auto-login: phone number | Your registered phone |
+| `UPSTOX_LOGIN_PIN` | Auto-login: 6-digit PIN | Set during account creation |
+| `UPSTOX_USER_ID` | User identifier | Profile page or API profile response |
+| `UPSTOX_TOTP_SECRET` | Auto-login: TOTP base32 secret | TOTP setup page (copy key) |
+
 ---
 
 ## Step 2: Receive Authorization Code
