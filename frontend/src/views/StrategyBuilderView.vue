@@ -36,6 +36,7 @@
               @click="strategyStore.pnlMode !== 'expiry' && strategyStore.togglePnLMode()"
               data-testid="strategy-pnl-mode-expiry"
               :aria-selected="strategyStore.pnlMode === 'expiry'"
+              title="P&L assuming you hold all legs until expiration"
             >
               At Expiry
             </button>
@@ -44,6 +45,7 @@
               @click="strategyStore.pnlMode !== 'current' && strategyStore.togglePnLMode()"
               data-testid="strategy-pnl-mode-current"
               :aria-selected="strategyStore.pnlMode === 'current'"
+              title="P&L based on current market prices (intraday)"
             >
               Current
             </button>
@@ -85,15 +87,16 @@
                 />
               </div>
 
-              <!-- Strategy Type Dropdown -->
+              <!-- Strategy Type Dropdown (#10: tooltip hint) -->
               <div class="form-group">
-                <label class="form-label" id="strategy-type-label">Type:</label>
+                <label class="form-label" id="strategy-type-label" title="Select a strategy template to auto-populate legs, or keep Custom to build manually">Type:</label>
                 <select
                   v-model="selectedStrategyType"
                   @change="onStrategyTypeChange"
                   class="strategy-select"
                   data-testid="strategy-type-select"
                   aria-labelledby="strategy-type-label"
+                  title="Select a predefined strategy template or build manually"
                 >
                   <option value="">Custom (Manual)</option>
                   <optgroup
@@ -162,6 +165,11 @@
               </div>
             </div>
           </div>
+        </div>
+
+        <!-- Market Closed Banner (#1) -->
+        <div v-if="isMarketClosed" class="market-closed-banner" data-testid="strategy-market-closed">
+          Market Closed — CMP values reflect last traded prices. Live prices update when market opens at 9:15 AM IST.
         </div>
 
         <!-- Error Alert -->
@@ -327,10 +335,27 @@
                 />
               </tr>
 
-              <!-- Empty State -->
+              <!-- Empty State (#5: improved) -->
               <tr v-if="strategyStore.legs.length === 0" class="empty-state" data-testid="strategy-empty-state">
                 <td colspan="100">
-                  No legs added. Click "+ Add Row" to start building your strategy.
+                  <div class="empty-state-content">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--kite-text-muted); margin-bottom: 12px;">
+                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                      <line x1="12" y1="8" x2="12" y2="16"></line>
+                      <line x1="8" y1="12" x2="16" y2="12"></line>
+                    </svg>
+                    <p style="margin: 0 0 8px 0;">No legs added yet</p>
+                    <p style="margin: 0 0 12px 0; font-size: 12px; color: var(--kite-text-muted);">Add legs manually or select a strategy template from the Type dropdown</p>
+                    <button
+                      @click="strategyStore.addLeg()"
+                      :disabled="!strategyStore.canAddRow"
+                      class="strategy-btn strategy-btn-outline"
+                      style="color: var(--kite-blue); font-size: 13px;"
+                      data-testid="strategy-empty-add-row"
+                    >
+                      + Add Row
+                    </button>
+                  </div>
                 </td>
               </tr>
 
@@ -371,6 +396,15 @@
               Delete
             </button>
             <button
+              @click="handleDuplicateLegs"
+              :disabled="strategyStore.selectedLegIndices.length === 0"
+              class="strategy-btn strategy-btn-outline"
+              title="Duplicate selected legs"
+              data-testid="strategy-duplicate-legs-button"
+            >
+              Duplicate
+            </button>
+            <button
               @click="strategyStore.addLeg()"
               :disabled="!strategyStore.canAddRow"
               class="strategy-btn strategy-btn-outline"
@@ -394,6 +428,7 @@
               @click="strategyStore.importPositions()"
               class="strategy-btn strategy-btn-outline"
               data-testid="strategy-import-positions-button"
+              title="Import your current broker positions as strategy legs"
             >
               Import Positions
             </button>
@@ -401,6 +436,7 @@
               @click="strategyStore.updateFromPositions()"
               class="strategy-btn strategy-btn-outline"
               data-testid="strategy-update-positions-button"
+              title="Refresh entry prices and quantities from your live broker positions"
             >
               Update Positions
             </button>
@@ -423,7 +459,8 @@
             <button
               @click="showOrderModal = true"
               :disabled="strategyStore.legs.length === 0 || !allLegsComplete"
-              class="strategy-btn strategy-btn-primary"
+              :class="['strategy-btn', strategyStore.legs.length === 0 || !allLegsComplete ? 'strategy-btn-disabled' : 'strategy-btn-primary']"
+              :title="strategyStore.legs.length === 0 ? 'Add legs first to place an order' : !allLegsComplete ? 'Complete all leg details (expiry, strike, entry price) before ordering' : 'Place all legs as a basket order with your broker'"
               data-testid="strategy-basket-order-button"
             >
               Buy Basket Order
@@ -456,32 +493,32 @@
           </div>
         </div>
 
-        <!-- Summary Cards -->
+        <!-- Summary Cards (#9: empty state, #12: conditional colors) -->
         <div class="summary-grid" data-testid="strategy-summary-grid">
           <!-- Max Profit Card -->
-          <div class="strategy-summary-card profit" data-testid="strategy-max-profit-card">
+          <div :class="['strategy-summary-card', hasLegs ? 'profit' : '']" data-testid="strategy-max-profit-card">
             <div class="card-header">
-              <div class="card-icon profit">
+              <div :class="['card-icon', hasLegs ? 'profit' : '']">
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
                 </svg>
               </div>
               <span class="label">Max Profit</span>
             </div>
-            <div class="value">{{ formatNumber(strategyStore.maxProfit) }}</div>
+            <div :class="['value', { 'value-empty': !hasLegs }]">{{ hasLegs ? formatNumber(strategyStore.maxProfit) : '—' }}</div>
           </div>
 
           <!-- Max Loss Card -->
-          <div class="strategy-summary-card loss" data-testid="strategy-max-loss-card">
+          <div :class="['strategy-summary-card', hasLegs ? 'loss' : '']" data-testid="strategy-max-loss-card">
             <div class="card-header">
-              <div class="card-icon loss">
+              <div :class="['card-icon', hasLegs ? 'loss' : '']">
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"/>
                 </svg>
               </div>
               <span class="label">Max Loss</span>
             </div>
-            <div class="value">{{ formatNumber(strategyStore.maxLoss) }}</div>
+            <div :class="['value', { 'value-empty': !hasLegs }]">{{ hasLegs ? formatNumber(strategyStore.maxLoss) : '—' }}</div>
           </div>
 
           <!-- Breakeven Card -->
@@ -494,8 +531,8 @@
               </div>
               <span class="label">Breakeven</span>
             </div>
-            <div class="value" style="font-size: 18px;">
-              {{ strategyStore.breakevens.length >= 2 ? formatNumber(strategyStore.breakevens[0]) + ' - ' + formatNumber(strategyStore.breakevens[1]) : (strategyStore.breakevens.length === 1 ? formatNumber(strategyStore.breakevens[0]) : '-') }}
+            <div :class="['value', { 'value-empty': !hasLegs }]" style="font-size: 18px;">
+              {{ hasLegs ? (strategyStore.breakevens.length >= 2 ? formatNumber(strategyStore.breakevens[0]) + ' - ' + formatNumber(strategyStore.breakevens[1]) : (strategyStore.breakevens.length === 1 ? formatNumber(strategyStore.breakevens[0]) : '—')) : '—' }}
             </div>
           </div>
 
@@ -509,7 +546,7 @@
               </div>
               <span class="label">Risk/Reward</span>
             </div>
-            <div class="value" style="color: var(--kite-blue);">{{ riskRewardRatio }}</div>
+            <div :class="['value', { 'value-empty': !hasLegs }]" style="color: var(--kite-blue);">{{ hasLegs ? riskRewardRatio : '—' }}</div>
           </div>
 
           <!-- Current Spot Card -->
@@ -693,6 +730,21 @@ const shareUrl = ref('')
 const tableScrollRef = ref(null)
 const canScrollLeft = ref(false)
 const canScrollRight = ref(false)
+
+// #1: Market closed detection
+const isMarketClosed = computed(() => {
+  const now = new Date()
+  const ist = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }))
+  const hours = ist.getHours()
+  const minutes = ist.getMinutes()
+  const day = ist.getDay()
+  const timeInMinutes = hours * 60 + minutes
+  if (day === 0 || day === 6) return true
+  return timeInMinutes < 555 || timeInMinutes > 930
+})
+
+// #9, #12: Whether legs exist (controls summary card styling)
+const hasLegs = computed(() => strategyStore.legs.length > 0)
 
 // Computed
 const filteredLegs = computed(() => {
@@ -973,6 +1025,28 @@ function scrollToCurrentSpot() {
     // Update scroll indicators after scrolling
     setTimeout(updateScrollIndicators, 300)
   })
+}
+
+// #11: Duplicate selected legs
+function handleDuplicateLegs() {
+  const indices = [...strategyStore.selectedLegIndices].sort((a, b) => a - b)
+  for (const idx of indices) {
+    const leg = strategyStore.legs[idx]
+    if (leg) {
+      strategyStore.addLeg({
+        temp_id: `leg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        transaction_type: leg.transaction_type,
+        contract_type: leg.contract_type,
+        strike_price: leg.strike_price,
+        expiry_date: leg.expiry_date,
+        lots: leg.lots,
+        entry_price: leg.entry_price,
+        instrument_token: leg.instrument_token,
+        tradingsymbol: leg.tradingsymbol,
+      })
+    }
+  }
+  strategyStore.deselectAllLegs()
 }
 
 function toggleSelectAll() {
@@ -1627,6 +1701,38 @@ watch(
   padding: 48px;
   text-align: center;
   color: var(--kite-text-muted);
+}
+
+.empty-state-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Market Closed Banner (#1) */
+.market-closed-banner {
+  padding: 10px 16px;
+  background: #fff8e1;
+  border: 1px solid #ffe082;
+  border-radius: 4px;
+  color: #f57f17;
+  font-size: 13px;
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+/* Disabled action button (#3) */
+.strategy-btn-disabled {
+  background: var(--kite-border-light, #f0f0f0);
+  border: 1px solid var(--kite-border, #e0e0e0);
+  color: var(--kite-text-muted, #999);
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Empty summary value (#9) */
+.value-empty {
+  color: var(--kite-text-muted, #999) !important;
 }
 
 /* ===== Tags ===== */
