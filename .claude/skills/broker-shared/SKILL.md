@@ -1,11 +1,9 @@
 ---
 name: broker-shared
-description: Cross-broker comparison, shared gotchas, and broker selection guidance. Use for questions spanning multiple brokers or common integration patterns.
-metadata:
-  author: AlgoChanakya
-  version: "1.0"
-  category: broker
-  created_by: skill-evolver
+description: Cross-broker comparison, shared gotchas, and broker selection guidance.
+  Use for questions spanning multiple brokers or common integration patterns.
+version: "1.0.0"
+last_verified: "2026-03-18"
 ---
 
 # Broker Shared Knowledge
@@ -104,6 +102,12 @@ SmartAPI → Dhan → Fyers → Paytm → Upstox → Kite Connect
 ```
 
 Platform-level credentials serve ALL users by default. User-level (own API key) is an optional upgrade.
+
+## Version Changelog
+
+| Version | Date | Changes |
+|---|---|---|
+| 1.0.0 | 2026-03-18 | Frontmatter aligned with broker-expert pattern (top-level version + last_verified, removed nested metadata). Added Version Changelog section. No content changes. |
 
 ## Cross-References
 

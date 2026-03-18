@@ -385,7 +385,7 @@ order_id = await adapter.place_order(order_params)
 
 | Reference File | Last Verified | Check Frequency |
 |---|---|---|
-| SKILL.md | 2026-03-04 | Quarterly |
+| SKILL.md | 2026-03-18 | Quarterly |
 | paytm-overview.md | 2026-03-04 | Quarterly |
 | endpoints-catalog.md | 2026-02-25 | Quarterly |
 | auth-flow.md | 2026-02-25 | Quarterly |
