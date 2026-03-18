@@ -5,7 +5,7 @@
  * User preferences and application settings
  */
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, onBeforeRouteLeave } from 'vue-router'
 import { useUserPreferencesStore } from '@/stores/userPreferences'
 import KiteLayout from '@/components/layout/KiteLayout.vue'
 import SmartAPISettings from '@/components/settings/SmartAPISettings.vue'
@@ -29,6 +29,8 @@ const handleCredentialsUpdated = () => {
 
 const localPreferences = ref(null)
 const hasChanges = ref(false)
+const showSaveToast = ref(false)
+const saveError = ref(null)
 
 onMounted(async () => {
   await store.fetchPreferences()
@@ -43,8 +45,13 @@ const handleSave = async () => {
   try {
     await store.updatePreferences(localPreferences.value)
     hasChanges.value = false
+    saveError.value = null
+    showSaveToast.value = true
+    setTimeout(() => { showSaveToast.value = false }, 3000)
   } catch (error) {
     console.error('Failed to save settings:', error)
+    saveError.value = 'Failed to save. Please try again.'
+    setTimeout(() => { saveError.value = null }, 5000)
   }
 }
 
@@ -52,6 +59,13 @@ const handleReset = () => {
   localPreferences.value = { ...store.preferences }
   hasChanges.value = false
 }
+
+// #3: Unsaved changes guard
+onBeforeRouteLeave(() => {
+  if (hasChanges.value) {
+    return window.confirm('You have unsaved changes. Leave without saving?')
+  }
+})
 </script>
 
 <template>
@@ -62,9 +76,10 @@ const handleReset = () => {
         <div>
           <div class="settings-title-row">
             <button
-              @click="router.push('/dashboard')"
+              @click="router.back()"
               class="back-btn"
               data-testid="settings-back"
+              title="Go back to previous page"
             >
               &larr;
             </button>
@@ -87,6 +102,7 @@ const handleReset = () => {
             :disabled="!hasChanges || store.saving"
             data-testid="settings-save"
             class="strategy-btn strategy-btn-primary"
+            :title="!hasChanges ? 'No changes to save' : 'Save your preference changes'"
           >
             {{ store.saving ? 'Saving...' : 'Save Changes' }}
           </button>
@@ -147,11 +163,11 @@ const handleReset = () => {
           </div>
         </div>
 
-        <!-- Market Data Settings -->
-        <div class="settings-section">
+        <!-- Market Data Settings (#4: clarified subtitle) -->
+        <div class="settings-section" id="market-data">
           <div class="section-header">
             <h2 class="section-title">Market Data Source</h2>
-            <p class="section-subtitle">Choose where to get live market data from</p>
+            <p class="section-subtitle">Choose which broker provides live quotes and OHLC data (platform default is free SmartAPI)</p>
           </div>
           <div class="section-content">
             <MarketDataSourceToggle
@@ -161,11 +177,11 @@ const handleReset = () => {
           </div>
         </div>
 
-        <!-- Broker Selection Settings -->
-        <div class="settings-section">
+        <!-- Broker Selection Settings (#4: clarified subtitle) -->
+        <div class="settings-section" id="broker-selection">
           <div class="section-header">
             <h2 class="section-title">Broker Selection</h2>
-            <p class="section-subtitle">Configure your market data source and order execution broker</p>
+            <p class="section-subtitle">Select which connected broker to use for placing orders (separate from market data above)</p>
           </div>
           <div class="section-content">
             <BrokerSettings />
@@ -238,6 +254,31 @@ const handleReset = () => {
           </div>
         </div>
       </div>
+
+      <!-- Sticky Save Bar (#2: visible when scrolled) -->
+      <Transition name="slide-up">
+        <div v-if="hasChanges" class="sticky-save-bar" data-testid="settings-sticky-save">
+          <span class="unsaved-label">You have unsaved changes</span>
+          <div class="sticky-actions">
+            <button @click="handleReset" class="strategy-btn strategy-btn-outline">Reset</button>
+            <button @click="handleSave" :disabled="store.saving" class="strategy-btn strategy-btn-primary">
+              {{ store.saving ? 'Saving...' : 'Save Changes' }}
+            </button>
+          </div>
+        </div>
+      </Transition>
+
+      <!-- Save Toast (#9) -->
+      <Transition name="toast-fade">
+        <div v-if="showSaveToast" class="save-toast success" data-testid="settings-save-toast">
+          Settings saved successfully!
+        </div>
+      </Transition>
+      <Transition name="toast-fade">
+        <div v-if="saveError" class="save-toast error" data-testid="settings-save-error">
+          {{ saveError }}
+        </div>
+      </Transition>
     </div>
   </KiteLayout>
 </template>
@@ -441,5 +482,78 @@ const handleReset = () => {
   width: 16px;
   height: 16px;
   cursor: pointer;
+}
+
+/* Sticky Save Bar (#2) */
+.sticky-save-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: white;
+  border-top: 1px solid #e5e7eb;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.08);
+  padding: 12px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 100;
+}
+
+.unsaved-label {
+  font-size: 14px;
+  color: #f57f17;
+  font-weight: 500;
+}
+
+.sticky-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.slide-up-enter-active,
+.slide-up-leave-active {
+  transition: all 0.3s ease;
+}
+
+.slide-up-enter-from,
+.slide-up-leave-to {
+  transform: translateY(100%);
+  opacity: 0;
+}
+
+/* Save Toast (#9) */
+.save-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 12px 24px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  z-index: 2000;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+}
+
+.save-toast.success {
+  background: #00b386;
+  color: white;
+}
+
+.save-toast.error {
+  background: #e74c3c;
+  color: white;
+}
+
+.toast-fade-enter-active,
+.toast-fade-leave-active {
+  transition: all 0.3s ease;
+}
+
+.toast-fade-enter-from,
+.toast-fade-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(20px);
 }
 </style>

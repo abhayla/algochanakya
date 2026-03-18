@@ -128,7 +128,7 @@
         <div v-if="showUserDropdown" class="user-dropdown" data-testid="kite-header-user-dropdown">
           <div class="dropdown-item user-info">
             <span class="user-name" data-testid="kite-header-user-name">{{ userName }}</span>
-            <span class="user-broker">Zerodha</span>
+            <span class="user-broker">{{ authStore.user?.broker || 'No broker connected' }}</span>
           </div>
           <div class="dropdown-divider"></div>
           <button class="dropdown-item" @click="router.push('/settings'); showUserDropdown = false" data-testid="kite-header-settings-button">
@@ -138,7 +138,7 @@
             </svg>
             Settings
           </button>
-          <button class="dropdown-item" @click="logout" data-testid="kite-header-logout-button">
+          <button class="dropdown-item dropdown-item-danger" @click="logout" data-testid="kite-header-logout-button">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
               <polyline points="16,17 21,12 16,7"/>
@@ -554,6 +554,14 @@ onUnmounted(() => {
 
 .dropdown-item:hover {
   background: #f5f5f5;
+}
+
+.dropdown-item-danger {
+  color: #e74c3c;
+}
+
+.dropdown-item-danger:hover {
+  background: #ffebee;
 }
 
 .dropdown-item svg {
