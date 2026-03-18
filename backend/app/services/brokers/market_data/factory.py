@@ -10,6 +10,7 @@ Usage:
 """
 
 import logging
+import os
 from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -165,7 +166,7 @@ async def _create_kite_adapter(user_id: UUID, db: AsyncSession) -> MarketDataBro
         credentials = KiteMarketDataCredentials(
             broker_type="kite",
             user_id=user_id,
-            api_key=conn.api_key,
+            api_key=os.getenv("KITE_API_KEY", ""),
             access_token=conn.access_token
         )
 
@@ -225,7 +226,7 @@ async def _create_fyers_adapter(user_id: UUID, db: AsyncSession) -> MarketDataBr
         credentials = FyersMarketDataCredentials(
             broker_type="fyers",
             user_id=user_id,
-            app_id=conn.api_key or "",
+            app_id=os.getenv("FYERS_APP_ID", ""),
             access_token=conn.access_token,
         )
 
@@ -342,7 +343,7 @@ async def _create_upstox_adapter(user_id: UUID, db: AsyncSession) -> MarketDataB
         credentials = UpstoxMarketDataCredentials(
             broker_type="upstox",
             user_id=user_id,
-            api_key=conn.api_key or "",
+            api_key=os.getenv("UPSTOX_API_KEY", ""),
             access_token=conn.access_token,
         )
 
@@ -401,7 +402,7 @@ async def _create_paytm_adapter(user_id: UUID, db: AsyncSession) -> MarketDataBr
         credentials = PaytmMarketDataCredentials(
             broker_type="paytm",
             user_id=user_id,
-            api_key=conn.api_key or "",
+            api_key=os.getenv("PAYTM_API_KEY", ""),
             access_token=conn.access_token,
         )
 
@@ -555,7 +556,7 @@ async def get_platform_market_data_adapter(db: AsyncSession) -> MarketDataBroker
             credentials = KiteMarketDataCredentials(
                 broker_type="kite",
                 user_id=conn.user_id,
-                api_key=conn.api_key,
+                api_key=os.getenv("KITE_API_KEY", ""),
                 access_token=conn.access_token,
             )
             from app.services.brokers.market_data.kite_adapter import KiteMarketDataAdapter
