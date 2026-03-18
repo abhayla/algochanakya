@@ -34,6 +34,7 @@ const BROKER_LABELS = {
 export const useBrokerPreferencesStore = defineStore('brokerPreferences', {
   state: () => ({
     preferences: null,   // null until fetched
+    credentialStatus: null, // { smartapi: bool, kite: bool, ... }
     loading: false,
     saving: false,
     error: null,
@@ -70,6 +71,12 @@ export const useBrokerPreferencesStore = defineStore('brokerPreferences', {
 
     /** Available order broker options for UI dropdowns */
     orderBrokerOptions: () => Object.entries(BROKER_LABELS).map(([value, label]) => ({ value, label })),
+
+    /** Check if a broker has configured credentials */
+    isBrokerConfigured: (state) => (broker) => {
+      if (broker === 'platform') return true
+      return state.credentialStatus?.[broker] ?? false
+    },
   },
 
   actions: {
@@ -109,6 +116,19 @@ export const useBrokerPreferencesStore = defineStore('brokerPreferences', {
         throw error
       } finally {
         this.saving = false
+      }
+    },
+
+    /**
+     * Fetch credential status for all brokers.
+     */
+    async fetchCredentialStatus() {
+      try {
+        const response = await api.get('/api/user/preferences/broker-status')
+        this.credentialStatus = response.data
+        return this.credentialStatus
+      } catch (error) {
+        console.error('[BrokerPreferences] Failed to fetch credential status:', error)
       }
     },
 

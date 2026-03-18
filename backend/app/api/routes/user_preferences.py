@@ -12,7 +12,8 @@ from app.models import User, UserPreferences
 from app.models.user_preferences import MarketDataSource, OrderBroker
 from app.schemas.user_preferences import (
     UserPreferencesResponse,
-    UserPreferencesUpdateRequest
+    UserPreferencesUpdateRequest,
+    BrokerCredentialStatusResponse
 )
 from app.utils.dependencies import get_current_user
 
@@ -115,3 +116,51 @@ async def update_user_preferences(
     await db.refresh(preferences)
 
     return UserPreferencesResponse.model_validate(preferences)
+
+
+BROKER_NAME_TO_KEY = {
+    "zerodha": "kite",
+    "upstox": "upstox",
+    "dhan": "dhan",
+    "fyers": "fyers",
+    "paytm": "paytm",
+}
+
+
+@router.get("/broker-status", response_model=BrokerCredentialStatusResponse)
+async def get_broker_credential_status(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get credential configuration status for all supported brokers.
+
+    Returns a boolean for each broker indicating whether valid credentials exist.
+    SmartAPI uses its own credentials table; all others use broker_connections.
+    """
+    from app.models.smartapi_credentials import SmartAPICredentials
+    from app.models.broker_connections import BrokerConnection
+
+    smartapi_result = await db.execute(
+        select(SmartAPICredentials).where(
+            SmartAPICredentials.user_id == user.id
+        )
+    )
+    smartapi_creds = smartapi_result.scalar_one_or_none()
+    smartapi_configured = bool(smartapi_creds and smartapi_creds.is_active)
+
+    connections_result = await db.execute(
+        select(BrokerConnection).where(
+            BrokerConnection.user_id == user.id,
+            BrokerConnection.is_active == True,
+        )
+    )
+    connections = connections_result.scalars().all()
+
+    status = {"smartapi": smartapi_configured}
+    for conn in connections:
+        key = BROKER_NAME_TO_KEY.get(conn.broker)
+        if key and conn.access_token:
+            status[key] = True
+
+    return BrokerCredentialStatusResponse(**status)

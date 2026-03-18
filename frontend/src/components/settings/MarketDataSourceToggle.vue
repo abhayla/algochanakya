@@ -1,6 +1,9 @@
 <script setup>
 /**
- * Market Data Source Toggle Component
+ * DEPRECATED: Replaced by integrated market data source cards in BrokerSettings.vue
+ * Kept for reference. Will be removed in a future cleanup.
+ *
+ * Market Data Source Toggle Component (legacy)
  *
  * Allows switching between SmartAPI and Kite for market data
  */

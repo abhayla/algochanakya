@@ -7,9 +7,9 @@
 import { ref, onMounted } from 'vue'
 import { useRouter, onBeforeRouteLeave } from 'vue-router'
 import { useUserPreferencesStore } from '@/stores/userPreferences'
+import { useBrokerPreferencesStore } from '@/stores/brokerPreferences'
 import KiteLayout from '@/components/layout/KiteLayout.vue'
 import SmartAPISettings from '@/components/settings/SmartAPISettings.vue'
-import MarketDataSourceToggle from '@/components/settings/MarketDataSourceToggle.vue'
 import BrokerSettings from '@/components/settings/BrokerSettings.vue'
 import KiteSettings from '@/components/settings/KiteSettings.vue'
 import DhanSettings from '@/components/settings/DhanSettings.vue'
@@ -19,12 +19,11 @@ import PaytmSettings from '@/components/settings/PaytmSettings.vue'
 
 const router = useRouter()
 const store = useUserPreferencesStore()
-
-// Trigger for refreshing MarketDataSourceToggle after credentials change
-const sourceRefreshTrigger = ref(0)
+const brokerPreferencesStore = useBrokerPreferencesStore()
+const brokerSettingsRef = ref(null)
 
 const handleCredentialsUpdated = () => {
-  sourceRefreshTrigger.value++
+  brokerPreferencesStore.fetchCredentialStatus()
 }
 
 const localPreferences = ref(null)
@@ -163,25 +162,11 @@ onBeforeRouteLeave(() => {
           </div>
         </div>
 
-        <!-- Market Data Settings (#4: clarified subtitle) -->
-        <div class="settings-section" id="market-data">
-          <div class="section-header">
-            <h2 class="section-title">Market Data Source</h2>
-            <p class="section-subtitle">Choose which broker provides live quotes and OHLC data (platform default is free SmartAPI)</p>
-          </div>
-          <div class="section-content">
-            <MarketDataSourceToggle
-              :refresh-trigger="sourceRefreshTrigger"
-              @source-changed="handleCredentialsUpdated"
-            />
-          </div>
-        </div>
-
-        <!-- Broker Selection Settings (#4: clarified subtitle) -->
+        <!-- Broker Selection Settings -->
         <div class="settings-section" id="broker-selection">
           <div class="section-header">
             <h2 class="section-title">Broker Selection</h2>
-            <p class="section-subtitle">Select which connected broker to use for placing orders (separate from market data above)</p>
+            <p class="section-subtitle">Configure your market data source and order execution broker</p>
           </div>
           <div class="section-content">
             <BrokerSettings />
@@ -195,7 +180,7 @@ onBeforeRouteLeave(() => {
             <p class="section-subtitle">Connect your Zerodha account via OAuth. Token expires daily at ~6 AM IST.</p>
           </div>
           <div class="section-content">
-            <KiteSettings />
+            <KiteSettings @credentials-updated="handleCredentialsUpdated" />
           </div>
         </div>
 
@@ -217,7 +202,7 @@ onBeforeRouteLeave(() => {
             <p class="section-subtitle">Configure Dhan credentials (static token from developer console)</p>
           </div>
           <div class="section-content">
-            <DhanSettings />
+            <DhanSettings @credentials-updated="handleCredentialsUpdated" />
           </div>
         </div>
 
@@ -228,7 +213,7 @@ onBeforeRouteLeave(() => {
             <p class="section-subtitle">Connect your Upstox account via OAuth</p>
           </div>
           <div class="section-content">
-            <UpstoxSettings />
+            <UpstoxSettings @credentials-updated="handleCredentialsUpdated" />
           </div>
         </div>
 
@@ -239,7 +224,7 @@ onBeforeRouteLeave(() => {
             <p class="section-subtitle">Connect your Fyers account via OAuth</p>
           </div>
           <div class="section-content">
-            <FyersSettings />
+            <FyersSettings @credentials-updated="handleCredentialsUpdated" />
           </div>
         </div>
 
@@ -250,7 +235,7 @@ onBeforeRouteLeave(() => {
             <p class="section-subtitle">Connect your Paytm Money account via OAuth</p>
           </div>
           <div class="section-content">
-            <PaytmSettings />
+            <PaytmSettings @credentials-updated="handleCredentialsUpdated" />
           </div>
         </div>
       </div>

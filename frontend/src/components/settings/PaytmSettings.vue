@@ -10,6 +10,8 @@ import { ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import api from '@/services/api'
 
+const emit = defineEmits(['credentials-updated'])
+
 const authStore = useAuthStore()
 const error = ref(null)
 const disconnecting = ref(false)
@@ -36,6 +38,7 @@ async function handleDisconnect() {
   disconnecting.value = false
   if (result.success) {
     isConnected.value = false
+    emit('credentials-updated')
   } else {
     error.value = result.error
   }
@@ -49,6 +52,7 @@ async function savePublicToken() {
   try {
     await api.post('/api/auth/paytm/public-token', { public_access_token: publicToken.value.trim() })
     publicTokenSaved.value = true
+    emit('credentials-updated')
     setTimeout(() => { publicTokenSaved.value = false }, 3000)
   } catch (e) {
     error.value = e.response?.data?.detail || 'Failed to save public token'

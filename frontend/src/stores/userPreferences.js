@@ -82,13 +82,10 @@ export const useUserPreferencesStore = defineStore('userPreferences', {
     /**
      * Update market data source
      *
-     * @param {string} source - 'smartapi' or 'kite'
+     * @deprecated Use useBrokerPreferencesStore.setMarketDataSource() instead.
+     * @param {string} source - any valid source from MarketDataSource.VALID_SOURCES
      */
     async updateMarketDataSource(source) {
-      if (source !== 'smartapi' && source !== 'kite') {
-        throw new Error('Source must be either "smartapi" or "kite"')
-      }
-
       return await this.updatePreferences({
         market_data_source: source
       })

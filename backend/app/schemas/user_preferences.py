@@ -38,3 +38,13 @@ class UserPreferencesUpdateRequest(BaseModel):
         if v not in [50, 100]:
             raise ValueError("pnl_grid_interval must be either 50 or 100")
         return v
+
+
+class BrokerCredentialStatusResponse(BaseModel):
+    """Credential configuration status for all supported brokers."""
+    smartapi: bool = False
+    kite: bool = False
+    upstox: bool = False
+    dhan: bool = False
+    fyers: bool = False
+    paytm: bool = False

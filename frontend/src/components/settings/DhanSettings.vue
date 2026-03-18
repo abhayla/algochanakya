@@ -8,6 +8,8 @@
 import { ref, computed } from 'vue'
 import api from '@/services/api'
 
+const emit = defineEmits(['credentials-updated'])
+
 const loading = ref(false)
 const error = ref(null)
 const success = ref(null)
@@ -38,6 +40,7 @@ async function testConnection() {
     if (resp.data.success) {
       success.value = 'Dhan connection successful!'
       connectionStatus.value = 'active'
+      emit('credentials-updated')
     }
   } catch (err) {
     error.value = err.response?.data?.detail || 'Connection test failed'

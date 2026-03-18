@@ -8,6 +8,8 @@
 import { ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 
+const emit = defineEmits(['credentials-updated'])
+
 const authStore = useAuthStore()
 const error = ref(null)
 const disconnecting = ref(false)
@@ -32,6 +34,7 @@ async function handleDisconnect() {
   disconnecting.value = false
   if (result.success) {
     isConnected.value = false
+    emit('credentials-updated')
   } else {
     error.value = result.error
   }
