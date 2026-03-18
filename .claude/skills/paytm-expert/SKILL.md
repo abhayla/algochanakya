@@ -2,8 +2,8 @@
 name: paytm-expert
 description: Paytm Money expert — broker overview, products, pricing, Paytm Money API,
   and AlgoChanakya adapter guidance. Use for any Paytm Money question.
-version: "3.0"
-last_verified: "2026-03-04"
+version: "3.1"
+last_verified: "2026-03-18"
 ---
 
 # Paytm Money Expert
@@ -346,6 +346,18 @@ order_id = await adapter.place_order(order_params)
 
 9. **No webhooks** - No HTTP webhooks and no order update WebSocket. REST polling is the only option.
 
+10. **Developer Portal app creation may fail with 403** - As of March 2026, the "Create New App" flow on `developer.paytmmoney.com` returns HTTP 403 "Access Denied" from Akamai CDN when calling `POST /merchant-onboarding/merchant/v1/onboard`. This affects both manual browsers and automated (Playwright) browsers. The error is on Paytm's CDN/WAF side, not a user error. Workaround: try from a different network, mobile app, or contact support.
+
+11. **Developer Portal login flow** - Login URL is `https://login.paytmmoney.com/?pmlEnv=developer`. Requires: mobile number → OTP → PIN (4 digits). The terms checkbox must be clicked via the UI label text "I Agree To The Above Terms" (not the checkbox element directly, which is intercepted by a presentation span). Login PIN for dev portal is separate from trading PIN.
+
+12. **Support email `openapi.care@paytmmoney.com` is DEAD** - As of March 2026, this email bounces with "group may not exist". Use `feedback@paytmmoney.com` or raise a ticket via the Paytm Money mobile app instead. Phone: `0120-4440440`.
+
+13. **Community forum `forum.paytmmoney.com` is DOWN** - DNS resolution fails as of March 2026. Cannot access any forum threads for troubleshooting.
+
+14. **Developer Portal requires KYC-ready equity account** - You must have an active, KYC-verified equity trading account. F&O segment should also be activated (free, takes 30 min to 2 hours after document submission).
+
+15. **Developer Portal app creation form fields** - App Name, Product Type (dropdown: "Rule Based Trading Platform"), Redirect URL (HTTPS required, but `http://127.0.0.1` or `http://localhost` allowed for testing), Postback URL (optional), Primary IP, Secondary IP, Description, App Logo (JPG/PNG, optional). Max 5 apps per user.
+
 ## 6. Related Skills
 
 | Skill | When to Use |
@@ -356,7 +368,14 @@ order_id = await adapter.place_order(order_params)
 | `/auto-verify` | After any Paytm adapter change — run verification immediately |
 | `/docs-maintainer` | After adapter changes — update feature registry, comparison matrix, CHANGELOG |
 
-**Maturity Warning:** Paytm Money API is the least mature of all 6 brokers (sporadic SDK maintenance, limited F&O coverage). Consider implementing with extra defensive error handling.
+**Maturity Warning:** Paytm Money API is the least mature of all 6 brokers (sporadic SDK maintenance, limited F&O coverage, broken developer portal as of March 2026, dead support email, forum offline). Consider implementing with extra defensive error handling.
+
+**Support Contacts (Updated March 2026):**
+- ~~`openapi.care@paytmmoney.com`~~ — **DEAD** (bounces, group doesn't exist)
+- `feedback@paytmmoney.com` — General feedback (works)
+- Phone: `0120-4440440` — Paytm business support
+- In-app: Raise ticket via Paytm Money mobile app
+- ~~`forum.paytmmoney.com`~~ — **DOWN** (DNS resolution fails)
 
 **Cross-Broker Comparison:** See [comparison-matrix.md](../broker-shared/comparison-matrix.md) for pricing, rate limits, WebSocket capabilities, and symbol format differences across all 6 brokers.
 
@@ -388,6 +407,7 @@ order_id = await adapter.place_order(order_params)
 
 | Version | Date | Changes |
 |---|---|---|
+| 3.1 | 2026-03-18 | Critical updates from hands-on setup: Developer Portal "Create App" returns 403 from Akamai CDN (gotcha #10), login flow documented with checkbox workaround (gotcha #11), support email `openapi.care@paytmmoney.com` confirmed dead (gotcha #12), forum DNS down (gotcha #13), KYC+equity prerequisites documented (gotcha #14), form fields documented (gotcha #15), updated support contacts section. Login credentials saved to .env. |
 | 3.0 | 2026-03-04 | Restructured: Paytm Money overview + pricing sections added, Paytm Money API content reorganized as subsection. New `paytm-overview.md` reference file. All existing API content preserved. |
 | 2.5 | 2026-02-25 | Added GTT Orders section (not yet implemented), Option Chain section (Heckyl data, not implemented), Webhook section (no webhooks — REST polling only), BSE F&O 2025 note, pyPMClient last-updated note, expanded maintenance freshness table to 9 reference files, updated gotcha #9 (no webhooks) |
 | 2.0 | 2026-02-25 | Implementation status corrected: all 3 adapters fully Implemented (was Planned), auth route + frontend + tests added to status table, maintenance section added |

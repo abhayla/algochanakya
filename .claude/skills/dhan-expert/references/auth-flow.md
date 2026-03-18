@@ -60,7 +60,7 @@ Dhan also supports **TOTP** for automated login (no SMS OTP needed) and **Static
 1. Click the **profile icon** (top-right corner, `#userProfileDropdown`)
 2. Click **"DhanHQ Trading APIs"** from the dropdown menu
 3. This opens the "Trading & Investing APIs" section within the profile page
-4. Your **Client ID** is visible on the profile page (numeric, e.g., `1103574530`)
+4. Your **Client ID** is visible on the profile page (numeric, e.g., `1234567890`)
 
 ### Step 3: Generate Access Token (24-hour)
 
@@ -83,7 +83,7 @@ On the same page, toggle the **"Access Token ↔ API Key"** switch to **API Key*
 3. Optionally enter a **Postback URL**
 4. Click **"Generate API Key"**
 5. Table shows: Application Name | **API Key** | **API Secret** | Status | Action(Revoke)
-6. API Key is a short string (e.g., `44cd031f`)
+6. API Key is a short string (e.g., `abcd1234`)
 7. API Secret is a UUID (e.g., `89d57475-1e29-4f0f-b584-7259f21c218e`)
 8. These are **permanent** — no daily regeneration needed
 
@@ -99,7 +99,7 @@ Below the token table, under **"Optional Settings:"**:
 6. Enter the 6-digit code from authenticator → Click **"Enable TOTP Login"**
 7. **Save the Setup Code** (TOTP secret) to `.env` — this enables auto-TOTP generation for future logins
 
-**CRITICAL:** Save the TOTP secret (base32 string like `TVD4U5TNWBXC326UA2Y25MG2CQUS6Z7X`) immediately. It is only shown during setup.
+**CRITICAL:** Save the TOTP secret (base32 string like `ABCD1234EFGH5678...`) immediately. It is only shown during setup.
 
 ### Step 6: Set Up Static IP (Optional)
 
@@ -138,13 +138,13 @@ The DhanHQ Trading APIs section has 3 sub-tabs:
 
 ```bash
 # ── Dhan ──────────────────────────────────────────────────────────────────────
-DHAN_CLIENT_ID=1103574530
-DHAN_ACCESS_TOKEN=eyJ0eXAi...          # 24-hour JWT, must regenerate daily
-DHAN_LOGIN_PHONE=7767009136            # For automated login via Playwright
-DHAN_LOGIN_PIN=258369                  # Trading PIN for login
-DHAN_TOTP_SECRET=TVD4U5TNWBXC326...   # Base32 TOTP secret for auto-OTP
-DHAN_API_KEY=44cd031f                  # Permanent API key
-DHAN_API_SECRET=89d57475-1e29-...      # Permanent API secret (UUID)
+DHAN_CLIENT_ID=your-dhan-client-id              # Numeric UID from profile
+DHAN_ACCESS_TOKEN=eyJ0eXAi...                   # 24-hour JWT, must regenerate daily
+DHAN_LOGIN_PHONE=your-phone-number              # For automated login via Playwright
+DHAN_LOGIN_PIN=your-trading-pin                 # Trading PIN for login
+DHAN_TOTP_SECRET=your-totp-base32-secret        # Base32 TOTP secret for auto-OTP
+DHAN_API_KEY=your-api-key                       # Permanent API key (short string)
+DHAN_API_SECRET=your-api-secret-uuid            # Permanent API secret (UUID)
 DHAN_REDIRECT_URL=http://localhost:8001/api/auth/dhan/callback
 ```
 
@@ -165,7 +165,7 @@ Since the access token expires every 24 hours, automated regeneration is possibl
 ```python
 # Auto-generate TOTP code
 import pyotp
-totp = pyotp.TOTP("TVD4U5TNWBXC326UA2Y25MG2CQUS6Z7X")
+totp = pyotp.TOTP(os.getenv("DHAN_TOTP_SECRET"))
 code = totp.now()  # 6-digit code valid for 30 seconds
 ```
 
