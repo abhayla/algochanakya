@@ -176,11 +176,11 @@ const navItems = [
 const indexTicks = computed(() => watchlistStore.indexTicks);
 
 const userId = computed(() => {
-  return authStore.user?.broker_user_id || authStore.user?.user_id || 'Guest';
+  return authStore.user?.first_name || authStore.user?.broker_user_id || 'Guest';
 });
 
 const userName = computed(() => {
-  return authStore.user?.name || authStore.user?.broker_user_id || 'User';
+  return authStore.user?.first_name || authStore.user?.broker_user_id || 'User';
 });
 
 const userInitials = computed(() => {

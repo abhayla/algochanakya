@@ -108,6 +108,10 @@ async def zerodha_callback(
             db.add(user)
             await db.flush()  # Get user.id
 
+        # Update first_name from Kite profile
+        if user_name and not user.first_name:
+            user.first_name = user_name.split()[0].capitalize() if user_name else None
+
         # Update last login
         user.last_login = datetime.utcnow()
 
@@ -196,6 +200,7 @@ async def get_current_user_info(
     return {
         "user": {
             "id": str(user.id),
+            "first_name": user.first_name,
             "email": user.email,
             "created_at": user.created_at.isoformat(),
             "last_login": user.last_login.isoformat() if user.last_login else None
@@ -460,6 +465,10 @@ async def angelone_login(
             db.add(user)
             await db.flush()
             logger.info(f"[AngelOne] Created new user for {broker_user_id}")
+
+        # Update first_name from profile (extract first name from full name)
+        if client_name and client_name != broker_user_id:
+            user.first_name = client_name.split()[0].capitalize() if client_name else None
 
         # Update last login
         user.last_login = datetime.utcnow()

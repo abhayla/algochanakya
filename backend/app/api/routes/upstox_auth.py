@@ -108,6 +108,11 @@ async def upstox_callback(
             db.add(user)
             await db.flush()
 
+        # Update first_name from Upstox profile
+        user_name = profile.get("user_name", "")
+        if user_name and not user.first_name:
+            user.first_name = user_name.split()[0].capitalize() if user_name else None
+
         user.last_login = datetime.utcnow()
 
         # Find or create broker connection

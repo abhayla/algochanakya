@@ -12,6 +12,7 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    first_name = Column(String(100), nullable=True)
     email = Column(
         String, unique=True, nullable=True, index=True
     )  # Can be null for broker-only users
@@ -40,4 +41,4 @@ class User(Base):
     )
 
     def __repr__(self):
-        return f"<User {self.id} email={self.email}>"
+        return f"<User {self.id} first_name={self.first_name} email={self.email}>"
