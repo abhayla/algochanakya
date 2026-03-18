@@ -412,9 +412,9 @@ const scrollToLogin = () => {
 .login-grid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 3rem;
+  gap: 2rem;
   align-items: center;
-  min-height: calc(100vh - 48px - 3rem); /* Account for header and reduced padding */
+  min-height: calc(100vh - 48px - 2rem);
 }
 
 @media (min-width: 1024px) {

@@ -59,6 +59,13 @@ const handleReset = () => {
   hasChanges.value = false
 }
 
+const retryLoad = async () => {
+  await store.fetchPreferences()
+  if (!store.error) {
+    localPreferences.value = { ...store.preferences }
+  }
+}
+
 // #3: Unsaved changes guard
 onBeforeRouteLeave(() => {
   if (hasChanges.value) {
@@ -112,6 +119,12 @@ onBeforeRouteLeave(() => {
       <div v-if="store.loading && !localPreferences" class="loading-state">
         <div class="loading-spinner"></div>
         <p class="loading-text">Loading preferences...</p>
+      </div>
+
+      <!-- Load Error -->
+      <div v-else-if="store.error && !localPreferences" class="settings-error-banner" data-testid="settings-load-error">
+        <p>{{ store.error }}</p>
+        <button @click="retryLoad" class="retry-btn" data-testid="settings-retry-btn">Retry</button>
       </div>
 
       <!-- Settings Form -->
@@ -262,6 +275,7 @@ onBeforeRouteLeave(() => {
       <Transition name="toast-fade">
         <div v-if="saveError" class="save-toast error" data-testid="settings-save-error">
           {{ saveError }}
+          <button @click="handleSave" class="retry-link" data-testid="settings-save-retry">Retry</button>
         </div>
       </Transition>
     </div>
@@ -529,6 +543,52 @@ onBeforeRouteLeave(() => {
 .save-toast.error {
   background: #e74c3c;
   color: white;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.retry-link {
+  background: none;
+  border: 1px solid rgba(255,255,255,0.6);
+  color: white;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.retry-link:hover {
+  background: rgba(255,255,255,0.15);
+}
+
+.settings-error-banner {
+  text-align: center;
+  padding: 24px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  color: #991b1b;
+  margin-top: 16px;
+}
+
+.settings-error-banner p {
+  margin: 0 0 12px;
+}
+
+.retry-btn {
+  padding: 8px 20px;
+  background: #387ed1;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.retry-btn:hover {
+  background: #2d6ab8;
 }
 
 .toast-fade-enter-active,
