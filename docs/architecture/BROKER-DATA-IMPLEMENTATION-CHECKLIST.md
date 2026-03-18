@@ -109,14 +109,20 @@ These are shared components that all brokers rely on. Most are already built but
 
 ### Authentication
 
+> **Credential distinction:** SmartAPI has TWO separate auth paths:
+> 1. **Platform-level auth** — uses `backend/.env` credentials (`ANGEL_API_KEY`, `ANGEL_CLIENT_ID`, `ANGEL_PIN`, `ANGEL_TOTP_SECRET`). Serves ALL users by default. These are NOT user login credentials.
+> 2. **User-level auth** — uses encrypted credentials from `smartapi_credentials` table, configured by the user in Settings page. Optional upgrade from platform default.
+>
+> Login credentials (what the user types on the Login page) are used once, not stored, and produce a JWT session token.
+
 | Item | Status | Details |
 |------|--------|---------|
 | Auth flow implementation | ✅ Done | Auto-TOTP via `smartapi_auth.py` (client_id + PIN + TOTP secret) |
-| Platform credentials in `.env` | ✅ Done | `ANGEL_API_KEY`, `ANGEL_CLIENT_ID`, `ANGEL_PIN`, `ANGEL_TOTP_SECRET` |
+| Platform credentials in `.env` | ✅ Done | `ANGEL_API_KEY`, `ANGEL_CLIENT_ID`, `ANGEL_PIN`, `ANGEL_TOTP_SECRET` — shared platform credentials, NOT user login creds |
 | Token types | ✅ Done | 3 tokens: `jwtToken` (REST), `refreshToken`, `feedToken` (WebSocket) |
 | Token lifetime | ✅ Done | Until 5 AM IST daily auto-logout |
 | Auto-refresh loop | ⬜ Todo | Needs: refresh 30 min before 5 AM IST expiry. Currently manual re-auth. |
-| User-level auth (own credentials) | ✅ Done | `SmartAPISettings.vue` UI exists, stores encrypted in `smartapi_credentials` table |
+| User-level auth (own credentials) | ✅ Done | `SmartAPISettings.vue` UI exists, stores encrypted in `smartapi_credentials` table — optional upgrade path |
 
 ### Market Data REST API
 

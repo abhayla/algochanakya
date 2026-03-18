@@ -67,7 +67,9 @@ flowchart TB
 
         subgraph Auth["<b>Auth & Security</b>"]
             JWT["JWT (HS256, 24h expiry)"]
-            BrokerAuth["6 Broker Auth Flows<br/>Kite: OAuth 2.0 | SmartAPI: Auto-TOTP<br/>Upstox: OAuth (~1yr) | Fyers: OAuth<br/>Dhan: Static Token | Paytm: OAuth 3 JWTs"]
+            BrokerAuth["6 LOGIN Auth Flows (credentials NOT stored)<br/>Kite: OAuth 2.0 | SmartAPI: Auto-TOTP<br/>Upstox: OAuth (~1yr) | Fyers: OAuth<br/>Dhan: Static Token | Paytm: OAuth 3 JWTs"]
+            PlatformCreds["Platform-Level API (backend/.env)<br/>SmartAPI credentials — serves ALL users<br/>Failover: SmartAPI→Dhan→Fyers→Paytm→Upstox→Kite"]
+            UserCreds["User-Level API (Settings, optional)<br/>Stored encrypted in DB<br/>(smartapi_credentials, broker_connections)"]
             Encrypt["Credential Encryption<br/>(cryptography lib, AES-256)"]
         end
     end
@@ -442,16 +444,20 @@ class MarketDataBrokerAdapter(ABC):
 
 #### Auth & Security
 
-| Component | Technology | Purpose |
-|-----------|------------|---------|
-| **JWT** | python-jose, HS256 | User session tokens (24h expiry) |
-| **Kite OAuth** | OAuth 2.0 redirect | Zerodha broker authentication |
-| **SmartAPI Auto-TOTP** | pyotp | AngelOne automatic 2FA |
-| **Upstox OAuth** | OAuth 2.0 (~1yr token) | Upstox broker authentication |
-| **Fyers OAuth** | OAuth 2.0 (midnight expiry) | Fyers broker authentication |
-| **Dhan Static Token** | API token (never expires) | Dhan broker authentication |
-| **Paytm OAuth** | OAuth 2.0 (3 JWTs) | Paytm Money broker authentication |
-| **Encryption** | cryptography (AES-256) | Stored broker credentials |
+> **Credential architecture note:** There are 3 separate credential systems. Login credentials (below) are used once and NOT stored. Platform-level market data credentials are in `backend/.env` and serve all users. User-level market data credentials are configured via Settings and stored encrypted in the database.
+
+| Component | Technology | Purpose | Credentials Stored? |
+|-----------|------------|---------|---------------------|
+| **JWT** | python-jose, HS256 | User session tokens (24h expiry) | Session token only (Redis + localStorage) |
+| **Kite OAuth** | OAuth 2.0 redirect | Login auth — Zerodha broker | Access token stored in `broker_connections` |
+| **SmartAPI Auto-TOTP** | pyotp | Login auth — AngelOne automatic 2FA | Access token stored in `broker_connections`; platform creds in `.env` |
+| **Upstox OAuth** | OAuth 2.0 (~1yr token) | Login auth — Upstox broker | Access token stored in `broker_connections` |
+| **Fyers OAuth** | OAuth 2.0 (midnight expiry) | Login auth — Fyers broker | Access token stored in `broker_connections` |
+| **Dhan Static Token** | API token (never expires) | Login auth — Dhan broker | Token stored in `broker_connections` |
+| **Paytm OAuth** | OAuth 2.0 (3 JWTs) | Login auth — Paytm Money broker | Tokens stored in `broker_connections` |
+| **Platform Market Data API** | SmartAPI (`backend/.env`) | Platform-default market data for ALL users | Stored in `.env` only — NOT in database |
+| **User Market Data API** | SmartAPI settings (Settings page) | Optional user upgrade — own broker API | Encrypted in `smartapi_credentials` table |
+| **Encryption** | cryptography (AES-256) | User-level broker credentials at rest | N/A |
 
 ---
 

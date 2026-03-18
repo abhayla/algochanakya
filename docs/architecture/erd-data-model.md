@@ -904,7 +904,9 @@ User account information. Email is nullable to support broker-only users (authen
 
 ### broker_connections
 
-Broker authentication tokens and connection status.
+Broker order execution credentials — stores the access tokens obtained after a user logs in to their broker. Also stores user-level market data API credentials for users who upgrade from the platform default.
+
+> **Important:** This table stores broker ACCESS TOKENS obtained after login — NOT the raw login credentials (Client ID, PIN, TOTP) that a user types. Login credentials are used once for authentication and are never persisted. Platform-level market data credentials (SmartAPI for all users by default) are in `backend/.env`, not this table.
 
 | Column | Type | Nullable | Key | Default | Description |
 |--------|------|----------|-----|---------|-------------|
@@ -955,7 +957,9 @@ User UI preferences and broker selection for market data.
 
 ### smartapi_credentials
 
-Encrypted SmartAPI (AngelOne) credentials for auto-TOTP authentication.
+User's OPTIONAL SmartAPI (AngelOne) market data API credentials — for users who upgrade from the platform-default market data to their own broker API.
+
+> **Important:** This table stores a user's own AngelOne API credentials configured via the Settings page — an optional upgrade from the platform default. This is NOT where platform-level credentials live (those are in `backend/.env`). This is also NOT where login credentials live (those are never stored).
 
 | Column | Type | Nullable | Key | Default | Description |
 |--------|------|----------|-----|---------|-------------|
@@ -975,8 +979,9 @@ Encrypted SmartAPI (AngelOne) credentials for auto-TOTP authentication.
 - Auto-TOTP enables hands-free SmartAPI authentication
 
 **Business Logic:**
-- Used by `smartapi_auth.py` service for auto-TOTP login
+- Used by `smartapi_auth.py` service for auto-TOTP login when user has opted into their own SmartAPI account
 - Tokens refresh automatically every 8 hours
+- If this table has no entry for a user, they fall back to the platform-level SmartAPI credentials from `.env`
 
 ---
 

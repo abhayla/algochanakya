@@ -26,7 +26,7 @@ flowchart TB
 
     %% Production External Systems
     Zerodha["<b>Zerodha Kite</b><br/>Order Execution<br/>Market Data<br/>₹500/month"]
-    SmartAPI["<b>AngelOne SmartAPI</b><br/>Market Data FREE<br/>Orders FREE<br/>Auto-TOTP"]
+    SmartAPI["<b>AngelOne SmartAPI</b><br/>Platform-Default Market Data<br/>for ALL Users (FREE)<br/>Credentials in .env, Auto-TOTP<br/>Users can optionally upgrade via Settings"]
     PostgreSQL["<b>PostgreSQL 16</b><br/>VPS 103.118.16.189<br/>38 Tables"]
     Redis["<b>Redis 7</b><br/>VPS 103.118.16.189<br/>Session + Cache"]
     Claude["<b>Anthropic Claude API</b><br/>AI Strategy Analysis<br/>Market Insights"]
@@ -223,11 +223,12 @@ flowchart TB
 
 ## Security Boundaries
 
-1. **User Authentication:** JWT tokens (HS256, 24h expiry)
-2. **Broker Credentials:** Encrypted at rest (AES-256 via `cryptography` lib)
-3. **Database Access:** Whitelisted IPs only in `pg_hba.conf`
-4. **Redis Sessions:** Expiring tokens (24h default)
-5. **API Rate Limiting:** Per-broker adapters handle rate limits (e.g., SmartAPI 5 req/sec)
+1. **User Authentication:** JWT tokens (HS256, 24h expiry) — login credentials are NOT stored, only the resulting JWT
+2. **Broker Credentials:** Encrypted at rest (AES-256 via `cryptography` lib) — applies to user-level market data API credentials stored in `smartapi_credentials` and `broker_connections` tables
+3. **Platform Market Data Credentials:** Stored only in `backend/.env` — NOT in the database; serve all users by default (SmartAPI primary, failover chain for resilience)
+4. **Database Access:** Whitelisted IPs only in `pg_hba.conf`
+5. **Redis Sessions:** Expiring tokens (24h default)
+6. **API Rate Limiting:** Per-broker adapters handle rate limits (e.g., SmartAPI 5 req/sec)
 
 ---
 

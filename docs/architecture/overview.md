@@ -65,12 +65,22 @@ AlgoChanakya is a multi-broker options trading platform for Indian markets. The 
 └─────────────────┘   └─────────────────┘   └─────────────────────────┘
 ```
 
+## Credential Architecture (3 Systems)
+
+The platform uses three distinct credential systems — understanding them is essential to understanding the data flow:
+
+| System | Where Configured | Storage | Purpose |
+|--------|-----------------|---------|---------|
+| **Login Credentials** | Login page (OAuth redirect, or Client ID + PIN + TOTP, or Client ID + Access Token) | NOT stored — only the resulting JWT session token is stored (localStorage + Redis) | One-time authentication per session |
+| **Platform-Level Market Data** | `backend/.env` (`ANGEL_API_KEY`, etc.) | `.env` only — never in database | SmartAPI (and failover brokers) serve ALL users by default; NOT tied to any individual user |
+| **User-Level Market Data** | Settings page (optional upgrade) | Encrypted in database (`smartapi_credentials` table, `broker_connections` table) | User's own broker API for lower latency; replaces platform default for that user |
+
 ## Broker Abstraction (Core Architecture)
 
 The platform uses a dual-path architecture:
 
-- **Market Data (platform-default):** Platform-level shared credentials serve all users by default. Failover chain: SmartAPI → Dhan → Fyers → Paytm → Upstox → Kite. Users can optionally upgrade to use their own broker API.
-- **Order Execution (per-user):** Each user's orders execute through their own broker connection (SEBI-compliant). All 6 brokers supported.
+- **Market Data (platform-default):** Platform-level shared credentials from `.env` serve all users by default. Failover chain: SmartAPI → Dhan → Fyers → Paytm → Upstox → Kite. Users can optionally upgrade to use their own broker API credentials (stored encrypted in the database via Settings page).
+- **Order Execution (per-user):** Each user's orders execute through their own broker connection (SEBI-compliant). All 6 brokers supported. Login credentials are NOT stored — only the access tokens obtained after login are stored in `broker_connections`.
 
 **Key components:**
 - `BrokerAdapter` — Order execution interface (`base.py`)

@@ -93,7 +93,7 @@ AlgoChanakya streams live market data via WebSocket, using a **broker-agnostic a
 3. **TickerRouter** registers user with their preferred broker type (default: `smartapi`)
 4. **User sends subscribe**: `{"action": "subscribe", "tokens": [256265], "mode": "quote"}`
 5. **TickerRouter** → **TickerPool** adds subscriptions (ref-counted — if token already subscribed by another user, no duplicate broker subscription)
-6. **TickerPool** ensures adapter exists and is connected (using system credentials from `SystemCredentialManager`)
+6. **TickerPool** ensures adapter exists and is connected using platform-level credentials from `backend/.env` (via `SystemCredentialManager`). These are NOT user login credentials and NOT user-level API credentials — they are shared platform credentials that serve all users by default.
 7. **Adapter** translates canonical tokens to broker format and subscribes on broker WebSocket
 8. **Ticks flow**: Broker WS → Adapter (normalize paise→rupees, broker_token→canonical) → TickerPool → TickerRouter → fan out to all subscribed user WebSockets
 
@@ -229,11 +229,11 @@ Returns adapter health scores, connected users, failover status. See [API Refere
 
 | Issue | Cause | Solution |
 |-------|-------|---------|
-| No ticks after subscribe | Adapter not connected | Check health endpoint. Verify system credentials in `.env`. |
+| No ticks after subscribe | Adapter not connected | Check health endpoint. Verify platform-level SmartAPI credentials in `backend/.env` (`ANGEL_API_KEY`, `ANGEL_CLIENT_ID`, `ANGEL_PIN`, `ANGEL_TOTP_SECRET`). |
 | `{"type":"error"}` on subscribe | Invalid token format | Tokens must be integers (canonical Kite format). |
-| Connection drops immediately | JWT expired | Re-authenticate via `/login`. |
+| Connection drops immediately | JWT expired | Re-authenticate via `/login`. Note: this is the user session JWT, not the market data API credentials. |
 | Wrong prices (100x too high) | Adapter not normalizing paise→rupees | Check adapter's `_normalize_tick()` divides by 100. |
-| Ticks stop after a while | SmartAPI token expired (8h lifetime) | SystemCredentialManager auto-refreshes. Check logs. |
+| Ticks stop after a while | SmartAPI token expired (8h lifetime) | `SystemCredentialManager` uses platform `.env` credentials for auto-refresh. Check logs. Login credentials are not involved. |
 
 ---
 

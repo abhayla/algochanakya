@@ -31,6 +31,20 @@
 
 ---
 
+## Credential Architecture Clarification
+
+This document describes the platform-level market data architecture. To avoid confusion, the three credential systems are:
+
+1. **Login Credentials (Login page):** User enters OAuth redirect URL, or Client ID + PIN + TOTP, or Client ID + Access Token. Used ONCE to authenticate. The resulting JWT session token is stored (localStorage + Redis). The raw login credentials are NEVER stored.
+
+2. **Platform-Level Market Data API (`backend/.env`):** AngelOne SmartAPI credentials stored in `backend/.env` (`ANGEL_API_KEY`, `ANGEL_CLIENT_ID`, `ANGEL_PIN`, `ANGEL_TOTP_SECRET`). Auto-TOTP enabled. Serves ALL users by default with zero setup. NOT tied to any individual user. Failover chain: SmartAPI → Dhan → Fyers → Paytm → Upstox → Kite.
+
+3. **User-Level Market Data API (Settings page, optional):** User configures their own broker API credentials in the Settings page as an optional upgrade. Stored encrypted in the database (`smartapi_credentials` table for AngelOne, `broker_connections` table for other brokers). Replaces the platform default for that specific user.
+
+The bulk of this document discusses the platform-level architecture (system #2) — the shared credential path that serves all users by default.
+
+---
+
 ## 🎯 Summary: AlgoChanakya Multi-Broker Architecture (Platform-Level)
 
 ## 📊 Document Overview

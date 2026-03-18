@@ -27,6 +27,21 @@ This document provides a **comprehensive specification for the Market Data Broke
 
 ---
 
+## Credential Architecture
+
+Market data uses two separate credential systems — both are independent from login credentials:
+
+| System | Source | Who It Serves | Storage |
+|--------|--------|---------------|---------|
+| **Platform-Level Market Data** | `backend/.env` (`ANGEL_API_KEY`, `ANGEL_CLIENT_ID`, `ANGEL_PIN`, `ANGEL_TOTP_SECRET`) | ALL users by default — zero setup required | `.env` only, never in database |
+| **User-Level Market Data** | Settings page (optional upgrade) | Individual user who configures it | Encrypted in `smartapi_credentials` table (AngelOne) or `broker_connections` table (other brokers) |
+
+**Login credentials are separate and NOT stored.** When a user logs in via OAuth or Client ID + PIN + TOTP, the resulting JWT session token is stored (Redis + localStorage) — the raw login credentials are never persisted.
+
+The "User Broker Selection Flow" below (section 1) describes the optional **user-level upgrade path** — it does NOT apply to the platform-level default which uses credentials from `.env`.
+
+---
+
 ## 1. USER BROKER SELECTION FLOW
 
 ```
