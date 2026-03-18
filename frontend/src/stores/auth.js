@@ -47,11 +47,14 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function initiateAngelOneLogin() {
+  async function initiateAngelOneLogin(clientId = null, pin = null, totpCode = null) {
     angelOneLoading.value = true
     try {
+      const body = clientId && pin && totpCode
+        ? { client_id: clientId, pin, totp_code: totpCode }
+        : {}
       // AngelOne auth with auto-TOTP can take 20-30 seconds
-      const response = await api.post('/api/auth/angelone/login', {}, {
+      const response = await api.post('/api/auth/angelone/login', body, {
         timeout: 35000  // 35 second timeout
       })
       if (response.data.success && response.data.token) {

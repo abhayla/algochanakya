@@ -67,6 +67,28 @@ class SmartAPIAuth:
             logger.error(f"Failed to generate TOTP: {e}")
             raise SmartAPIAuthError(f"Invalid TOTP secret: {e}")
 
+    def authenticate_with_totp(
+        self,
+        client_id: str,
+        pin: str,
+        totp_code: str
+    ) -> Dict[str, Any]:
+        """
+        Authenticate with SmartAPI using a user-provided TOTP code.
+
+        Used for inline login where the user enters their 6-digit TOTP
+        from an authenticator app. Credentials are NOT stored.
+
+        Args:
+            client_id: AngelOne trading account ID
+            pin: Trading PIN
+            totp_code: 6-digit TOTP code from authenticator app
+
+        Returns:
+            Dict with jwt_token, refresh_token, feed_token, and token_expiry
+        """
+        return self._do_authenticate(client_id, pin, totp_code)
+
     def authenticate(
         self,
         client_id: str,
@@ -74,27 +96,29 @@ class SmartAPIAuth:
         totp_secret: str
     ) -> Dict[str, Any]:
         """
-        Authenticate with SmartAPI using credentials.
+        Authenticate with SmartAPI using stored TOTP secret (auto-generates code).
 
         Args:
             client_id: AngelOne trading account ID
             pin: Trading PIN
             totp_secret: TOTP secret for auto-generation
+        """
+        totp_code = self.generate_totp(totp_secret)
+        return self._do_authenticate(client_id, pin, totp_code)
 
-        Returns:
-            Dict with jwt_token, refresh_token, feed_token, and token_expiry
-
-        Raises:
-            SmartAPIAuthError: If authentication fails
+    def _do_authenticate(
+        self,
+        client_id: str,
+        pin: str,
+        totp_code: str
+    ) -> Dict[str, Any]:
+        """
+        Core authentication logic shared by both authenticate() and authenticate_with_totp().
         """
         try:
             api = self._get_api()
-
-            # Generate current TOTP
-            totp_code = self.generate_totp(totp_secret)
             logger.info(f"[SmartAPI] Authenticating client: {client_id}")
 
-            # Generate session
             data = api.generateSession(client_id, pin, totp_code)
 
             if not data or not data.get('data'):
@@ -103,18 +127,12 @@ class SmartAPIAuth:
                 raise SmartAPIAuthError(f"Authentication failed: {error_msg}")
 
             session_data = data['data']
-
-            # Get feed token for WebSocket
             feed_token = api.getfeedToken()
 
-            # SmartAPI tokens are flushed at 5 AM IST daily (not 8 hours)
-            # Calculate next 5 AM IST as the expiry time
             from zoneinfo import ZoneInfo
             ist = ZoneInfo('Asia/Kolkata')
             now_ist = datetime.now(ist)
 
-            # If it's before 5 AM, expiry is today at 5 AM
-            # If it's after 5 AM, expiry is tomorrow at 5 AM
             if now_ist.hour < 5:
                 expiry_ist = now_ist.replace(hour=5, minute=0, second=0, microsecond=0)
             else:

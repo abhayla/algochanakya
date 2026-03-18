@@ -18,6 +18,13 @@ const totalPnlPct = computed(() => positionsStore.summary?.total_pnl_pct ?? 0)
 const activePositions = computed(() => positionsStore.summary?.total_positions ?? 0)
 const indexTicks = computed(() => watchlistStore.indexTicks)
 
+const greeting = computed(() => {
+  const hour = new Date().getHours()
+  const name = authStore.user?.first_name
+  const timeGreeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
+  return name ? `${timeGreeting}, ${name}` : timeGreeting
+})
+
 onMounted(async () => {
   try { await positionsStore.fetchPositions() } catch { /* silently fail */ }
 })
@@ -31,12 +38,37 @@ onMounted(async () => {
         <BrokerUpgradeBanner screen="dashboard" />
         <div class="dashboard-header">
           <div class="dashboard-header-text">
-            <h1 class="dashboard-title" data-testid="dashboard-title">Welcome to AlgoChanakya</h1>
+            <h1 class="dashboard-title" data-testid="dashboard-title">{{ greeting }}</h1>
             <p class="dashboard-subtitle">
-              Your options trading platform is ready. Start building your strategies!
+              Here's your trading overview for today.
             </p>
           </div>
           <DataSourceBadge screen="dashboard" />
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="quick-actions" data-testid="dashboard-quick-actions">
+          <router-link to="/strategy" class="quick-action-btn" data-testid="dashboard-quick-new-strategy">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 5v14M5 12h14"/>
+            </svg>
+            New Strategy
+          </router-link>
+          <router-link to="/positions" class="quick-action-btn" data-testid="dashboard-quick-positions">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+            </svg>
+            View Positions
+          </router-link>
+          <router-link to="/optionchain" class="quick-action-btn" data-testid="dashboard-quick-optionchain">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 3v18h18"/>
+              <path d="M18 17V9"/>
+              <path d="M13 17V5"/>
+              <path d="M8 17v-3"/>
+            </svg>
+            Option Chain
+          </router-link>
         </div>
 
         <!-- Portfolio Summary -->
@@ -86,7 +118,7 @@ onMounted(async () => {
               </svg>
             </div>
             <h3 class="card-title">Option Chain</h3>
-            <p class="card-description">View real-time option chain with Open Interest, Implied Volatility, and Greeks for NIFTY, BANKNIFTY & FINNIFTY</p>
+            <p class="card-description">Open NIFTY, BANKNIFTY, or FINNIFTY chains — strike-by-strike OI, IV, and live Greeks</p>
           </router-link>
 
           <!-- OFO Card -->
@@ -98,7 +130,7 @@ onMounted(async () => {
               </svg>
             </div>
             <h3 class="card-title">OFO</h3>
-            <p class="card-description">Options For Options - Find optimal option combinations based on premium, margin, and risk-reward ratios</p>
+            <p class="card-description">Scan all strikes and find the best risk-reward combinations — ranked by premium, margin, and probability</p>
           </router-link>
 
           <!-- Strategy Builder Card -->
@@ -109,7 +141,7 @@ onMounted(async () => {
               </svg>
             </div>
             <h3 class="card-title">Strategy Builder</h3>
-            <p class="card-description">Build multi-leg option strategies with P&L visualization, breakeven analysis, and risk-reward charts</p>
+            <p class="card-description">Add legs, see the P&L curve and breakeven points before placing any order</p>
           </router-link>
 
           <!-- Positions Card -->
@@ -120,7 +152,7 @@ onMounted(async () => {
               </svg>
             </div>
             <h3 class="card-title">Positions</h3>
-            <p class="card-description">Monitor your F&O positions with live P&L tracking, day/net view toggle, and one-click exit options</p>
+            <p class="card-description">See live P&L on all open F&O positions — exit individual legs or everything in one click</p>
           </router-link>
 
           <!-- Strategy Library Card -->
@@ -134,10 +166,10 @@ onMounted(async () => {
               </svg>
             </div>
             <h3 class="card-title">Strategy Library</h3>
-            <p class="card-description">Browse 20+ pre-built strategies like Iron Condor, Straddle, Butterfly with one-click deployment</p>
+            <p class="card-description">Pick a ready-made strategy — Iron Condor, Straddle, Butterfly — and deploy it directly</p>
           </router-link>
 
-          <!-- AutoPilot Card - HIDDEN: Feature not ready for production
+          <!-- AutoPilot Card -->
           <router-link to="/autopilot" class="dashboard-card card-autopilot" data-testid="dashboard-autopilot-card">
             <div class="card-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -149,9 +181,8 @@ onMounted(async () => {
               </svg>
             </div>
             <h3 class="card-title">AutoPilot</h3>
-            <p class="card-description">Automate your trading with condition-based entries, adjustments, and risk management rules</p>
+            <p class="card-description">Set entry conditions, adjustments, and stop-loss rules — AutoPilot monitors and acts automatically</p>
           </router-link>
-          -->
         </div>
       </div>
     </div>
@@ -246,9 +277,42 @@ onMounted(async () => {
 
 .summary-link:hover { text-decoration: underline; }
 
+.quick-actions {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.quick-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 6px;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  color: #374151;
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+
+.quick-action-btn svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+
+.quick-action-btn:hover {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+  color: #111827;
+}
+
 .dashboard-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: 20px;
 }
 
@@ -369,6 +433,12 @@ onMounted(async () => {
 }
 
 /* Responsive adjustments */
+@media (max-width: 1024px) {
+  .dashboard-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 @media (max-width: 768px) {
   .dashboard-container {
     padding: 16px;
@@ -376,6 +446,10 @@ onMounted(async () => {
 
   .dashboard-title {
     font-size: 24px;
+  }
+
+  .quick-actions {
+    flex-wrap: wrap;
   }
 
   .dashboard-cards {

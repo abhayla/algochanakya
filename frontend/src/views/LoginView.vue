@@ -1,66 +1,80 @@
 <script setup>
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed } from 'vue'
 import { useAuthStore } from '../stores/auth'
 
-const router = useRouter()
 const authStore = useAuthStore()
 
 const error = ref('')
 const showSafetyInfo = ref(false)
+const selectedBroker = ref('zerodha')
 
-const handleZerodhaLogin = async () => {
-  error.value = ''
-  const result = await authStore.initiateZerodhaLogin()
-  if (!result.success) {
-    error.value = result.error
-  }
-}
-
-const handleAngelOneLogin = async () => {
-  error.value = ''
-  const result = await authStore.initiateAngelOneLogin()
-  if (!result.success) {
-    error.value = result.error
-  }
-}
-
-const handleUpstoxLogin = async () => {
-  error.value = ''
-  const result = await authStore.initiateUpstoxLogin()
-  if (!result.success) {
-    error.value = result.error
-  }
-}
-
-const handleFyersLogin = async () => {
-  error.value = ''
-  const result = await authStore.initiateFyersLogin()
-  if (!result.success) {
-    error.value = result.error
-  }
-}
-
-const showDhanForm = ref(false)
+const angelClientId = ref('')
+const angelPin = ref('')
+const angelTotp = ref('')
 const dhanClientId = ref('')
 const dhanAccessToken = ref('')
 
-const handleDhanLogin = async () => {
-  error.value = ''
-  if (!dhanClientId.value || !dhanAccessToken.value) {
-    error.value = 'Please enter both Client ID and Access Token'
-    return
-  }
-  const result = await authStore.initiateDhanLogin(dhanClientId.value, dhanAccessToken.value)
-  if (!result.success) {
-    error.value = result.error
-  }
-}
+const brokers = [
+  { id: 'zerodha', name: 'Zerodha', type: 'oauth', color: '#e74c3c' },
+  { id: 'angelone', name: 'Angel One', type: 'credentials', color: '#2196f3' },
+  { id: 'upstox', name: 'Upstox', type: 'oauth', color: '#6b21a8' },
+  { id: 'fyers', name: 'Fyers', type: 'oauth', color: '#0ea5e9' },
+  { id: 'dhan', name: 'Dhan', type: 'inline', color: '#059669' },
+  { id: 'paytm', name: 'Paytm Money', type: 'oauth', color: '#1e40af' },
+]
 
-const handlePaytmLogin = async () => {
+const currentBroker = computed(() => brokers.find(b => b.id === selectedBroker.value))
+
+const isLoading = computed(() => {
+  const map = {
+    zerodha: authStore.zerodhaLoading,
+    angelone: authStore.angelOneLoading,
+    upstox: authStore.upstoxLoading,
+    fyers: authStore.fyersLoading,
+    dhan: authStore.dhanLoading,
+    paytm: authStore.paytmLoading,
+  }
+  return map[selectedBroker.value] || false
+})
+
+const handleLogin = async () => {
   error.value = ''
-  const result = await authStore.initiatePaytmLogin()
-  if (!result.success) {
+  let result
+
+  switch (selectedBroker.value) {
+    case 'zerodha':
+      result = await authStore.initiateZerodhaLogin()
+      break
+    case 'angelone':
+      if (!angelClientId.value || !angelPin.value || !angelTotp.value) {
+        error.value = 'Please enter Client ID, PIN, and TOTP code'
+        return
+      }
+      result = await authStore.initiateAngelOneLogin(
+        angelClientId.value,
+        angelPin.value,
+        angelTotp.value
+      )
+      break
+    case 'upstox':
+      result = await authStore.initiateUpstoxLogin()
+      break
+    case 'fyers':
+      result = await authStore.initiateFyersLogin()
+      break
+    case 'dhan':
+      if (!dhanClientId.value || !dhanAccessToken.value) {
+        error.value = 'Please enter both Client ID and Access Token'
+        return
+      }
+      result = await authStore.initiateDhanLogin(dhanClientId.value, dhanAccessToken.value)
+      break
+    case 'paytm':
+      result = await authStore.initiatePaytmLogin()
+      break
+  }
+
+  if (result && !result.success) {
     error.value = result.error
   }
 }
@@ -91,17 +105,8 @@ const scrollToLogin = () => {
         </router-link>
       </div>
 
-      <!-- Right: Navigation + Login Button -->
+      <!-- Right: Login Button only (no nav links on login page) -->
       <div class="header-right">
-        <!-- Main Navigation -->
-        <nav class="main-nav">
-          <button @click="scrollToLogin" class="nav-item">Dashboard</button>
-          <button @click="scrollToLogin" class="nav-item">Option Chain</button>
-          <button @click="scrollToLogin" class="nav-item">Strategy</button>
-          <button @click="scrollToLogin" class="nav-item">Positions</button>
-        </nav>
-
-        <!-- Login Button -->
         <button @click="scrollToLogin" class="login-btn">Login</button>
       </div>
     </header>
@@ -187,200 +192,134 @@ const scrollToLogin = () => {
               {{ error }}
             </div>
 
-            <!-- Zerodha Login Button -->
-            <button
-              @click="handleZerodhaLogin"
-              :disabled="authStore.zerodhaLoading"
-              class="w-full text-gray-700 text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-3 mb-3"
-              style="height: 48px; background-color: #f5f9ff; border: 0.8px solid #bfd7f2; border-radius: 8px; padding: 11px 12px 11px 16px;"
-              data-testid="login-zerodha-button"
-            >
-              <svg class="broker-logo flex-shrink-0" width="24" height="24" viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="5" fill="#e74c3c"/><path d="M7 7l10 10M17 7L7 17" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/></svg>
-              <span v-if="!authStore.zerodhaLoading">Login with Zerodha</span>
-              <span v-else class="flex items-center">
-                <svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-gray-500" width="20" height="20" fill="none" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Connecting...
-              </span>
-            </button>
-            <p class="text-center text-sm text-gray-500 mb-6">
-              Don't have a Zerodha account?
-              <a href="https://signup.zerodha.com/?c=ZMPHZC" target="_blank" class="text-blue-600 hover:text-blue-700 underline">
-                Open Now
-              </a>
-            </p>
-
-            <!-- Divider -->
-            <div class="flex items-center my-6">
-              <div class="flex-1 border-t border-gray-200"></div>
-              <span class="px-4 text-sm text-gray-400">Or login with</span>
-              <div class="flex-1 border-t border-gray-200"></div>
+            <!-- Broker Dropdown -->
+            <label class="block text-sm font-medium text-gray-700 mb-2" for="broker-select">Select your broker</label>
+            <div class="broker-select-wrapper mb-6">
+              <div
+                class="broker-color-indicator"
+                :style="{ backgroundColor: currentBroker?.color }"
+              ></div>
+              <select
+                id="broker-select"
+                v-model="selectedBroker"
+                class="broker-select"
+                data-testid="login-broker-select"
+              >
+                <option
+                  v-for="broker in brokers"
+                  :key="broker.id"
+                  :value="broker.id"
+                >
+                  {{ broker.name }}
+                </option>
+              </select>
+              <svg class="broker-select-arrow" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+              </svg>
             </div>
 
-            <!-- Angel One Login Button -->
-            <button
-              @click="handleAngelOneLogin"
-              :disabled="authStore.angelOneLoading"
-              class="w-full text-gray-700 text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-3 mb-2"
-              style="height: 44px; background-color: #ffffff; border: 0.8px solid #d8dce3; border-radius: 6px; padding: 11px 15px;"
-              data-testid="login-angelone-button"
-            >
-              <svg class="broker-logo flex-shrink-0" width="24" height="24" viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="5" fill="#2196f3"/><path d="M12 5l6 14H6L12 5z" fill="#fff"/></svg>
-              <span v-if="!authStore.angelOneLoading">Angel One</span>
-              <span v-else class="flex items-center">
-                <svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-gray-500" width="20" height="20" fill="none" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Connecting... (may take 20-30s)
-              </span>
-            </button>
-            <!-- Hint: AngelOne requires pre-configured SmartAPI credentials -->
-            <p class="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded px-3 py-2 mb-4" data-testid="login-angelone-hint">
-              Requires SmartAPI credentials (Client ID, PIN, TOTP secret) saved in
-              <a href="/settings" class="underline font-medium">Settings → AngelOne SmartAPI</a> first.
-            </p>
-            <p class="text-center text-sm text-gray-500 mb-6">
-              Don't have an Angel One account?
-              <a href="https://tinyurl.com/2d98g2qe" target="_blank" class="text-blue-600 hover:text-blue-700 underline">
-                Open Now
-              </a>
-            </p>
-
-            <!-- More Brokers Divider -->
-            <div class="flex items-center my-6">
-              <div class="flex-1 border-t border-gray-200"></div>
-              <span class="px-4 text-sm text-gray-400">More brokers</span>
-              <div class="flex-1 border-t border-gray-200"></div>
+            <!-- AngelOne Inline Fields -->
+            <div v-if="selectedBroker === 'angelone'" class="space-y-3 mb-6" data-testid="login-angelone-fields">
+              <input
+                v-model="angelClientId"
+                type="text"
+                placeholder="Client ID (e.g. A12345)"
+                class="login-input"
+                data-testid="login-angelone-client-id"
+              />
+              <input
+                v-model="angelPin"
+                type="password"
+                placeholder="PIN"
+                class="login-input"
+                data-testid="login-angelone-pin"
+              />
+              <input
+                v-model="angelTotp"
+                type="text"
+                inputmode="numeric"
+                maxlength="6"
+                placeholder="6-digit TOTP from authenticator"
+                class="login-input"
+                data-testid="login-angelone-totp"
+              />
+              <p class="text-xs text-gray-500">
+                Enter the 6-digit code from your authenticator app (Google Authenticator, Authy, etc.)
+              </p>
             </div>
 
-            <!-- Upstox -->
-            <button
-              @click="handleUpstoxLogin"
-              :disabled="authStore.upstoxLoading"
-              class="w-full text-gray-700 text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-3 mb-3"
-              style="height: 44px; background-color: #ffffff; border: 0.8px solid #d8dce3; border-radius: 6px; padding: 11px 15px;"
-              data-testid="login-upstox-button"
-            >
-              <svg class="broker-logo flex-shrink-0" width="24" height="24" viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="5" fill="#6b21a8"/><path d="M7 8v4c0 2.8 2.2 5 5 5s5-2.2 5-5V8" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/></svg>
-              <span v-if="!authStore.upstoxLoading">Upstox</span>
-              <span v-else class="flex items-center">
-                <svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-gray-500" width="20" height="20" fill="none" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Connecting...
-              </span>
-            </button>
-
-            <!-- Fyers -->
-            <button
-              @click="handleFyersLogin"
-              :disabled="authStore.fyersLoading"
-              class="w-full text-gray-700 text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-3 mb-3"
-              style="height: 44px; background-color: #ffffff; border: 0.8px solid #d8dce3; border-radius: 6px; padding: 11px 15px;"
-              data-testid="login-fyers-button"
-            >
-              <svg class="broker-logo flex-shrink-0" width="24" height="24" viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="5" fill="#0ea5e9"/><path d="M8 7h8M8 12h6M8 17h4" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/></svg>
-              <span v-if="!authStore.fyersLoading">Fyers</span>
-              <span v-else class="flex items-center">
-                <svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-gray-500" width="20" height="20" fill="none" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Connecting...
-              </span>
-            </button>
-
-            <!-- Dhan (expands to inline form) -->
-            <button
-              v-if="!showDhanForm"
-              @click="showDhanForm = true"
-              class="w-full text-gray-700 text-sm font-medium transition-all flex items-center justify-center space-x-3 mb-3"
-              style="height: 44px; background-color: #ffffff; border: 0.8px solid #d8dce3; border-radius: 6px; padding: 11px 15px;"
-              data-testid="login-dhan-button"
-            >
-              <svg class="broker-logo flex-shrink-0" width="24" height="24" viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="5" fill="#059669"/><circle cx="12" cy="12" r="5" stroke="#fff" stroke-width="2.5" fill="none"/></svg>
-              <span>Dhan</span>
-            </button>
-
-            <!-- Dhan Credential Form -->
-            <div v-if="showDhanForm" class="mb-3 p-4 border border-gray-200 rounded-lg bg-gray-50" data-testid="login-dhan-form">
-              <p class="text-sm font-medium text-gray-700 mb-3">Dhan Login</p>
+            <!-- Dhan Inline Fields -->
+            <div v-if="selectedBroker === 'dhan'" class="space-y-3 mb-6" data-testid="login-dhan-fields">
               <input
                 v-model="dhanClientId"
                 type="text"
                 placeholder="Client ID"
-                class="w-full px-3 py-2 text-sm border border-gray-300 rounded mb-2 focus:outline-none focus:border-blue-500"
+                class="login-input"
                 data-testid="login-dhan-client-id"
               />
               <input
                 v-model="dhanAccessToken"
                 type="password"
                 placeholder="Access Token"
-                class="w-full px-3 py-2 text-sm border border-gray-300 rounded mb-3 focus:outline-none focus:border-blue-500"
+                class="login-input"
                 data-testid="login-dhan-access-token"
               />
-              <div class="flex gap-2">
-                <button
-                  @click="showDhanForm = false"
-                  class="flex-1 text-sm text-gray-600 py-2 border border-gray-300 rounded hover:bg-gray-100"
-                >
-                  Cancel
-                </button>
-                <button
-                  @click="handleDhanLogin"
-                  :disabled="authStore.dhanLoading"
-                  class="flex-1 text-sm text-white py-2 rounded disabled:opacity-50"
-                  style="background: #387ed1;"
-                  data-testid="login-dhan-submit"
-                >
-                  {{ authStore.dhanLoading ? 'Connecting...' : 'Login' }}
-                </button>
-              </div>
             </div>
 
-            <!-- Paytm Money -->
+            <!-- Login Button -->
             <button
-              @click="handlePaytmLogin"
-              :disabled="authStore.paytmLoading"
-              class="w-full text-gray-700 text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-3 mb-3"
-              style="height: 44px; background-color: #ffffff; border: 0.8px solid #d8dce3; border-radius: 6px; padding: 11px 15px;"
-              data-testid="login-paytm-button"
+              @click="handleLogin"
+              :disabled="isLoading"
+              class="login-submit-btn"
+              data-testid="login-submit-button"
             >
-              <svg class="broker-logo flex-shrink-0" width="24" height="24" viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="5" fill="#1e40af"/><path d="M8 8h4a4 4 0 010 8H8V8z" stroke="#fff" stroke-width="2" fill="none"/></svg>
-              <span v-if="!authStore.paytmLoading">Paytm Money</span>
-              <span v-else class="flex items-center">
-                <svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-gray-500" width="20" height="20" fill="none" viewBox="0 0 24 24">
+              <span v-if="!isLoading">
+                {{ selectedBroker === 'angelone' || selectedBroker === 'dhan' ? 'Login' : `Login with ${currentBroker?.name}` }}
+              </span>
+              <span v-else class="flex items-center justify-center">
+                <svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-white" width="20" height="20" fill="none" viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                   <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                Connecting...
+                {{ selectedBroker === 'angelone' ? 'Connecting... (may take 20-30s)' : 'Connecting...' }}
               </span>
             </button>
+
+            <!-- Broker-specific hints -->
+            <p v-if="selectedBroker === 'angelone'" class="text-xs text-gray-500 mt-3 text-center">
+              Your credentials are used once to authenticate and are not stored.
+            </p>
+            <p v-if="selectedBroker === 'dhan'" class="text-xs text-gray-500 mt-3 text-center">
+              Your credentials are used once to authenticate and are not stored.
+            </p>
 
             <!-- Safety Info Link -->
             <div class="text-center mt-6">
               <button
                 @click="showSafetyInfo = !showSafetyInfo"
-                class="text-blue-600 hover:text-blue-700 text-sm flex items-center justify-center space-x-1 mx-auto"
+                class="safety-faq-btn"
                 data-testid="login-safety-toggle"
               >
                 <svg class="w-4 h-4 flex-shrink-0" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                 </svg>
                 <span>Is it safe to login with my broker?</span>
+                <svg
+                  class="safety-faq-chevron"
+                  :class="{ 'safety-faq-chevron--open': showSafetyInfo }"
+                  width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                >
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
               </button>
 
               <!-- Safety Info Expanded -->
               <div v-if="showSafetyInfo" class="mt-4 p-4 bg-gray-50 rounded-lg text-left text-sm text-gray-600 border border-gray-200">
                 <p class="mb-2"><strong class="text-gray-900">Yes, it's completely safe!</strong></p>
                 <ul class="list-disc list-inside space-y-1 text-gray-500">
-                  <li>We use OAuth 2.0, the industry standard for secure authentication</li>
-                  <li>Your broker credentials are never shared with us</li>
-                  <li>We only receive a temporary access token from your broker</li>
+                  <li>OAuth brokers redirect you to your broker's own login page</li>
+                  <li>For AngelOne and Dhan, credentials are used once and never stored</li>
+                  <li>We only keep a temporary session token from your broker</li>
                   <li>You can revoke access anytime from your broker's app settings</li>
                 </ul>
               </div>
@@ -388,7 +327,8 @@ const scrollToLogin = () => {
 
             <!-- Terms Footer -->
             <p class="text-center text-xs text-gray-400 mt-8">
-              By proceeding, you agree to terms and conditions
+              By proceeding, you agree to the
+              <a href="/terms" class="underline hover:text-gray-600">terms and conditions</a>
             </p>
           </div>
         </div>
@@ -451,35 +391,6 @@ const scrollToLogin = () => {
   gap: 24px;
 }
 
-/* Navigation */
-.main-nav {
-  display: none;
-  gap: 4px;
-}
-
-@media (min-width: 768px) {
-  .main-nav {
-    display: flex;
-  }
-}
-
-.nav-item {
-  padding: 8px 16px;
-  font-size: 13px;
-  color: #6c757d;
-  text-decoration: none;
-  border-radius: 3px;
-  transition: all 0.15s ease;
-  background: none;
-  border: none;
-  cursor: pointer;
-}
-
-.nav-item:hover {
-  color: #212529;
-  background: #f5f5f5;
-}
-
 /* Login Button */
 .login-btn {
   padding: 6px 16px;
@@ -503,7 +414,7 @@ const scrollToLogin = () => {
   grid-template-columns: 1fr;
   gap: 3rem;
   align-items: center;
-  min-height: calc(100vh - 48px - 6rem); /* Account for header and padding */
+  min-height: calc(100vh - 48px - 3rem); /* Account for header and reduced padding */
 }
 
 @media (min-width: 1024px) {
@@ -548,13 +459,104 @@ const scrollToLogin = () => {
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
+/* Broker dropdown */
+.broker-select-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.broker-color-indicator {
+  position: absolute;
+  left: 12px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  z-index: 1;
+  pointer-events: none;
+  transition: background-color 0.2s ease;
+}
+
+.broker-select {
+  width: 100%;
+  appearance: none;
+  -webkit-appearance: none;
+  padding: 12px 36px 12px 32px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+  background-color: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.broker-select:focus {
+  outline: none;
+  border-color: #387ed1;
+  box-shadow: 0 0 0 3px rgba(56, 126, 209, 0.1);
+}
+
+.broker-select-arrow {
+  position: absolute;
+  right: 12px;
+  pointer-events: none;
+  color: #9ca3af;
+}
+
+/* Login input fields */
+.login-input {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #374151;
+  transition: border-color 0.15s ease;
+}
+
+.login-input:focus {
+  outline: none;
+  border-color: #387ed1;
+  box-shadow: 0 0 0 3px rgba(56, 126, 209, 0.1);
+}
+
+.login-input::placeholder {
+  color: #9ca3af;
+}
+
+/* Login submit button */
+.login-submit-btn {
+  width: 100%;
+  height: 48px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffffff;
+  background: #387ed1;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.login-submit-btn:hover:not(:disabled) {
+  background: #2d6ab8;
+}
+
+.login-submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 /* Main container responsive padding */
 .main-container {
   max-width: 80rem;
   margin-left: auto;
   margin-right: auto;
   padding: 3rem 1rem;
-  padding-top: calc(48px + 3rem); /* Account for fixed header */
+  padding-top: calc(48px + 1.5rem); /* Account for fixed header */
 }
 
 @media (min-width: 640px) {
@@ -569,5 +571,34 @@ const scrollToLogin = () => {
     padding-left: 2rem;
     padding-right: 2rem;
   }
+}
+
+/* Safety FAQ toggle button */
+.safety-faq-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.875rem;
+  color: #387ed1;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 0;
+  border-bottom: 1px solid transparent;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.safety-faq-btn:hover {
+  color: #2d6ab8;
+  border-bottom-color: #2d6ab8;
+}
+
+.safety-faq-chevron {
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.safety-faq-chevron--open {
+  transform: rotate(180deg);
 }
 </style>
