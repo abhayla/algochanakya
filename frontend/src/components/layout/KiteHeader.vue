@@ -91,7 +91,10 @@
       <!-- Actions -->
       <div class="header-actions">
         <!-- Connection Status -->
-        <div :class="['status-dot', { connected: watchlistStore.isConnected }]" :title="watchlistStore.isConnected ? 'Live' : 'Disconnected'" data-testid="kite-header-connection-status"></div>
+        <div class="market-status-badge" :style="{ color: marketStatus.color, borderColor: marketStatus.color + '40' }" data-testid="kite-header-market-status">
+          <span class="market-dot" :style="{ background: marketStatus.color }"></span>
+          {{ marketStatus.label }}
+        </div>
 
         <!-- Header Icons -->
         <div class="header-icons">
@@ -174,6 +177,30 @@ const navItems = [
 ];
 
 const indexTicks = computed(() => watchlistStore.indexTicks);
+
+const marketStatus = computed(() => {
+  const now = new Date();
+  const ist = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+  const hours = ist.getHours();
+  const minutes = ist.getMinutes();
+  const day = ist.getDay();
+  const timeInMinutes = hours * 60 + minutes;
+
+  // Weekend
+  if (day === 0 || day === 6) return { label: 'Market Closed', color: '#ef4444', isOpen: false };
+
+  // Pre-market: 9:00 - 9:15
+  if (timeInMinutes >= 540 && timeInMinutes < 555) return { label: 'Pre-Market', color: '#f59e0b', isOpen: false };
+
+  // Market open: 9:15 - 15:30
+  if (timeInMinutes >= 555 && timeInMinutes <= 930) return { label: 'Market Open', color: '#22c55e', isOpen: true };
+
+  // Post-market: 15:30 - 16:00
+  if (timeInMinutes > 930 && timeInMinutes <= 960) return { label: 'Post-Market', color: '#f59e0b', isOpen: false };
+
+  // Closed
+  return { label: 'Market Closed', color: '#ef4444', isOpen: false };
+});
 
 const userId = computed(() => {
   return authStore.user?.first_name || authStore.user?.broker_user_id || 'Guest';
@@ -403,16 +430,23 @@ onUnmounted(() => {
   position: relative;
 }
 
-.status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #9aa3ad;
+.market-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 10px;
+  border: 1px solid;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
-.status-dot.connected {
-  background: #00b386;
-  box-shadow: 0 0 6px rgba(0, 179, 134, 0.6);
+.market-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 
 /* User Menu */

@@ -39,7 +39,7 @@ const label = computed(() => brokerStore.activeSourceLabel)
     :title="`Market data: ${label}`"
   >
     <span class="badge-dot" aria-hidden="true"></span>
-    <span class="badge-label">{{ label }}</span>
+    <span class="badge-label">Market data: {{ label }}</span>
   </div>
 </template>
 

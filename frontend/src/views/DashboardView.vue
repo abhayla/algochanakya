@@ -1,12 +1,26 @@
 <script setup>
+import { onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { usePositionsStore } from '../stores/positions'
+import { useWatchlistStore } from '../stores/watchlist'
 import KiteLayout from '../components/layout/KiteLayout.vue'
 import BrokerUpgradeBanner from '../components/common/BrokerUpgradeBanner.vue'
 import DataSourceBadge from '../components/common/DataSourceBadge.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const positionsStore = usePositionsStore()
+const watchlistStore = useWatchlistStore()
+
+const totalPnl = computed(() => positionsStore.summary?.total_pnl ?? 0)
+const totalPnlPct = computed(() => positionsStore.summary?.total_pnl_pct ?? 0)
+const activePositions = computed(() => positionsStore.summary?.total_positions ?? 0)
+const indexTicks = computed(() => watchlistStore.indexTicks)
+
+onMounted(async () => {
+  try { await positionsStore.fetchPositions() } catch { /* silently fail */ }
+})
 </script>
 
 <template>
@@ -23,6 +37,40 @@ const authStore = useAuthStore()
             </p>
           </div>
           <DataSourceBadge screen="dashboard" />
+        </div>
+
+        <!-- Portfolio Summary -->
+        <div class="portfolio-summary" data-testid="dashboard-portfolio-summary">
+          <div class="summary-card" data-testid="dashboard-pnl-card">
+            <div class="summary-label">Today's P&L</div>
+            <div :class="['summary-value', totalPnl >= 0 ? 'positive' : 'negative']">
+              {{ totalPnl >= 0 ? '+' : '' }}{{ totalPnl.toLocaleString('en-IN', { minimumFractionDigits: 2 }) }}
+            </div>
+            <div :class="['summary-pct', totalPnlPct >= 0 ? 'positive' : 'negative']">
+              ({{ totalPnlPct >= 0 ? '+' : '' }}{{ totalPnlPct.toFixed(2) }}%)
+            </div>
+          </div>
+          <div class="summary-card" data-testid="dashboard-positions-count-card">
+            <div class="summary-label">Active Positions</div>
+            <div class="summary-value">{{ activePositions }}</div>
+            <router-link to="/positions" class="summary-link">View all →</router-link>
+          </div>
+          <div class="summary-card" data-testid="dashboard-nifty-card">
+            <div class="summary-label">NIFTY 50</div>
+            <div class="summary-value">{{ indexTicks.nifty50?.ltp?.toLocaleString('en-IN') || '--' }}</div>
+            <div :class="['summary-pct', (indexTicks.nifty50?.change || 0) >= 0 ? 'positive' : 'negative']">
+              {{ (indexTicks.nifty50?.change || 0) >= 0 ? '+' : '' }}{{ (indexTicks.nifty50?.change || 0).toFixed(2) }}
+              ({{ (indexTicks.nifty50?.change_percent || 0) >= 0 ? '+' : '' }}{{ (indexTicks.nifty50?.change_percent || 0).toFixed(2) }}%)
+            </div>
+          </div>
+          <div class="summary-card" data-testid="dashboard-banknifty-card">
+            <div class="summary-label">BANK NIFTY</div>
+            <div class="summary-value">{{ indexTicks.niftyBank?.ltp?.toLocaleString('en-IN') || '--' }}</div>
+            <div :class="['summary-pct', (indexTicks.niftyBank?.change || 0) >= 0 ? 'positive' : 'negative']">
+              {{ (indexTicks.niftyBank?.change || 0) >= 0 ? '+' : '' }}{{ (indexTicks.niftyBank?.change || 0).toFixed(2) }}
+              ({{ (indexTicks.niftyBank?.change_percent || 0) >= 0 ? '+' : '' }}{{ (indexTicks.niftyBank?.change_percent || 0).toFixed(2) }}%)
+            </div>
+          </div>
         </div>
 
         <!-- Feature Cards -->
@@ -146,6 +194,57 @@ const authStore = useAuthStore()
   color: #6c757d;
   margin: 0;
 }
+
+.portfolio-summary {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.summary-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 18px 20px;
+}
+
+.summary-label {
+  font-size: 12px;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.summary-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.summary-value.positive { color: #16a34a; }
+.summary-value.negative { color: #dc2626; }
+
+.summary-pct {
+  font-size: 13px;
+  font-weight: 500;
+  margin-top: 2px;
+}
+
+.summary-pct.positive { color: #16a34a; }
+.summary-pct.negative { color: #dc2626; }
+
+.summary-link {
+  font-size: 12px;
+  color: #3b82f6;
+  text-decoration: none;
+  margin-top: 4px;
+  display: inline-block;
+}
+
+.summary-link:hover { text-decoration: underline; }
 
 .dashboard-cards {
   display: grid;
