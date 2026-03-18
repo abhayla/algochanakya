@@ -40,9 +40,9 @@ export const useOptionChainStore = defineStore('optionchain', () => {
   const isLiveUpdatesEnabled = ref(true)
 
   // Display settings
-  const showGreeks = ref(false)
+  const showGreeks = ref(true)  // Finding #6: Greeks ON by default for options traders
   const showVolume = ref(true)
-  const strikesRange = ref(5) // Number of strikes above/below ATM (default 10 total)
+  const strikesRange = ref(10) // Finding #5: Default to 10 strikes above/below ATM (20 total)
   const localGridInterval = ref(null) // null = use user preference from Settings
 
   // Selected for strategy

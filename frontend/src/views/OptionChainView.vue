@@ -154,39 +154,50 @@
         <p>Loading option chain...</p>
       </div>
 
+      <!-- Finding #1: Market closed banner when LTPs are 0 -->
+      <div v-if="isMarketClosed && store.chain.length > 0" class="market-closed-banner" data-testid="optionchain-market-closed">
+        Market Closed — showing last available data. Live prices will update when market opens at 9:15 AM IST.
+      </div>
+
       <!-- Option Chain Table -->
-      <div v-else class="chain-table-container scrollable-container" ref="tableContainer" data-testid="optionchain-table-container">
+      <div v-if="!store.isLoading || store.chain.length > 0" class="chain-table-container scrollable-container" ref="tableContainer" data-testid="optionchain-table-container">
         <table class="chain-table" data-testid="optionchain-table">
           <thead>
+            <!-- Finding #4: CALLS/PUTS header labels -->
+            <tr class="side-labels-row">
+              <th :colspan="store.showGreeks ? 11 : 7" class="ce-col calls-label">CALLS (CE)</th>
+              <th class="strike-col"></th>
+              <th :colspan="store.showGreeks ? 11 : 7" class="pe-col puts-label">PUTS (PE)</th>
+            </tr>
             <tr>
               <!-- CE Side -->
-              <th class="ce-col add-col"></th>
-              <th class="ce-col">OI</th>
-              <th class="ce-col">Chg</th>
-              <th class="ce-col">Vol</th>
-              <th class="ce-col">IV</th>
-              <th v-if="store.showGreeks" class="ce-col greek-col">Delta</th>
-              <th v-if="store.showGreeks" class="ce-col greek-col">Gamma</th>
-              <th v-if="store.showGreeks" class="ce-col greek-col">Theta</th>
-              <th v-if="store.showGreeks" class="ce-col greek-col">Vega</th>
-              <th class="ce-col">LTP</th>
-              <th class="ce-col">Chg%</th>
+              <th class="ce-col add-col" title="Add to Strategy Builder"></th>
+              <th class="ce-col" title="Open Interest">OI</th>
+              <th class="ce-col" title="OI Change">Chg</th>
+              <th class="ce-col" title="Volume">Vol</th>
+              <th class="ce-col" title="Implied Volatility">IV</th>
+              <th v-if="store.showGreeks" class="ce-col greek-col" title="Delta">Delta</th>
+              <th v-if="store.showGreeks" class="ce-col greek-col" title="Gamma">Gamma</th>
+              <th v-if="store.showGreeks" class="ce-col greek-col" title="Theta">Theta</th>
+              <th v-if="store.showGreeks" class="ce-col greek-col" title="Vega">Vega</th>
+              <th class="ce-col" title="Last Traded Price">LTP</th>
+              <th class="ce-col" title="Price Change %">Chg%</th>
 
               <!-- Strike -->
               <th class="strike-col">STRIKE</th>
 
               <!-- PE Side -->
-              <th class="pe-col">Chg%</th>
-              <th class="pe-col">LTP</th>
-              <th v-if="store.showGreeks" class="pe-col greek-col">Delta</th>
-              <th v-if="store.showGreeks" class="pe-col greek-col">Gamma</th>
-              <th v-if="store.showGreeks" class="pe-col greek-col">Theta</th>
-              <th v-if="store.showGreeks" class="pe-col greek-col">Vega</th>
-              <th class="pe-col">IV</th>
-              <th class="pe-col">Vol</th>
-              <th class="pe-col">Chg</th>
-              <th class="pe-col">OI</th>
-              <th class="pe-col add-col"></th>
+              <th class="pe-col" title="Price Change %">Chg%</th>
+              <th class="pe-col" title="Last Traded Price">LTP</th>
+              <th v-if="store.showGreeks" class="pe-col greek-col" title="Delta">Delta</th>
+              <th v-if="store.showGreeks" class="pe-col greek-col" title="Gamma">Gamma</th>
+              <th v-if="store.showGreeks" class="pe-col greek-col" title="Theta">Theta</th>
+              <th v-if="store.showGreeks" class="pe-col greek-col" title="Vega">Vega</th>
+              <th class="pe-col" title="Implied Volatility">IV</th>
+              <th class="pe-col" title="Volume">Vol</th>
+              <th class="pe-col" title="OI Change">Chg</th>
+              <th class="pe-col" title="Open Interest">OI</th>
+              <th class="pe-col add-col" title="Add to Strategy Builder"></th>
             </tr>
           </thead>
           <tbody>
@@ -209,6 +220,7 @@
                   @click="toggleStrike(row.strike, 'CE')"
                   :class="['add-btn', 'ce', { selected: store.isStrikeSelected(row.strike, 'CE') }]"
                   :data-testid="'optionchain-ce-add-' + row.strike"
+                  :title="store.isStrikeSelected(row.strike, 'CE') ? 'Remove CE ' + row.strike + ' from Strategy' : 'Add CE ' + row.strike + ' to Strategy Builder'"
                 >
                   {{ store.isStrikeSelected(row.strike, 'CE') ? '&#10003;' : '+' }}
                 </button>
@@ -261,6 +273,7 @@
                   @click="toggleStrike(row.strike, 'PE')"
                   :class="['add-btn', 'pe', { selected: store.isStrikeSelected(row.strike, 'PE') }]"
                   :data-testid="'optionchain-pe-add-' + row.strike"
+                  :title="store.isStrikeSelected(row.strike, 'PE') ? 'Remove PE ' + row.strike + ' from Strategy' : 'Add PE ' + row.strike + ' to Strategy Builder'"
                 >
                   {{ store.isStrikeSelected(row.strike, 'PE') ? '&#10003;' : '+' }}
                 </button>
@@ -301,7 +314,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import KiteLayout from '@/components/layout/KiteLayout.vue'
 import StrikeFinder from '@/components/optionchain/StrikeFinder.vue'
@@ -316,6 +329,27 @@ const store = useOptionChainStore()
 const strategyStore = useStrategyStore()
 const watchlistStore = useWatchlistStore()
 const router = useRouter()
+
+// Finding #1: Market closed detection
+const isMarketClosed = computed(() => {
+  const now = new Date()
+  const ist = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }))
+  const hours = ist.getHours()
+  const minutes = ist.getMinutes()
+  const day = ist.getDay()
+  const timeInMinutes = hours * 60 + minutes
+  if (day === 0 || day === 6) return true
+  return timeInMinutes < 555 || timeInMinutes > 930
+})
+
+// Finding #10: Keyboard shortcuts for tab switching
+const handleKeyDown = (e) => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return
+  if (e.key === '1') store.setUnderlying('NIFTY')
+  else if (e.key === '2') store.setUnderlying('BANKNIFTY')
+  else if (e.key === '3') store.setUnderlying('FINNIFTY')
+  else if (e.key === 'g' || e.key === 'G') store.showGreeks = !store.showGreeks
+}
 
 // Track subscribed tokens to avoid re-subscribing
 const subscribedTokens = ref(new Set())
@@ -483,6 +517,9 @@ watch(() => watchlistStore.isConnected, (connected) => {
 
 // Initialize
 onMounted(async () => {
+  // Finding #10: Keyboard shortcuts
+  document.addEventListener('keydown', handleKeyDown)
+
   // Connect to WebSocket if not already connected
   if (!watchlistStore.isConnected) {
     watchlistStore.connectWebSocket()
@@ -496,6 +533,9 @@ onMounted(async () => {
 
 // Cleanup subscriptions on unmount
 onUnmounted(() => {
+  // Finding #10: Remove keyboard shortcuts
+  document.removeEventListener('keydown', handleKeyDown)
+
   // Unsubscribe from option tokens (keep index tokens as they're shared)
   const optionTokens = store.getAllOptionTokens()
   if (optionTokens.length > 0 && watchlistStore.isConnected) {
@@ -873,6 +913,38 @@ onUnmounted(() => {
   width: 100%;
   border-collapse: collapse;
   font-size: 12px;
+}
+
+/* Finding #1: Market closed banner */
+.market-closed-banner {
+  background: #fef3c7;
+  border: 1px solid #f59e0b;
+  border-radius: 8px;
+  padding: 10px 16px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: #92400e;
+  font-weight: 500;
+  text-align: center;
+}
+
+/* Finding #4: CALLS/PUTS labels */
+.side-labels-row th {
+  padding: 4px 10px !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  letter-spacing: 1px !important;
+  border-bottom: none !important;
+}
+
+.calls-label {
+  color: #c62828;
+  text-align: center !important;
+}
+
+.puts-label {
+  color: #2e7d32;
+  text-align: center !important;
 }
 
 .chain-table thead {
