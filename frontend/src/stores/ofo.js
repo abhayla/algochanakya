@@ -30,7 +30,7 @@ export const useOFOStore = defineStore('ofo', () => {
   const results = ref({}) // strategy_type -> array of top 3 results
   const spotPrice = ref(0)
   const atmStrike = ref(0)
-  const lotSize = ref(25)
+  const lotSize = ref(getLotSize('NIFTY'))
   const calculationTimeMs = ref(0)
   const totalCombinationsEvaluated = ref(0)
   const lastCalculated = ref(null)
@@ -299,7 +299,7 @@ export const useOFOStore = defineStore('ofo', () => {
     results.value = {}
     spotPrice.value = 0
     atmStrike.value = 0
-    lotSize.value = 25
+    lotSize.value = getLotSize('NIFTY')
     calculationTimeMs.value = 0
     totalCombinationsEvaluated.value = 0
     lastCalculated.value = null

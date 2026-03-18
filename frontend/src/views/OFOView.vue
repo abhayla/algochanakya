@@ -24,11 +24,14 @@
         </div>
 
         <div class="header-right">
-          <!-- Spot Price Box -->
+          <!-- Spot Price Box (#1: context when unavailable) -->
           <div class="spot-box" data-testid="ofo-spot-box">
             <span class="spot-label">Spot</span>
-            <span class="spot-price" data-testid="ofo-spot-price">
-              {{ store.spotPrice ? formatNumber(store.spotPrice) : '-' }}
+            <span v-if="store.spotPrice" class="spot-price" data-testid="ofo-spot-price">
+              {{ formatNumber(store.spotPrice) }}
+            </span>
+            <span v-else class="spot-price spot-unavailable" data-testid="ofo-spot-price" title="Spot price loads after first calculation">
+              —
             </span>
           </div>
 
@@ -68,9 +71,9 @@
           <StrategyMultiSelect />
         </div>
 
-        <!-- Strike Range -->
+        <!-- Strike Range (#10: tooltip) -->
         <div class="control-group">
-          <label class="control-label">Strike Range</label>
+          <label class="control-label" title="Number of strikes above and below ATM to evaluate">Strike Range <span class="info-icon">ⓘ</span></label>
           <select
             v-model.number="store.strikeRange"
             class="range-select"
@@ -83,9 +86,9 @@
           </select>
         </div>
 
-        <!-- Lots Input -->
+        <!-- Lots Input (#10: tooltip) -->
         <div class="control-group">
-          <label class="control-label">Lots</label>
+          <label class="control-label" title="Number of lots per leg">Lots <span class="info-icon">ⓘ</span></label>
           <input
             type="number"
             v-model.number="store.lots"
@@ -96,10 +99,11 @@
           />
         </div>
 
-        <!-- Calculate Button -->
+        <!-- Calculate Button (#5: guard when no strategies selected) -->
         <button
           class="calculate-btn"
           :disabled="store.isLoading || store.selectedCount === 0"
+          :title="store.selectedCount === 0 ? 'Select at least one strategy to calculate' : ''"
           @click="handleCalculate"
           data-testid="ofo-calculate-btn"
         >
@@ -109,8 +113,8 @@
           {{ store.isLoading ? 'Calculating...' : 'Calculate' }}
         </button>
 
-        <!-- Auto-Refresh -->
-        <div class="auto-refresh-group">
+        <!-- Auto-Refresh (#10: tooltip) -->
+        <div class="auto-refresh-group" title="Periodically recalculate with latest market prices">
           <label class="auto-refresh-toggle" data-testid="ofo-auto-refresh">
             <input
               type="checkbox"
@@ -144,9 +148,17 @@
         </div>
       </div>
 
-      <!-- Error Message -->
+      <!-- Market Closed Banner (#1, #2) -->
+      <div v-if="isMarketClosed" class="market-closed-banner" data-testid="ofo-market-closed">
+        Market Closed — calculations use last available prices. Live prices update when market opens at 9:15 AM IST.
+      </div>
+
+      <!-- Error Message (#9: with retry) -->
       <div v-if="store.error" class="error-message" data-testid="ofo-error">
-        {{ store.error }}
+        <span>{{ store.error }}</span>
+        <button class="error-retry-btn" @click="handleCalculate" data-testid="ofo-error-retry">
+          Retry
+        </button>
       </div>
 
       <!-- Loading State -->
@@ -156,7 +168,7 @@
         <p class="loading-hint">Evaluating {{ store.selectedCount }} strategy type(s)</p>
       </div>
 
-      <!-- Empty State -->
+      <!-- Empty State (#8: quick-select chips) -->
       <div v-else-if="!store.hasResults && store.selectedCount === 0" class="empty-state" data-testid="ofo-empty">
         <div class="empty-icon">
           <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -170,6 +182,22 @@
         </div>
         <h2>Select Strategies to Begin</h2>
         <p>Choose one or more strategy types from the dropdown above, then click "Calculate" to find the best combinations.</p>
+
+        <div class="quick-select" data-testid="ofo-quick-select">
+          <span class="quick-label">Popular:</span>
+          <button
+            v-for="s in popularStrategies"
+            :key="s.key"
+            class="quick-chip"
+            @click="quickSelectStrategy(s.key)"
+            :data-testid="'ofo-quick-' + s.key"
+          >
+            {{ s.name }}
+          </button>
+          <button class="quick-chip quick-all" @click="store.selectAllStrategies()" data-testid="ofo-quick-all">
+            All Strategies
+          </button>
+        </div>
       </div>
 
       <!-- Results Section -->
@@ -195,7 +223,6 @@
               :result="result"
               :rank="idx + 1"
               @open-in-builder="handleOpenInBuilder"
-              @place-order="handlePlaceOrder"
             />
           </div>
 
@@ -210,18 +237,43 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted } from 'vue'
+import { onMounted, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import KiteLayout from '@/components/layout/KiteLayout.vue'
 import StrategyMultiSelect from '@/components/ofo/StrategyMultiSelect.vue'
 import OFOResultCard from '@/components/ofo/OFOResultCard.vue'
 import { useOFOStore } from '@/stores/ofo'
+import { getLotSize } from '@/constants/trading'
 
 const router = useRouter()
 const store = useOFOStore()
 
-// Initialize on mount
+// #2: Market closed detection (same logic as OptionChainView)
+const isMarketClosed = computed(() => {
+  const now = new Date()
+  const ist = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }))
+  const hours = ist.getHours()
+  const minutes = ist.getMinutes()
+  const day = ist.getDay()
+  const timeInMinutes = hours * 60 + minutes
+  if (day === 0 || day === 6) return true
+  return timeInMinutes < 555 || timeInMinutes > 930
+})
+
+// #8: Popular strategies for quick-select
+const popularStrategies = [
+  { key: 'iron_condor', name: 'Iron Condor' },
+  { key: 'short_straddle', name: 'Short Straddle' },
+  { key: 'bull_call_spread', name: 'Bull Call Spread' },
+]
+
+function quickSelectStrategy(key) {
+  store.toggleStrategy(key)
+}
+
+// Initialize on mount (#4: fix lot size)
 onMounted(async () => {
+  store.lotSize = getLotSize(store.underlying)
   await store.fetchExpiries()
 })
 
@@ -242,12 +294,6 @@ async function handleCalculate() {
 async function handleOpenInBuilder(result) {
   const route = await store.openInStrategyBuilder(result)
   router.push(route)
-}
-
-function handlePlaceOrder(result) {
-  // TODO: Open basket order modal
-  console.log('[OFO] Place order:', result)
-  alert('Place Order functionality coming soon!')
 }
 
 // Formatters
@@ -508,14 +554,60 @@ function formatNumber(value) {
   color: var(--kite-text-primary, #394046);
 }
 
-/* Error Message */
+/* Spot unavailable (#1) */
+.spot-unavailable {
+  color: var(--kite-text-muted, #999) !important;
+  font-size: 14px !important;
+}
+
+/* Market Closed Banner (#2) */
+.market-closed-banner {
+  padding: 10px 16px;
+  background: #fff8e1;
+  border: 1px solid #ffe082;
+  border-radius: 4px;
+  color: #f57f17;
+  font-size: 13px;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+/* Info icon (#10) */
+.info-icon {
+  font-size: 12px;
+  color: var(--kite-text-muted, #999);
+  cursor: help;
+}
+
+/* Error Message (#9: with retry) */
 .error-message {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   padding: 12px 16px;
   background: var(--kite-red-light, #ffebee);
   border: 1px solid var(--kite-red, #e53935);
   border-radius: 4px;
   color: var(--kite-red-text, #d43f3a);
   margin-bottom: 16px;
+}
+
+.error-retry-btn {
+  padding: 6px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  background: var(--kite-red, #e53935);
+  color: white;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease;
+}
+
+.error-retry-btn:hover {
+  background: #c62828;
 }
 
 /* Loading State */
@@ -571,6 +663,50 @@ function formatNumber(value) {
 .empty-state p {
   color: var(--kite-text-secondary, #6c757d);
   max-width: 400px;
+}
+
+/* Quick-select chips (#8) */
+.quick-select {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 20px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.quick-label {
+  font-size: 13px;
+  color: var(--kite-text-secondary, #6c757d);
+  font-weight: 500;
+}
+
+.quick-chip {
+  padding: 6px 14px;
+  font-size: 13px;
+  background: var(--kite-card-bg, #ffffff);
+  border: 1px solid var(--kite-border, #e8e8e8);
+  border-radius: 16px;
+  color: var(--kite-text-primary, #394046);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.quick-chip:hover {
+  border-color: var(--kite-primary, #2d68b0);
+  color: var(--kite-primary, #2d68b0);
+  background: rgba(45, 104, 176, 0.05);
+}
+
+.quick-chip.quick-all {
+  border-style: dashed;
+  color: var(--kite-text-secondary, #6c757d);
+}
+
+.quick-chip.quick-all:hover {
+  border-color: var(--kite-primary, #2d68b0);
+  color: var(--kite-primary, #2d68b0);
+  border-style: solid;
 }
 
 /* Results Section */

@@ -98,8 +98,9 @@
         Open in Builder
       </button>
       <button
-        class="btn-order"
-        @click="$emit('place-order', result)"
+        class="btn-order btn-coming-soon"
+        disabled
+        title="Place Order — coming soon"
         :data-testid="`ofo-card-order-${rank}`"
       >
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -107,6 +108,7 @@
           <polyline points="19 12 12 19 5 12"></polyline>
         </svg>
         Place Order
+        <span class="coming-soon-tag">Soon</span>
       </button>
     </div>
   </div>
@@ -404,8 +406,24 @@ function getActionClass(action) {
   color: white;
 }
 
-.btn-order:hover {
+.btn-order:hover:not(:disabled) {
   background: var(--kite-primary-dark, #245290);
   border-color: var(--kite-primary-dark, #245290);
+}
+
+.btn-coming-soon {
+  opacity: 0.5;
+  cursor: not-allowed !important;
+  position: relative;
+}
+
+.coming-soon-tag {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 1px 4px;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 2px;
 }
 </style>

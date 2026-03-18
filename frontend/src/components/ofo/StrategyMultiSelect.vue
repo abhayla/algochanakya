@@ -8,7 +8,7 @@
       data-testid="ofo-strategy-trigger"
     >
       <span class="trigger-text">
-        {{ selectedCount === 0 ? 'Select Strategies' : `${selectedCount} selected` }}
+        {{ selectedCount === 0 ? `Select Strategies (${totalCount} available)` : `${selectedCount} of ${totalCount} selected` }}
       </span>
       <svg
         class="chevron-icon"
@@ -87,6 +87,7 @@ const isOpen = ref(false)
 
 const strategies = computed(() => ofoStore.availableStrategies)
 const selectedCount = computed(() => ofoStore.selectedCount)
+const totalCount = computed(() => ofoStore.availableStrategies.length)
 
 function toggleDropdown() {
   isOpen.value = !isOpen.value

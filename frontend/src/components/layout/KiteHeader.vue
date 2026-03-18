@@ -48,6 +48,7 @@
           :class="['nav-item', { active: isActive(item.path) }]"
           :data-testid="`kite-header-nav-${item.path.slice(1)}`"
           :aria-current="isActive(item.path) ? 'page' : undefined"
+          :title="item.title || ''"
         >
           <!-- Robot icon for AutoPilot -->
           <svg
@@ -168,7 +169,7 @@ const showUserDropdown = ref(false);
 const navItems = [
   { path: '/dashboard', label: 'Dashboard' },
   { path: '/optionchain', label: 'Option Chain' },
-  { path: '/ofo', label: 'OFO' },
+  { path: '/ofo', label: 'OFO', title: 'Options For Options — Find optimal strategy combinations' },
   { path: '/strategy', label: 'Strategy' },
   { path: '/positions', label: 'Positions' },
   // Hidden for initial deployment - not fully tested
