@@ -24,6 +24,25 @@ load_dotenv(dotenv_path=_ENV_PATH, override=False)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Session-scoped real database session (for adapters that need token lookups)
+# ─────────────────────────────────────────────────────────────────────────────
+
+@pytest_asyncio.fixture(scope="session")
+async def live_db():
+    """
+    Session-scoped async database session connected to the real dev/prod database.
+
+    Used by adapters (e.g. DhanMarketDataAdapter) that require DB-backed token
+    lookups to resolve canonical symbols to broker-specific security IDs.
+
+    The session is closed after the test session ends.
+    """
+    from app.database import AsyncSessionLocal
+    async with AsyncSessionLocal() as session:
+        yield session
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Helpers
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -102,13 +121,35 @@ def kite_credentials() -> dict:
 
 @pytest.fixture(scope="session")
 def upstox_credentials() -> dict:
-    """Live Upstox credentials from .env."""
+    """
+    Live Upstox credentials from .env.
+
+    If UPSTOX_ACCESS_TOKEN is missing or empty, auto-authenticates using
+    UpstoxAuth (Playwright headless browser + TOTP) and saves the new token
+    to .env before returning, mirroring the AngelOne session pattern.
+    """
     env = _require_broker_env("upstox")
+    access_token = _get_env("UPSTOX_ACCESS_TOKEN") or ""
+
+    if not access_token:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info("[Upstox] No UPSTOX_ACCESS_TOKEN found — running auto-login")
+
+        try:
+            from app.services.legacy.upstox_auth import UpstoxAuth, save_token_to_env
+            auth = UpstoxAuth()
+            access_token = auth.authenticate()
+            save_token_to_env(access_token)
+            logger.info("[Upstox] Auto-login successful, token saved to .env")
+        except Exception as e:
+            pytest.skip(f"Upstox auto-login failed: {e}")
+
     return {
         "broker": "upstox",
         "api_key": env["UPSTOX_API_KEY"],
         "api_secret": env["UPSTOX_API_SECRET"],
-        "access_token": _get_env("UPSTOX_ACCESS_TOKEN") or "",
+        "access_token": access_token,
     }
 
 
@@ -296,7 +337,7 @@ async def kite_adapter(kite_credentials):
 
 
 @pytest_asyncio.fixture(scope="session")
-async def upstox_adapter(upstox_credentials):
+async def upstox_adapter(upstox_credentials, live_db):
     """Authenticated Upstox adapter (session-scoped). Skips if no access token."""
     if not upstox_credentials["access_token"]:
         pytest.skip(
@@ -314,13 +355,17 @@ async def upstox_adapter(upstox_credentials):
         api_key=upstox_credentials["api_key"],
         access_token=upstox_credentials["access_token"],
     )
-    adapter = UpstoxMarketDataAdapter(creds)
+    adapter = UpstoxMarketDataAdapter(creds, db=live_db)
     yield adapter
 
 
 @pytest_asyncio.fixture(scope="session")
-async def dhan_adapter(dhan_credentials):
-    """Authenticated Dhan adapter (session-scoped)."""
+async def dhan_adapter(dhan_credentials, live_db):
+    """Authenticated Dhan adapter (session-scoped).
+
+    Passes the real live_db session so the TokenManager can resolve canonical
+    symbols (e.g. "NIFTY 50") to Dhan security IDs from broker_instrument_tokens.
+    """
     from app.services.brokers.market_data.dhan_adapter import DhanMarketDataAdapter
     from app.services.brokers.market_data.market_data_base import DhanMarketDataCredentials
     from uuid import uuid4
@@ -331,7 +376,7 @@ async def dhan_adapter(dhan_credentials):
         client_id=dhan_credentials["client_id"],
         access_token=dhan_credentials["access_token"],
     )
-    adapter = DhanMarketDataAdapter(creds)
+    adapter = DhanMarketDataAdapter(creds, db=live_db)
     yield adapter
 
 

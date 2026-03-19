@@ -11,7 +11,7 @@ Rules for adding a broker here:
 
 Current status:
 - angelone  ✅ Active (free org API, primary)
-- upstox    🔲 Pending verification before enabling
+- upstox    ✅ Active (free org API, secondary — verified 2026-03-19)
 - kite      ❌ Paid API — not active at org level
 - dhan      ❌ Paid API — not active at org level
 - fyers     ❌ Not working
@@ -23,7 +23,7 @@ Current status:
 #   - FailoverController (primary/secondary broker selection)
 #   - Live integration tests (parametrize scope)
 #   - Any service that needs to know which brokers are org-active
-ORG_ACTIVE_BROKERS = ["angelone"]
+ORG_ACTIVE_BROKERS = ["angelone", "upstox"]
 
 # All brokers with adapter implementations (including user-level / paid)
 ALL_BROKERS = ["angelone", "kite", "upstox", "dhan", "fyers", "paytm"]

@@ -44,7 +44,7 @@ class SmartAPITestConnectionResponse(BaseModel):
 
 class MarketDataSourceRequest(BaseModel):
     """Request schema for updating market data source."""
-    source: str = Field(..., pattern="^(smartapi|kite)$", description="Market data source")
+    source: str = Field(..., pattern="^(smartapi|kite|upstox|dhan|fyers|paytm)$", description="Market data source")
 
 
 class MarketDataSourceResponse(BaseModel):

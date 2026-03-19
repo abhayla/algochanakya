@@ -115,11 +115,13 @@ async def authed_client(live_app_client, live_auth_token):
 
 
 # Broker name → API source value mapping.
-# Only "smartapi" and "kite" are accepted by PUT /api/smartapi/market-data-source.
-# Other brokers skip with a clear message until the endpoint is extended.
 _BROKER_TO_SOURCE = {
     "angelone": "smartapi",
     "kite":     "kite",
+    "upstox":   "upstox",
+    "dhan":     "dhan",
+    "fyers":    "fyers",
+    "paytm":    "paytm",
 }
 
 
@@ -142,11 +144,7 @@ async def set_broker(authed_client):
 
         source = _BROKER_TO_SOURCE.get(broker)
         if source is None:
-            pytest.skip(
-                f"[{broker}] PUT /api/smartapi/market-data-source does not yet support "
-                f"'{broker}' as a market data source. Only 'smartapi' and 'kite' are "
-                f"currently supported. Skipping screens API test for this broker."
-            )
+            pytest.skip(f"[{broker}] No source mapping defined for this broker.")
 
         resp = await authed_client.put("/api/smartapi/market-data-source", json={
             "source": source

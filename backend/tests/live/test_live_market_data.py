@@ -72,12 +72,23 @@ async def _get_historical_or_skip(adapter, symbol, from_date, to_date, interval)
     - The API key must have historical data access enabled
     - A separate ANGEL_API_KEY_HISTORICAL may be required
 
+    Upstox historical API requires instrument tokens to be loaded into
+    broker_instrument_tokens table first (via instrument master download).
+
     Skips with a clear message instead of failing on AG8001 (Invalid Token)
     or other access-denied errors, since these are config issues not test bugs.
     """
-    from app.services.brokers.market_data.exceptions import DataNotAvailableError
+    from app.services.brokers.market_data.exceptions import (
+        DataNotAvailableError,
+        InvalidSymbolError,
+    )
     try:
         return await adapter.get_historical(symbol, from_date=from_date, to_date=to_date, interval=interval)
+    except InvalidSymbolError as e:
+        pytest.skip(
+            f"[{adapter.broker_type}] Symbol not found in instrument DB: {e}. "
+            f"Run instrument master download to populate broker_instrument_tokens."
+        )
     except DataNotAvailableError as e:
         _skip_if_data_not_subscribed(e, adapter)
         msg = str(e).lower()

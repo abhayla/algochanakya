@@ -52,6 +52,11 @@ class Settings(BaseSettings):
     UPSTOX_API_SECRET: str = ""
     UPSTOX_ACCESS_TOKEN: str = ""
     UPSTOX_REDIRECT_URL: str = ""
+    # Platform Upstox account (for auto-login)
+    UPSTOX_LOGIN_PHONE: str = ""
+    UPSTOX_LOGIN_PIN: str = ""
+    UPSTOX_USER_ID: str = ""
+    UPSTOX_TOTP_SECRET: str = ""
 
     # Paytm Money (Platform Fallback #4 — OAuth, 3 JWTs)
     PAYTM_API_KEY: str = ""
