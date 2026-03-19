@@ -128,7 +128,7 @@
         <div v-if="showUserDropdown" class="user-dropdown" data-testid="kite-header-user-dropdown">
           <div class="dropdown-item user-info">
             <span class="user-name" data-testid="kite-header-user-name">{{ userName }}</span>
-            <span class="user-broker">{{ authStore.user?.broker || 'No broker connected' }}</span>
+            <span class="user-broker">{{ brokerDisplayName }}</span>
           </div>
           <div class="dropdown-divider"></div>
           <button class="dropdown-item" @click="router.push('/settings'); showUserDropdown = false" data-testid="kite-header-settings-button">
@@ -209,6 +209,21 @@ const userId = computed(() => {
 
 const userName = computed(() => {
   return authStore.user?.first_name || authStore.user?.broker_user_id || 'User';
+});
+
+const BROKER_DISPLAY_NAMES = {
+  zerodha: 'Zerodha',
+  angelone: 'Angel One',
+  upstox: 'Upstox',
+  dhan: 'Dhan',
+  fyers: 'Fyers',
+  paytm: 'Paytm Money',
+};
+
+const brokerDisplayName = computed(() => {
+  const broker = authStore.user?.broker;
+  if (!broker) return 'No broker connected';
+  return BROKER_DISPLAY_NAMES[broker] || broker;
 });
 
 const userInitials = computed(() => {

@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Body, Depends, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -186,6 +187,7 @@ async def zerodha_callback(
 @router.get("/me")
 async def get_current_user_info(
     user: User = Depends(get_current_user),
+    credentials: HTTPAuthorizationCredentials = Depends(HTTPBearer()),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -194,8 +196,13 @@ async def get_current_user_info(
     Requires: Bearer token in Authorization header
 
     Returns:
-        User info with active broker connections
+        User info with active broker connections and current session's broker_connection_id
     """
+    # Extract broker_connection_id from JWT to identify current session's broker
+    from app.utils.jwt import verify_access_token
+    payload = verify_access_token(credentials.credentials)
+    current_broker_connection_id = payload.get("broker_connection_id")
+
     # Get active broker connections
     result = await db.execute(
         select(BrokerConnection).where(
@@ -213,6 +220,7 @@ async def get_current_user_info(
             "created_at": user.created_at.isoformat(),
             "last_login": user.last_login.isoformat() if user.last_login else None
         },
+        "current_broker_connection_id": current_broker_connection_id,
         "broker_connections": [
             {
                 "id": str(bc.id),

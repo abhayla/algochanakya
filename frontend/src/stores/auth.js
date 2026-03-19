@@ -175,7 +175,12 @@ export const useAuthStore = defineStore('auth', () => {
       // Combine user data with broker connection info
       const userData = response.data.user
       const brokerConnections = response.data.broker_connections || []
-      const activeBroker = brokerConnections.find(bc => bc.is_active) || brokerConnections[0]
+      const currentBrokerConnectionId = response.data.current_broker_connection_id
+
+      // Prioritize the broker connection used for this login session
+      const activeBroker = brokerConnections.find(bc => bc.id === currentBrokerConnectionId)
+        || brokerConnections.find(bc => bc.is_active)
+        || brokerConnections[0]
 
       user.value = {
         ...userData,
