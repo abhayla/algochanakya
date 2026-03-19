@@ -206,12 +206,14 @@ No browser redirect. User enters Client ID, PIN, and 6-digit TOTP (from their au
 
 ### Upstox — OAuth 2.0
 
-Standard OAuth redirect. Notable for very long-lived tokens (~1 year).
+Standard OAuth redirect. Notable for very long-lived tokens (~1 year). TOTP supported for automated login.
 
 - **Login:** `GET /api/auth/upstox/login` → returns Upstox OAuth URL
 - **Callback:** `GET /api/auth/upstox/callback?code=xxx`
 - **Disconnect:** `DELETE /api/auth/upstox/disconnect`
-- **Cost:** ₹499/month
+- **Cost:** FREE (API pricing changed from ₹499/month to free in 2025)
+- **Note:** The platform's universal Upstox connection (`.env` — `UPSTOX_API_KEY`, `UPSTOX_API_SECRET`, etc.) is separate from individual user OAuth login. Platform credentials serve backend market data operations for all users; user login produces a per-user `access_token` stored in `broker_connections`.
+- **OAuth login tested and working:** 2026-03-19
 
 ### Fyers — OAuth 2.0
 

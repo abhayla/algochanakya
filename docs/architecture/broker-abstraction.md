@@ -33,13 +33,13 @@ All users get market data via platform-level shared credentials by default:
 | Mode | Description | Target | Cost |
 |------|-------------|--------|------|
 | **Platform-Level (Default)** | Shared platform credentials via Redis Pub/Sub. All users get data immediately, zero setup. | All users (default) | ₹0/month |
-| **User-Level (Optional Upgrade)** | User connects their own broker API. Dedicated connection, lower latency (~20-50ms), full control. User chooses any supported broker. | Users wanting better performance | Varies by broker (Dhan†, Fyers, Paytm, SmartAPI: FREE; Upstox: ₹499/mo; Kite: ₹500/mo) |
+| **User-Level (Optional Upgrade)** | User connects their own broker API. Dedicated connection, lower latency (~20-50ms), full control. User chooses any supported broker. | Users wanting better performance | Varies by broker (Dhan†, Fyers, Paytm, SmartAPI, Upstox: FREE; Kite: ₹500/mo) |
 
 **Why platform-default works:**
 - **Zero friction** — Users get data immediately, no API setup required
-- **Mostly FREE brokers** — Platform uses SmartAPI (primary, FREE), Dhan, Fyers, Paytm (FREE fallbacks), Upstox (₹499/mo fallback)
+- **Mostly FREE brokers** — Platform uses SmartAPI (primary, FREE), Dhan, Fyers, Paytm, Upstox (all FREE fallbacks)
 - **Proven scalability** — 1 broker WebSocket → Redis Pub/Sub → 10K+ users
-- **Multi-broker failover** — SmartAPI → Dhan → Fyers → Paytm → Upstox (₹499/mo) → Kite Connect (₹500/mo, last resort)
+- **Multi-broker failover** — SmartAPI → Dhan → Fyers → Paytm → Upstox → Kite Connect (₹500/mo, last resort)
 
 **Optional user upgrade benefits:**
 - Lower latency: ~20-50ms (direct) vs ~50-200ms (shared via Redis)
@@ -92,7 +92,7 @@ See [Authentication Architecture](authentication.md#two-credential-systems-login
   Failover chain:                    User's choice:
   SmartAPI → Dhan →              Dhan, Fyers,
   Fyers → Paytm →               Kite, Paytm,
-  Upstox(₹499) → Kite(₹500)    SmartAPI, Upstox
+  Upstox → Kite(₹500)          SmartAPI, Upstox
 ```
 
 ### Order Execution Flow (All 6 Brokers from Phase 1)
@@ -145,11 +145,11 @@ Auth fallback: refresh_token → OAuth re-login → API key/secret
 | **Dhan** | DhanHQ API | Static token | Little-endian binary | Rupees | Numeric ID only | 10/sec | FREE† | FREE | Platform fallback (#2) |
 | **Fyers** | Fyers API | OAuth 2.0 | JSON (dual WS) | Rupees | `NSE:NIFTY25FEB25000CE` | 10/sec | FREE | FREE | Platform fallback (#3) |
 | **Paytm** | Open API | OAuth 2.0 (3 JWTs) | JSON | Rupees | Numeric ID + exchange | 10/sec | FREE | FREE | Platform fallback (#4) |
-| **Upstox** | Upstox API | OAuth 2.0 (+1yr ext) | Protobuf | Rupees | `NSE_FO\|12345` | 25/sec | ₹499/mo | ₹499/mo | Platform fallback (#5) |
+| **Upstox** | Upstox API | OAuth 2.0 (+1yr ext) | Protobuf | Rupees | `NSE_FO\|12345` | 50/sec | FREE | FREE | Platform fallback (#5) |
 | **Zerodha** | Kite Connect | OAuth 2.0 | Custom binary (big-endian) | Paise WS (÷100) | `NIFTY25FEB25000CE` (canonical) | 3/sec | ₹500/mo | FREE | Platform last resort (#6) |
 
 **Pricing Notes (Updated Feb 16, 2026):**
-- **Upstox:** ₹499/mo subscription required for API access (changed from free). No longer free.
+- **Upstox:** FREE (pricing changed from ₹499/month to free in 2025). All trading + data APIs at no cost.
 - **Kite Connect:** ₹500/mo includes market data + historical data (bundled since Feb 2025). Personal API is free but orders only.
 - **Dhan:** †Trading API always free. Data API requires 25 F&O trades/month OR ₹499/mo subscription.
 - **Fyers:** FREE. v3.0.0 (Feb 2026) upgraded WebSocket capacity from 200 to 5,000 symbols.
@@ -180,11 +180,11 @@ Auth fallback: refresh_token → OAuth re-login → API key/secret
 
 - **REST Base URL**: `https://api.upstox.com/v2`
 - **Key Endpoints**: `POST /order/place`, `GET /portfolio/positions`, `GET /market-quote/quotes`, `GET /historical-candle/{instrument_key}/{interval}/{to_date}`
-- **Rate Limits**: 25 requests/second
+- **Rate Limits**: 50 requests/second
 - **Instrument Master**: `https://assets.upstox.com/market-quote/instruments/exchange/complete.csv.gz`
 - **Token Format**: `NSE_FO|{instrument_token}` (instrument_key format)
 - **Auth Flow**: OAuth 2.0. Extended token valid ~1 year (simplifies system credentials).
-- **Pricing**: ₹499/month (₹499 + GST) for API access (market data + orders). No longer free.
+- **Pricing**: **FREE (₹0)** for all trading + data APIs (pricing changed from ₹499/month to free in 2025). Platform-level credentials in `.env` (`UPSTOX_API_KEY`, `UPSTOX_API_SECRET`, etc.) serve as the universal API for backend market data operations — separate from individual user OAuth login.
 
 #### Dhan
 
@@ -280,7 +280,7 @@ Market data adapters enforce per-broker rate limits via `RateLimiter` (`backend/
 |--------|-----------|----------------------|-----------------|
 | SmartAPI | 1 req/sec | 3000 tokens | 3 connections |
 | Kite | 3 req/sec | 3000 tokens | 3 connections |
-| Upstox | 25 req/sec | Unlimited (1 connection) | 1 per token |
+| Upstox | 50 req/sec | Unlimited (1 connection) | 1 per token |
 | Dhan | 10 req/sec | 100 tokens/connection | 5 connections |
 | Fyers | 10 req/sec | 5,000 symbols (v3.0.0) | Variable |
 | Paytm | 10 req/sec | 200 instruments | Variable |
@@ -505,7 +505,7 @@ Full definitions in `backend/app/services/brokers/base.py` and `ticker/models.py
 ### Why Platform-Default Market Data? (Updated Feb 16, 2026)
 **Alternative**: User-first (encourage all users to connect their own API).
 **Rejected**: Adds friction for new users, requires API setup before getting any data.
-**Chosen**: Platform-level as default for all users (zero setup). Users can optionally upgrade to their own broker API for better latency — encouraged via persistent banner. Platform uses mostly FREE brokers (SmartAPI primary, multi-broker failover chain; Upstox ₹499/mo, Kite ₹500/mo as paid fallbacks). Benefits: zero-friction onboarding, multi-broker resilience, optional user upgrade path.
+**Chosen**: Platform-level as default for all users (zero setup). Users can optionally upgrade to their own broker API for better latency — encouraged via persistent banner. Platform uses mostly FREE brokers (SmartAPI primary, multi-broker failover chain; Kite ₹500/mo as the only paid fallback). Benefits: zero-friction onboarding, multi-broker resilience, optional user upgrade path.
 
 ### Why Factory Pattern?
 **Alternative**: Dependency injection container.

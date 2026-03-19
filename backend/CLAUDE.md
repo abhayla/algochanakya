@@ -305,6 +305,16 @@ See [.claude/rules.md](../.claude/rules.md) for all enforced folder structure ru
 - `ANGEL_TRADE_API_KEY` — order execution only
 - Using the wrong key returns `AG8001 Invalid Token`
 
+**Upstox platform-level credentials** (universal API, NOT personal login — same pattern as AngelOne):
+- `UPSTOX_API_KEY` — OAuth client_id for platform API
+- `UPSTOX_API_SECRET` — OAuth client_secret for platform API
+- `UPSTOX_REDIRECT_URL` — OAuth redirect URI (`http://localhost:8001/api/auth/upstox/callback` for dev)
+- `UPSTOX_LOGIN_PHONE` — platform auto-login phone number
+- `UPSTOX_LOGIN_PIN` — platform auto-login 6-digit PIN
+- `UPSTOX_USER_ID` — platform user identifier
+- `UPSTOX_TOTP_SECRET` — platform auto-login TOTP base32 secret
+- Individual users authenticate via OAuth on the login page with their own Upstox credentials (stored per-user in `broker_connections`)
+
 ---
 
 ## Backend-Specific Pitfalls

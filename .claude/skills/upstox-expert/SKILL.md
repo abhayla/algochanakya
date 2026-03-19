@@ -2,8 +2,8 @@
 name: upstox-expert
 description: Upstox expert — broker overview, products, pricing, Upstox API,
   and AlgoChanakya adapter guidance. Use for any Upstox question.
-version: "3.1"
-last_verified: "2026-03-18"
+version: "3.2"
+last_verified: "2026-03-19"
 ---
 
 # Upstox Expert
@@ -152,11 +152,16 @@ code = totp.now()  # 6-digit TOTP code
 
 See [auth-flow.md](./references/auth-flow.md) for complete request/response examples, TOTP setup, sandbox tokens, IP whitelisting, and Access Token Flow (Beta).
 
-### Environment Configuration
+### Dual Credential System (Platform vs User)
 
-Required `.env` keys for Upstox integration (use placeholder values, never commit real credentials):
+Upstox follows the same dual credential pattern as other brokers in AlgoChanakya. Understanding this distinction is critical.
+
+#### Platform-Level Universal API (`.env` credentials)
+
+These credentials are the **platform's shared Upstox API connection**, serving the backend for market data operations and automated login for ALL users. They are NOT personal login details.
 
 ```env
+# ── Upstox (Platform-Level Universal API) ────────────────────────────────────
 UPSTOX_API_KEY=your-api-key-uuid
 UPSTOX_API_SECRET=your-api-secret
 UPSTOX_REDIRECT_URL=http://localhost:8001/api/auth/upstox/callback
@@ -166,15 +171,84 @@ UPSTOX_USER_ID=your-user-id
 UPSTOX_TOTP_SECRET=your-totp-base32-secret
 ```
 
-| Key | Purpose | Where to Find |
-|-----|---------|---------------|
-| `UPSTOX_API_KEY` | OAuth client_id | My Apps → App Details |
-| `UPSTOX_API_SECRET` | OAuth client_secret | My Apps → App Details |
-| `UPSTOX_REDIRECT_URL` | OAuth redirect URI | Must match My Apps config exactly |
-| `UPSTOX_LOGIN_PHONE` | Auto-login: phone number | Your registered phone |
-| `UPSTOX_LOGIN_PIN` | Auto-login: 6-digit PIN | Set during account creation |
-| `UPSTOX_USER_ID` | User identifier | Profile page or API profile response |
-| `UPSTOX_TOTP_SECRET` | Auto-login: TOTP base32 secret | TOTP setup page (copy key) |
+| Key | Purpose | Category | Where to Find |
+|-----|---------|----------|---------------|
+| `UPSTOX_API_KEY` | OAuth client_id for platform API | Platform | My Apps → App Details |
+| `UPSTOX_API_SECRET` | OAuth client_secret for platform API | Platform | My Apps → App Details |
+| `UPSTOX_REDIRECT_URL` | OAuth redirect URI | Platform | Must match My Apps config exactly |
+| `UPSTOX_LOGIN_PHONE` | Platform auto-login: phone number | Platform | Registered phone for platform account |
+| `UPSTOX_LOGIN_PIN` | Platform auto-login: 6-digit PIN | Platform | Set during platform account creation |
+| `UPSTOX_USER_ID` | Platform user identifier | Platform | Profile page or API profile response |
+| `UPSTOX_TOTP_SECRET` | Platform auto-login: TOTP base32 secret | Platform | TOTP setup page (copy key) |
+
+**Analogy:** This is identical to AngelOne's 3-key setup in `.env` (`ANGEL_API_KEY`, `ANGEL_HIST_API_KEY`, `ANGEL_TRADE_API_KEY`). Both serve as the platform's universal API connection, not individual user credentials.
+
+#### User-Level OAuth Login (Login Page)
+
+Individual users authenticate via OAuth redirect on the login page using their **own** Upstox credentials. This is completely separate from the platform-level `.env` credentials.
+
+- **Flow:** User clicks "Login with Upstox" → redirected to Upstox OAuth page → enters their own phone/OTP/PIN → redirected back with authorization code
+- **Storage:** User's `access_token` stored per-user in `broker_connections` table. Login credentials (phone, PIN, OTP) are NOT stored — used once for OAuth.
+- **Purpose:** Order execution with the user's own Upstox account
+- **Token lifetime:** access_token valid until ~6:30 AM next day; extended_token valid ~1 year
+
+### Upstox Developer App Setup
+
+Step-by-step guide for creating an Upstox API app on the developer portal for OAuth login in AlgoChanakya.
+
+#### Step 1: Create Developer Account
+
+1. Go to https://account.upstox.com/developer/apps
+2. Log in with your Upstox trading account credentials
+3. Navigate to "My Apps" section
+
+#### Step 2: Create a New App
+
+1. Click **"New App"** on the My Apps page
+2. Fill in the form:
+
+| Field | Value | Notes |
+|-------|-------|-------|
+| **App name** | `AlgoChanakya` | Descriptive name for the app |
+| **Redirect URL** | `http://localhost:8001/api/auth/upstox/callback` | For local dev. Production: `https://algochanakya.com/api/auth/upstox/callback` |
+| **Description** | `Multi-broker options trading platform` | Required field |
+
+3. Click **"Create"**
+
+#### Step 3: Get API Key and Secret
+
+After creating the app:
+
+1. Note the **API Key** (UUID format, e.g., `54e952ad-6518-4e2a-808c-95e038c9be4d`)
+2. Note the **API Secret** (shown on creation, save immediately)
+3. Note the **User ID** from your profile (numeric, e.g., `198547`)
+
+#### Step 4: Save to `.env`
+
+Update `backend/.env` with the credentials (see the platform-level table above for all keys).
+
+**Important:** Restart the backend after updating `.env` for changes to take effect.
+
+#### Step 5: Verify
+
+1. Start the backend: `cd backend && python run.py`
+2. Start the frontend: `cd frontend && npm run dev`
+3. Go to http://localhost:5173/login
+4. Select "Upstox" from the dropdown → Click "Login with Upstox"
+5. You should be redirected to the Upstox OAuth login page
+6. Enter phone → OTP (or TOTP) → 6-digit PIN
+7. You should be redirected back to the AlgoChanakya dashboard
+
+**OAuth login tested and working as of 2026-03-19.**
+
+#### Common Issues
+
+| Issue | Cause | Fix |
+|-------|-------|-----|
+| `UDAPI100050` after login | Invalid or expired auth code | Re-authenticate — code is single-use |
+| Redirect URL mismatch | URL in `.env` doesn't match portal | Ensure `UPSTOX_REDIRECT_URL` matches exactly |
+| `403 Forbidden` on API calls | IP not whitelisted | Add server IP in My Apps dashboard |
+| OAuth page shows error | App inactive or API key wrong | Check app status on developer portal |
 
 ### Key Endpoints Quick Reference
 
@@ -436,7 +510,7 @@ order_id = await adapter.place_order(order_params)
 
 | Reference File | Last Verified | Check Frequency |
 |---|---|---|
-| SKILL.md | 2026-03-18 | Quarterly |
+| SKILL.md | 2026-03-19 | Quarterly |
 | upstox-overview.md | 2026-03-04 | Quarterly |
 | endpoints-catalog.md | 2026-02-25 | Monthly |
 | auth-flow.md | 2026-03-18 | Quarterly |
@@ -467,6 +541,7 @@ order_id = await adapter.place_order(order_params)
 
 | Version | Date | Changes |
 |---|---|---|
+| 3.2 | 2026-03-19 | Restructured credentials section into dual credential system (platform-level universal API vs user-level OAuth login). Added Upstox Developer App Setup guide (similar to kite-app-setup.md). Clarified `.env` keys are platform-level, not personal. OAuth login verified working. |
 | 3.1 | 2026-03-18 | Added TOTP support (setup location, auto-login flow with pyotp), .env configuration section with all 7 keys, OAuth login flow details (Playwright-tested), confirmed free option chain with Greeks (133 strikes). Updated freshness dates. |
 | 3.0 | 2026-03-04 | Restructured: Upstox overview + pricing sections added, API content reorganized as subsection. New `upstox-overview.md` reference file. File renamed from `skill.md` to `SKILL.md`. All existing API content preserved. |
 | 2.0 | 2026-02-25 | Comprehensive overhaul: pricing FREE, v3 API, GTT/Option Chain/Webhook/Sandbox/MCP, implementation status updated to Implemented, rate limits corrected (50/sec), auto-improvement system added, 3 new reference files, 8 external URLs |
