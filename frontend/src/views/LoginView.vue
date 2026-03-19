@@ -132,47 +132,47 @@ const scrollToLogin = () => {
             </p>
           </div>
 
-          <!-- Feature 1 -->
+          <!-- Login help 1: Which broker -->
           <div class="flex items-start space-x-4">
             <div class="w-14 h-14 feature-icon-green rounded-2xl flex items-center justify-center flex-shrink-0">
               <svg class="w-7 h-7 text-white" width="28" height="28" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
             <div>
-              <h3 class="text-lg font-semibold text-gray-900">Advanced Strategy Builder</h3>
+              <h3 class="text-lg font-semibold text-gray-900">Which broker should I select?</h3>
               <p class="text-gray-500">
-                Build complex multi-leg options strategies with real-time P/L visualization, breakeven analysis, and risk metrics.
+                Choose your trading broker from the dropdown. Zerodha and Upstox use OAuth (no password needed). AngelOne and Dhan use your Client ID and PIN.
               </p>
             </div>
           </div>
 
-          <!-- Feature 2 -->
+          <!-- Login help 2: Security -->
           <div class="flex items-start space-x-4">
             <div class="w-14 h-14 feature-icon-blue rounded-2xl flex items-center justify-center flex-shrink-0">
               <svg class="w-7 h-7 text-white" width="28" height="28" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
               </svg>
             </div>
             <div>
-              <h3 class="text-lg font-semibold text-gray-900">Live Market Data</h3>
+              <h3 class="text-lg font-semibold text-gray-900">Is it safe to connect?</h3>
               <p class="text-gray-500">
-                Stream real-time prices via WebSocket. Track option chains with IV, Greeks, and open interest analysis.
+                OAuth brokers redirect to your broker's own site — we never see your password. Your login credentials are never stored on our servers.
               </p>
             </div>
           </div>
 
-          <!-- Feature 3 -->
+          <!-- Login help 3: Troubleshooting -->
           <div class="flex items-start space-x-4">
             <div class="w-14 h-14 feature-icon-purple rounded-2xl flex items-center justify-center flex-shrink-0">
               <svg class="w-7 h-7 text-white" width="28" height="28" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
             </div>
             <div>
-              <h3 class="text-lg font-semibold text-gray-900">Secure Broker Integration</h3>
+              <h3 class="text-lg font-semibold text-gray-900">Having trouble logging in?</h3>
               <p class="text-gray-500">
-                Connect securely via OAuth. Your credentials are never stored - we only use authorized API access.
+                Zerodha tokens expire daily at ~6 AM IST — reconnect each morning. For AngelOne, use your 6-digit TOTP from your authenticator app.
               </p>
             </div>
           </div>

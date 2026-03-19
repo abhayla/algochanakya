@@ -43,7 +43,18 @@ onMounted(async () => {
               Here's your trading overview for today.
             </p>
           </div>
-          <DataSourceBadge screen="dashboard" />
+          <div class="dashboard-header-right">
+            <DataSourceBadge screen="dashboard" />
+            <a
+              href="https://github.com/algochanakya/algochanakya/wiki"
+              target="_blank"
+              rel="noopener"
+              class="help-btn"
+              title="Help — keyboard shortcuts, getting started, and FAQs"
+              data-testid="dashboard-help-btn"
+              aria-label="Help and documentation"
+            >?</a>
+          </div>
         </div>
 
         <!-- Quick Actions -->
@@ -211,6 +222,33 @@ onMounted(async () => {
   justify-content: space-between;
   align-items: flex-start;
   margin-bottom: 32px;
+}
+
+.dashboard-header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.help-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1.5px solid #d1d5db;
+  color: #6b7280;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  background: white;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.help-btn:hover {
+  border-color: #3b82f6;
+  color: #3b82f6;
 }
 
 .dashboard-title {

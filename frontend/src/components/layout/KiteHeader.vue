@@ -131,6 +131,8 @@
             <span class="user-broker">{{ brokerDisplayName }}</span>
           </div>
           <div class="dropdown-divider"></div>
+          <div class="dropdown-shortcut-hint">Press <kbd>U</kbd> to toggle</div>
+          <div class="dropdown-divider"></div>
           <button class="dropdown-item" @click="router.push('/settings'); showUserDropdown = false" data-testid="kite-header-settings-button">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="12" cy="12" r="3"/>
@@ -265,6 +267,19 @@ const closeDropdown = (e) => {
   }
 };
 
+const handleKeydown = (e) => {
+  // Skip when focus is inside an input, textarea, or contenteditable
+  const tag = document.activeElement?.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || document.activeElement?.isContentEditable) return;
+
+  if (e.key === 'u' || e.key === 'U') {
+    e.preventDefault();
+    toggleUserDropdown();
+  } else if (e.key === 'Escape' && showUserDropdown.value) {
+    showUserDropdown.value = false;
+  }
+};
+
 const logout = async () => {
   await authStore.logout();
   watchlistStore.disconnectWebSocket();
@@ -278,6 +293,7 @@ watch(() => watchlistStore.isConnected, (connected) => {
 
 onMounted(() => {
   document.addEventListener('click', closeDropdown);
+  document.addEventListener('keydown', handleKeydown);
 
   // Fetch index prices via API as initial data (fallback for WebSocket)
   // Wait a bit for WebSocket to potentially connect first
@@ -299,6 +315,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   document.removeEventListener('click', closeDropdown);
+  document.removeEventListener('keydown', handleKeydown);
   stopPollingFallback();
 });
 </script>
@@ -609,5 +626,26 @@ onUnmounted(() => {
   height: 1px;
   background: #e0e0e0;
   margin: 4px 0;
+}
+
+.dropdown-shortcut-hint {
+  padding: 2px 12px 4px;
+  font-size: 11px;
+  color: #9ca3af;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.dropdown-shortcut-hint kbd {
+  display: inline-block;
+  padding: 1px 5px;
+  border: 1px solid #d1d5db;
+  border-radius: 3px;
+  font-size: 10px;
+  font-family: monospace;
+  background: #f9fafb;
+  color: #6b7280;
+  line-height: 1.4;
 }
 </style>
