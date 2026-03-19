@@ -230,6 +230,10 @@ KITE_REDIRECT_URL=http://localhost:8001/api/auth/zerodha/callback  # dev
 # Production: https://algochanakya.com/api/auth/zerodha/callback
 ```
 
+### App Setup
+
+See [kite-app-setup.md](./kite-app-setup.md) for complete step-by-step instructions on creating the Kite Connect app on the developer portal.
+
 ## Common Auth Errors
 
 | Symptom | Cause | Fix |

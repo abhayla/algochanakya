@@ -66,6 +66,15 @@ See [zerodha-overview.md](./references/zerodha-overview.md) for complete company
 
 See [zerodha-overview.md](./references/zerodha-overview.md) for detailed charges and exchange support.
 
+### Kite Connect App Setup
+
+For step-by-step instructions on creating a Kite Connect app, getting API keys, and configuring `.env`, see **[kite-app-setup.md](./references/kite-app-setup.md)**. Key points:
+
+- Use **Personal (Free)** type for OAuth login — no paid plan needed
+- Register redirect URL: `http://localhost:8001/api/auth/zerodha/callback` (dev)
+- App is restricted to a single Zerodha Client ID
+- SEBI static IP requirement coming April 2026
+
 ---
 
 ## 3. Kite Connect API
