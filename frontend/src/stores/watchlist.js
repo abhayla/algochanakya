@@ -239,6 +239,11 @@ export const useWatchlistStore = defineStore('watchlist', () => {
             console.log('Subscribed to tokens:', message.tokens)
           } else if (message.type === 'unsubscribed') {
             console.log('Unsubscribed from tokens:', message.tokens)
+          } else if (message.type === 'source_changed') {
+            // Live broker switch triggered by user changing market data source in Settings
+            if (message.data?.to_broker) {
+              useBrokerPreferencesStore().setActiveSource(message.data.to_broker)
+            }
           } else if (message.type === 'pong') {
             // Keepalive response - no action needed
           } else if (message.type === 'error') {

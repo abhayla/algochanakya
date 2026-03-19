@@ -238,6 +238,57 @@ class TickerRouter:
     # FAILOVER
     # ═══════════════════════════════════════════════════════════════════════
 
+    async def switch_user_broker(self, user_id: str, to_broker: str) -> None:
+        """
+        Switch a single user's broker live — called when user changes market data source preference.
+
+        Unsubscribes existing tokens from old broker, re-subscribes on new broker,
+        and sends a "source_changed" WebSocket message to update the frontend badge.
+        """
+        user = self._users.get(user_id)
+        if not user:
+            return  # User not connected — preference will be applied on next connect
+
+        old_broker = user["broker_type"]
+        if old_broker == to_broker:
+            return  # Already on the right broker
+
+        tokens = list(user.get("subscribed_tokens", set()))
+        mode = "quote"
+
+        # Unsubscribe from old broker
+        if tokens and self._pool:
+            try:
+                await self._pool.unsubscribe(old_broker, tokens)
+            except Exception as e:
+                logger.warning("switch_user_broker: unsubscribe from %s failed: %s", old_broker, e)
+
+        # Update broker in-place
+        user["broker_type"] = to_broker
+
+        # Re-subscribe on new broker
+        if tokens and self._pool:
+            try:
+                await self._pool.subscribe(to_broker, tokens, mode)
+            except Exception as e:
+                logger.warning("switch_user_broker: subscribe to %s failed: %s", to_broker, e)
+
+        # Notify frontend so badge updates immediately
+        ws: WebSocket = user["websocket"]
+        try:
+            if ws.client_state == WebSocketState.CONNECTED:
+                await ws.send_text(json.dumps({
+                    "type": "source_changed",
+                    "data": {
+                        "from_broker": old_broker,
+                        "to_broker": to_broker,
+                    },
+                }))
+        except Exception:
+            pass
+
+        logger.info("User %s switched broker %s → %s", user_id, old_broker, to_broker)
+
     async def switch_users_broker(self, from_broker: str, to_broker: str) -> None:
         """
         Switch all users on from_broker to to_broker.

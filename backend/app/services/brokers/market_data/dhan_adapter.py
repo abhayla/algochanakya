@@ -170,7 +170,7 @@ class DhanMarketDataAdapter(MarketDataBrokerAdapter):
 
             return unified_quotes
 
-        except (AuthenticationError, InvalidSymbolError):
+        except (AuthenticationError, InvalidSymbolError, DataNotAvailableError):
             raise
         except Exception as e:
             logger.error(f"[Dhan] get_quote error: {e}")
@@ -206,7 +206,7 @@ class DhanMarketDataAdapter(MarketDataBrokerAdapter):
 
             return ltp_map
 
-        except (AuthenticationError, InvalidSymbolError):
+        except (AuthenticationError, InvalidSymbolError, DataNotAvailableError):
             raise
         except Exception as e:
             logger.error(f"[Dhan] get_ltp error: {e}")
@@ -455,7 +455,18 @@ class DhanMarketDataAdapter(MarketDataBrokerAdapter):
                 response = await client.post(url, headers=self._headers, json=body)
 
             if response.status_code == 401:
-                raise AuthenticationError("dhan", "Invalid or expired access token")
+                # Dhan market data API requires BOTH valid credentials AND a paid Data API
+                # subscription (₹499/month or 25 F&O trades/month). Known error codes:
+                #   806 = "Data APIs not Subscribed"
+                #   810 = "ClientId is invalid"
+                # Any 401 on market data endpoints means the account is not set up for
+                # market data access — raise DataNotAvailableError so tests can skip.
+                body_text = response.text
+                if "806" in body_text:
+                    raise DataNotAvailableError("dhan", f"Data APIs not subscribed (error 806). Subscribe at web.dhan.co → Profile → DhanHQ Trading APIs. Response: {body_text}")
+                if "810" in body_text:
+                    raise DataNotAvailableError("dhan", f"Invalid client ID (error 810). Check DHAN_CLIENT_ID in .env. Response: {body_text}")
+                raise DataNotAvailableError("dhan", f"Market data access denied (HTTP 401). Check credentials and Data API subscription. Response: {body_text}")
 
             response.raise_for_status()
             return response.json()
@@ -752,6 +763,16 @@ def _row_to_segment(row: dict) -> str:
     return "NSE_EQ"
 
 
+_DHAN_INDEX_TO_CANONICAL = {
+    "NIFTY": "NIFTY 50",
+    "BANKNIFTY": "NIFTY BANK",
+    "FINNIFTY": "NIFTY FIN SERVICE",
+    "MIDCPNIFTY": "NIFTY MID SELECT",
+    "SENSEX": "SENSEX",
+    "BANKEX": "BSE-BANKEX",
+}
+
+
 def _row_to_canonical_symbol(row: dict) -> Optional[str]:
     """
     Convert a Dhan CSV row to a canonical symbol (Kite format).
@@ -760,9 +781,13 @@ def _row_to_canonical_symbol(row: dict) -> Optional[str]:
         NIFTY-Feb2026-24000-CE -> NIFTY26FEB24000CE
         NIFTY-Feb2026-FUT      -> NIFTY26FEBFUT
         HDFCBANK               -> HDFCBANK (no change)
+        NIFTY (INDEX)          -> NIFTY 50
     """
     instrument_name = row.get("SEM_INSTRUMENT_NAME", "")
     trading_symbol = row.get("SEM_TRADING_SYMBOL", "")
+
+    if instrument_name == "INDEX":
+        return _DHAN_INDEX_TO_CANONICAL.get(trading_symbol.strip())
 
     if instrument_name == "EQUITY":
         return trading_symbol.strip()
@@ -803,11 +828,14 @@ def _format_expiry_to_canonical(expiry_str: str) -> Optional[str]:
     Convert Dhan expiry date string to canonical format.
 
     "2026-02-27" -> "26FEB"
+    "2026-02-27 14:30:00" -> "26FEB"
     """
     if not expiry_str or not expiry_str.strip():
         return None
+    # Strip to date-only part (handles "2026-05-26 14:30:00" from CSV)
+    date_part = expiry_str.strip()[:10]
     try:
-        dt = datetime.strptime(expiry_str.strip(), "%Y-%m-%d")
+        dt = datetime.strptime(date_part, "%Y-%m-%d")
         return dt.strftime("%y%b").upper()  # "26FEB"
     except (ValueError, TypeError):
         return None

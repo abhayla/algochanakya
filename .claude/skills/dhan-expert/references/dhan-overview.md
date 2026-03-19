@@ -82,10 +82,19 @@
 ## AlgoChanakya Usage
 
 In AlgoChanakya, Dhan is used for:
-- **Order execution** via DhanOrderAdapter (fully implemented)
-- **Market data** via DhanMarketDataAdapter (fully implemented)
-- **WebSocket ticks** via Little Endian binary ticker adapter (fully implemented)
-- **Second in failover chain** — Platform data failover: SmartAPI → Dhan → Fyers → Paytm → Upstox → Kite Connect
-- **Data API cost caveat** — Free only with 25 F&O trades/month, otherwise ₹499/month
+- **Order execution** via DhanOrderAdapter (fully implemented) — Trading API is always FREE
+- **Market data** via DhanMarketDataAdapter — **user-level only**, NOT platform-level
+- **WebSocket ticks** via Little Endian binary ticker adapter — **user-level only**, NOT platform-level
+- **Failover chain note** — Dhan is listed second in the platform data failover chain (SmartAPI → **Dhan** → Fyers → Paytm → Upstox → Kite), BUT it can only serve as a failover for users with an active paid Data API subscription (₹499/month or 25 F&O trades/month per account). It is NOT a universal platform-level fallback.
+- **Platform market data** = SmartAPI (`.env` credentials, free for all users). Dhan data = per-user opt-in via Settings page.
+
+### Data API Subscription Flow (User Level)
+
+1. User logs in with Dhan credentials
+2. User goes to Settings → Dhan → enters Client ID + Access Token
+3. If their Dhan account has paid Data API subscription → market data works
+4. If not subscribed → API returns HTTP 401 with `{"data":{"806":"Data APIs not Subscribed"}}`
+5. Backend raises `DataNotAvailableError` (not `AuthenticationError`) — this is NOT an auth failure
+6. User must subscribe at: `web.dhan.co` → Profile → DhanHQ Trading APIs → Data API subscription (₹499/month)
 
 See [SKILL.md](../SKILL.md) for complete DhanHQ API reference and adapter implementation details.

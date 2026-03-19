@@ -3,7 +3,7 @@ name: dhan-expert
 description: Dhan expert — broker overview, products, pricing, DhanHQ API,
   and AlgoChanakya adapter guidance. Use for any Dhan question.
 version: "3.1"
-last_verified: "2026-03-18"
+last_verified: "2026-03-19"
 ---
 
 # Dhan Expert
@@ -66,7 +66,11 @@ See [dhan-overview.md](./references/dhan-overview.md) for complete company profi
 | **Trading API** | FREE | Order execution, positions, holdings, margins |
 | **Data API** | FREE (with 25 F&O trades/mo) OR ₹499/month | Market data WebSocket, historical data, option chain |
 
-**AlgoChanakya impact:** Since SmartAPI provides free market data, AlgoChanakya uses Dhan as a failover data source. Trading API is free for all users. Data API requires either active F&O trading (25 trades/month) or ₹499/month subscription.
+**AlgoChanakya impact:**
+- **Trading API** is free for all users — used for order execution (place/cancel/positions).
+- **Data API** requires 25 F&O trades/month OR ₹499/month. **This is per user** — there is no platform-level free tier.
+- **Consequence:** Dhan Data API (market data WebSocket, historical, option chain) is **NOT used at the platform level**. It is only available when an individual user configures and pays for it in their Settings page.
+- **Platform market data** uses SmartAPI (free, platform-level via `.env` credentials). Dhan is listed in the failover chain but cannot serve as a universal fallback because its Data API is paid per-user, not platform-level.
 
 See [dhan-overview.md](./references/dhan-overview.md) for detailed charges and exchange support.
 
@@ -363,10 +367,36 @@ Dhan returns all prices in RUPEES. No paise conversion needed.
 | HTTP Status | Error | Cause | Retryable |
 |-------------|-------|-------|-----------|
 | `400` | Bad Request | Invalid parameters | No |
-| `401` | Unauthorized | Invalid/expired token | No |
+| `401` + body has `"806"` | **Data APIs not Subscribed** | User hasn't paid ₹499/month OR done 25 F&O trades/month | No — subscription required |
+| `401` (no 806) | Unauthorized | Invalid/expired access token | No — regenerate token |
 | `403` | Forbidden | Permissions issue | No |
 | `429` | Rate Limited | Exceeded rate limit | Yes - backoff |
 | `500` | Server Error | Dhan server issue | Yes - retry |
+
+#### CRITICAL: Error 806 — Data APIs not Subscribed
+
+When a Dhan account does NOT have an active Data API subscription, **all market data endpoints** (`/v2/marketfeed/ltp`, `/v2/marketfeed/quote`, `/v2/charts/historical`, etc.) return:
+
+```json
+HTTP 401
+{
+  "data": {"806": "Data APIs not Subscribed"},
+  "status": "failed"
+}
+```
+
+**This is NOT an auth error — the access token is valid.** The account simply has no market data subscription.
+
+**In `dhan_adapter.py`:** The `_make_request` method detects error 806 by checking if `"806"` appears in the response body text, and raises `DataNotAvailableError` (not `AuthenticationError`):
+
+```python
+if response.status_code == 401:
+    if "806" in response.text:
+        raise DataNotAvailableError("dhan", "Data APIs not subscribed (error 806).")
+    raise AuthenticationError("dhan", "Invalid or expired access token")
+```
+
+**In tests:** Catch `DataNotAvailableError` and call `pytest.skip()`. Never fail on error 806 — it's a subscription config issue, not a code bug.
 
 See [error-codes.md](./references/error-codes.md) for complete error catalog.
 
@@ -406,7 +436,7 @@ order_id = await adapter.place_order(order_params)
 
 ## 5. Common Gotchas
 
-1. **Two-tier pricing model** - Trading APIs are FREE, but Data APIs (market data WebSocket) require 25 F&O trades/month OR ₹499/month subscription. Common confusion point.
+1. **Two-tier pricing model — Data API is per-user, not platform-level** - Trading APIs are FREE for all users. Data APIs (market data WebSocket, historical, option chain) require 25 F&O trades/month OR ₹499/month subscription — **per user, per account**. There is no platform-level free tier for Dhan Data APIs. AlgoChanakya does NOT use Dhan for platform-level market data; it uses SmartAPI (which has no per-user cost). Dhan Data API is only enabled when a **user individually subscribes** via their own Dhan account and configures it in the Settings page. Don't confuse Dhan's place in the "failover chain" (architecture doc) with platform-level availability — it can only fail over for users who have paid for the Data API.
 
 2. **Little Endian binary** - Use `struct.unpack('<...')` NOT `'>'`. This is unique among Indian brokers.
 
@@ -430,7 +460,11 @@ order_id = await adapter.place_order(order_params)
 
 12. **P&L Exit immediate trigger** - Setting `profitValue` below current unrealized P&L triggers exit immediately on the API call.
 
-13. **Data API unlock requirement** - Must execute 25 F&O trades monthly to unlock free data access, otherwise ₹499/month subscription required.
+13. **Data API unlock requirement** - Must execute 25 F&O trades monthly to unlock free data access per account, otherwise ₹499/month subscription required per account.
+
+20. **Error 806 ≠ AuthenticationError** - Dhan returns HTTP 401 for BOTH invalid tokens AND missing Data API subscriptions. The body distinguishes them: `{"data":{"806":"Data APIs not Subscribed"},"status":"failed"}` means subscription missing, NOT a bad token. The adapter MUST check `"806" in response.text` before raising `AuthenticationError`, and raise `DataNotAvailableError` instead. Live tests that hit error 806 MUST `pytest.skip()` — not fail.
+
+21. **Dhan WebSocket requires active market hours** - The market data WebSocket (`wss://api-feed.dhan.co`) returns HTTP 400 outside market hours (before 9:00 AM and after 3:30 PM IST). WebSocket tests for Dhan will always fail outside market hours; treat as skip, not failure.
 
 14. **Instrument CSV download** - `https://images.dhan.co/api-data/api-scrip-master.csv` — download daily before market open (~8:30 AM IST).
 

@@ -42,6 +42,7 @@
     "test:oauth:auto": "playwright test tests/e2e/specs/integration/oauth-full-flow.spec.js --headed --timeout=120000 --workers=1",
     "test:specs:ai": "playwright test tests/e2e/specs/ai/",
     "test:specs:auth": "playwright test tests/e2e/specs/auth/",
+    "test:specs:settings": "playwright test tests/e2e/specs/settings/",
     "test:specs:integration": "playwright test tests/e2e/specs/integration/",
     "generate:test": "node tests/e2e/scripts/generate-test.js",
     "capture:screenshots": "node tests/e2e/utils/screenshot-capture.js",

@@ -181,6 +181,7 @@ async def _ensure_broker_credentials(
 
     elif broker_type == MarketDataSource.UPSTOX:
         # Upstox uses OAuth token from platform .env (~1 year validity)
+        logger.info("[DEBUG] UPSTOX check: api_key=%s token_len=%d", bool(settings.UPSTOX_API_KEY), len(settings.UPSTOX_ACCESS_TOKEN or ""))
         if settings.UPSTOX_API_KEY and settings.UPSTOX_ACCESS_TOKEN:
             pool.set_credentials("upstox", {
                 "api_key": settings.UPSTOX_API_KEY,

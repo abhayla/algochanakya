@@ -316,10 +316,11 @@ async def get_market_data_source(
     from app.models.broker_connections import BrokerConnection
     kite_result = await db.execute(
         select(BrokerConnection).where(
-            BrokerConnection.user_id == user.id
+            BrokerConnection.user_id == user.id,
+            BrokerConnection.broker == "zerodha",
         )
     )
-    kite_connection = kite_result.scalar_one_or_none()
+    kite_connection = kite_result.scalars().first()
 
     source = MarketDataSource.SMARTAPI
     if preferences:
@@ -362,10 +363,11 @@ async def update_market_data_source(
     from app.models.broker_connections import BrokerConnection
     kite_result = await db.execute(
         select(BrokerConnection).where(
-            BrokerConnection.user_id == user.id
+            BrokerConnection.user_id == user.id,
+            BrokerConnection.broker == "zerodha",
         )
     )
-    kite_connection = kite_result.scalar_one_or_none()
+    kite_connection = kite_result.scalars().first()
 
     # Validate selected source is configured
     if request.source == MarketDataSource.SMARTAPI:
@@ -402,6 +404,17 @@ async def update_market_data_source(
     await db.commit()
 
     logger.info(f"[SmartAPI] Market data source updated to {request.source} for user {user.id}")
+
+    # Live-switch the user's existing WebSocket connection to the new broker.
+    # If the user is connected, this re-routes their ticks immediately so the
+    # frontend badge updates without requiring a page refresh.
+    try:
+        from app.services.brokers.market_data.ticker import TickerRouter
+        ticker_router = TickerRouter.get_instance()
+        await ticker_router.switch_user_broker(str(user.id), request.source)
+    except Exception as e:
+        logger.warning("[SmartAPI] Live broker switch failed for user %s: %s", user.id, e)
+        # Non-fatal — preference is saved; change takes effect on next WebSocket reconnect
 
     return MarketDataSourceResponse(
         source=request.source,
