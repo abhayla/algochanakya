@@ -10,6 +10,9 @@ from app.config import settings
 from app.database import init_db, close_db, AsyncSessionLocal
 from app.api.routes import health, auth, watchlist, instruments, websocket, options, strategy, orders, optionchain, positions, strategy_wizard, constants, user_preferences, ofo, smartapi, ticker
 from app.api.routes import dhan_auth, upstox_auth, fyers_auth, paytm_auth
+from app.api.routes import zerodha_credentials as zerodha_creds_router
+from app.api.routes import upstox_credentials as upstox_creds_router
+from app.api.routes import dhan_credentials as dhan_creds_router
 from app.api.v1.autopilot import router as autopilot_router
 from app.api.v1.ai import router as ai_router
 from app.websocket.routes import router as autopilot_ws_router
@@ -258,6 +261,9 @@ app.include_router(strategy_wizard.router, prefix="/api/strategy-library", tags=
 app.include_router(constants.router, prefix="/api/constants", tags=["Constants"])
 app.include_router(user_preferences.router, prefix="/api/user/preferences", tags=["User Preferences"])
 app.include_router(smartapi.router, prefix="/api/smartapi", tags=["SmartAPI"])
+app.include_router(zerodha_creds_router.router, prefix="/api/zerodha-credentials", tags=["Zerodha Credentials"])
+app.include_router(upstox_creds_router.router, prefix="/api/upstox-credentials", tags=["Upstox Credentials"])
+app.include_router(dhan_creds_router.router, prefix="/api/dhan-credentials", tags=["Dhan Credentials"])
 app.include_router(autopilot_router, prefix="/api/v1/autopilot", tags=["AutoPilot"])
 app.include_router(ai_router, prefix="/api/v1/ai", tags=["AI"])
 app.include_router(ticker.router, prefix="/api", tags=["Ticker"])

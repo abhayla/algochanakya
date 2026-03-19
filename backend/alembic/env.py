@@ -14,7 +14,8 @@ from app.config import settings
 from app.database import Base
 from app.models import (
     User, BrokerConnection, Watchlist, Instrument, Strategy, StrategyLeg, StrategyTemplate,
-    UserPreferences, SmartAPICredentials, BrokerInstrumentToken,
+    UserPreferences, SmartAPICredentials, ZerodhaCredentials, UpstoxCredentials, DhanCredentials,
+    BrokerInstrumentToken,
     AutoPilotUserSettings, AutoPilotStrategy, AutoPilotOrder, AutoPilotLog,
     AutoPilotTemplate, AutoPilotConditionEval, AutoPilotDailySummary, AutoPilotTradeJournal,
     AIUserConfig, AIModelRegistry, AILearningReport, AIPaperTrade,

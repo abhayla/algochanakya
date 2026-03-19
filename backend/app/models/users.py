@@ -40,5 +40,16 @@ class User(Base):
         "SmartAPICredentials", back_populates="user", uselist=False
     )
 
+    # Broker Tier 3 credentials
+    zerodha_credentials = relationship(
+        "ZerodhaCredentials", back_populates="user", uselist=False
+    )
+    upstox_credentials = relationship(
+        "UpstoxCredentials", back_populates="user", uselist=False
+    )
+    dhan_credentials = relationship(
+        "DhanCredentials", back_populates="user", uselist=False
+    )
+
     def __repr__(self):
         return f"<User {self.id} first_name={self.first_name} email={self.email}>"
