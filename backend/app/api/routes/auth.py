@@ -18,6 +18,7 @@ from app.schemas import UserResponse, BrokerConnectionResponse
 from app.utils.jwt import create_access_token
 from app.utils.dependencies import get_current_user
 from app.utils.encryption import decrypt
+from app.utils.user_resolver import resolve_or_create_user
 from app.services.legacy.smartapi_auth import get_smartapi_auth, SmartAPIAuthError
 
 
@@ -102,24 +103,11 @@ async def zerodha_callback(
         email = profile.get("email")  # May be None
         user_name = profile.get("user_name", "")
 
-        # Check if user exists
-        result = await db.execute(
-            select(User).join(BrokerConnection).where(
-                BrokerConnection.broker == "zerodha",
-                BrokerConnection.broker_user_id == broker_user_id
-            )
+        # Resolve or create user (prevents duplicates across brokers)
+        user = await resolve_or_create_user(
+            db=db, broker="zerodha", broker_user_id=broker_user_id,
+            email=email, name=user_name
         )
-        user = result.scalar_one_or_none()
-
-        if not user:
-            # Create new user
-            user = User(email=email)
-            db.add(user)
-            await db.flush()  # Get user.id
-
-        # Update first_name from Kite profile
-        if user_name and not user.first_name:
-            user.first_name = user_name.split()[0].capitalize() if user_name else None
 
         # Update last login
         user.last_login = datetime.utcnow()
@@ -474,25 +462,11 @@ async def angelone_login(
 
         logger.info(f"[AngelOne] Authenticated user: {broker_user_id} ({client_name})")
 
-        # Check if user exists with this AngelOne account
-        result = await db.execute(
-            select(User).join(BrokerConnection).where(
-                BrokerConnection.broker == "angelone",
-                BrokerConnection.broker_user_id == broker_user_id
-            )
+        # Resolve or create user (prevents duplicates across brokers)
+        user = await resolve_or_create_user(
+            db=db, broker="angelone", broker_user_id=broker_user_id,
+            email=email, name=client_name
         )
-        user = result.scalar_one_or_none()
-
-        if not user:
-            # Create new user
-            user = User(email=email)
-            db.add(user)
-            await db.flush()
-            logger.info(f"[AngelOne] Created new user for {broker_user_id}")
-
-        # Update first_name from profile (extract first name from full name)
-        if client_name and client_name != broker_user_id:
-            user.first_name = client_name.split()[0].capitalize() if client_name else None
 
         # Update last login
         user.last_login = datetime.utcnow()

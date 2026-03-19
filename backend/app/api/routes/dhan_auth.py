@@ -16,6 +16,7 @@ from app.config import settings
 from app.models import User, BrokerConnection
 from app.utils.jwt import create_access_token
 from app.utils.dependencies import get_current_user
+from app.utils.user_resolver import resolve_or_create_user
 
 logger = logging.getLogger(__name__)
 
@@ -64,19 +65,10 @@ async def dhan_login(
 
         broker_user_id = body.client_id
 
-        # Find or create user
-        result = await db.execute(
-            select(User).join(BrokerConnection).where(
-                BrokerConnection.broker == "dhan",
-                BrokerConnection.broker_user_id == broker_user_id,
-            )
+        # Resolve or create user (prevents duplicates across brokers)
+        user = await resolve_or_create_user(
+            db=db, broker="dhan", broker_user_id=broker_user_id
         )
-        user = result.scalar_one_or_none()
-
-        if not user:
-            user = User()
-            db.add(user)
-            await db.flush()
 
         user.last_login = datetime.utcnow()
 

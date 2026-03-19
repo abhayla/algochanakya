@@ -19,6 +19,7 @@ from app.config import settings
 from app.models import User, BrokerConnection
 from app.utils.jwt import create_access_token
 from app.utils.dependencies import get_current_user
+from app.utils.user_resolver import resolve_or_create_user
 
 logger = logging.getLogger(__name__)
 
@@ -102,23 +103,11 @@ async def paytm_callback(
             broker_user_id = profile.get("client_id") or profile.get("user_id") or "unknown"
             email = profile.get("email")
 
-        # Find or create user — first by existing Paytm connection, then by email
-        result = await db.execute(
-            select(User).join(BrokerConnection).where(
-                BrokerConnection.broker == "paytm",
-                BrokerConnection.broker_user_id == broker_user_id,
-            )
+        # Resolve or create user (prevents duplicates across brokers)
+        user = await resolve_or_create_user(
+            db=db, broker="paytm", broker_user_id=broker_user_id,
+            email=email
         )
-        user = result.scalar_one_or_none()
-
-        if not user and email:
-            result = await db.execute(select(User).where(User.email == email))
-            user = result.scalar_one_or_none()
-
-        if not user:
-            user = User(email=email)
-            db.add(user)
-            await db.flush()
 
         user.last_login = datetime.utcnow()
 
