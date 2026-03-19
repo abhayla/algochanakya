@@ -10,10 +10,18 @@ import { prepareForVisualTest, getVisualCompareOptions, VIEWPORTS } from '../../
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 
+// .isolated.spec.js — runs with a fresh browser context (no auth state)
+// so /login renders instead of redirecting to /dashboard.
+
 test.describe('Login - Visual Regression @visual', () => {
   let loginPage;
 
   test.beforeEach(async ({ page }) => {
+    // Clear auth tokens before page scripts run — prevents router redirect to /dashboard
+    await page.addInitScript(() => {
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('token');
+    });
     loginPage = new LoginPage(page);
     await page.goto(FRONTEND_URL + '/login');
     await loginPage.waitForPageLoad();
@@ -59,7 +67,7 @@ test.describe('Login - Visual Regression @visual', () => {
 
   test('error state matches baseline', async ({ page }) => {
     await page.setViewportSize(VIEWPORTS.desktop);
-    await loginPage.clickAngelOneLogin(); // Triggers error message
+    await loginPage.triggerValidationError(); // Select AngelOne + submit without credentials → validation error
     await page.waitForLoadState('domcontentloaded');
     await prepareForVisualTest(page);
     await expect(page).toHaveScreenshot(

@@ -27,7 +27,9 @@ test.describe('Dashboard - Happy Path @happy', () => {
 
   test('displays welcome message', async () => {
     await expect(dashboardPage.title).toBeVisible();
-    await expect(dashboardPage.title).toContainText('Welcome');
+    // Title shows a time-based greeting with user name, e.g. "Good morning, Abhay"
+    const titleText = await dashboardPage.title.textContent();
+    expect(titleText).toMatch(/Good (morning|afternoon|evening)/i);
   });
 
   test('all five navigation cards are visible', async () => {
@@ -78,8 +80,9 @@ test.describe('Dashboard - Happy Path @happy', () => {
     expect(numericValue).toBeGreaterThan(0);
   });
 
-  test('header shows all four index prices', async ({ authenticatedPage }) => {
-    const indices = ['nifty50', 'niftybank', 'finnifty', 'sensex'];
+  test('header shows both index prices', async ({ authenticatedPage }) => {
+    // Header shows NIFTY 50 and SENSEX (the two primary indices)
+    const indices = ['nifty50', 'sensex'];
     for (const index of indices) {
       const priceEl = authenticatedPage.getByTestId(`kite-header-index-value-${index}`);
       await expect(priceEl).not.toHaveText('--', { timeout: 5000 });

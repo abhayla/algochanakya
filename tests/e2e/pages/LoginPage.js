@@ -20,12 +20,12 @@ export class LoginPage extends BasePage {
     return this.getByTestId('login-page');
   }
 
-  get zerodhaButton() {
-    return this.getByTestId('login-zerodha-button');
+  get brokerSelect() {
+    return this.getByTestId('login-broker-select');
   }
 
-  get angelOneButton() {
-    return this.getByTestId('login-angelone-button');
+  get submitButton() {
+    return this.getByTestId('login-submit-button');
   }
 
   get errorMessage() {
@@ -36,22 +36,72 @@ export class LoginPage extends BasePage {
     return this.getByTestId('login-safety-toggle');
   }
 
+  // AngelOne inline fields
+  get angelOneFields() {
+    return this.getByTestId('login-angelone-fields');
+  }
+
+  get angelOneClientId() {
+    return this.getByTestId('login-angelone-client-id');
+  }
+
+  get angelOnePin() {
+    return this.getByTestId('login-angelone-pin');
+  }
+
+  get angelOneTotp() {
+    return this.getByTestId('login-angelone-totp');
+  }
+
+  // Dhan inline fields
+  get dhanFields() {
+    return this.getByTestId('login-dhan-fields');
+  }
+
+  get dhanClientId() {
+    return this.getByTestId('login-dhan-client-id');
+  }
+
+  get dhanAccessToken() {
+    return this.getByTestId('login-dhan-access-token');
+  }
+
   // Actions
   async waitForPageLoad() {
     await this.waitForTestId('login-page');
     await this.waitForLoad();
   }
 
-  async clickZerodhaLogin() {
-    await this.zerodhaButton.click();
+  async selectBroker(broker) {
+    await this.brokerSelect.selectOption(broker);
   }
 
-  async clickAngelOneLogin() {
-    await this.angelOneButton.click();
+  async submitLogin() {
+    await this.submitButton.click();
+  }
+
+  async selectZerodhaAndSubmit() {
+    await this.selectBroker('zerodha');
+    await this.submitLogin();
+  }
+
+  async selectAngelOneAndFill(clientId, pin, totp) {
+    await this.selectBroker('angelone');
+    await this.angelOneFields.waitFor({ state: 'visible' });
+    await this.angelOneClientId.fill(clientId);
+    await this.angelOnePin.fill(pin);
+    await this.angelOneTotp.fill(totp);
+    await this.submitLogin();
   }
 
   async toggleSafetyInfo() {
     await this.safetyToggle.click();
+  }
+
+  // Attempt login without credentials to trigger error (for visual test)
+  async triggerValidationError() {
+    await this.selectBroker('angelone');
+    await this.submitLogin();
   }
 
   // Assertions
@@ -59,12 +109,8 @@ export class LoginPage extends BasePage {
     return await this.isTestIdVisible('login-page');
   }
 
-  async isZerodhaButtonVisible() {
-    return await this.isTestIdVisible('login-zerodha-button');
-  }
-
-  async isAngelOneButtonVisible() {
-    return await this.isTestIdVisible('login-angelone-button');
+  async isBrokerSelectVisible() {
+    return await this.isTestIdVisible('login-broker-select');
   }
 
   async hasError() {
