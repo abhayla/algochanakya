@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import api from '../services/api'
 import { getIndexToken, getAllIndexTokens } from '@/constants/trading'
+import { useBrokerPreferencesStore } from '@/stores/brokerPreferences'
 
 export const useWatchlistStore = defineStore('watchlist', () => {
   // State
@@ -231,7 +232,9 @@ export const useWatchlistStore = defineStore('watchlist', () => {
             }
           } else if (message.type === 'connected') {
             console.log('WebSocket connected to backend:', message.message)
-            console.log('Kite connected:', message.kite_connected)
+            if (message.source) {
+              useBrokerPreferencesStore().setActiveSource(message.source)
+            }
           } else if (message.type === 'subscribed') {
             console.log('Subscribed to tokens:', message.tokens)
           } else if (message.type === 'unsubscribed') {

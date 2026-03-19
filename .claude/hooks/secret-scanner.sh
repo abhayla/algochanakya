@@ -19,6 +19,7 @@
 #     }
 #   }
 
+export PATH="/d/Abhay/tools:$PATH"
 # Extract content to scan — Write uses "content", Edit uses "new_string"
 CONTENT=$(echo "$TOOL_INPUT" | jq -r '.content // .new_string // empty')
 FILE_PATH=$(echo "$TOOL_INPUT" | jq -r '.file_path // empty')

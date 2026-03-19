@@ -57,7 +57,9 @@ async def _get_market_data_source(user_id, db: AsyncSession) -> str:
     )
     prefs = result.scalar_one_or_none()
     if prefs and prefs.market_data_source:
-        return prefs.market_data_source
+        src = prefs.market_data_source
+        # "platform" means use platform default (SmartAPI is first in chain)
+        return MarketDataSource.SMARTAPI if src == MarketDataSource.PLATFORM else src
     return MarketDataSource.SMARTAPI
 
 

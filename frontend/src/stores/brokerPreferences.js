@@ -35,6 +35,7 @@ export const useBrokerPreferencesStore = defineStore('brokerPreferences', {
   state: () => ({
     preferences: null,   // null until fetched
     credentialStatus: null, // { smartapi: bool, kite: bool, ... }
+    activeSource: null,  // actual broker in use (set from WebSocket 'connected' message)
     loading: false,
     saving: false,
     error: null,
@@ -53,9 +54,10 @@ export const useBrokerPreferencesStore = defineStore('brokerPreferences', {
       return src === 'platform'
     },
 
-    /** Human-readable label for the active data source */
+    /** Human-readable label for the active data source.
+     *  Prefers the real-time source reported by WebSocket over stored preference. */
     activeSourceLabel: (state) => {
-      const src = state.preferences?.market_data_source ?? 'platform'
+      const src = state.activeSource ?? state.preferences?.market_data_source ?? 'platform'
       return SOURCE_LABELS[src] ?? src
     },
 
@@ -146,6 +148,16 @@ export const useBrokerPreferencesStore = defineStore('brokerPreferences', {
      */
     async setOrderBroker(broker) {
       return this.updatePreferences({ order_broker: broker })
+    },
+
+    /**
+     * Update the runtime-active data source from the WebSocket 'connected' message.
+     * This reflects the actual broker serving data (which may differ from preference
+     * when a fallback occurred).
+     * @param {string} source - e.g. 'smartapi', 'kite', 'dhan'
+     */
+    setActiveSource(source) {
+      this.activeSource = source
     },
   },
 })
