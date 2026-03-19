@@ -154,7 +154,7 @@ See [auth-flow.md](./references/auth-flow.md) for complete request/response exam
 
 ### Dual Credential System (Platform vs User)
 
-Upstox follows the same dual credential pattern as other brokers in AlgoChanakya. Understanding this distinction is critical.
+Upstox follows the same dual credential pattern as other brokers in AlgoChanakya. Understanding this distinction is critical. For the three-tier credential architecture (platform data API vs user login vs user personal API), see [authentication.md](../../../docs/architecture/authentication.md#three-tier-credential-architecture).
 
 #### Platform-Level Universal API (`.env` credentials)
 

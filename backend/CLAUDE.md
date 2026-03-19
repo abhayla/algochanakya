@@ -295,6 +295,8 @@ See [.claude/rules.md](../.claude/rules.md) for all enforced folder structure ru
 
 ## Environment Variables
 
+> **Note:** All `.env` credentials are platform-level (Tier 1: Data API or Tier 2: OAuth App Registration). Never store user-level credentials in `.env`. See [Three-Tier Credential Architecture](../docs/architecture/authentication.md#three-tier-credential-architecture).
+
 **Setup:** Copy `.env.example` to `.env` and update with actual values.
 
 **Backend (`backend/.env`):** `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET`, `JWT_ALGORITHM`, `JWT_EXPIRY_HOURS`, `KITE_API_KEY`, `KITE_API_SECRET`, `KITE_REDIRECT_URL`, `ANTHROPIC_API_KEY` (for AI), `FRONTEND_URL`

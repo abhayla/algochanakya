@@ -303,6 +303,75 @@ The platform maintains a shared SmartAPI (AngelOne) connection configured in `ba
 - **Failover chain:** SmartAPI → Dhan → Fyers → Paytm → Upstox → Kite
 - **No user interaction:** This runs entirely on the backend without any user involvement
 
+## Three-Tier Credential Architecture
+
+Every broker in AlgoChanakya has up to three independent credential tiers. These MUST NEVER be confused or mixed. This section is the single source of truth for how broker credentials work across the platform — all other documents should link here, not duplicate this content.
+
+### Tier 1: Platform Data API (`.env`)
+
+- **Purpose:** Universal market data (WebSocket, quotes, historical OHLC, instrument downloads) serving ALL users
+- **Stored in:** `backend/.env` — configured once by platform admin
+- **Scope:** Platform-wide, not per-user
+- **Examples:**
+  - AngelOne: `ANGEL_API_KEY` (live data), `ANGEL_HIST_API_KEY` (historical), `ANGEL_TRADE_API_KEY` (orders)
+  - Upstox: `UPSTOX_API_KEY`, `UPSTOX_API_SECRET`, `UPSTOX_LOGIN_PHONE`, `UPSTOX_LOGIN_PIN`, `UPSTOX_USER_ID`, `UPSTOX_TOTP_SECRET`
+  - Dhan: `DHAN_CLIENT_ID`, `DHAN_ACCESS_TOKEN`, `DHAN_LOGIN_PHONE`, `DHAN_LOGIN_PIN`, `DHAN_TOTP_SECRET`
+- **Not all brokers have this:** Zerodha has no Tier 1 (not used as platform data source; SmartAPI is the default)
+
+### Tier 2: Platform App Registration (`.env`)
+
+- **Purpose:** OAuth `client_id` and `client_secret` for the platform's registered app on the broker's developer portal. Enables the OAuth login redirect flow.
+- **Stored in:** `backend/.env` — configured once by platform admin after creating an app on the broker's developer portal
+- **Scope:** Platform-wide, not per-user
+- **Examples:**
+  - Zerodha: `KITE_API_KEY` (client_id), `KITE_API_SECRET` (client_secret), `KITE_REDIRECT_URL`
+  - Upstox: Same `UPSTOX_API_KEY`/`UPSTOX_API_SECRET` serve as both Tier 1 data API and Tier 2 OAuth app
+  - Dhan: `DHAN_API_KEY`, `DHAN_API_SECRET`, `DHAN_REDIRECT_URL`
+  - Fyers: `FYERS_API_KEY`, `FYERS_API_SECRET`, `FYERS_REDIRECT_URL`
+  - Paytm: `PAYTM_API_KEY`, `PAYTM_API_SECRET`
+- **Not all brokers have this:** AngelOne uses inline credentials (Client ID + PIN + TOTP), not OAuth redirect
+- **User tokens from OAuth are NOT stored in `.env`** — they go to `broker_connections.access_token` per user, per session
+
+### Tier 3: User Personal API (Settings Page → DB)
+
+- **Purpose:** Individual user configures their own broker API for personal market data (faster, direct quotes instead of shared platform data)
+- **Stored in:** Database, encrypted (e.g., `smartapi_credentials` table)
+- **Configured via:** Settings page in the frontend
+- **Scope:** Per-user — each user optionally sets up their own API
+- **Currently implemented for:** AngelOne (SmartAPISettings component)
+- **Planned for:** Upstox, Dhan, Zerodha
+- **Not planned for:** Fyers, Paytm
+
+### Per-Broker Tier Matrix
+
+| Broker | Tier 1 (Platform Data) | Tier 2 (OAuth App) | Tier 3 (User Personal API) |
+|--------|----------------------|-------------------|--------------------------|
+| AngelOne | Yes (3 keys in `.env`) | No (inline credentials) | Yes (SmartAPISettings) |
+| Upstox | Yes (7 keys in `.env`) | Yes (same keys serve both) | Planned |
+| Dhan | Yes (5 keys in `.env`) | Yes (`DHAN_API_KEY/SECRET`) | Planned |
+| Zerodha | No (not platform data source) | Yes (`KITE_API_KEY/SECRET`) | Planned |
+| Fyers | Placeholder | Yes (placeholder) | Not planned |
+| Paytm | Placeholder | Yes (placeholder) | Not planned |
+
+### Login Flow (User Authentication)
+
+The login page is completely separate from all three tiers:
+
+- **OAuth brokers** (Zerodha, Upstox, Fyers, Paytm): User clicks login → redirected to broker's website → authenticates with their own broker credentials → callback returns token → stored in `broker_connections`
+- **Inline brokers** (AngelOne, Dhan): User enters their own credentials on the login page → backend validates → token stored in `broker_connections`
+- **Login credentials are NEVER stored** — only the resulting session token is retained in `broker_connections.access_token`
+- **`.env` credentials are NEVER used for user login** — they serve the platform's backend only
+
+### Key Rules
+
+1. `.env` contains ONLY Tier 1 and Tier 2 credentials — never user-level data
+2. User login credentials are transient — used once, then discarded
+3. User personal API credentials (Tier 3) are stored encrypted in the database, configured via Settings
+4. When testing login flows, use the user's own credentials, never `.env` platform credentials
+5. A broker may have Tier 1 only, Tier 2 only, both, or all three — check the matrix above
+
+---
+
 ## Implementation Files
 
 | File | Purpose |

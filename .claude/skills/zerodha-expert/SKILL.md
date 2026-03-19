@@ -95,7 +95,7 @@ For step-by-step instructions on creating a Kite Connect app, getting API keys, 
 
 ### Authentication Flow
 
-Kite uses a standard **OAuth 2.0 redirect flow**. No auto-refresh - user must re-login daily.
+Kite uses a standard **OAuth 2.0 redirect flow**. No auto-refresh - user must re-login daily. For the three-tier credential architecture (platform data API vs user login vs user personal API), see [authentication.md](../../../docs/architecture/authentication.md#three-tier-credential-architecture).
 
 #### Step-by-Step Authentication
 

@@ -90,7 +90,7 @@ See [dhan-overview.md](./references/dhan-overview.md) for detailed charges and e
 
 ### Authentication Flow
 
-Dhan has a **dual credential system** — both generated from `web.dhan.co` (NOT `developer.dhanhq.co`).
+Dhan has a **dual credential system** — both generated from `web.dhan.co` (NOT `developer.dhanhq.co`). For the three-tier credential architecture (platform data API vs user login vs user personal API), see [authentication.md](../../../docs/architecture/authentication.md#three-tier-credential-architecture).
 
 #### Credentials Overview
 

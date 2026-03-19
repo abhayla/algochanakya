@@ -139,6 +139,8 @@ ANGEL_TOTP_SECRET=your-angelone-totp-base32-secret
 
 See the [CLAUDE.md AngelOne 3-key table](../../../CLAUDE.md) for which key serves which purpose.
 
+For the three-tier credential architecture (platform data API vs user login vs user personal API), see [authentication.md](../../../docs/architecture/authentication.md#three-tier-credential-architecture).
+
 #### Credential Storage
 
 | Field | Storage | Encryption |

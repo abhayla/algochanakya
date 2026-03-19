@@ -54,7 +54,7 @@ All users get market data via platform-level shared credentials by default:
 - These are **API credentials for data access**, NOT login credentials (login credentials are never stored)
 
 See [Working Doc](Working-Doc-AlgoChanakya-Multi-Broker-Architecture-Platform-Level.md) for complete dual-path architecture.
-See [Authentication Architecture](authentication.md#two-credential-systems-login-vs-market-data-api) for the distinction between login credentials and API credentials.
+For the complete credential architecture (platform data API vs OAuth app vs user personal API), see [Three-Tier Credential Architecture](authentication.md#three-tier-credential-architecture).
 
 ### 2. Order Execution Brokers (Always Per-User)
 **Purpose:** Placing orders, managing positions, account margins
