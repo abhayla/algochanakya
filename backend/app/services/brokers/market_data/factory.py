@@ -320,6 +320,7 @@ async def _create_upstox_adapter(user_id: UUID, db: AsyncSession) -> MarketDataB
         AuthenticationError: If credentials not found or token expired
     """
     try:
+        # Try user-specific connection first
         result = await db.execute(
             select(BrokerConnection).where(
                 BrokerConnection.user_id == user_id,
@@ -327,31 +328,30 @@ async def _create_upstox_adapter(user_id: UUID, db: AsyncSession) -> MarketDataB
             )
         )
         conn = result.scalar_one_or_none()
+        access_token = conn.access_token if conn else None
 
-        if not conn:
+        # Fall back to platform .env token (used when Upstox is platform market data source)
+        if not access_token:
+            access_token = os.getenv("UPSTOX_ACCESS_TOKEN", "")
+
+        if not access_token:
             raise AuthenticationError(
                 "upstox",
                 "Upstox credentials not found. Please login via Upstox OAuth in Settings."
-            )
-
-        if not conn.access_token:
-            raise AuthenticationError(
-                "upstox",
-                "Upstox access token missing or expired. Please re-login via OAuth."
             )
 
         credentials = UpstoxMarketDataCredentials(
             broker_type="upstox",
             user_id=user_id,
             api_key=os.getenv("UPSTOX_API_KEY", ""),
-            access_token=conn.access_token,
+            access_token=access_token,
         )
 
         from app.services.brokers.market_data.upstox_adapter import UpstoxMarketDataAdapter
         adapter = UpstoxMarketDataAdapter(credentials, db)
         await adapter.connect()
 
-        logger.info(f"[Factory] Created Upstox adapter for user {user_id}")
+        logger.info(f"[Factory] Created Upstox adapter for user {user_id} (platform token: {not conn})")
         return adapter
 
     except AuthenticationError:

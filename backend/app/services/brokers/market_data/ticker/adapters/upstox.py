@@ -69,7 +69,7 @@ logger = logging.getLogger(__name__)
 # CONSTANTS
 # ───────────────────────────────────────────────────────────────────────
 
-_REST_AUTHORIZE_URL = "https://api.upstox.com/v2/feed/market-data-feed/authorize"
+_REST_AUTHORIZE_URL = "https://api.upstox.com/v3/feed/market-data-feed/authorize"
 
 # Mode mapping: our internal mode → Upstox subscription mode string
 _MODE_TO_UPSTOX: Dict[str, str] = {
