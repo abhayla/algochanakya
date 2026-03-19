@@ -13,6 +13,8 @@ import logging
 from typing import Optional, TYPE_CHECKING
 from datetime import datetime
 
+from app.constants.brokers import ORG_ACTIVE_BROKERS
+
 if TYPE_CHECKING:
     from app.services.brokers.market_data.ticker.pool import TickerPool
     from app.services.brokers.market_data.ticker.router import TickerRouter
@@ -40,8 +42,8 @@ class FailoverController:
 
     def __init__(
         self,
-        primary_broker: str = "smartapi",
-        secondary_broker: str = "kite",
+        primary_broker: str = ORG_ACTIVE_BROKERS[0],
+        secondary_broker: str = ORG_ACTIVE_BROKERS[1] if len(ORG_ACTIVE_BROKERS) > 1 else ORG_ACTIVE_BROKERS[0],
     ) -> None:
         self.primary_broker = primary_broker
         self.secondary_broker = secondary_broker

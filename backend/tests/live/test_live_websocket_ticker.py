@@ -35,6 +35,7 @@ from tests.live.constants import (
     NIFTY_MAX_PRICE,
     BANKNIFTY_MIN_PRICE,
     BANKNIFTY_MAX_PRICE,
+    ORG_ACTIVE_BROKERS,
 )
 
 
@@ -47,12 +48,7 @@ from tests.live.constants import (
 # {broker}_ticker_adapter and pre-loaded with token mappings.
 #
 ALL_TICKER_ADAPTERS = [
-    pytest.param("angelone_ticker_adapter", id="angelone"),
-    pytest.param("kite_ticker_adapter",     id="kite"),
-    pytest.param("upstox_ticker_adapter",   id="upstox"),
-    pytest.param("dhan_ticker_adapter",     id="dhan"),
-    pytest.param("fyers_ticker_adapter",    id="fyers"),
-    pytest.param("paytm_ticker_adapter",    id="paytm"),
+    pytest.param(f"{b}_ticker_adapter", id=b) for b in ORG_ACTIVE_BROKERS
 ]
 
 

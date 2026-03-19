@@ -25,21 +25,14 @@ import pytest
 import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
 
-from tests.live.constants import NIFTY_MIN_PRICE, NIFTY_MAX_PRICE
+from tests.live.constants import NIFTY_MIN_PRICE, NIFTY_MAX_PRICE, ORG_ACTIVE_BROKERS
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Parametrize over all 6 brokers
+# Parametrize over org-active brokers only
 # ─────────────────────────────────────────────────────────────────────────────
 
-ALL_BROKERS = [
-    pytest.param("angelone", id="angelone"),
-    pytest.param("kite",     id="kite"),
-    pytest.param("upstox",   id="upstox"),
-    pytest.param("dhan",     id="dhan"),
-    pytest.param("fyers",    id="fyers"),
-    pytest.param("paytm",    id="paytm"),
-]
+ALL_BROKERS = [pytest.param(b, id=b) for b in ORG_ACTIVE_BROKERS]
 
 
 # ─────────────────────────────────────────────────────────────────────────────

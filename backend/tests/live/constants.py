@@ -36,9 +36,11 @@ HIST_FROM_DATE = date.today() - timedelta(days=5)  # 5 trading days back
 HIST_INTERVAL = "day"
 
 # ─────────────────────────────────────────────────────────────────────────────
-# All supported broker identifiers (used for parametrize IDs)
+# Broker scope for live tests
+# ORG_ACTIVE_BROKERS — only these run in org-level live tests (free platform API)
+# ALL_BROKERS        — all adapters with implementations (includes paid/personal)
 # ─────────────────────────────────────────────────────────────────────────────
-ALL_BROKERS = ["angelone", "kite", "upstox", "dhan", "fyers", "paytm"]
+from app.constants.brokers import ORG_ACTIVE_BROKERS, ALL_BROKERS  # noqa: F401
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Timeouts

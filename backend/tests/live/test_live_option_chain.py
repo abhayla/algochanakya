@@ -22,16 +22,11 @@ import pytest
 from decimal import Decimal
 from datetime import date, timedelta
 
-from tests.live.constants import NIFTY_SYMBOL, NIFTY_MIN_PRICE, NIFTY_MAX_PRICE
+from tests.live.constants import NIFTY_SYMBOL, NIFTY_MIN_PRICE, NIFTY_MAX_PRICE, ORG_ACTIVE_BROKERS
 
 
 ALL_BROKER_ADAPTERS = [
-    pytest.param("angelone_adapter", id="angelone"),
-    pytest.param("kite_adapter",     id="kite"),
-    pytest.param("upstox_adapter",   id="upstox"),
-    pytest.param("dhan_adapter",     id="dhan"),
-    pytest.param("fyers_adapter",    id="fyers"),
-    pytest.param("paytm_adapter",    id="paytm"),
+    pytest.param(f"{b}_adapter", id=b) for b in ORG_ACTIVE_BROKERS
 ]
 
 

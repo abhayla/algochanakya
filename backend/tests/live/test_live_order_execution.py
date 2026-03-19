@@ -27,20 +27,15 @@ from datetime import date, timedelta
 from typing import Optional, Tuple
 
 from app.services.brokers.base import UnifiedOrder, OrderSide, OrderType, ProductType, OrderStatus
-from tests.live.constants import NIFTY_TOKEN
+from tests.live.constants import NIFTY_TOKEN, ORG_ACTIVE_BROKERS
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Parametrize over all 6 brokers (order execution adapters)
+# Parametrize over org-active brokers only (order execution adapters)
 # ─────────────────────────────────────────────────────────────────────────────
 
 ALL_ORDER_ADAPTERS = [
-    pytest.param("angelone_order_adapter", id="angelone"),
-    pytest.param("kite_order_adapter",     id="kite"),
-    pytest.param("upstox_order_adapter",   id="upstox"),
-    pytest.param("dhan_order_adapter",     id="dhan"),
-    pytest.param("fyers_order_adapter",    id="fyers"),
-    pytest.param("paytm_order_adapter",    id="paytm"),
+    pytest.param(f"{b}_order_adapter", id=b) for b in ORG_ACTIVE_BROKERS
 ]
 
 
