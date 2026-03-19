@@ -174,9 +174,23 @@ auto_detect_patterns:
   - pattern: "frontend/src/views/DashboardView.vue"
     feature: dashboard
 
-  # Settings
+  # Settings (SettingsView + all broker credential components/routes/models)
   - pattern: "frontend/src/views/SettingsView.vue"
-    feature: settings
+    feature: user-preferences
+  - pattern: "frontend/src/components/settings/*.vue"
+    feature: user-preferences
+  - pattern: "backend/app/models/zerodha_credentials.py"
+    feature: broker-abstraction
+  - pattern: "backend/app/models/upstox_credentials.py"
+    feature: broker-abstraction
+  - pattern: "backend/app/models/dhan_credentials.py"
+    feature: broker-abstraction
+  - pattern: "backend/app/api/routes/zerodha_credentials.py"
+    feature: broker-abstraction
+  - pattern: "backend/app/api/routes/upstox_credentials.py"
+    feature: broker-abstraction
+  - pattern: "backend/app/api/routes/dhan_credentials.py"
+    feature: broker-abstraction
 
   # OFO (Options For Options)
   - pattern: "backend/app/api/routes/ofo.py"
@@ -406,10 +420,17 @@ features:
       - "backend/app/services/brokers/kite_adapter.py"
       - "backend/app/services/brokers/market_data/**"
       - "backend/app/models/smartapi_credentials.py"
+      - "backend/app/models/zerodha_credentials.py"
+      - "backend/app/models/upstox_credentials.py"
+      - "backend/app/models/dhan_credentials.py"
+      - "backend/app/api/routes/zerodha_credentials.py"
+      - "backend/app/api/routes/upstox_credentials.py"
+      - "backend/app/api/routes/dhan_credentials.py"
       - "backend/app/models/broker_instrument_tokens.py"
     tests:
       - "backend/tests/live/**"
       - "backend/tests/backend/brokers/**"
+      - "backend/tests/backend/routes/test_broker_credentials.py"
       - "tests/e2e/specs/broker-abstraction/**"
       - "tests/e2e/specs/live/**"
     additional_docs:
@@ -477,6 +498,10 @@ features:
       - "frontend/src/stores/brokerPreferences.js"
       - "frontend/src/views/SettingsView.vue"
       - "frontend/src/components/settings/BrokerSettings.vue"
+      - "frontend/src/components/settings/SmartAPISettings.vue"
+      - "frontend/src/components/settings/ZerodhaSettings.vue"
+      - "frontend/src/components/settings/UpstoxSettings.vue"
+      - "frontend/src/components/settings/DhanSettings.vue"
       - "frontend/src/components/common/BrokerUpgradeBanner.vue"
       - "frontend/src/components/common/DataSourceBadge.vue"
     tests:

@@ -37,6 +37,11 @@
           },
           {
             "type": "command",
+            "command": "cmd /c bash C:\\Abhay\\VideCoding\\algochanakya\\.claude\\hooks\\secret-scanner.sh",
+            "timeout": 5
+          },
+          {
+            "type": "command",
             "command": "cmd /c python C:\\Abhay\\VideCoding\\algochanakya\\.claude\\hooks\\guard_folder_structure.py",
             "timeout": 5
           },
@@ -62,6 +67,16 @@
           },
           {
             "type": "command",
+            "command": "cmd /c bash C:\\Abhay\\VideCoding\\algochanakya\\.claude\\hooks\\secret-scanner.sh",
+            "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "cmd /c python C:\\Abhay\\VideCoding\\algochanakya\\.claude\\hooks\\guard_folder_structure.py",
+            "timeout": 5
+          },
+          {
+            "type": "command",
             "command": "cmd /c python C:\\Abhay\\VideCoding\\algochanakya\\.claude\\hooks\\guard_cross_feature_imports.py",
             "timeout": 5
           },
@@ -77,12 +92,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cmd /c python C:\\Abhay\\VideCoding\\algochanakya\\.claude\\hooks\\validate_workflow_step.py",
-            "timeout": 10
+            "command": "cmd /c bash C:\\Abhay\\VideCoding\\algochanakya\\.claude\\hooks\\dangerous-command-blocker.sh",
+            "timeout": 5
           },
           {
             "type": "command",
-            "command": "cmd /c python C:\\Abhay\\VideCoding\\algochanakya\\.claude\\hooks\\verify_evidence_artifacts.py",
+            "command": "cmd /c python C:\\Abhay\\VideCoding\\algochanakya\\.claude\\hooks\\validate_workflow_step.py",
             "timeout": 10
           }
         ]
@@ -99,18 +114,8 @@
           },
           {
             "type": "command",
-            "command": "cmd /c python C:\\Abhay\\VideCoding\\algochanakya\\.claude\\hooks\\verify_test_rerun.py",
-            "timeout": 300
-          },
-          {
-            "type": "command",
             "command": "cmd /c python C:\\Abhay\\VideCoding\\algochanakya\\.claude\\hooks\\post_screenshot_resize.py",
             "timeout": 30
-          },
-          {
-            "type": "command",
-            "command": "cmd /c python C:\\Abhay\\VideCoding\\algochanakya\\.claude\\hooks\\auto_fix_pattern_scan.py",
-            "timeout": 10
           },
           {
             "type": "command",
@@ -136,11 +141,6 @@
             "type": "command",
             "command": "cmd /c python C:\\Abhay\\VideCoding\\algochanakya\\.claude\\hooks\\log_workflow.py",
             "timeout": 5
-          },
-          {
-            "type": "command",
-            "command": "cmd /c python C:\\Abhay\\VideCoding\\algochanakya\\.claude\\hooks\\post_skill_learning.py",
-            "timeout": 30
           }
         ]
       },
@@ -156,11 +156,6 @@
             "type": "command",
             "command": "cmd /c python C:\\Abhay\\VideCoding\\algochanakya\\.claude\\hooks\\schema_parity_reminder.py",
             "timeout": 10
-          },
-          {
-            "type": "command",
-            "command": "cmd /c python C:\\Abhay\\VideCoding\\algochanakya\\.claude\\hooks\\auto_format.py",
-            "timeout": 15
           }
         ]
       },
@@ -174,8 +169,8 @@
           },
           {
             "type": "command",
-            "command": "cmd /c python C:\\Abhay\\VideCoding\\algochanakya\\.claude\\hooks\\auto_format.py",
-            "timeout": 15
+            "command": "cmd /c python C:\\Abhay\\VideCoding\\algochanakya\\.claude\\hooks\\schema_parity_reminder.py",
+            "timeout": 10
           }
         ]
       }
