@@ -33,6 +33,10 @@ npm run test                                           # Watch mode
 # Database (from backend/, venv active)
 alembic upgrade head                                   # Apply pending migrations
 alembic revision --autogenerate -m "description"       # Create new migration
+
+# Linting (from backend/, venv active)
+ruff check app/ --fix                                  # Lint + auto-fix
+ruff format app/                                       # Format
 ```
 
 **After code changes** — invoke via Skill tool, not shell:
@@ -127,30 +131,14 @@ Before features/refactors/architecture changes:
 **Bad response:**
 > I'll add a kill switch. Let me create a new component...
 
-## Quick Start
+## Quick Start (First-Time Setup)
 
 **Requirements:** Python 3.13+ | Node.js 22+ | PostgreSQL | Redis
 
-```bash
-# 1. Environment files
-cd backend && copy .env.example .env
-# IMPORTANT: run.py defaults to port 8001 — no .env change needed for port
-# IMPORTANT: Edit backend/.env → set DATABASE_URL to your dev database (e.g. algochanakya_dev)
-cd ../frontend && copy .env.example .env.local
-# IMPORTANT: Edit frontend/.env.local → set VITE_API_BASE_URL=http://localhost:8001
-
-# 2. Database (PostgreSQL must be running)
-# Create dev database: CREATE DATABASE algochanakya_dev;
-cd backend && venv\Scripts\activate
-alembic upgrade head              # Apply all migrations
-
-# 3. Start dev stack (two terminals)
-# Terminal 1: backend
-cd backend && venv\Scripts\activate && python run.py
-
-# Terminal 2: frontend
-cd frontend && npm run dev
-```
+1. Copy `backend/.env.example` → `backend/.env`, set `DATABASE_URL` to your dev DB (e.g. `algochanakya_dev`)
+2. Copy `frontend/.env.example` → `frontend/.env.local`, set `VITE_API_BASE_URL=http://localhost:8001`
+3. Create dev DB: `CREATE DATABASE algochanakya_dev;`, then run `alembic upgrade head`
+4. Start stack per Quick Reference above
 
 **Full command reference:** [Developer Quick Reference](docs/DEVELOPER-QUICK-REFERENCE.md) | [backend/CLAUDE.md](backend/CLAUDE.md#development-commands) | [frontend/CLAUDE.md](frontend/CLAUDE.md#development-commands)
 
@@ -253,7 +241,6 @@ All rules consolidated in [`.claude/rules.md`](.claude/rules.md) (SSOT) — fold
 - **[ADR-002: Broker Abstraction](docs/decisions/002-broker-abstraction.md)** - Why and how we abstract brokers
 - **[TICKER-DESIGN-SPEC.md](docs/decisions/TICKER-DESIGN-SPEC.md)** - Multi-broker ticker architecture (5-component design)
   - [Implementation Guide](docs/guides/TICKER-IMPLEMENTATION-GUIDE.md) | [API Reference](docs/api/multi-broker-ticker-api.md) | [Documentation Index](docs/decisions/ticker-documentation-index.md)
-- ~~[ADR-003 v2: Ticker Architecture](docs/decisions/003-multi-broker-ticker-architecture.md)~~ - Superseded (historical reference)
 
 ## Testing
 
@@ -279,14 +266,6 @@ These skills must be invoked automatically (via the Skill tool) at the right tim
 - **`learning-engine`** — after fix completions and test outcomes
 
 All other available skills (testing, code gen, broker experts, workflows) are listed in the system prompt and invoked on demand. Full docs: [Automation Workflows Guide](docs/guides/AUTOMATION_WORKFLOWS.md)
-
----
-
-## Common Pitfalls
-
-**Backend:** [backend/CLAUDE.md - Pitfalls](backend/CLAUDE.md#backend-specific-pitfalls) — broker API usage, symbol format, alembic imports, async ops, trading constants
-**Frontend:** [frontend/CLAUDE.md - Pitfalls](frontend/CLAUDE.md#frontend-specific-pitfalls) — data-testid, WebSocket cleanup, port config, AngelOne timeout
-**Git:** Use `git status --porcelain` if you see escaped characters (UTF-8 encoding issues)
 
 ---
 
