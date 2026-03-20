@@ -14,7 +14,7 @@ class TestUpstoxHttpLogin:
 
     @pytest.mark.asyncio
     async def test_authenticate_returns_access_token(self):
-        """Full HTTP login flow should return an access_token."""
+        """upstox-totp based login should return an access_token."""
         from app.services.brokers.platform_token_refresh import UpstoxHttpAuth
 
         auth = UpstoxHttpAuth(
@@ -26,17 +26,7 @@ class TestUpstoxHttpLogin:
             totp_secret="JBSWY3DPEHPK3PXP",
         )
 
-        # Mock the 6-step HTTP flow
-        mock_responses = {
-            "dialog": MagicMock(status_code=200, url="https://service.upstox.com/login?user_id=UP123&client_id=test"),
-            "otp": MagicMock(status_code=200, json=lambda: {"data": {"validateOTPToken": "otp_token_123"}}),
-            "verify": MagicMock(status_code=200, json=lambda: {"status": "success"}),
-            "2fa": MagicMock(status_code=200, json=lambda: {"status": "success"}),
-            "authorize": MagicMock(status_code=200, url="http://localhost:8001/api/auth/upstox/callback?code=auth_code_xyz"),
-            "token": MagicMock(status_code=200, json=lambda: {"access_token": "fresh_upstox_token"}),
-        }
-
-        with patch.object(auth, "_execute_login_flow", return_value="fresh_upstox_token"):
+        with patch.object(auth, "_sync_authenticate", return_value="fresh_upstox_token"):
             token = await auth.authenticate()
 
         assert token == "fresh_upstox_token"

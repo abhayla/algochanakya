@@ -13,10 +13,7 @@ import logging
 import time
 from pathlib import Path
 from typing import Optional
-from urllib.parse import urlparse, parse_qs
 
-import httpx
-import pyotp
 
 from app.config import settings
 
@@ -39,9 +36,6 @@ class UpstoxHttpAuth:
     5. POST OAuth authorize → get authorization code
     6. POST token exchange → get access_token
     """
-
-    API_BASE = "https://api.upstox.com"
-    SERVICE_BASE = "https://service.upstox.com"
 
     def __init__(
         self,
@@ -70,122 +64,47 @@ class UpstoxHttpAuth:
         self.login_pin = login_pin
         self.totp_secret = totp_secret
 
-    def _generate_totp(self) -> str:
-        return pyotp.TOTP(self.totp_secret).now()
-
     async def authenticate(self) -> str:
-        """Execute the 6-step HTTP login flow. Returns access_token."""
-        return await self._execute_login_flow()
+        """Execute the 6-step HTTP login flow. Returns access_token.
 
-    async def _execute_login_flow(self) -> str:
-        async with httpx.AsyncClient(
-            timeout=30,
-            follow_redirects=False,
-            headers={
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-                "Accept": "application/json",
-            },
-        ) as client:
-            # Step 1: Authorization dialog → get user_id from redirect
-            logger.info("[Upstox Refresh] Step 1: Authorization dialog")
-            resp = await client.get(
-                f"{self.API_BASE}/v2/login/authorization/dialog",
-                params={
-                    "response_type": "code",
-                    "client_id": self.api_key,
-                    "redirect_uri": self.redirect_uri,
-                },
+        Uses the upstox-totp library which handles Cloudflare bot detection
+        via curl_cffi with Chrome impersonation. The library manages the
+        complete TOTP-based login flow internally.
+        """
+        import asyncio
+        return await asyncio.to_thread(self._sync_authenticate)
+
+    def _sync_authenticate(self) -> str:
+        """Synchronous auth via upstox-totp library (runs in thread)."""
+        try:
+            from upstox_totp import UpstoxTOTP
+        except ImportError:
+            raise RuntimeError(
+                "upstox-totp is required for Upstox auto-login. "
+                "Install with: pip install upstox-totp"
             )
-            # Follow redirect to get user_id from URL
-            redirect_url = resp.headers.get("location", str(resp.url))
-            parsed = urlparse(redirect_url)
-            qs = parse_qs(parsed.query)
-            user_id = qs.get("user_id", [None])[0]
 
-            if not user_id:
-                # Try following the redirect chain
-                resp2 = await client.get(redirect_url, follow_redirects=True)
-                parsed2 = urlparse(str(resp2.url))
-                qs2 = parse_qs(parsed2.query)
-                user_id = qs2.get("user_id", [None])[0]
+        logger.info("[Upstox Refresh] Starting upstox-totp authentication")
+        client = UpstoxTOTP(
+            username=self.login_phone,
+            password=self.login_pin,
+            pin_code=self.login_pin,
+            totp_secret=self.totp_secret,
+            client_id=self.api_key,
+            client_secret=self.api_secret,
+            redirect_uri=self.redirect_uri,
+        )
 
-            if not user_id:
-                raise RuntimeError(f"Could not extract user_id from redirect: {redirect_url}")
+        result = client.app_token.get_access_token()
+        if not result.success or not result.data:
+            raise RuntimeError(f"Upstox auth failed: {result.error}")
 
-            # Step 2: Generate OTP
-            logger.info("[Upstox Refresh] Step 2: Generate OTP")
-            resp = await client.post(
-                f"{self.SERVICE_BASE}/login/open/v6/auth/1fa/otp/generate",
-                json={"data": {"mobileNumber": self.login_phone, "userId": user_id}},
-            )
-            otp_data = resp.json()
-            validate_token = otp_data.get("data", {}).get("validateOTPToken")
-            if not validate_token:
-                raise RuntimeError(f"OTP generation failed: {otp_data}")
+        access_token = result.data.access_token
+        if not access_token:
+            raise RuntimeError("No access_token in upstox-totp response")
 
-            # Step 3: Verify TOTP
-            logger.info("[Upstox Refresh] Step 3: Verify TOTP")
-            totp_code = self._generate_totp()
-            resp = await client.post(
-                f"{self.SERVICE_BASE}/login/open/v4/auth/1fa/otp-totp/verify",
-                json={"data": {"otp": totp_code, "validateOtpToken": validate_token}},
-            )
-            if resp.status_code != 200:
-                raise RuntimeError(f"TOTP verification failed: {resp.text[:200]}")
-
-            # Step 4: 2FA PIN
-            logger.info("[Upstox Refresh] Step 4: Submit PIN")
-            encoded_pin = base64.b64encode(self.login_pin.encode()).decode()
-            resp = await client.post(
-                f"{self.SERVICE_BASE}/login/open/v3/auth/2fa",
-                params={"client_id": self.api_key, "redirect_uri": self.redirect_uri},
-                json={"data": {"twoFAMethod": "SECRET_PIN", "inputText": encoded_pin}},
-            )
-            if resp.status_code != 200:
-                raise RuntimeError(f"2FA PIN failed: {resp.text[:200]}")
-
-            # Step 5: OAuth authorize → get code
-            logger.info("[Upstox Refresh] Step 5: OAuth authorize")
-            resp = await client.post(
-                f"{self.SERVICE_BASE}/login/v2/oauth/authorize",
-                params={
-                    "client_id": self.api_key,
-                    "redirect_uri": self.redirect_uri,
-                    "response_type": "code",
-                },
-                json={"data": {"userOAuthApproval": True}},
-            )
-            # Extract code from redirect URL
-            auth_redirect = resp.headers.get("location", str(resp.url))
-            parsed_auth = urlparse(auth_redirect)
-            qs_auth = parse_qs(parsed_auth.query)
-            auth_code = qs_auth.get("code", [None])[0]
-            if not auth_code:
-                raise RuntimeError(f"Could not extract auth code from: {auth_redirect}")
-
-            # Step 6: Exchange code for token
-            logger.info("[Upstox Refresh] Step 6: Token exchange")
-            resp = await client.post(
-                f"{self.API_BASE}/v2/login/authorization/token",
-                data={
-                    "code": auth_code,
-                    "client_id": self.api_key,
-                    "client_secret": self.api_secret,
-                    "redirect_uri": self.redirect_uri,
-                    "grant_type": "authorization_code",
-                },
-                headers={"Content-Type": "application/x-www-form-urlencoded"},
-            )
-            if resp.status_code != 200:
-                raise RuntimeError(f"Token exchange failed: {resp.text[:300]}")
-
-            token_data = resp.json()
-            access_token = token_data.get("access_token")
-            if not access_token:
-                raise RuntimeError(f"No access_token in response: {token_data}")
-
-            logger.info("[Upstox Refresh] Token obtained successfully")
-            return access_token
+        logger.info("[Upstox Refresh] Token obtained successfully")
+        return access_token
 
 
 # ============================================================================
@@ -217,7 +136,7 @@ def _is_smartapi_token_expired() -> bool:
 
 def _save_token_to_env(key: str, value: str) -> None:
     """Update a token value in backend/.env file."""
-    env_path = Path(__file__).parent.parent.parent / ".env"
+    env_path = Path(__file__).parent.parent.parent.parent / ".env"
     if not env_path.exists():
         logger.warning(f"[TokenRefresh] .env not found at {env_path}")
         return
