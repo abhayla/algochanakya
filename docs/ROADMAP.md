@@ -1,22 +1,49 @@
 # AlgoChanakya Roadmap
 
-**Last Updated:** 2026-02-24
+**Last Updated:** 2026-03-20
 
 This document tracks active work, recently completed features, and planned development.
 
 ---
 
-## 🔄 Active Work (February 2026)
+## 🔄 Active Work (March 2026)
 
-### Broker Settings Hardening — In Progress
+### Live Broker Verification — In Progress
 **Goal:** Verify all 6 broker integrations work end-to-end with real credentials.
-- [ ] Test OAuth flows with real accounts (Upstox, Fyers, Paytm)
+- [x] Upstox platform token auto-refresh (via `upstox-totp` library)
+- [ ] Test Upstox WebSocket ticks with refreshed token
+- [ ] Test Fyers OAuth flow with real account
+- [ ] Test Paytm OAuth flow with real account
 - [ ] Test Dhan static token flow end-to-end
 - [ ] Verify `DataSourceBadge` reflects actual live data source
+- [ ] Load-test `TickerPool` failover under real market conditions
 
 ---
 
-## ✅ Recently Completed (February 2026)
+## ✅ Recently Completed (March 2026)
+
+### Credential Architecture Overhaul — COMPLETE (Mar 20, 2026)
+**Goal:** Unified credential management across all 6 brokers.
+
+- Unified `broker_api_credentials` table (replaces per-broker tables)
+- Settings OAuth callbacks for all brokers (`/api/settings/{broker}/connect-callback`)
+- WebSocket credential loading: user creds → .env → ORG_ACTIVE_BROKERS fallback chain
+- TickerPool credential cache expiry (`credentials_valid()`, `clear_expired_credentials()`)
+- Platform token auto-refresh on startup (Upstox HTTP login via `upstox-totp`)
+- Dhan v2 OAuth consent flow
+- 55+ new backend tests, all 795 broker tests passing
+- 16 commits across 4 phases
+- **Docs:** [credential-flow-analysis.md](architecture/credential-flow-analysis.md) | [authentication.md](architecture/authentication.md)
+
+### Hook Consolidation — COMPLETE (Mar 20, 2026)
+- Fixed all hook paths (wrong drive C:→D:, typo VideCoding→VibeCoding) — all PreToolUse guards were silently broken
+- Rewrote `secret-scanner.sh` as `secret-scanner.py` (eliminated `jq` dependency)
+- Removed redundant `protect_sensitive_files.py` (covered by permissions deny list)
+- Result: 12 → 10 hook scripts, -116 lines, all hooks functional
+
+---
+
+## ✅ Previously Completed (February 2026)
 
 ### Broker Settings UX — COMPLETE (Feb 2026)
 - Disconnect endpoints for all 6 brokers (`DELETE /api/auth/{broker}/disconnect`)
@@ -139,11 +166,7 @@ This document tracks active work, recently completed features, and planned devel
 
 - [x] Generate `docs/api/openapi.json` from FastAPI (243 paths, 199 schemas) — via `backend/scripts/generate_openapi.py`
 - [ ] Update `docs/features/feature-registry.yaml` post-broker-refactor
-- [ ] Workflow Redesign (hook consolidation — 16 scripts / 13 registered; see note below)
-
-**Status:** OpenAPI spec generated. Workflow redesign is planned (not started).
-
-**Workflow Redesign Note:** The repo currently has 16 hook scripts with 13 registered in `.claude/settings.json`. Any consolidation plan should start from that baseline — not the earlier estimate of "9 → 4". No design spec or implementation exists yet.
+- [x] Workflow Redesign (hook consolidation — 12 → 10 scripts, fixed broken paths, eliminated jq dep)
 
 **To regenerate OpenAPI spec:** `cd backend && python scripts/generate_openapi.py`
 
@@ -177,10 +200,11 @@ This document tracks active work, recently completed features, and planned devel
 | Priority | Feature | Timeline | Status |
 |----------|---------|----------|--------|
 | **P0** | Apply Alembic migration | Now | ✅ Complete |
-| **P0** | Live broker E2E verification | Q2 2026 | 📋 Ready to start |
+| **P0** | Live broker E2E verification | Q2 2026 | 🚧 In Progress |
 | **P1** | Kelly Criterion (AI) | Q2 2026 | ✅ Bug fixed, wired |
 | **P1** | OpenAPI spec + docs | Q2 2026 | ✅ Generated (243 paths) |
-| **P1** | Workflow Redesign (hooks) | Q2 2026 | 📋 Planned (not started) |
+| **P1** | Workflow Redesign (hooks) | Q1 2026 | ✅ Complete (Mar 20) |
+| **P1** | Credential Architecture Overhaul | Q1 2026 | ✅ Complete (Mar 20) |
 | **P2** | Backtesting | Q3 2026 | 💡 Design |
 | **P2** | Risk Management Enhancements | Q3 2026 | 💡 Planning |
 | **P3** | Multi-Timeframe | Q4 2026 | 💡 Planning |
@@ -205,7 +229,8 @@ This document tracks active work, recently completed features, and planned devel
 - Live broker verification (all 6 brokers)
 - ✅ Kelly Criterion position sizing (bug fixed + wired)
 - ✅ OpenAPI spec (243 paths generated)
-- Workflow redesign (hook consolidation — planned, not started)
+- ✅ Workflow redesign (hook consolidation — complete Mar 20)
+- ✅ Credential architecture overhaul (unified table, auto-refresh — complete Mar 20)
 
 ### v1.3 (Q3 2026) - Advanced Features
 - Backtesting system (beta)

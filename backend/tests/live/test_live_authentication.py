@@ -105,7 +105,6 @@ async def test_upstox_access_token_is_valid(upstox_adapter):
 
     adapter = UpstoxOrderAdapter(
         access_token=upstox_adapter._credentials.access_token,
-        api_key=upstox_adapter._credentials.api_key,
     )
     await adapter.initialize()
     is_valid = await adapter.validate_session()
