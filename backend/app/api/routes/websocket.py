@@ -12,6 +12,7 @@ After:  ~120 lines (broker-agnostic, credential loading retained)
 
 import json
 import logging
+from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
@@ -75,6 +76,16 @@ async def _get_user_broker_creds(
         )
     )
     return result.scalar_one_or_none()
+
+
+def _creds_not_expired(creds: BrokerAPICredentials) -> bool:
+    """Check if credentials have a valid (non-expired) token.
+
+    Returns True if no token_expiry set or token_expiry is in the future.
+    """
+    if not creds.token_expiry:
+        return True
+    return datetime.now(timezone.utc) < creds.token_expiry
 
 
 # Map ORG_ACTIVE_BROKERS DB names to MarketDataSource values
@@ -195,12 +206,13 @@ async def _ensure_broker_credentials(
         return False
 
     elif broker_type == MarketDataSource.KITE:
-        # 1. User's own API credentials from Settings
+        # 1. User's own API credentials from Settings (skip if expired)
         user_creds = await _get_user_broker_creds(user.id, "zerodha", db)
-        if user_creds and user_creds.access_token:
+        if user_creds and user_creds.access_token and _creds_not_expired(user_creds):
             pool.set_credentials("kite", {
                 "api_key": user_creds.api_key or settings.KITE_API_KEY,
                 "access_token": user_creds.access_token,
+                "token_expiry": user_creds.token_expiry,
             })
             return True
 
@@ -216,12 +228,13 @@ async def _ensure_broker_credentials(
         return False
 
     elif broker_type == MarketDataSource.DHAN:
-        # 1. User's own API credentials from Settings
+        # 1. User's own API credentials from Settings (skip if expired)
         user_creds = await _get_user_broker_creds(user.id, "dhan", db)
-        if user_creds and user_creds.access_token:
+        if user_creds and user_creds.access_token and _creds_not_expired(user_creds):
             pool.set_credentials("dhan", {
                 "client_id": user_creds.client_id or settings.DHAN_CLIENT_ID,
                 "access_token": user_creds.access_token,
+                "token_expiry": user_creds.token_expiry,
             })
             return True
 
@@ -236,12 +249,13 @@ async def _ensure_broker_credentials(
         return False
 
     elif broker_type == MarketDataSource.FYERS:
-        # 1. User's own API credentials from Settings
+        # 1. User's own API credentials from Settings (skip if expired)
         user_creds = await _get_user_broker_creds(user.id, "fyers", db)
-        if user_creds and user_creds.access_token:
+        if user_creds and user_creds.access_token and _creds_not_expired(user_creds):
             pool.set_credentials("fyers", {
                 "app_id": user_creds.client_id or settings.FYERS_APP_ID,
                 "access_token": user_creds.access_token,
+                "token_expiry": user_creds.token_expiry,
             })
             return True
 
@@ -291,13 +305,14 @@ async def _ensure_broker_credentials(
         return False
 
     elif broker_type == MarketDataSource.PAYTM:
-        # 1. User's own API credentials from Settings
+        # 1. User's own API credentials from Settings (skip if expired)
         # Paytm WebSocket uses public_access_token (stored as feed_token in broker_api_credentials)
         user_creds = await _get_user_broker_creds(user.id, "paytm", db)
-        if user_creds and user_creds.feed_token:
+        if user_creds and user_creds.feed_token and _creds_not_expired(user_creds):
             pool.set_credentials("paytm", {
                 "api_key": user_creds.api_key or settings.PAYTM_API_KEY,
                 "public_access_token": user_creds.feed_token,
+                "token_expiry": user_creds.token_expiry,
             })
             return True
 
