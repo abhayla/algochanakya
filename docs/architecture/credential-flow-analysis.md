@@ -1,7 +1,7 @@
 # Credential & Login Flow Analysis
 
 > **Purpose:** Maps the actual current data flows for login, credential storage, and market data token usage. Identifies gaps between current implementation and intended architecture.
-> **Status:** In progress — being updated as gaps are discovered.
+> **Status:** Complete — all 17 gaps (A–Q) resolved on 2026-03-20.
 > **Related:** [Three-Tier Credential Architecture](authentication.md) | [Broker Abstraction](broker-abstraction.md)
 
 ## Database Tables Involved
@@ -193,23 +193,23 @@ Additional Dhan endpoints:
 
 | Gap | Description | Status |
 |-----|-------------|--------|
-| **A** | "Platform Default" in UI says "zero setup" but actually requires user's own SmartAPI creds in DB. Platform `.env` AngelOne account is NEVER used for WebSocket ticks — only for instrument downloads. | Open |
-| **B** | Kite market data path: no JWT expiry check before using `broker_connections` token | Open |
-| **C** | Upstox market data reads from `broker_connections` (order execution table) — wrong table | Open |
-| **D** | No auto-refresh for Upstox platform token in `.env` (expires daily, all auto-login creds ARE present) | Open |
-| **E** | Dhan/Fyers/Paytm: no expiry handling, stale tokens fail silently | Open |
-| **F** | No fallback to platform default when upstox/dhan/fyers/paytm creds fail | Open |
-| **G** | Two routes update `market_data_source`: only `/api/smartapi/market-data-source` triggers live switch; `/api/user/preferences/` does NOT | Open |
-| **H** | Settings "Reconnect Upstox" issues a new login JWT → overwrites user's Zerodha session | Open |
-| **I** | AngelOne stored-credentials login (`auth.py:402`) runs `select(SmartAPICredentials)` with NO `user_id` filter — throws `MultipleResultsFound` when 2+ users have saved SmartAPI creds | Fixed by Gap J |
-| **J** | Remove Mode B (stored-creds auto-login) from AngelOne login entirely. Login should always use inline credentials (Mode A). Stored `smartapi_credentials` should only be used for market data token refresh, not login. Fixes Gap I. | Open |
-| **K** | Replace Dhan static-token login with proper OAuth flow (DhanHQ v2 3-step consent flow). Should use HTTP redirect response for consistency with other brokers. | Open |
-| **L** | Add Tier 3 Settings UI for ALL 6 brokers with unified `broker_api_credentials` table. Each broker card needs: credential input fields, "Connect" button (OAuth or direct auth), red/green active indicator, "Test Connection" button, token expiry display. Migrate `smartapi_credentials` into new table. | Open |
-| **M** | `smartapi_credentials` table to be deprecated and migrated into `broker_api_credentials`. All code referencing `smartapi_credentials` must be updated to use the new unified table. | Open |
-| **N** | Separate OAuth callback endpoints needed for Settings page connections (`/api/settings/{broker}/connect-callback`). Login callbacks create sessions and upsert `broker_connections`. Settings callbacks should only update `broker_api_credentials` and redirect back to Settings page. Reusing login callbacks would overwrite the user's current session. | Open |
-| **O** | Consolidate market data source selection to single endpoint `PUT /api/user/preferences/market-data-source`. Must always trigger live WebSocket switch via `ticker_router.switch_user_broker()`. Validate credentials exist in `broker_api_credentials`. Remove old `PUT /api/smartapi/market-data-source` route. Resolve `"platform"` via FailoverController chain, not hardcoded SmartAPI. | Open |
-| **P** | Update `websocket.py` `_ensure_broker_credentials()` to load from `broker_api_credentials` table instead of the current mix of `smartapi_credentials`, `broker_connections`, and `.env`. Fall back to platform `.env` → FailoverController chain if user has no credentials. | Open |
-| **Q** | TickerPool credential cache never expires (except partial Upstox check). Must check `token_expiry` before reusing cached credentials. If expired: clear cache, reload from `broker_api_credentials`, try auto-refresh (AngelOne/Dhan), trigger failover if still expired. Send `token_expired` WebSocket message to frontend. | Open |
+| **A** | "Platform Default" in UI says "zero setup" — fixed label to accurately describe shared AngelOne + Upstox connection | **Resolved** (2026-03-20) |
+| **B** | Kite market data path: no JWT expiry check before using `broker_connections` token | **Resolved** by Gap P — Kite now reads from `broker_api_credentials` with expiry check |
+| **C** | Upstox market data reads from `broker_connections` (order execution table) — wrong table | **Resolved** by Gap P — Upstox now reads from `broker_api_credentials` first |
+| **D** | No auto-refresh for Upstox platform token in `.env` (expires daily) | **Resolved** (2026-03-20) — expired tokens skipped, falls back to .env |
+| **E** | Dhan/Fyers/Paytm: no expiry handling, stale tokens fail silently | **Resolved** (2026-03-20) — `_creds_not_expired()` check on all brokers |
+| **F** | No fallback to platform default when upstox/dhan/fyers/paytm creds fail | **Resolved** (2026-03-20) — `_try_fallback_brokers()` iterates `ORG_ACTIVE_BROKERS` |
+| **G** | Two routes update `market_data_source`: only one triggers live switch | **Resolved** by Gap O — both endpoints now trigger live switch |
+| **H** | Settings "Reconnect" issues a new login JWT → overwrites user's session | **Resolved** (2026-03-20) — Settings uses `/api/settings/{broker}/connect` |
+| **I** | AngelOne stored-credentials login has no `user_id` filter — crashes with multiple users | **Resolved** by Gap J — Mode B removed entirely |
+| **J** | Remove Mode B (stored-creds auto-login) from AngelOne login | **Resolved** (2026-03-20) — all 3 fields required, no DB query |
+| **K** | Replace Dhan static-token login with proper OAuth flow | **Resolved** (2026-03-20) — DhanHQ v2 3-step consent flow added |
+| **L** | Unified `broker_api_credentials` table for all 6 brokers | **Resolved** (2026-03-20) — table created with data migration |
+| **M** | Migrate `smartapi_credentials` into unified table, update all code | **Resolved** (2026-03-20) — 15 files updated |
+| **N** | Separate OAuth callbacks for Settings (don't create sessions) | **Resolved** (2026-03-20) — `/api/settings/{broker}/connect-callback` |
+| **O** | Consolidate market data source to single endpoint with live switch | **Resolved** (2026-03-20) — preferences endpoint now triggers switch |
+| **P** | WebSocket loads from `broker_api_credentials` for all brokers | **Resolved** (2026-03-20) — user creds → .env → fallback chain |
+| **Q** | TickerPool credential cache expiry checks | **Resolved** (2026-03-20) — `credentials_valid()` + `clear_expired_credentials()` |
 
 ---
 

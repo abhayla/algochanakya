@@ -20,7 +20,7 @@ const saveSuccess = ref(false)
 const saveError = ref(null)
 
 const sourceCardOptions = [
-  { value: 'platform', label: 'Platform Default', description: 'Shared connection with automatic failover. Zero setup required.' },
+  { value: 'platform', label: 'Platform Default', description: 'Shared AngelOne + Upstox connection with automatic failover.' },
   { value: 'smartapi', label: 'AngelOne SmartAPI', description: 'Free real-time data with 20-level market depth.' },
   { value: 'kite', label: 'Zerodha Kite', description: 'Uses your Kite login. Requires daily re-login (~6 AM IST).' },
   { value: 'upstox', label: 'Upstox', description: 'Free market data via Upstox API.' },
@@ -90,7 +90,7 @@ const handleReset = () => {
         <h3 class="group-title">Market Data Source</h3>
         <p class="group-subtitle">
           Choose where live quotes and OHLC data come from.
-          Platform Default uses our shared SmartAPI connection — free, zero setup.
+          Platform Default uses our shared AngelOne + Upstox connections with automatic failover.
         </p>
       </div>
 
