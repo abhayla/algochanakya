@@ -37,9 +37,12 @@ class Settings(BaseSettings):
     ANGEL_PIN: str = ""
     ANGEL_TOTP_SECRET: str = ""
 
-    # Dhan (Platform Fallback #2 — static token, never expires)
+    # Dhan (Platform Fallback #2)
     DHAN_CLIENT_ID: str = ""
     DHAN_ACCESS_TOKEN: str = ""
+    DHAN_APP_ID: str = ""
+    DHAN_APP_SECRET: str = ""
+    DHAN_REDIRECT_URL: str = ""
 
     # Fyers (Platform Fallback #3 — OAuth, expires midnight IST)
     FYERS_APP_ID: str = ""
