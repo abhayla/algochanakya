@@ -3,7 +3,7 @@
  *
  * Manages WebSocket connection for real-time updates.
  */
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed, getCurrentInstance } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useAutopilotStore } from '@/stores/autopilot'
 import { startPollingFallback, stopPollingFallback } from '@/services/priceService'
@@ -445,18 +445,19 @@ export function useWebSocket() {
   // Lifecycle
   // ========================================================================
 
-  onMounted(() => {
-    // Only connect once across all component instances
-    if (!isInitialized && authStore.isAuthenticated) {
-      isInitialized = true
-      connect()
-    }
-  })
+  if (getCurrentInstance()) {
+    onMounted(() => {
+      if (!isInitialized && authStore.isAuthenticated) {
+        isInitialized = true
+        connect()
+      }
+    })
 
-  onUnmounted(() => {
-    // Don't disconnect on component unmount - keep connection alive
-    // Only disconnect on explicit logout
-  })
+    onUnmounted(() => {
+      // Don't disconnect on component unmount - keep connection alive
+      // Only disconnect on explicit logout
+    })
+  }
 
   return {
     // State
