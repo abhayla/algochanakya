@@ -2,6 +2,7 @@
 Zerodha Credentials API Routes
 
 Endpoints for Zerodha Kite Connect app credential management (Tier 3).
+Uses the unified broker_api_credentials table with broker='zerodha'.
 """
 import logging
 from datetime import datetime, timezone
@@ -12,7 +13,7 @@ from sqlalchemy import select
 
 from app.database import get_db
 from app.models import User
-from app.models.zerodha_credentials import ZerodhaCredentials
+from app.models.broker_api_credentials import BrokerAPICredentials
 from app.schemas.zerodha_credentials import (
     ZerodhaCredentialsCreate,
     ZerodhaCredentialsResponse,
@@ -24,6 +25,15 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+BROKER = "zerodha"
+
+
+def _query(user_id):
+    return select(BrokerAPICredentials).where(
+        BrokerAPICredentials.user_id == user_id,
+        BrokerAPICredentials.broker == BROKER
+    )
+
 
 @router.get("/credentials", response_model=ZerodhaCredentialsResponse)
 async def get_zerodha_credentials(
@@ -31,9 +41,7 @@ async def get_zerodha_credentials(
     db: AsyncSession = Depends(get_db)
 ):
     """Check if Zerodha API credentials are configured for the user."""
-    result = await db.execute(
-        select(ZerodhaCredentials).where(ZerodhaCredentials.user_id == user.id)
-    )
+    result = await db.execute(_query(user.id))
     credentials = result.scalar_one_or_none()
 
     if not credentials:
@@ -57,22 +65,21 @@ async def store_zerodha_credentials(
     try:
         encrypted_api_secret = encrypt(request.api_secret)
 
-        result = await db.execute(
-            select(ZerodhaCredentials).where(ZerodhaCredentials.user_id == user.id)
-        )
+        result = await db.execute(_query(user.id))
         credentials = result.scalar_one_or_none()
 
         if credentials:
             credentials.api_key = request.api_key
-            credentials.encrypted_api_secret = encrypted_api_secret
+            credentials.api_secret = encrypted_api_secret
             credentials.is_active = True
             credentials.last_error = None
             credentials.updated_at = datetime.now(timezone.utc)
         else:
-            credentials = ZerodhaCredentials(
+            credentials = BrokerAPICredentials(
                 user_id=user.id,
+                broker=BROKER,
                 api_key=request.api_key,
-                encrypted_api_secret=encrypted_api_secret,
+                api_secret=encrypted_api_secret,
                 is_active=True,
             )
             db.add(credentials)
@@ -103,9 +110,7 @@ async def delete_zerodha_credentials(
     db: AsyncSession = Depends(get_db)
 ):
     """Delete Zerodha credentials for the user."""
-    result = await db.execute(
-        select(ZerodhaCredentials).where(ZerodhaCredentials.user_id == user.id)
-    )
+    result = await db.execute(_query(user.id))
     credentials = result.scalar_one_or_none()
 
     if not credentials:

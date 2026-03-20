@@ -21,7 +21,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.models import User, BrokerConnection
 from app.models.broker_instrument_tokens import BrokerInstrumentToken
-from app.models.smartapi_credentials import SmartAPICredentials
 from app.models.user_preferences import MarketDataSource, UserPreferences
 from app.utils.jwt import verify_access_token
 from app.utils.smartapi_utils import get_valid_smartapi_credentials
@@ -87,7 +86,7 @@ async def _ensure_broker_credentials(
     if broker_type == MarketDataSource.SMARTAPI:
         # Try user-level SmartAPI credentials first
         credentials = await get_valid_smartapi_credentials(user.id, db, auto_refresh=True)
-        if credentials and credentials.jwt_token and credentials.feed_token:
+        if credentials and credentials.access_token and credentials.feed_token:
             # Build token map: canonical int token → (smartapi_str_token, exchange_type)
             # The broker_instrument_tokens table maps canonical_symbol (kite format) to
             # broker-specific tokens. For kite broker rows, broker_token IS the canonical
@@ -132,7 +131,7 @@ async def _ensure_broker_credentials(
                 logger.info("[SmartAPI] Using hardcoded index token fallback (DB table empty)")
 
             pool.set_credentials("smartapi", {
-                "jwt_token": credentials.jwt_token,
+                "jwt_token": credentials.access_token,
                 "api_key": settings.ANGEL_API_KEY,
                 "client_id": credentials.client_id,
                 "feed_token": credentials.feed_token,

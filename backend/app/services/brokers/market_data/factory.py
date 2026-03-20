@@ -26,7 +26,7 @@ from app.services.brokers.market_data.market_data_base import (
     UpstoxMarketDataCredentials,
 )
 from app.services.brokers.market_data.exceptions import AuthenticationError
-from app.models.smartapi_credentials import SmartAPICredentials
+from app.models.broker_api_credentials import BrokerAPICredentials
 from app.models.broker_connections import BrokerConnection
 
 logger = logging.getLogger(__name__)
@@ -105,7 +105,7 @@ async def _create_smartapi_adapter(user_id: UUID, db: AsyncSession) -> MarketDat
             broker_type="smartapi",
             user_id=user_id,
             client_id=creds.client_id,
-            jwt_token=creds.jwt_token,
+            jwt_token=creds.access_token,
             feed_token=creds.feed_token
         )
 
@@ -474,11 +474,12 @@ async def get_platform_market_data_adapter(db: AsyncSession) -> MarketDataBroker
     # 1. SmartAPI — try any user's credentials
     try:
         from app.utils.smartapi_utils import get_valid_smartapi_credentials
-        from app.models.smartapi_credentials import SmartAPICredentials as SmartAPICreds
-
-        # Find any active SmartAPI credential
+        # Find any active AngelOne credential
         result = await db.execute(
-            select(SmartAPICreds).where(SmartAPICreds.jwt_token.isnot(None)).limit(1)
+            select(BrokerAPICredentials).where(
+                BrokerAPICredentials.broker == "angelone",
+                BrokerAPICredentials.access_token.isnot(None)
+            ).limit(1)
         )
         cred = result.scalar_one_or_none()
 
@@ -489,7 +490,7 @@ async def get_platform_market_data_adapter(db: AsyncSession) -> MarketDataBroker
                     broker_type="smartapi",
                     user_id=cred.user_id,
                     client_id=creds.client_id,
-                    jwt_token=creds.jwt_token,
+                    jwt_token=creds.access_token,
                     feed_token=creds.feed_token,
                 )
                 from app.services.brokers.market_data.smartapi_adapter import SmartAPIMarketDataAdapter

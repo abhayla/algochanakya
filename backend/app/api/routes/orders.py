@@ -14,7 +14,7 @@ from uuid import UUID
 from app.database import get_db
 from app.models import User, BrokerConnection, Strategy, StrategyLeg, Instrument
 from app.models.user_preferences import UserPreferences, MarketDataSource
-from app.models.smartapi_credentials import SmartAPICredentials
+from app.models.broker_api_credentials import BrokerAPICredentials
 from app.schemas.strategies import (
     BasketOrderRequest,
     BasketOrderResponse,
@@ -66,19 +66,20 @@ async def get_user_market_data_source(user_id, db: AsyncSession) -> str:
 
 async def get_smartapi_credentials(user_id, db: AsyncSession):
     """
-    Get user's SmartAPI credentials if configured.
+    Get user's AngelOne market data credentials if configured.
 
     Args:
         user_id: User ID
         db: Database session
 
     Returns:
-        SmartAPICredentials or None
+        BrokerAPICredentials or None
     """
     result = await db.execute(
-        select(SmartAPICredentials).where(
-            SmartAPICredentials.user_id == user_id,
-            SmartAPICredentials.is_active == True
+        select(BrokerAPICredentials).where(
+            BrokerAPICredentials.user_id == user_id,
+            BrokerAPICredentials.broker == "angelone",
+            BrokerAPICredentials.is_active == True
         )
     )
     return result.scalar_one_or_none()

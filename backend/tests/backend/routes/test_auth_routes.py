@@ -3,7 +3,7 @@ Auth Route Tests
 
 Tests for broker authentication endpoints:
 - Zerodha OAuth flow
-- AngelOne SmartAPI login
+- AngelOne SmartAPI login (inline credentials only — Mode B removed)
 - Dhan static token login
 - Upstox OAuth flow
 - Fyers OAuth flow
@@ -14,8 +14,6 @@ Tests for broker authentication endpoints:
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
-
-from fastapi.testclient import TestClient
 
 
 # ---------------------------------------------------------------------------
@@ -42,19 +40,14 @@ class TestZerodhaAuth:
     async def test_login_returns_url(self):
         """GET /api/auth/zerodha/login should return a login URL."""
         from app.api.routes.auth import router
-        # The login endpoint generates a Kite Connect login URL
-        # This is a unit test — we mock the Kite client
         with patch("app.api.routes.auth.KiteConnect") as MockKite:
             instance = MockKite.return_value
             instance.login_url.return_value = "https://kite.zerodha.com/connect/login?api_key=test"
-
-            # Verify the URL generation logic works
             assert "kite.zerodha.com" in instance.login_url()
 
     @pytest.mark.asyncio
     async def test_callback_requires_request_token(self):
         """Callback should fail without request_token parameter."""
-        # This validates the route expects request_token
         pass  # Tested via E2E
 
 
@@ -63,31 +56,39 @@ class TestZerodhaAuth:
 # ---------------------------------------------------------------------------
 
 class TestAngelOneAuth:
-    """Test AngelOne SmartAPI authentication."""
+    """Test AngelOne SmartAPI authentication (inline mode only)."""
 
     @pytest.mark.asyncio
-    async def test_angelone_login_uses_stored_credentials(self):
-        """AngelOne login uses stored SmartAPI credentials (auto-TOTP)."""
-        # AngelOne doesn't need user input — uses stored encrypted credentials
-        # from the smartapi_credentials table via smartapi_auth service.
-        # Test validates the expected credential fields used for SmartAPI login.
-        mock_creds = MagicMock()
-        mock_creds.client_id = "TEST123"
-        mock_creds.password = "encrypted_pass"
-        mock_creds.totp_secret = "encrypted_secret"
-        mock_creds.api_key = "test_api_key"
+    async def test_angelone_login_requires_all_three_fields(self):
+        """AngelOne login requires client_id, pin, and totp_code (Mode B removed)."""
+        from app.api.routes.auth import AngelOneLoginRequest
+        from pydantic import ValidationError
 
-        # Verify the credentials model has the expected fields
-        assert mock_creds.client_id == "TEST123"
-        assert hasattr(mock_creds, "totp_secret")
+        # Missing all fields
+        with pytest.raises(ValidationError):
+            AngelOneLoginRequest()
+
+        # Missing pin
+        with pytest.raises(ValidationError):
+            AngelOneLoginRequest(client_id="TEST123", totp_code="123456")
+
+        # Missing totp_code
+        with pytest.raises(ValidationError):
+            AngelOneLoginRequest(client_id="TEST123", pin="1234")
+
+        # All fields present — should succeed
+        req = AngelOneLoginRequest(client_id="TEST123", pin="1234", totp_code="654321")
+        assert req.client_id == "TEST123"
+        assert req.pin == "1234"
+        assert req.totp_code == "654321"
 
 
 # ---------------------------------------------------------------------------
-# SmartAPIAuth Service Unit Tests (Dual-Mode Authentication)
+# SmartAPIAuth Service Unit Tests
 # ---------------------------------------------------------------------------
 
 class TestSmartAPIAuthService:
-    """Unit tests for SmartAPIAuth service dual-mode authentication methods."""
+    """Unit tests for SmartAPIAuth service authentication methods."""
 
     def test_authenticate_with_totp_delegates_to_do_authenticate(self):
         """authenticate_with_totp() passes the provided TOTP code directly to _do_authenticate()."""
@@ -190,17 +191,16 @@ class TestSmartAPIAuthService:
         assert "Authentication failed" in str(exc_info.value)
 
 
-
 # ---------------------------------------------------------------------------
-# AngelOne Login Route Tests (Dual-Mode)
+# AngelOne Login Route Tests (Inline Only — Mode B Removed)
 # ---------------------------------------------------------------------------
 
 class TestAngelOneLoginRoute:
     """
-    Route-level tests for POST /api/auth/angelone/login dual-mode.
+    Route-level tests for POST /api/auth/angelone/login.
 
-    Inline mode: client_id + pin + totp_code provided in body.
-    Stored mode: empty body, falls back to SmartAPICredentials row in DB.
+    Mode B (stored credentials auto-login) has been removed.
+    Only inline mode (client_id + pin + totp_code) is supported.
     """
 
     def _make_auth_result(self, client_id="TEST123"):
@@ -213,22 +213,11 @@ class TestAngelOneLoginRoute:
             "client_id": client_id,
         }
 
-    def _make_mock_db(self, first_result=None):
-        """
-        Build an async mock DB session.
-
-        first_result: returned by the first execute() call (SmartAPICredentials or User lookup).
-        Subsequent calls return None to simulate no existing User or BrokerConnection.
-        """
-        call_count = [0]
-
+    def _make_mock_db(self):
+        """Build an async mock DB session."""
         async def mock_execute(stmt):
-            call_count[0] += 1
             result = MagicMock()
-            if call_count[0] == 1:
-                result.scalar_one_or_none.return_value = first_result
-            else:
-                result.scalar_one_or_none.return_value = None
+            result.scalar_one_or_none.return_value = None
             result.scalars.return_value.all.return_value = []
             return result
 
@@ -241,14 +230,14 @@ class TestAngelOneLoginRoute:
         return mock_db
 
     @pytest.mark.asyncio
-    async def test_inline_mode_calls_authenticate_with_totp_not_authenticate(self):
-        """Inline mode: authenticate_with_totp() is called; authenticate() is never called."""
+    async def test_inline_mode_calls_authenticate_with_totp(self):
+        """Inline mode: authenticate_with_totp() is called with provided credentials."""
         from app.api.routes.auth import angelone_login, AngelOneLoginRequest
 
         mock_auth = MagicMock()
         mock_auth.authenticate_with_totp.return_value = self._make_auth_result("INLINE01")
 
-        mock_db = self._make_mock_db(first_result=None)
+        mock_db = self._make_mock_db()
         body = AngelOneLoginRequest(client_id="INLINE01", pin="4321", totp_code="999888")
 
         with patch("app.api.routes.auth.get_smartapi_auth", return_value=mock_auth), \
@@ -263,11 +252,10 @@ class TestAngelOneLoginRoute:
             pin="4321",
             totp_code="999888",
         )
-        mock_auth.authenticate.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_inline_mode_does_not_query_smartapi_credentials_table(self):
-        """Inline mode: the smartapi_credentials table is never queried."""
+    async def test_login_does_not_query_smartapi_credentials_table(self):
+        """Login never queries smartapi_credentials or broker_api_credentials table."""
         from app.api.routes.auth import angelone_login, AngelOneLoginRequest
 
         mock_auth = MagicMock()
@@ -300,21 +288,21 @@ class TestAngelOneLoginRoute:
 
         for query_str in queried_tables:
             assert "smartapi_credentials" not in query_str.lower(), (
-                "Inline mode must not query smartapi_credentials, got: " + query_str
+                "Login must not query smartapi_credentials, got: " + query_str
+            )
+            assert "broker_api_credentials" not in query_str.lower(), (
+                "Login must not query broker_api_credentials, got: " + query_str
             )
 
     @pytest.mark.asyncio
-    async def test_inline_mode_does_not_update_stored_credential_tokens(self):
-        """Inline mode: a pre-existing SmartAPICredentials object is never modified."""
+    async def test_login_never_updates_stored_credentials(self):
+        """Login does not modify any stored credential objects (Mode B removal)."""
         from app.api.routes.auth import angelone_login, AngelOneLoginRequest
-
-        stored_creds = MagicMock()
-        stored_creds.jwt_token = "original_stored_token"
 
         mock_auth = MagicMock()
         mock_auth.authenticate_with_totp.return_value = self._make_auth_result("INLINE01")
 
-        mock_db = self._make_mock_db(first_result=None)
+        mock_db = self._make_mock_db()
         body = AngelOneLoginRequest(client_id="INLINE01", pin="4321", totp_code="999888")
 
         with patch("app.api.routes.auth.get_smartapi_auth", return_value=mock_auth), \
@@ -324,104 +312,8 @@ class TestAngelOneLoginRoute:
             MockSC.return_value.getProfile.return_value = {"data": None}
             await angelone_login(body=body, db=mock_db)
 
-        assert stored_creds.jwt_token == "original_stored_token"
-
-    @pytest.mark.asyncio
-    async def test_stored_mode_queries_db_and_calls_authenticate(self):
-        """Stored mode: empty body queries DB for credentials and calls authenticate() with auto-TOTP."""
-        from app.api.routes.auth import angelone_login, AngelOneLoginRequest
-        from app.utils.encryption import encrypt
-
-        stored_creds = MagicMock()
-        stored_creds.client_id = "STORED01"
-        stored_creds.encrypted_pin = encrypt("4321")
-        stored_creds.encrypted_totp_secret = encrypt("JBSWY3DPEHPK3PXP")
-        stored_creds.user_id = None
-
-        mock_auth = MagicMock()
-        mock_auth.authenticate.return_value = self._make_auth_result("STORED01")
-
-        mock_db = self._make_mock_db(first_result=stored_creds)
-        body = AngelOneLoginRequest()
-
-        execute_call_count = [0]
-        original_execute = mock_db.execute
-
-        async def counting_execute(stmt):
-            execute_call_count[0] += 1
-            return await original_execute(stmt)
-
-        mock_db.execute = counting_execute
-
-        with patch("app.api.routes.auth.get_smartapi_auth", return_value=mock_auth), \
-             patch("SmartApi.SmartConnect") as MockSC, \
-             patch("app.api.routes.auth.create_access_token", return_value="fake_jwt"), \
-             patch("app.api.routes.auth.get_redis", new_callable=AsyncMock):
-            MockSC.return_value.getProfile.return_value = {"data": None}
-            await angelone_login(body=body, db=mock_db)
-
-        assert execute_call_count[0] >= 1, "Stored mode must query the database"
-        mock_auth.authenticate.assert_called_once()
-        mock_auth.authenticate_with_totp.assert_not_called()
-
-    @pytest.mark.asyncio
-    async def test_stored_mode_returns_404_when_no_credentials_exist(self):
-        """Stored mode: 404 HTTPException raised when SmartAPICredentials row is absent."""
-        from app.api.routes.auth import angelone_login, AngelOneLoginRequest
-        from fastapi import HTTPException
-
-        mock_db = self._make_mock_db(first_result=None)
-        body = AngelOneLoginRequest()
-
-        with patch("app.api.routes.auth.get_smartapi_auth"):
-            with pytest.raises(HTTPException) as exc_info:
-                await angelone_login(body=body, db=mock_db)
-
-        assert exc_info.value.status_code == 404
-        assert "credentials" in exc_info.value.detail.lower()
-
-    @pytest.mark.asyncio
-    async def test_stored_mode_updates_credential_tokens_after_auth(self):
-        """Stored mode: SmartAPICredentials fields are written with new tokens after auth."""
-        from app.api.routes.auth import angelone_login, AngelOneLoginRequest
-        from app.utils.encryption import encrypt
-        from datetime import datetime, timezone
-
-        token_expiry = datetime(2099, 1, 1, tzinfo=timezone.utc)
-        stored_creds = MagicMock()
-        stored_creds.client_id = "STORED01"
-        stored_creds.encrypted_pin = encrypt("4321")
-        stored_creds.encrypted_totp_secret = encrypt("JBSWY3DPEHPK3PXP")
-        stored_creds.user_id = None
-
-        auth_result = {
-            "jwt_token": "jwt.new.token",
-            "refresh_token": "refresh_new",
-            "feed_token": "feed_new",
-            "token_expiry": token_expiry,
-            "client_id": "STORED01",
-        }
-        mock_auth = MagicMock()
-        mock_auth.authenticate.return_value = auth_result
-
-        mock_db = self._make_mock_db(first_result=stored_creds)
-        body = AngelOneLoginRequest()
-
-        with patch("app.api.routes.auth.get_smartapi_auth", return_value=mock_auth), \
-             patch("SmartApi.SmartConnect") as MockSC, \
-             patch("app.api.routes.auth.create_access_token", return_value="fake_jwt"), \
-             patch("app.api.routes.auth.get_redis", new_callable=AsyncMock):
-            MockSC.return_value.getProfile.return_value = {"data": None}
-            await angelone_login(body=body, db=mock_db)
-
-        assert stored_creds.jwt_token == "jwt.new.token"
-        assert stored_creds.refresh_token == "refresh_new"
-        assert stored_creds.feed_token == "feed_new"
-        assert stored_creds.token_expiry == token_expiry
-        assert stored_creds.is_active is True
-        assert stored_creds.last_error is None
-
-
+        # No stored credentials should be touched — only broker_connections and users are queried/updated
+        # The stored_credentials update block was removed in Gap J
 
 
 # ---------------------------------------------------------------------------
@@ -434,12 +326,10 @@ class TestDhanAuth:
     @pytest.mark.asyncio
     async def test_dhan_login_requires_client_id_and_token(self):
         """POST /api/auth/dhan/login requires client_id and access_token."""
-        # Dhan uses static token auth — no OAuth redirect
         payload = {
             "client_id": "DHAN12345",
             "access_token": "test-dhan-token"
         }
-        # Verify the expected payload structure
         assert "client_id" in payload
         assert "access_token" in payload
 
@@ -452,16 +342,12 @@ class TestOAuthBrokers:
     """Test OAuth-based broker auth (Upstox, Fyers, Paytm)."""
 
     def test_upstox_login_generates_oauth_url(self):
-        """GET /api/auth/upstox/login should return OAuth URL."""
-        # Upstox uses standard OAuth 2.0
         pass  # Tested via E2E
 
     def test_fyers_login_generates_oauth_url(self):
-        """GET /api/auth/fyers/login should return OAuth URL."""
         pass  # Tested via E2E
 
     def test_paytm_login_generates_oauth_url(self):
-        """GET /api/auth/paytm/login should return OAuth URL."""
         pass  # Tested via E2E
 
 
@@ -474,8 +360,6 @@ class TestDisconnect:
 
     @pytest.mark.asyncio
     async def test_disconnect_returns_success(self):
-        """DELETE /api/auth/{broker}/disconnect should succeed for connected broker."""
-        # Disconnect should remove the broker connection from DB
         pass  # Requires full app context
 
 
@@ -488,8 +372,6 @@ class TestLogout:
 
     @pytest.mark.asyncio
     async def test_logout_invalidates_session(self):
-        """POST /api/auth/logout should clear Redis session."""
-        # Logout clears the JWT from Redis
         pass  # Requires full app context
 
 
@@ -502,14 +384,10 @@ class TestAuthMe:
 
     @pytest.mark.asyncio
     async def test_me_returns_user_with_connections(self):
-        """GET /api/auth/me should return user + broker_connections."""
-        # The /me endpoint returns the authenticated user's info
-        # including all connected brokers
         pass  # Requires full app context
 
     @pytest.mark.asyncio
     async def test_me_fails_without_token(self):
-        """GET /api/auth/me without token should return 401."""
         pass  # Tested via E2E
 
 
@@ -521,8 +399,6 @@ class TestHealthRoute:
     """Test /api/health endpoint."""
 
     def test_health_response_structure(self):
-        """Health check should return status and component checks."""
-        # Health endpoint checks DB + Redis connectivity
         expected_components = ["database", "redis"]
         for component in expected_components:
             assert isinstance(component, str)

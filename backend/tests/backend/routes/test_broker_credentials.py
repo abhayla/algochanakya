@@ -19,9 +19,7 @@ from sqlalchemy.ext.compiler import compiles
 
 from app.database import Base, get_db
 from app.models import User
-from app.models.zerodha_credentials import ZerodhaCredentials
-from app.models.upstox_credentials import UpstoxCredentials
-from app.models.dhan_credentials import DhanCredentials
+from app.models.broker_api_credentials import BrokerAPICredentials  # noqa: F401 - needed for table creation
 from app.utils.dependencies import get_current_user
 
 

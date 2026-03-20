@@ -136,14 +136,15 @@ async def get_broker_credential_status(
     Get credential configuration status for all supported brokers.
 
     Returns a boolean for each broker indicating whether valid credentials exist.
-    SmartAPI uses its own credentials table; all others use broker_connections.
+    Uses the unified broker_api_credentials table for AngelOne; broker_connections for others.
     """
-    from app.models.smartapi_credentials import SmartAPICredentials
+    from app.models.broker_api_credentials import BrokerAPICredentials
     from app.models.broker_connections import BrokerConnection
 
     smartapi_result = await db.execute(
-        select(SmartAPICredentials).where(
-            SmartAPICredentials.user_id == user.id
+        select(BrokerAPICredentials).where(
+            BrokerAPICredentials.user_id == user.id,
+            BrokerAPICredentials.broker == "angelone"
         )
     )
     smartapi_creds = smartapi_result.scalar_one_or_none()

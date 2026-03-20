@@ -1,7 +1,8 @@
 """
 SmartAPI Utility Functions
 
-Provides token validation and auto-refresh functionality for SmartAPI.
+Provides token validation and auto-refresh functionality for AngelOne SmartAPI
+market data credentials stored in the unified broker_api_credentials table.
 """
 import logging
 from datetime import datetime, timezone, timedelta
@@ -10,7 +11,7 @@ from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from app.models.smartapi_credentials import SmartAPICredentials
+from app.models.broker_api_credentials import BrokerAPICredentials
 from app.utils.encryption import decrypt
 from app.services.legacy.smartapi_auth import get_smartapi_auth, SmartAPIAuthError
 
@@ -24,13 +25,15 @@ async def get_valid_smartapi_credentials(
     user_id,
     db: AsyncSession,
     auto_refresh: bool = True
-) -> Optional[SmartAPICredentials]:
+) -> Optional[BrokerAPICredentials]:
     """
-    Get SmartAPI credentials with automatic token refresh if expired.
+    Get AngelOne market data credentials with automatic token refresh if expired.
+
+    Queries the unified broker_api_credentials table for broker='angelone'.
 
     This function:
-    1. Fetches the user's SmartAPI credentials
-    2. Checks if the JWT token is expired or about to expire
+    1. Fetches the user's AngelOne API credentials
+    2. Checks if the access token is expired or about to expire
     3. If expired, automatically re-authenticates using stored credentials
     4. Returns the credentials with a valid token
 
@@ -40,13 +43,13 @@ async def get_valid_smartapi_credentials(
         auto_refresh: Whether to auto-refresh expired tokens (default True)
 
     Returns:
-        SmartAPICredentials with valid token, or None if not configured/refresh failed
+        BrokerAPICredentials with valid token, or None if not configured/refresh failed
     """
-    # Fetch credentials
     result = await db.execute(
-        select(SmartAPICredentials).where(
-            SmartAPICredentials.user_id == user_id,
-            SmartAPICredentials.is_active == True
+        select(BrokerAPICredentials).where(
+            BrokerAPICredentials.user_id == user_id,
+            BrokerAPICredentials.broker == "angelone",
+            BrokerAPICredentials.is_active == True
         )
     )
     credentials = result.scalar_one_or_none()
@@ -56,11 +59,10 @@ async def get_valid_smartapi_credentials(
         return None
 
     # Check if token is valid
-    if credentials.jwt_token and credentials.token_expiry:
+    if credentials.access_token and credentials.token_expiry:
         now = datetime.now(timezone.utc)
 
         # SmartAPI tokens are flushed at 5 AM IST daily
-        # Check if token was generated before today's 5 AM IST
         from zoneinfo import ZoneInfo
         ist = ZoneInfo('Asia/Kolkata')
         now_ist = now.astimezone(ist)
@@ -68,17 +70,14 @@ async def get_valid_smartapi_credentials(
         # Calculate today's 5 AM IST in UTC
         todays_5am_ist = now_ist.replace(hour=5, minute=0, second=0, microsecond=0)
         if now_ist.hour < 5:
-            # Before 5 AM, use yesterday's 5 AM as the cutoff
             todays_5am_ist = todays_5am_ist - timedelta(days=1)
         todays_5am_utc = todays_5am_ist.astimezone(timezone.utc)
 
         # Check if token was generated before the last 5 AM flush
         needs_refresh = False
         if credentials.last_auth_at:
-            # Ensure last_auth_at is timezone-aware UTC for comparison
             last_auth_utc = credentials.last_auth_at
             if last_auth_utc.tzinfo is None:
-                # Assume naive datetime is in UTC (standard DB practice)
                 last_auth_utc = last_auth_utc.replace(tzinfo=timezone.utc)
             else:
                 last_auth_utc = last_auth_utc.astimezone(timezone.utc)
@@ -90,22 +89,19 @@ async def get_valid_smartapi_credentials(
                 needs_refresh = True
 
         if not needs_refresh:
-            # Add buffer to avoid edge cases
             if now < (credentials.token_expiry - timedelta(minutes=TOKEN_REFRESH_BUFFER_MINUTES)):
-                # Token is still valid
                 logger.debug(f"[SmartAPI] Token valid until {credentials.token_expiry}")
                 return credentials
             else:
                 logger.info(f"[SmartAPI] Token expired or expiring soon for user {user_id}")
     else:
-        logger.info(f"[SmartAPI] No JWT token for user {user_id}")
+        logger.info(f"[SmartAPI] No access token for user {user_id}")
 
     # Token is expired or missing - attempt refresh if allowed
     if not auto_refresh:
         logger.warning(f"[SmartAPI] Token expired but auto_refresh disabled")
         return None
 
-    # Try to refresh the token
     refreshed = await refresh_smartapi_token(credentials, db)
 
     if refreshed:
@@ -115,7 +111,7 @@ async def get_valid_smartapi_credentials(
 
 
 async def refresh_smartapi_token(
-    credentials: SmartAPICredentials,
+    credentials: BrokerAPICredentials,
     db: AsyncSession
 ) -> bool:
     """
@@ -125,7 +121,7 @@ async def refresh_smartapi_token(
     Falls back to full re-authentication with PIN + TOTP.
 
     Args:
-        credentials: SmartAPI credentials object
+        credentials: BrokerAPICredentials object (broker='angelone')
         db: Database session
 
     Returns:
@@ -139,7 +135,7 @@ async def refresh_smartapi_token(
             logger.info(f"[SmartAPI] Attempting token refresh via refresh_token")
             result = auth.refresh_session(credentials.refresh_token)
 
-            credentials.jwt_token = result['jwt_token']
+            credentials.access_token = result['jwt_token']
             credentials.feed_token = result['feed_token']
             credentials.token_expiry = result['token_expiry']
             credentials.last_auth_at = datetime.now(timezone.utc)
@@ -168,7 +164,7 @@ async def refresh_smartapi_token(
                 totp_secret=totp_secret
             )
 
-            credentials.jwt_token = result['jwt_token']
+            credentials.access_token = result['jwt_token']
             credentials.refresh_token = result.get('refresh_token')
             credentials.feed_token = result['feed_token']
             credentials.token_expiry = result['token_expiry']
@@ -194,17 +190,17 @@ async def refresh_smartapi_token(
     return False
 
 
-def is_token_expired(credentials: SmartAPICredentials) -> bool:
+def is_token_expired(credentials: BrokerAPICredentials) -> bool:
     """
     Check if SmartAPI token is expired or about to expire.
 
     Args:
-        credentials: SmartAPI credentials object
+        credentials: BrokerAPICredentials object
 
     Returns:
         True if token is expired or expiring within buffer period
     """
-    if not credentials or not credentials.jwt_token or not credentials.token_expiry:
+    if not credentials or not credentials.access_token or not credentials.token_expiry:
         return True
 
     expiry_with_buffer = credentials.token_expiry - timedelta(minutes=TOKEN_REFRESH_BUFFER_MINUTES)

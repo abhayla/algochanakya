@@ -35,9 +35,14 @@ class User(Base):
     # AI relationships
     ai_config = relationship("AIUserConfig", back_populates="user", uselist=False)
 
-    # SmartAPI credentials
+    # SmartAPI credentials (legacy — being replaced by broker_api_credentials)
     smartapi_credentials = relationship(
         "SmartAPICredentials", back_populates="user", uselist=False
+    )
+
+    # Unified broker API credentials (one per broker per user)
+    broker_api_credentials = relationship(
+        "BrokerAPICredentials", back_populates="user"
     )
 
     # Broker Tier 3 credentials

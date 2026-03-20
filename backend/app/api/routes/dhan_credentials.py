@@ -1,7 +1,8 @@
 """
 Dhan Credentials API Routes
 
-Endpoints for Dhan static token credential management (Tier 3).
+Endpoints for Dhan credential management (Tier 3).
+Uses the unified broker_api_credentials table with broker='dhan'.
 """
 import logging
 from datetime import datetime, timezone
@@ -12,7 +13,7 @@ from sqlalchemy import select
 
 from app.database import get_db
 from app.models import User
-from app.models.dhan_credentials import DhanCredentials
+from app.models.broker_api_credentials import BrokerAPICredentials
 from app.schemas.dhan_credentials import (
     DhanCredentialsCreate,
     DhanCredentialsResponse,
@@ -24,6 +25,15 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+BROKER = "dhan"
+
+
+def _query(user_id):
+    return select(BrokerAPICredentials).where(
+        BrokerAPICredentials.user_id == user_id,
+        BrokerAPICredentials.broker == BROKER
+    )
+
 
 @router.get("/credentials", response_model=DhanCredentialsResponse)
 async def get_dhan_credentials(
@@ -31,9 +41,7 @@ async def get_dhan_credentials(
     db: AsyncSession = Depends(get_db)
 ):
     """Check if Dhan credentials are configured for the user."""
-    result = await db.execute(
-        select(DhanCredentials).where(DhanCredentials.user_id == user.id)
-    )
+    result = await db.execute(_query(user.id))
     credentials = result.scalar_one_or_none()
 
     if not credentials:
@@ -59,23 +67,22 @@ async def store_dhan_credentials(
         encrypted_access_token = encrypt(request.access_token)
         now = datetime.now(timezone.utc)
 
-        result = await db.execute(
-            select(DhanCredentials).where(DhanCredentials.user_id == user.id)
-        )
+        result = await db.execute(_query(user.id))
         credentials = result.scalar_one_or_none()
 
         if credentials:
             credentials.client_id = request.client_id
-            credentials.encrypted_access_token = encrypted_access_token
+            credentials.access_token = encrypted_access_token
             credentials.is_active = True
             credentials.last_auth_at = now
             credentials.last_error = None
             credentials.updated_at = now
         else:
-            credentials = DhanCredentials(
+            credentials = BrokerAPICredentials(
                 user_id=user.id,
+                broker=BROKER,
                 client_id=request.client_id,
-                encrypted_access_token=encrypted_access_token,
+                access_token=encrypted_access_token,
                 is_active=True,
                 last_auth_at=now,
             )
@@ -108,9 +115,7 @@ async def delete_dhan_credentials(
     db: AsyncSession = Depends(get_db)
 ):
     """Delete Dhan credentials for the user."""
-    result = await db.execute(
-        select(DhanCredentials).where(DhanCredentials.user_id == user.id)
-    )
+    result = await db.execute(_query(user.id))
     credentials = result.scalar_one_or_none()
 
     if not credentials:

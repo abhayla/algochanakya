@@ -13,19 +13,17 @@ import logging
 from app.database import get_db, get_redis
 from app.config import settings
 from app.models import User, BrokerConnection
-from app.models.smartapi_credentials import SmartAPICredentials
 from app.schemas import UserResponse, BrokerConnectionResponse
 from app.utils.jwt import create_access_token
 from app.utils.dependencies import get_current_user
-from app.utils.encryption import decrypt
 from app.utils.user_resolver import resolve_or_create_user
 from app.services.legacy.smartapi_auth import get_smartapi_auth, SmartAPIAuthError
 
 
 class AngelOneLoginRequest(BaseModel):
-    client_id: Optional[str] = None
-    pin: Optional[str] = None
-    totp_code: Optional[str] = None
+    client_id: str
+    pin: str
+    totp_code: str
 
 logger = logging.getLogger(__name__)
 
@@ -374,66 +372,32 @@ async def angelone_disconnect(
 
 @router.post("/angelone/login")
 async def angelone_login(
-    body: AngelOneLoginRequest = Body(default=AngelOneLoginRequest()),
+    body: AngelOneLoginRequest = Body(...),
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Login with AngelOne/SmartAPI.
+    Login with AngelOne/SmartAPI using inline credentials.
 
-    Two modes:
-    1. Inline credentials: client_id + pin + totp_code provided in body.
-       Credentials are NOT stored — used once for authentication.
-    2. Stored credentials: No body fields — uses pre-configured SmartAPI
-       credentials from Settings with auto-TOTP generation.
+    User provides client_id + pin + totp_code on the login page.
+    Credentials are used once for authentication and NOT stored.
+    Market data API credentials are configured separately in Settings.
 
     Returns:
         JSON with JWT token and redirect URL
     """
     try:
-        use_inline = body.client_id and body.pin and body.totp_code
-        stored_credentials = None
-
-        if use_inline:
-            client_id = body.client_id
-            pin = body.pin
-            totp_code = body.totp_code
-            logger.info(f"[AngelOne] Inline login for client: {client_id}")
-        else:
-            result = await db.execute(select(SmartAPICredentials))
-            stored_credentials = result.scalar_one_or_none()
-
-            if not stored_credentials:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="No SmartAPI credentials configured. Please add credentials in Settings or enter them on the login page."
-                )
-
-            try:
-                client_id = stored_credentials.client_id
-                pin = decrypt(stored_credentials.encrypted_pin)
-                totp_secret = decrypt(stored_credentials.encrypted_totp_secret)
-            except Exception as e:
-                logger.error(f"[AngelOne] Failed to decrypt credentials: {e}")
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="Failed to decrypt stored credentials"
-                )
-            totp_code = None
+        client_id = body.client_id
+        pin = body.pin
+        totp_code = body.totp_code
+        logger.info(f"[AngelOne] Inline login for client: {client_id}")
 
         auth = get_smartapi_auth()
         try:
-            if use_inline:
-                auth_result = auth.authenticate_with_totp(
-                    client_id=client_id,
-                    pin=pin,
-                    totp_code=totp_code
-                )
-            else:
-                auth_result = auth.authenticate(
-                    client_id=client_id,
-                    pin=pin,
-                    totp_secret=totp_secret
-                )
+            auth_result = auth.authenticate_with_totp(
+                client_id=client_id,
+                pin=pin,
+                totp_code=totp_code
+            )
         except SmartAPIAuthError as e:
             logger.error(f"[AngelOne] Authentication failed: {e}")
             raise HTTPException(
@@ -496,17 +460,6 @@ async def angelone_login(
                 is_active=True
             )
             db.add(broker_connection)
-
-        # Update SmartAPI credentials with new tokens (only when using stored credentials)
-        if stored_credentials:
-            stored_credentials.jwt_token = auth_result['jwt_token']
-            stored_credentials.refresh_token = auth_result.get('refresh_token')
-            stored_credentials.feed_token = auth_result['feed_token']
-            stored_credentials.token_expiry = auth_result['token_expiry']
-            stored_credentials.last_auth_at = datetime.utcnow()
-            stored_credentials.last_error = None
-            stored_credentials.is_active = True
-            stored_credentials.user_id = user.id
 
         await db.commit()
         await db.refresh(user)

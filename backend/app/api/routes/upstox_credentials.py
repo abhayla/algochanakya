@@ -2,6 +2,7 @@
 Upstox Credentials API Routes
 
 Endpoints for Upstox API app credential management (Tier 3).
+Uses the unified broker_api_credentials table with broker='upstox'.
 """
 import logging
 from datetime import datetime, timezone
@@ -12,7 +13,7 @@ from sqlalchemy import select
 
 from app.database import get_db
 from app.models import User
-from app.models.upstox_credentials import UpstoxCredentials
+from app.models.broker_api_credentials import BrokerAPICredentials
 from app.schemas.upstox_credentials import (
     UpstoxCredentialsCreate,
     UpstoxCredentialsResponse,
@@ -24,6 +25,15 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+BROKER = "upstox"
+
+
+def _query(user_id):
+    return select(BrokerAPICredentials).where(
+        BrokerAPICredentials.user_id == user_id,
+        BrokerAPICredentials.broker == BROKER
+    )
+
 
 @router.get("/credentials", response_model=UpstoxCredentialsResponse)
 async def get_upstox_credentials(
@@ -31,9 +41,7 @@ async def get_upstox_credentials(
     db: AsyncSession = Depends(get_db)
 ):
     """Check if Upstox API credentials are configured for the user."""
-    result = await db.execute(
-        select(UpstoxCredentials).where(UpstoxCredentials.user_id == user.id)
-    )
+    result = await db.execute(_query(user.id))
     credentials = result.scalar_one_or_none()
 
     if not credentials:
@@ -57,22 +65,21 @@ async def store_upstox_credentials(
     try:
         encrypted_api_secret = encrypt(request.api_secret)
 
-        result = await db.execute(
-            select(UpstoxCredentials).where(UpstoxCredentials.user_id == user.id)
-        )
+        result = await db.execute(_query(user.id))
         credentials = result.scalar_one_or_none()
 
         if credentials:
             credentials.api_key = request.api_key
-            credentials.encrypted_api_secret = encrypted_api_secret
+            credentials.api_secret = encrypted_api_secret
             credentials.is_active = True
             credentials.last_error = None
             credentials.updated_at = datetime.now(timezone.utc)
         else:
-            credentials = UpstoxCredentials(
+            credentials = BrokerAPICredentials(
                 user_id=user.id,
+                broker=BROKER,
                 api_key=request.api_key,
-                encrypted_api_secret=encrypted_api_secret,
+                api_secret=encrypted_api_secret,
                 is_active=True,
             )
             db.add(credentials)
@@ -103,9 +110,7 @@ async def delete_upstox_credentials(
     db: AsyncSession = Depends(get_db)
 ):
     """Delete Upstox credentials for the user."""
-    result = await db.execute(
-        select(UpstoxCredentials).where(UpstoxCredentials.user_id == user.id)
-    )
+    result = await db.execute(_query(user.id))
     credentials = result.scalar_one_or_none()
 
     if not credentials:

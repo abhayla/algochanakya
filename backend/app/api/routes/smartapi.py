@@ -1,7 +1,8 @@
 """
 SmartAPI API Routes
 
-Endpoints for SmartAPI credential management and configuration.
+Endpoints for AngelOne SmartAPI credential management and configuration.
+Uses the unified broker_api_credentials table with broker='angelone'.
 """
 import logging
 from datetime import datetime, timezone
@@ -12,7 +13,7 @@ from sqlalchemy import select
 
 from app.database import get_db
 from app.models import User, UserPreferences
-from app.models.smartapi_credentials import SmartAPICredentials
+from app.models.broker_api_credentials import BrokerAPICredentials
 from app.models.user_preferences import MarketDataSource
 from app.schemas.smartapi import (
     SmartAPICredentialsCreate,
@@ -31,6 +32,14 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+def _angelone_query(user_id):
+    """Query for AngelOne credentials in the unified table."""
+    return select(BrokerAPICredentials).where(
+        BrokerAPICredentials.user_id == user_id,
+        BrokerAPICredentials.broker == "angelone"
+    )
+
+
 @router.get("/credentials", response_model=SmartAPICredentialsResponse)
 async def get_smartapi_credentials(
     user: User = Depends(get_current_user),
@@ -42,11 +51,7 @@ async def get_smartapi_credentials(
     Returns:
         Credential status (does not return actual credentials)
     """
-    result = await db.execute(
-        select(SmartAPICredentials).where(
-            SmartAPICredentials.user_id == user.id
-        )
-    )
+    result = await db.execute(_angelone_query(user.id))
     credentials = result.scalar_one_or_none()
 
     if not credentials:
@@ -77,20 +82,13 @@ async def store_smartapi_credentials(
     Credentials are encrypted before storage.
     """
     try:
-        # Encrypt sensitive fields
         encrypted_pin = encrypt(request.pin)
         encrypted_totp_secret = encrypt(request.totp_secret)
 
-        # Check if credentials already exist
-        result = await db.execute(
-            select(SmartAPICredentials).where(
-                SmartAPICredentials.user_id == user.id
-            )
-        )
+        result = await db.execute(_angelone_query(user.id))
         credentials = result.scalar_one_or_none()
 
         if credentials:
-            # Update existing
             credentials.client_id = request.client_id
             credentials.encrypted_pin = encrypted_pin
             credentials.encrypted_totp_secret = encrypted_totp_secret
@@ -98,9 +96,9 @@ async def store_smartapi_credentials(
             credentials.last_error = None
             credentials.updated_at = datetime.now(timezone.utc)
         else:
-            # Create new
-            credentials = SmartAPICredentials(
+            credentials = BrokerAPICredentials(
                 user_id=user.id,
+                broker="angelone",
                 client_id=request.client_id,
                 encrypted_pin=encrypted_pin,
                 encrypted_totp_secret=encrypted_totp_secret,
@@ -138,11 +136,7 @@ async def delete_smartapi_credentials(
     """
     Delete SmartAPI credentials for the user.
     """
-    result = await db.execute(
-        select(SmartAPICredentials).where(
-            SmartAPICredentials.user_id == user.id
-        )
-    )
+    result = await db.execute(_angelone_query(user.id))
     credentials = result.scalar_one_or_none()
 
     if not credentials:
@@ -172,14 +166,12 @@ async def test_smartapi_connection(
     try:
         auth = get_smartapi_auth()
 
-        # Attempt authentication
         result = auth.authenticate(
             client_id=request.client_id,
             pin=request.pin,
             totp_secret=request.totp_secret
         )
 
-        # Get profile to verify
         from SmartApi import SmartConnect
         from app.config import settings
 
@@ -223,12 +215,7 @@ async def authenticate_smartapi(
 
     Returns session tokens for WebSocket and REST API usage.
     """
-    # Get stored credentials
-    result = await db.execute(
-        select(SmartAPICredentials).where(
-            SmartAPICredentials.user_id == user.id
-        )
-    )
+    result = await db.execute(_angelone_query(user.id))
     credentials = result.scalar_one_or_none()
 
     if not credentials:
@@ -238,11 +225,9 @@ async def authenticate_smartapi(
         )
 
     try:
-        # Decrypt credentials
         pin = decrypt(credentials.encrypted_pin)
         totp_secret = decrypt(credentials.encrypted_totp_secret)
 
-        # Authenticate
         auth = get_smartapi_auth()
         result = auth.authenticate(
             client_id=credentials.client_id,
@@ -250,8 +235,7 @@ async def authenticate_smartapi(
             totp_secret=totp_secret
         )
 
-        # Update stored tokens
-        credentials.jwt_token = result['jwt_token']
+        credentials.access_token = result['jwt_token']
         credentials.refresh_token = result.get('refresh_token')
         credentials.feed_token = result['feed_token']
         credentials.token_expiry = result['token_expiry']
@@ -270,7 +254,6 @@ async def authenticate_smartapi(
         }
 
     except SmartAPIAuthError as e:
-        # Update error status
         credentials.last_error = str(e)
         credentials.is_active = False
         await db.commit()
@@ -296,7 +279,6 @@ async def get_market_data_source(
     """
     Get current market data source preference.
     """
-    # Get user preferences
     prefs_result = await db.execute(
         select(UserPreferences).where(
             UserPreferences.user_id == user.id
@@ -304,15 +286,11 @@ async def get_market_data_source(
     )
     preferences = prefs_result.scalar_one_or_none()
 
-    # Get SmartAPI credentials status
-    creds_result = await db.execute(
-        select(SmartAPICredentials).where(
-            SmartAPICredentials.user_id == user.id
-        )
-    )
+    # Check AngelOne credentials
+    creds_result = await db.execute(_angelone_query(user.id))
     smartapi_creds = creds_result.scalar_one_or_none()
 
-    # Check if Kite is configured (user has broker connection)
+    # Check if Kite is configured
     from app.models.broker_connections import BrokerConnection
     kite_result = await db.execute(
         select(BrokerConnection).where(
@@ -344,22 +322,15 @@ async def update_market_data_source(
 
     Validates that the selected source is configured.
     """
-    # Validate source
     if request.source not in MarketDataSource.VALID_SOURCES:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid source. Must be one of: {MarketDataSource.VALID_SOURCES}"
         )
 
-    # Get SmartAPI credentials status
-    creds_result = await db.execute(
-        select(SmartAPICredentials).where(
-            SmartAPICredentials.user_id == user.id
-        )
-    )
+    creds_result = await db.execute(_angelone_query(user.id))
     smartapi_creds = creds_result.scalar_one_or_none()
 
-    # Check if Kite is configured
     from app.models.broker_connections import BrokerConnection
     kite_result = await db.execute(
         select(BrokerConnection).where(
@@ -369,7 +340,6 @@ async def update_market_data_source(
     )
     kite_connection = kite_result.scalars().first()
 
-    # Validate selected source is configured
     if request.source == MarketDataSource.SMARTAPI:
         if not smartapi_creds or not smartapi_creds.is_active:
             raise HTTPException(
@@ -384,7 +354,6 @@ async def update_market_data_source(
                 detail="Kite not configured. Please login with Zerodha first."
             )
 
-    # Update preferences
     prefs_result = await db.execute(
         select(UserPreferences).where(
             UserPreferences.user_id == user.id
@@ -405,16 +374,12 @@ async def update_market_data_source(
 
     logger.info(f"[SmartAPI] Market data source updated to {request.source} for user {user.id}")
 
-    # Live-switch the user's existing WebSocket connection to the new broker.
-    # If the user is connected, this re-routes their ticks immediately so the
-    # frontend badge updates without requiring a page refresh.
     try:
         from app.services.brokers.market_data.ticker import TickerRouter
         ticker_router = TickerRouter.get_instance()
         await ticker_router.switch_user_broker(str(user.id), request.source)
     except Exception as e:
         logger.warning("[SmartAPI] Live broker switch failed for user %s: %s", user.id, e)
-        # Non-fatal — preference is saved; change takes effect on next WebSocket reconnect
 
     return MarketDataSourceResponse(
         source=request.source,

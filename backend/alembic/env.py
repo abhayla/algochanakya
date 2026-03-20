@@ -15,7 +15,7 @@ from app.database import Base
 from app.models import (
     User, BrokerConnection, Watchlist, Instrument, Strategy, StrategyLeg, StrategyTemplate,
     UserPreferences, SmartAPICredentials, ZerodhaCredentials, UpstoxCredentials, DhanCredentials,
-    BrokerInstrumentToken,
+    BrokerAPICredentials, BrokerInstrumentToken,
     AutoPilotUserSettings, AutoPilotStrategy, AutoPilotOrder, AutoPilotLog,
     AutoPilotTemplate, AutoPilotConditionEval, AutoPilotDailySummary, AutoPilotTradeJournal,
     AIUserConfig, AIModelRegistry, AILearningReport, AIPaperTrade,
