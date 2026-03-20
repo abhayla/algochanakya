@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models import User, BrokerConnection
+from app.models.broker_api_credentials import BrokerAPICredentials
 from app.models.broker_instrument_tokens import BrokerInstrumentToken
 from app.models.user_preferences import MarketDataSource, UserPreferences
 from app.utils.jwt import verify_access_token
@@ -60,6 +61,20 @@ async def _get_market_data_source(user_id, db: AsyncSession) -> str:
         # "platform" means use platform default (SmartAPI is first in chain)
         return MarketDataSource.SMARTAPI if src == MarketDataSource.PLATFORM else src
     return MarketDataSource.SMARTAPI
+
+
+async def _get_user_broker_creds(
+    user_id, broker: str, db: AsyncSession
+) -> Optional[BrokerAPICredentials]:
+    """Load active user credentials from broker_api_credentials table."""
+    result = await db.execute(
+        select(BrokerAPICredentials).where(
+            BrokerAPICredentials.user_id == user_id,
+            BrokerAPICredentials.broker == broker,
+            BrokerAPICredentials.is_active == True,
+        )
+    )
+    return result.scalar_one_or_none()
 
 
 async def _ensure_broker_credentials(
@@ -141,45 +156,67 @@ async def _ensure_broker_credentials(
         return False
 
     elif broker_type == MarketDataSource.KITE:
-        # Kite requires per-user OAuth credentials
-        result = await db.execute(
-            select(BrokerConnection).where(
-                BrokerConnection.user_id == user.id,
-                BrokerConnection.broker == "zerodha",
-                BrokerConnection.is_active == True,
-            )
-        )
-        conn = result.scalar_one_or_none()
-        if conn and conn.access_token:
+        # 1. User's own API credentials from Settings
+        user_creds = await _get_user_broker_creds(user.id, "zerodha", db)
+        if user_creds and user_creds.access_token:
             pool.set_credentials("kite", {
-                "api_key": settings.KITE_API_KEY,
-                "access_token": conn.access_token,
+                "api_key": user_creds.api_key or settings.KITE_API_KEY,
+                "access_token": user_creds.access_token,
             })
             return True
+
+        # 2. Platform .env credentials
+        kite_env_token = getattr(settings, "KITE_ACCESS_TOKEN", "")
+        if settings.KITE_API_KEY and kite_env_token:
+            pool.set_credentials("kite", {
+                "api_key": settings.KITE_API_KEY,
+                "access_token": kite_env_token,
+            })
+            return True
+
         return False
 
     elif broker_type == MarketDataSource.DHAN:
-        # Dhan uses static access token from platform .env
+        # 1. User's own API credentials from Settings
+        user_creds = await _get_user_broker_creds(user.id, "dhan", db)
+        if user_creds and user_creds.access_token:
+            pool.set_credentials("dhan", {
+                "client_id": user_creds.client_id or settings.DHAN_CLIENT_ID,
+                "access_token": user_creds.access_token,
+            })
+            return True
+
+        # 2. Platform .env credentials
         if settings.DHAN_CLIENT_ID and settings.DHAN_ACCESS_TOKEN:
             pool.set_credentials("dhan", {
                 "client_id": settings.DHAN_CLIENT_ID,
                 "access_token": settings.DHAN_ACCESS_TOKEN,
             })
             return True
+
         return False
 
     elif broker_type == MarketDataSource.FYERS:
-        # Fyers uses OAuth token from platform .env (expires midnight IST)
+        # 1. User's own API credentials from Settings
+        user_creds = await _get_user_broker_creds(user.id, "fyers", db)
+        if user_creds and user_creds.access_token:
+            pool.set_credentials("fyers", {
+                "app_id": user_creds.client_id or settings.FYERS_APP_ID,
+                "access_token": user_creds.access_token,
+            })
+            return True
+
+        # 2. Platform .env credentials
         if settings.FYERS_APP_ID and settings.FYERS_ACCESS_TOKEN:
             pool.set_credentials("fyers", {
                 "app_id": settings.FYERS_APP_ID,
                 "access_token": settings.FYERS_ACCESS_TOKEN,
             })
             return True
+
         return False
 
     elif broker_type == MarketDataSource.UPSTOX:
-        # Try platform .env token first (skip if expired); fall back to user's personal token
         import time, base64, json as _json
         def _jwt_expired(token: str) -> bool:
             try:
@@ -188,27 +225,22 @@ async def _ensure_broker_credentials(
             except Exception:
                 return True
 
-        access_token = settings.UPSTOX_ACCESS_TOKEN
+        # 1. User's own API credentials from Settings
+        user_creds = await _get_user_broker_creds(user.id, "upstox", db)
+        if user_creds and user_creds.access_token and not _jwt_expired(user_creds.access_token):
+            pool.set_credentials("upstox", {
+                "api_key": user_creds.api_key or settings.UPSTOX_API_KEY,
+                "access_token": user_creds.access_token,
+            })
+            return True
+
+        # 2. Platform .env token (skip if expired)
+        access_token = getattr(settings, "UPSTOX_ACCESS_TOKEN", "")
         api_key = settings.UPSTOX_API_KEY
         if access_token and _jwt_expired(access_token):
-            logger.info("[Upstox] Platform token expired, trying user personal token")
+            logger.info("[Upstox] Platform token expired")
             access_token = None
-            # Also clear stale pool credentials so they get refreshed
             pool._credentials.pop("upstox", None)
-
-        if not access_token:
-            result = await db.execute(
-                select(BrokerConnection).where(
-                    BrokerConnection.user_id == user.id,
-                    BrokerConnection.broker == "upstox",
-                    BrokerConnection.is_active == True,
-                )
-            )
-            conn = result.scalar_one_or_none()
-            if conn and conn.access_token and not _jwt_expired(conn.access_token):
-                access_token = conn.access_token
-            elif conn and conn.access_token:
-                logger.warning("[Upstox] User personal token also expired — reconnect needed")
 
         if api_key and access_token:
             pool.set_credentials("upstox", {
@@ -216,16 +248,28 @@ async def _ensure_broker_credentials(
                 "access_token": access_token,
             })
             return True
+
         return False
 
     elif broker_type == MarketDataSource.PAYTM:
-        # Paytm uses public_access_token for WebSocket (NOT access_token)
+        # 1. User's own API credentials from Settings
+        # Paytm WebSocket uses public_access_token (stored as feed_token in broker_api_credentials)
+        user_creds = await _get_user_broker_creds(user.id, "paytm", db)
+        if user_creds and user_creds.feed_token:
+            pool.set_credentials("paytm", {
+                "api_key": user_creds.api_key or settings.PAYTM_API_KEY,
+                "public_access_token": user_creds.feed_token,
+            })
+            return True
+
+        # 2. Platform .env credentials
         if settings.PAYTM_API_KEY and settings.PAYTM_PUBLIC_ACCESS_TOKEN:
             pool.set_credentials("paytm", {
                 "api_key": settings.PAYTM_API_KEY,
                 "public_access_token": settings.PAYTM_PUBLIC_ACCESS_TOKEN,
             })
             return True
+
         return False
 
     return False
