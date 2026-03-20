@@ -77,6 +77,41 @@ async def _get_user_broker_creds(
     return result.scalar_one_or_none()
 
 
+# Map ORG_ACTIVE_BROKERS DB names to MarketDataSource values
+_BROKER_TO_SOURCE = {
+    "angelone": MarketDataSource.SMARTAPI,
+    "kite": MarketDataSource.KITE,
+    "zerodha": MarketDataSource.KITE,
+    "upstox": MarketDataSource.UPSTOX,
+    "dhan": MarketDataSource.DHAN,
+    "fyers": MarketDataSource.FYERS,
+    "paytm": MarketDataSource.PAYTM,
+}
+
+
+async def _try_fallback_brokers(
+    failed_source: str, user: "User", db: AsyncSession
+) -> Optional[str]:
+    """Try each ORG_ACTIVE_BROKER as fallback, skipping the one that already failed.
+
+    Returns the MarketDataSource string of the first broker that has credentials,
+    or None if all fail.
+    """
+    from app.constants.brokers import ORG_ACTIVE_BROKERS
+
+    for broker_name in ORG_ACTIVE_BROKERS:
+        source = _BROKER_TO_SOURCE.get(broker_name)
+        if not source or source == failed_source:
+            continue
+
+        if await _ensure_broker_credentials(source, user, db):
+            logger.info("Fallback to %s succeeded (was %s)", source, failed_source)
+            return source
+
+    logger.warning("All fallback brokers failed after %s", failed_source)
+    return None
+
+
 async def _ensure_broker_credentials(
     broker_type: str, user: User, db: AsyncSession
 ) -> bool:
@@ -324,22 +359,18 @@ async def websocket_ticks(
                 # Load credentials for preferred broker
                 creds_ok = await _ensure_broker_credentials(broker_type, user, db)
 
-                # Fallback: SmartAPI → Kite, or Kite → SmartAPI
+                # Fallback: try each ORG_ACTIVE_BROKER in order
                 if not creds_ok:
-                    fallback = (
-                        MarketDataSource.KITE
-                        if broker_type == MarketDataSource.SMARTAPI
-                        else MarketDataSource.SMARTAPI
-                    )
-                    logger.info("Credentials unavailable for %s, falling back to %s", broker_type, fallback)
-                    creds_ok = await _ensure_broker_credentials(fallback, user, db)
-                    if creds_ok:
-                        broker_type = fallback
+                    logger.info("Credentials unavailable for %s, trying fallback chain", broker_type)
+                    fallback_source = await _try_fallback_brokers(broker_type, user, db)
+                    if fallback_source:
+                        broker_type = fallback_source
+                        creds_ok = True
 
                 if not creds_ok:
                     await websocket.send_json({
                         "type": "error",
-                        "message": "No broker credentials available. Please configure SmartAPI or Kite.",
+                        "message": "No broker credentials available. Please configure market data credentials in Settings.",
                     })
                     await websocket.close()
                     return
