@@ -43,7 +43,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cmd /c bash D:\\Abhay\\VibeCoding\\algochanakya\\.claude\\hooks\\secret-scanner.sh",
+            "command": "cmd /c python D:\\Abhay\\VibeCoding\\algochanakya\\.claude\\hooks\\secret-scanner.py",
             "timeout": 5
           },
           {
@@ -68,7 +68,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cmd /c bash D:\\Abhay\\VibeCoding\\algochanakya\\.claude\\hooks\\secret-scanner.sh",
+            "command": "cmd /c python D:\\Abhay\\VibeCoding\\algochanakya\\.claude\\hooks\\secret-scanner.py",
             "timeout": 5
           },
           {
