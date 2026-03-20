@@ -36,14 +36,16 @@ ruff format app/                           # Format
 
 **Key Modules:**
 - **Broker Abstraction** - Dual system: Market data brokers (all 6 implemented: SmartAPI, Kite, Dhan, Fyers, Paytm, Upstox) + Order execution brokers (all 6 implemented). Factory pattern with unified data models (`UnifiedOrder`, `UnifiedPosition`, `UnifiedQuote`). See [Multi-Broker Architecture](../CLAUDE.md#core-purpose-multi-broker-architecture).
-- **Authentication** - 6 broker login flows (OAuth redirect or inline credentials). JWT stored in localStorage + Redis. Login credentials are NOT stored — used once for authentication. Use `get_current_user` / `get_current_broker_connection` dependencies. Platform-level SmartAPI credentials (for universal market data) stored in `.env` with auto-TOTP. User-level market data API credentials stored encrypted in `smartapi_credentials` table (configured via Settings page).
+- **Authentication** - 6 broker login flows (OAuth redirect or inline credentials). JWT stored in localStorage + Redis. Login credentials are NOT stored — used once for authentication. Use `get_current_user` / `get_current_broker_connection` dependencies. Platform-level SmartAPI credentials (for universal market data) stored in `.env` with auto-TOTP. User-level market data API credentials stored encrypted in the unified `broker_api_credentials` table (replaces per-broker `smartapi_credentials` table — configured via Settings page). Settings OAuth callbacks at `/api/settings/{broker}/connect-callback` store tokens into `broker_api_credentials` without touching login state.
 - **WebSocket Live Prices** - Dev: `ws://localhost:8001/ws/ticks?token=<jwt>` | Prod: `wss://algochanakya.com/ws/ticks?token=<jwt>`. 5-component ticker architecture: TickerAdapter (per-broker WS) + TickerPool (lifecycle/ref-counting) + TickerRouter (user fan-out) + HealthMonitor + FailoverController. All 6 broker ticker adapters implemented. Legacy singletons (`SmartAPITickerService`, `KiteTickerService`) deprecated and moved to `services/deprecated/`. Index tokens: NIFTY=256265, BANKNIFTY=260105, FINNIFTY=257801, SENSEX=265. See [TICKER-DESIGN-SPEC.md](../docs/decisions/TICKER-DESIGN-SPEC.md)
   - **Token map loading (CRITICAL):** `_ensure_broker_credentials()` in `websocket.py` loads the canonical↔broker token mapping from `broker_instrument_tokens` table and passes it via `credentials["token_map"]`. Without this, `SmartAPITickerAdapter` cannot translate canonical tokens to SmartAPI tokens and subscribes to nothing (no ticks flow). Hardcoded index token fallback ensures NIFTY/BANKNIFTY/FINNIFTY/SENSEX work even if the DB table is empty.
+  - **Credential loading order:** `_ensure_broker_credentials()` checks (1) user's `broker_api_credentials` row, (2) platform `.env` credentials, (3) `_try_fallback_brokers()` which iterates `ORG_ACTIVE_BROKERS` chain as last resort.
+  - **TickerPool expiry checks:** `TickerPool.credentials_valid(broker_type)` and `TickerPool.clear_expired_credentials()` are called on every WebSocket connect to avoid using stale tokens.
 - **Option Chain** - IV via Newton-Raphson, Greeks via Black-Scholes. Max Pain, PCR calculated.
 - **Strategy Builder** - P/L modes: "At Expiry" (intrinsic) and "Current" (Black-Scholes via scipy)
 - **AutoPilot** - Automated execution with conditions, adjustments, kill switch. 16 database tables. See [docs/autopilot/](../docs/autopilot/)
 - **AI Module** - Market regime (6 types), risk states (GREEN/YELLOW/RED), trust ladder (Sandbox->Supervised->Autonomous). Paper trading graduation: 15 days + 25 trades + 55% win rate. Key tables: `ai_user_config`, `ai_decisions_log`, `ai_model_registry`, `ai_learning_reports`. See [docs/ai/](../docs/ai/)
-- **SmartAPI Integration** (Default Market Data) - AngelOne SmartAPI is the **default market data source** for live WebSocket prices and historical OHLC. Kite remains for order execution. Uses auto-TOTP (no manual TOTP entry). Credentials stored encrypted in `smartapi_credentials` table. Key files: `app/services/legacy/smartapi_auth.py` (auth with auto-TOTP), `legacy/smartapi_ticker.py` (WebSocket V2), `legacy/smartapi_historical.py` (OHLC), `app/api/routes/smartapi.py` (endpoints), `frontend/src/components/settings/SmartAPISettings.vue` (UI). API: `POST /api/smartapi/authenticate`, `GET/POST /api/smartapi/credentials`, `POST /api/smartapi/test-connection`.
+- **SmartAPI Integration** (Default Market Data) - AngelOne SmartAPI is the **default market data source** for live WebSocket prices and historical OHLC. Kite remains for order execution. Uses auto-TOTP (no manual TOTP entry). Platform credentials stored in `.env`; user-level credentials stored encrypted in the unified `broker_api_credentials` table (the old per-broker `smartapi_credentials` table is now legacy). AngelOne login requires all three fields: `client_id`, `pin`, `totp_code` — Mode B (auto-TOTP from stored credentials) has been removed; only inline credentials (Mode A) are supported for user login. Key files: `app/services/legacy/smartapi_auth.py` (auth with auto-TOTP), `legacy/smartapi_ticker.py` (WebSocket V2), `legacy/smartapi_historical.py` (OHLC), `app/api/routes/smartapi.py` (endpoints), `frontend/src/components/settings/SmartAPISettings.vue` (UI). API: `POST /api/smartapi/authenticate`, `GET/POST /api/smartapi/credentials`, `POST /api/smartapi/test-connection`.
 
 **Database:** Async PostgreSQL (asyncpg) + Redis for sessions. Run `alembic upgrade head` after git pull.
 
@@ -189,7 +191,7 @@ See `app/services/brokers/base.py` and `app/services/brokers/market_data/market_
 Adding a new broker requires:
 1. Create adapter class implementing `BrokerAdapter` or `MarketDataBrokerAdapter`
 2. Register in factory (`_BROKER_ADAPTERS` dict)
-3. Add credentials table (if needed) + migration
+3. User-level market data credentials go into `broker_api_credentials` (no new table needed — use `broker` column to scope rows)
 4. Update frontend settings dropdown
 
 **Zero changes** to routes, services, or business logic required.
@@ -240,7 +242,9 @@ lot_size = get_lot_size("NIFTY")  # 75
 - `market_data_source` - Which broker for market data (smartapi, kite, upstox, dhan, fyers, paytm)
 - Constraint updated to support 6 brokers (migration: `bc0dd372730d`)
 
-**`smartapi_credentials`** - Encrypted user-level SmartAPI API credentials for market data upgrade (configured via Settings page). NOT login credentials — login credentials are never stored. The platform-level SmartAPI credentials for universal market data are in `.env`.
+**`broker_api_credentials`** - Unified encrypted user-level market data API credentials for ALL brokers (Tier 3). Replaces the legacy `smartapi_credentials` (and any other planned per-broker tables). One row per user per broker. Stores permanent API credentials (`api_key`, `api_secret`), auth fields (`client_id`, `encrypted_pin`, `encrypted_totp_secret`), session tokens (`access_token`, `feed_token`, `refresh_token`, `token_expiry`), and a `broker_metadata` JSONB column for broker-specific extras. NOT login credentials — login credentials are never stored. The platform-level SmartAPI credentials for universal market data are in `.env`.
+
+**`smartapi_credentials`** (legacy) - Old per-broker table for SmartAPI credentials. Superseded by `broker_api_credentials`. Retained for migration compatibility.
 
 ### Adding New API Routes
 

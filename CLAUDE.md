@@ -64,8 +64,8 @@ When a bug is reported, don't start by trying to fix it. Instead, start by writi
 | `ANGEL_TRADE_API_KEY` | Order execution only |
 
 
-8. **Login credentials vs API credentials:** Login page credentials are used once and NOT stored. Settings page API credentials ARE stored (encrypted) for ongoing market data. See [Three-Tier Credential Architecture](docs/architecture/authentication.md#three-tier-credential-architecture) for the complete guide.
-9. **Platform market data vs user market data:** The AngelOne keys in `.env` are the **platform-level universal API** serving all users. Individual users configure their own market data API in Settings (optional). These are completely separate systems. See [Three-Tier Credential Architecture](docs/architecture/authentication.md#three-tier-credential-architecture) for the complete guide.
+8. **Login credentials vs API credentials:** Login page credentials are used once and NOT stored. Settings page API credentials ARE stored (encrypted) in the unified `broker_api_credentials` table (one row per user per broker, covers all six brokers — the old `smartapi_credentials` table is now legacy). Settings OAuth callbacks are at `/api/settings/{broker}/connect-callback` — these only write to `broker_api_credentials` and do NOT create a JWT session or overwrite login state. See [Three-Tier Credential Architecture](docs/architecture/authentication.md#three-tier-credential-architecture) for the complete guide.
+9. **Platform market data vs user market data:** The AngelOne keys in `.env` are the **platform-level universal API** serving all users. Individual users configure their own market data API in Settings (optional) — all stored in `broker_api_credentials`. These are completely separate systems. See [Three-Tier Credential Architecture](docs/architecture/authentication.md#three-tier-credential-architecture) for the complete guide.
 
 ---
 

@@ -184,7 +184,7 @@ All 6 brokers are supported. Each follows a different auth pattern but produces 
 | **AngelOne (SmartAPI)** | API Key + TOTP | POST credentials → auto-TOTP → token | ~8h session | `auth.py` |
 | **Upstox** | OAuth 2.0 | Redirect → callback → exchange token | ~1 year access token | `upstox_auth.py` |
 | **Fyers** | OAuth 2.0 | Redirect → callback → exchange token | ~24h access token | `fyers_auth.py` |
-| **Dhan** | Static Token | POST client_id + access_token | Until manually revoked | `dhan_auth.py` |
+| **Dhan** | OAuth 2.0 (DhanHQ v2 consent) + Static Token fallback | GET consent URL → callback (OAuth) or POST client_id + access_token (static) | Until manually revoked | `dhan_auth.py` |
 | **Paytm Money** | OAuth 2.0 (3 JWTs) | Redirect → callback → 3 tokens (access, read, public) | Varies per token | `paytm_auth.py` |
 
 ### Zerodha (Kite Connect) — OAuth 2.0
@@ -197,9 +197,9 @@ Standard OAuth redirect flow. User authenticates on Kite login page, Zerodha red
 
 ### AngelOne (SmartAPI) — Inline Credentials
 
-No browser redirect. User enters Client ID, PIN, and 6-digit TOTP (from their authenticator app) on the login page. Backend authenticates directly with SmartAPI.
+No browser redirect. User enters Client ID, PIN, and 6-digit TOTP (from their authenticator app) on the login page. Backend authenticates directly with SmartAPI. All three fields are required — there is no Mode B (auto-TOTP from stored credentials); only inline credentials (Mode A) are supported for user login.
 
-- **Login:** `POST /api/auth/angelone/login` with `{client_id, pin, totp}` (user-provided)
+- **Login:** `POST /api/auth/angelone/login` with `{client_id, pin, totp_code}` — all three are required
 - **Credentials:** NOT stored — used once for authentication
 - **Note:** The platform's universal SmartAPI connection (`.env`) is separate from individual user login
 - **Cost:** FREE
@@ -224,11 +224,13 @@ Standard OAuth redirect with authorization code exchange.
 - **Disconnect:** `DELETE /api/auth/fyers/disconnect`
 - **Cost:** FREE
 
-### Dhan — Static Token
+### Dhan — OAuth 2.0 (DhanHQ v2) + Static Token fallback
 
-No OAuth flow. User provides their client ID and a static access token (generated from Dhan developer portal). Simplest auth flow.
+DhanHQ v2 introduces a consent-based OAuth flow. The preferred flow uses the OAuth redirect; a static token fallback is retained for users who already have a token.
 
-- **Login:** `POST /api/auth/dhan/login` with `{client_id, access_token}`
+- **OAuth Login:** `GET /api/auth/dhan/login` → returns Dhan consent app URL for browser redirect
+- **OAuth Callback:** `GET /api/auth/dhan/callback?tokenId=xxx&consentAppId=yyy` — exchanges consent token for access token
+- **Static Token (fallback):** `POST /api/auth/dhan/login` with `{client_id, access_token}`
 - **Disconnect:** `DELETE /api/auth/dhan/disconnect`
 - **Cost:** FREE (Trading API) / conditional (Data API)
 
@@ -335,23 +337,24 @@ Every broker in AlgoChanakya has up to three independent credential tiers. These
 ### Tier 3: User Personal API (Settings Page → DB)
 
 - **Purpose:** Individual user configures their own broker API for personal market data (faster, direct quotes instead of shared platform data)
-- **Stored in:** Database, encrypted (e.g., `smartapi_credentials` table)
+- **Stored in:** `broker_api_credentials` table (unified, one row per user per broker) — replaces the old per-broker `smartapi_credentials` table. Fields: `api_key`, `api_secret`, `client_id`, `encrypted_pin`, `encrypted_totp_secret`, `access_token`, `feed_token`, `refresh_token`, `token_expiry`, `broker_metadata` (JSONB for broker-specific extras).
 - **Configured via:** Settings page in the frontend
 - **Scope:** Per-user — each user optionally sets up their own API
-- **Currently implemented for:** AngelOne (SmartAPISettings component)
-- **Planned for:** Upstox, Dhan, Zerodha
-- **Not planned for:** Fyers, Paytm
+- **Token expiry:** `token_expiry` column tracks when stored access tokens expire. WebSocket credential loading (`_ensure_broker_credentials()`) checks `TickerPool.credentials_valid()` to skip re-fetching live tokens and calls `TickerPool.clear_expired_credentials()` to invalidate stale ones.
+- **Settings OAuth callbacks:** For OAuth brokers (Zerodha, Upstox, Fyers, Paytm), Settings page uses separate OAuth callbacks at `/api/settings/{broker}/connect-callback`. These store tokens into `broker_api_credentials` only — they do NOT create a JWT session or overwrite `broker_connections`. AngelOne uses `POST /api/smartapi/authenticate`; Dhan uses static token endpoint.
+- **Currently implemented for:** AngelOne, Zerodha, Upstox, Fyers, Paytm, Dhan (all via `broker_api_credentials`)
+- **Not planned for:** None — all brokers now use the unified table
 
 ### Per-Broker Tier Matrix
 
 | Broker | Tier 1 (Platform Data) | Tier 2 (OAuth App) | Tier 3 (User Personal API) |
 |--------|----------------------|-------------------|--------------------------|
-| AngelOne | Yes (3 keys in `.env`) | No (inline credentials) | Yes (SmartAPISettings) |
-| Upstox | Yes (7 keys in `.env`) | Yes (same keys serve both) | Planned |
-| Dhan | Yes (5 keys in `.env`) | Yes (`DHAN_API_KEY/SECRET`) | Planned |
-| Zerodha | No (not platform data source) | Yes (`KITE_API_KEY/SECRET`) | Planned |
-| Fyers | Placeholder | Yes (placeholder) | Not planned |
-| Paytm | Placeholder | Yes (placeholder) | Not planned |
+| AngelOne | Yes (3 keys in `.env`) | No (inline credentials) | Yes (`broker_api_credentials`, via SmartAPISettings) |
+| Upstox | Yes (7 keys in `.env`) | Yes (same keys serve both) | Yes (`broker_api_credentials`, Settings OAuth callback) |
+| Dhan | Yes (5 keys in `.env`) | Yes (`DHAN_API_KEY/SECRET`) | Yes (`broker_api_credentials`, Settings static token) |
+| Zerodha | No (not platform data source) | Yes (`KITE_API_KEY/SECRET`) | Yes (`broker_api_credentials`, Settings OAuth callback) |
+| Fyers | Placeholder | Yes (placeholder) | Yes (`broker_api_credentials`, Settings OAuth callback) |
+| Paytm | Placeholder | Yes (placeholder) | Yes (`broker_api_credentials`, Settings OAuth callback) |
 
 ### Login Flow (User Authentication)
 
@@ -376,14 +379,16 @@ The login page is completely separate from all three tiers:
 
 | File | Purpose |
 |------|---------|
-| `backend/app/api/routes/auth.py` | Core auth (Zerodha OAuth, AngelOne TOTP, logout, /me) |
+| `backend/app/api/routes/auth.py` | Core auth (Zerodha OAuth, AngelOne TOTP inline, logout, /me) |
 | `backend/app/api/routes/upstox_auth.py` | Upstox OAuth flow |
 | `backend/app/api/routes/fyers_auth.py` | Fyers OAuth flow |
-| `backend/app/api/routes/dhan_auth.py` | Dhan static token flow |
+| `backend/app/api/routes/dhan_auth.py` | Dhan OAuth (DhanHQ v2 consent) + static token fallback |
 | `backend/app/api/routes/paytm_auth.py` | Paytm 3-token OAuth flow |
+| `backend/app/api/routes/settings_credentials.py` | Settings OAuth callbacks (Zerodha, Upstox, Fyers, Paytm) — stores into `broker_api_credentials`, no JWT session |
+| `backend/app/models/broker_api_credentials.py` | `BrokerAPICredentials` model — unified Tier 3 credential storage |
 | `backend/app/utils/jwt.py` | JWT creation/verification |
 | `backend/app/utils/dependencies.py` | Auth dependencies |
-| `backend/app/utils/encryption.py` | Credential encryption (SmartAPI) |
+| `backend/app/utils/encryption.py` | Credential encryption |
 | `frontend/src/stores/auth.js` | Auth state management (all 6 brokers) |
 | `frontend/src/services/api.js` | Axios interceptors (401 handling) |
 
