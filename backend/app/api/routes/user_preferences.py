@@ -109,11 +109,25 @@ async def update_user_preferences(
                 detail=f"order_broker must be one of: {OrderBroker.VALID_BROKERS}"
             )
 
+    old_source = preferences.market_data_source if hasattr(preferences, 'market_data_source') else None
+
     for key, value in update_data.items():
         setattr(preferences, key, value)
 
     await db.commit()
     await db.refresh(preferences)
+
+    # Trigger live WebSocket switch if market_data_source changed
+    if 'market_data_source' in update_data:
+        try:
+            from app.services.brokers.market_data.ticker import TickerRouter
+            ticker_router = TickerRouter.get_instance()
+            await ticker_router.switch_user_broker(str(user.id), update_data['market_data_source'])
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(
+                "Live broker switch failed for user %s: %s", user.id, e
+            )
 
     return UserPreferencesResponse.model_validate(preferences)
 
@@ -136,32 +150,32 @@ async def get_broker_credential_status(
     Get credential configuration status for all supported brokers.
 
     Returns a boolean for each broker indicating whether valid credentials exist.
-    Uses the unified broker_api_credentials table for AngelOne; broker_connections for others.
+    Checks the unified broker_api_credentials table for all brokers.
     """
     from app.models.broker_api_credentials import BrokerAPICredentials
-    from app.models.broker_connections import BrokerConnection
 
-    smartapi_result = await db.execute(
+    creds_result = await db.execute(
         select(BrokerAPICredentials).where(
             BrokerAPICredentials.user_id == user.id,
-            BrokerAPICredentials.broker == "angelone"
+            BrokerAPICredentials.is_active == True,
         )
     )
-    smartapi_creds = smartapi_result.scalar_one_or_none()
-    smartapi_configured = bool(smartapi_creds and smartapi_creds.is_active)
+    creds = creds_result.scalars().all()
 
-    connections_result = await db.execute(
-        select(BrokerConnection).where(
-            BrokerConnection.user_id == user.id,
-            BrokerConnection.is_active == True,
-        )
-    )
-    connections = connections_result.scalars().all()
+    # Map broker names to response keys
+    broker_to_key = {
+        "angelone": "smartapi",
+        "zerodha": "kite",
+        "upstox": "upstox",
+        "dhan": "dhan",
+        "fyers": "fyers",
+        "paytm": "paytm",
+    }
 
-    status = {"smartapi": smartapi_configured}
-    for conn in connections:
-        key = BROKER_NAME_TO_KEY.get(conn.broker)
-        if key and conn.access_token:
+    status = {}
+    for cred in creds:
+        key = broker_to_key.get(cred.broker)
+        if key:
             status[key] = True
 
     return BrokerCredentialStatusResponse(**status)
