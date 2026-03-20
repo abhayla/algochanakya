@@ -105,6 +105,20 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"[WARNING] SmartAPI token mapping failed (unexpected error): {e}")
 
+    # Refresh expired platform broker tokens (Upstox, AngelOne)
+    try:
+        from app.services.brokers.platform_token_refresh import refresh_platform_tokens
+        results = await refresh_platform_tokens()
+        for broker, status in results.items():
+            if status == "refreshed":
+                print(f"[SUCCESS] {broker} platform token refreshed")
+            elif status == "failed":
+                print(f"[WARNING] {broker} platform token refresh failed")
+            elif status == "skipped":
+                print(f"[INFO] {broker} platform token still valid")
+    except Exception as e:
+        print(f"[WARNING] Platform token refresh failed: {e}")
+
     # Note: Strategy Monitor requires a valid Kite session to start.
     # It will be initialized when a user with valid broker connection
     # activates a strategy. See app/services/strategy_monitor.py for details.
