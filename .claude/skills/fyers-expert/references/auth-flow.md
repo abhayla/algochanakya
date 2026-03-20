@@ -156,6 +156,26 @@ Authorization: ABC123-100:eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...
 
 **Midnight expiry:** Unlike other brokers (SmartAPI: 24h, Kite: end of day), Fyers tokens expire exactly at midnight IST. If a user authenticates at 11:55 PM, the token is valid for only 5 minutes.
 
+## Token Compatibility: Orders + Market Data
+
+The same `access_token` obtained from Fyers OAuth works for BOTH:
+- **REST API** (orders, positions, holdings) — `Authorization: {app_id}:{access_token}`
+- **Data WebSocket** (live market data streaming, up to 5,000 symbols)
+- **Order WebSocket** (real-time order/trade/position updates, <50ms execution)
+
+**No separate market data token is needed.** A single OAuth flow gives access to everything.
+
+### AlgoChanakya Implication
+
+If a user logs in with Fyers OAuth, the `access_token` stored in `broker_connections` can be reused for market data in `broker_api_credentials`. No separate Settings OAuth is needed — the token is copied automatically when the user selects "Use for market data" in Settings.
+
+### Token Expiry
+
+- Token expires at midnight IST daily
+- No refresh mechanism — user must re-authenticate daily
+
+Source: https://support.fyers.in/portal/en/kb/articles/how-can-i-use-the-data-websocket-in-api-v3-to-access-real-time-data
+
 ## Python SDK Authentication
 
 ```python

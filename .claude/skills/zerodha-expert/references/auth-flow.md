@@ -194,6 +194,24 @@ User must complete OAuth flow again (no refresh)
 - **No refresh token mechanism** - must re-do OAuth
 - Weekends/holidays: token from Friday lasts until Monday ~6 AM
 
+## Token Compatibility: Orders + Market Data
+
+The same `access_token` obtained from Kite Connect OAuth works for BOTH:
+- **REST API** (orders, positions, holdings, quotes) — `Authorization: token {api_key}:{access_token}`
+- **WebSocket** (live market data streaming) — `wss://ws.kite.trade?api_key={api_key}&access_token={access_token}`
+
+**No separate market data token is needed.** A single OAuth flow gives access to everything.
+
+### AlgoChanakya Implication
+If a user logs in with Zerodha OAuth, the `access_token` stored in `broker_connections` can be reused for market data in `broker_api_credentials`. No separate Settings OAuth is needed — the token is copied automatically when the user selects "Use for market data" in Settings.
+
+### WebSocket Limits
+- Max 3 WebSocket connections per API key
+- Up to 3,000 instrument tokens per connection
+- Token expires daily around ~6 AM IST — requires re-login
+
+Source: https://kite.trade/docs/connect/v3/websocket/
+
 ## AlgoChanakya Implementation
 
 ### Key Files

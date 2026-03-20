@@ -146,6 +146,35 @@ ws_url = (
 > Observed behavior suggests ~24h validity, but tokens have been seen expiring earlier
 > during Paytm platform maintenance windows. Implement proactive re-auth on 401.
 
+## Token Compatibility: Orders vs Market Data
+
+Paytm Money returns **3 separate tokens** from a single OAuth flow:
+- `access_token` — for REST API (orders, positions, holdings). Header: `x-jwt-token: {access_token}`
+- `public_access_token` — for **WebSocket market data streaming**. This is the token needed for live ticks.
+- `read_access_token` — for read-only API access
+
+**The `access_token` CANNOT be used for WebSocket market data.** The `public_access_token` is required.
+
+However, both tokens come from the same OAuth flow — no separate authorization is needed.
+
+### AlgoChanakya Implication
+
+When a user logs in with Paytm OAuth, all 3 tokens are returned. Currently stored in `broker_connections`:
+- `access_token` in the main `access_token` field
+- `public_access_token` in `broker_metadata.read_token` (confusing name — should be `public_token`)
+- `read_access_token` in `broker_metadata.edge_token` (confusing name — should be `read_token`)
+
+For market data, the `public_access_token` must be copied to `broker_api_credentials`. The naming in `broker_metadata` is misleading and should be fixed.
+
+### Additional Endpoint
+
+`POST /auth/paytm/public-token` — allows manual saving of `public_access_token` for WebSocket (separate from OAuth flow).
+
+### Token Expiry
+
+- All 3 tokens expire in ~24 hours
+- No refresh mechanism — user must re-authenticate daily
+
 ## AlgoChanakya Integration Notes
 
 ### Token-to-Adapter Mapping

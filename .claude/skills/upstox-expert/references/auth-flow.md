@@ -157,6 +157,29 @@ Extended token properties:
 
 ---
 
+## Token Compatibility: Orders + Market Data
+
+The same `access_token` obtained from Upstox OAuth works for BOTH:
+- **REST API** (orders, positions, holdings) — `Authorization: Bearer {access_token}`
+- **WebSocket Market Feed V3** (live market data streaming) — same token for authentication
+
+**No separate market data token is needed.** A single OAuth flow gives access to everything.
+
+### Important: V3 Migration
+Market Data Feeder V2 WebSocket was discontinued on August 22, 2025. All implementations must use V3 WebSocket.
+
+### AlgoChanakya Implication
+If a user logs in with Upstox OAuth, the `access_token` stored in `broker_connections` can be reused for market data in `broker_api_credentials`. No separate Settings OAuth is needed — the token is copied automatically when the user selects "Use for market data" in Settings.
+
+### Token Expiry
+- Token expires around ~6:30 AM next trading day
+- No refresh mechanism — user must re-authenticate daily
+- Extended token (1 year) is read-only and cannot be used for orders
+
+Source: https://upstox.com/developer/api-documentation/get-market-data-feed/
+
+---
+
 ## Token Validity
 
 ```

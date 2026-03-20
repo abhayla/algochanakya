@@ -4,7 +4,16 @@
 
 Dhan has a **dual credential system**: an **API Key + Secret** (permanent, for OAuth-style app registration) and an **Access Token** (24-hour JWT, for API calls). Both are generated from the Dhan trading dashboard (web.dhan.co), NOT the DhanHQ Developer Portal (developer.dhanhq.co).
 
-Dhan also supports **TOTP** for automated login (no SMS OTP needed) and **Static IP whitelisting** for order API security.
+Dhan also supports **TOTP** for automated login (no SMS OTP needed), **Static IP whitelisting** for order API security, and **DhanHQ v2 OAuth** for proper programmatic authentication (3-step consent flow).
+
+### Authentication Methods Summary
+
+| Method | Use Case | Token Lifetime | Automation |
+|--------|----------|---------------|------------|
+| **Manual Dashboard** | Quick setup, testing | 24h | No (requires UI) |
+| **OAuth Consent Flow** | Production apps, multi-user | 24h | Yes (server-to-server + browser redirect) |
+| **Direct TOTP Login** | Headless automation | 24h | Yes (fully programmatic, no browser) |
+| **Playwright Regen** | Fallback automation | 24h | Yes (browser automation) |
 
 ---
 
@@ -171,6 +180,198 @@ code = totp.now()  # 6-digit code valid for 30 seconds
 
 ---
 
+## DhanHQ v2 OAuth Flow (3-Step Consent)
+
+> **Source:** https://dhanhq.co/docs/v2/authentication/
+
+The DhanHQ v2 API supports a proper OAuth-style consent flow for programmatic token generation. This is the recommended approach for production applications that need to authenticate multiple users without manual dashboard interaction.
+
+**Prerequisites:** An API Key + API Secret generated from the Dhan dashboard (see Step 4 above).
+
+### Step 1: Generate Consent
+
+Request a consent ID from Dhan's auth server. This is a server-to-server call (no browser needed).
+
+```
+POST https://auth.dhan.co/app/generate-consent?client_id={dhanClientId}
+```
+
+| Header       | Value                                |
+|-------------|--------------------------------------|
+| `app_id`    | Your API Key (from dashboard)        |
+| `app_secret`| Your API Secret (UUID from dashboard)|
+
+**Response (success):**
+```json
+{
+  "consentAppId": "abc123-def456-...",
+  "consentAppStatus": "GENERATED",
+  "status": "success"
+}
+```
+
+**Rate limit:** Maximum **25 consent IDs per day** per application.
+
+### Step 2: Browser Login (User-Facing)
+
+Redirect the user to Dhan's login page with the consent ID:
+
+```
+https://auth.dhan.co/login/consentApp-login?consentAppId={consentAppId}
+```
+
+The user completes:
+1. Enter Dhan credentials (phone/email + password)
+2. Complete 2FA (OTP or TOTP)
+3. Approve the consent
+
+On success, Dhan redirects to the configured redirect URL with a `tokenId` query parameter:
+
+```
+{redirect_URL}/?tokenId={Token ID}
+```
+
+The `redirect_URL` must match the one configured when generating the API Key in Step 4 of the dashboard setup (e.g., `http://localhost:8001/api/auth/dhan/callback`).
+
+### Step 3: Consume Consent
+
+Exchange the `tokenId` for an access token. This is a server-to-server call.
+
+```
+POST https://auth.dhan.co/app/consumeApp-consent?tokenId={Token ID}
+```
+
+| Header       | Value                                |
+|-------------|--------------------------------------|
+| `app_id`    | Your API Key                         |
+| `app_secret`| Your API Secret                      |
+
+**Response (success):**
+```json
+{
+  "dhanClientId": "1234567890",
+  "dhanClientName": "User Name",
+  "accessToken": "eyJ0eXAiOiJKV1Q...",
+  "expiryTime": "2026-03-21T06:00:00"
+}
+```
+
+The `accessToken` is valid for **24 hours** (aligned with SEBI guidelines).
+
+### Token Renewal
+
+Renew an **active** (not yet expired) token for another 24 hours:
+
+```
+GET https://api.dhan.co/v2/RenewToken
+```
+
+| Header         | Value                    |
+|---------------|--------------------------|
+| `access-token`| Current active token     |
+| `dhanClientId`| User's Dhan client ID    |
+
+**Important:** Token renewal only works on tokens that have NOT yet expired. Once expired, a full re-authentication (OAuth flow or TOTP login) is required.
+
+### Direct TOTP Login (Alternative — No Browser Redirect)
+
+For fully headless/automated flows where no browser redirect is possible:
+
+```
+POST https://auth.dhan.co/app/generateAccessToken?dhanClientId={clientId}&pin={tradingPin}&totp={totpCode}
+```
+
+This generates a 24-hour access token directly without the browser consent flow. Requires:
+- `dhanClientId` — numeric user ID
+- `pin` — user's trading PIN
+- `totp` — current TOTP code (TOTP must be enabled on the Dhan account)
+
+```python
+import pyotp
+import requests
+
+totp = pyotp.TOTP(os.getenv("DHAN_TOTP_SECRET"))
+response = requests.post(
+    "https://auth.dhan.co/app/generateAccessToken",
+    params={
+        "dhanClientId": os.getenv("DHAN_CLIENT_ID"),
+        "pin": os.getenv("DHAN_LOGIN_PIN"),
+        "totp": totp.now(),
+    },
+)
+access_token = response.json().get("accessToken")
+```
+
+### Profile Verification
+
+After obtaining a token, verify it is valid and check account status:
+
+```
+GET https://api.dhan.co/v2/profile
+```
+
+| Header         | Value                |
+|---------------|----------------------|
+| `access-token`| The access token     |
+
+Returns user profile data including account setup status, segment permissions, and KYC status.
+
+### Partner Flow (Different Endpoints)
+
+Partners (platforms aggregating multiple users) use separate endpoints with different credentials:
+
+| Step | Individual Endpoint | Partner Endpoint |
+|------|-------------------|-----------------|
+| Generate consent | `POST /app/generate-consent` | `POST /partner/generate-consent` |
+| Browser login | `/login/consentApp-login?consentAppId=...` | `/consent-login?consentId=...` |
+| Consume consent | `POST /app/consumeApp-consent?tokenId=...` | `POST /partner/consume-consent?tokenId=...` |
+
+Partner flow uses `partner_id` + `partner_secret` headers instead of `app_id` + `app_secret`.
+
+### Token Validity Summary
+
+| Credential | Validity | Renewal |
+|-----------|----------|---------|
+| API Key | 12 months (renewable) | Regenerate from dashboard before expiry |
+| API Secret | 12 months (same as API Key) | Regenerated with API Key |
+| Access Token | 24 hours | `GET /v2/RenewToken` (active tokens only) |
+
+### AlgoChanakya Implementation Note
+
+**Current state:** Uses static token approach — user manually copies `client_id` + `access_token` from the Dhan dashboard. This is implemented in the `DhanAdapter` which accepts these as constructor parameters.
+
+**Gap identified (Gap K):** Should be replaced with proper OAuth consent flow to match the authentication UX of other brokers (Zerodha Kite Connect OAuth, AngelOne TOTP auto-login). The OAuth flow would allow users to click "Connect Dhan" and complete authentication via browser redirect, rather than manually pasting tokens.
+
+**Recommended migration path:**
+1. Implement `/api/auth/dhan/initiate` — calls generate-consent, returns redirect URL
+2. Implement `/api/auth/dhan/callback` — receives `tokenId`, calls consume-consent, stores encrypted token
+3. Add token renewal cron job — calls `/v2/RenewToken` before expiry
+4. Keep Direct TOTP Login as fallback for headless/automated scenarios
+
+See `docs/architecture/credential-flow-analysis.md` for the full gap analysis across all brokers.
+
+---
+
+## Token Compatibility: Orders + Market Data
+
+The same `access_token` obtained from Dhan OAuth (or static token) works for BOTH:
+- **REST API** (orders, positions, holdings) — Header: `access-token: {token}`, `client-id: {client_id}`
+- **WebSocket Live Market Feed** — `wss://api-feed.dhan.co?version=2&token={access_token}&clientId={client_id}&authType=2`
+
+**No separate market data token is needed.** A single access token gives access to everything.
+
+### AlgoChanakya Implication
+If a user logs in with Dhan, the `access_token` stored in `broker_connections` can be reused for market data in `broker_api_credentials`. No separate Settings OAuth is needed — the token is copied automatically when the user selects "Use for market data" in Settings.
+
+### Token Renewal
+- Token validity: 24 hours
+- Can be renewed using `GET /v2/RenewToken` while still active (before expiry)
+- Renewal fails on already-expired tokens — user must re-authenticate
+
+Source: https://dhanhq.co/docs/v2/live-market-feed/
+
+---
+
 ## API Request Headers
 
 ### Required Headers for All Authenticated Requests
@@ -273,7 +474,7 @@ data_adapter = get_market_data_adapter("dhan", {
 ### Token Validation
 
 Dhan does not have a dedicated "validate token" endpoint. To verify a token is valid,
-make a lightweight call to the profile or fund limit endpoint:
+use the v2 profile endpoint (preferred) or fund limit endpoint as a lightweight check:
 
 ```python
 async def validate_dhan_token(access_token: str) -> bool:
@@ -297,7 +498,7 @@ async def validate_dhan_token(access_token: str) -> bool:
 
 | Feature             | Dhan              | Zerodha (Kite)       | Angel One (SmartAPI)   |
 |---------------------|-------------------|----------------------|------------------------|
-| Auth Type           | API Key + Token   | OAuth 2.0            | Client + MPIN + TOTP   |
+| Auth Type           | OAuth Consent Flow / API Key + Token | OAuth 2.0 | Client + MPIN + TOTP |
 | Token Expiry        | **24 hours**      | 1 day (midnight)     | ~8 hours               |
 | Permanent Key       | Yes (API Key)     | Yes (API Key)        | Yes (API Key)          |
 | Refresh Required    | Daily regen       | Daily re-login       | Auto-TOTP refresh      |

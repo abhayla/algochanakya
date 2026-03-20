@@ -80,8 +80,8 @@ async def _ensure_broker_credentials(
     """
     pool = TickerPool.get_instance()
 
-    # Skip if credentials already set for this broker
-    if pool._credentials.get(broker_type):
+    # Skip if credentials already set for this broker (Upstox is re-checked for expiry below)
+    if pool._credentials.get(broker_type) and broker_type != MarketDataSource.UPSTOX:
         return True
 
     if broker_type == MarketDataSource.SMARTAPI:
@@ -180,12 +180,41 @@ async def _ensure_broker_credentials(
         return False
 
     elif broker_type == MarketDataSource.UPSTOX:
-        # Upstox uses OAuth token from platform .env (~1 year validity)
-        logger.info("[DEBUG] UPSTOX check: api_key=%s token_len=%d", bool(settings.UPSTOX_API_KEY), len(settings.UPSTOX_ACCESS_TOKEN or ""))
-        if settings.UPSTOX_API_KEY and settings.UPSTOX_ACCESS_TOKEN:
+        # Try platform .env token first (skip if expired); fall back to user's personal token
+        import time, base64, json as _json
+        def _jwt_expired(token: str) -> bool:
+            try:
+                payload = _json.loads(base64.b64decode(token.split(".")[1] + "=="))
+                return int(time.time()) >= payload.get("exp", 0)
+            except Exception:
+                return True
+
+        access_token = settings.UPSTOX_ACCESS_TOKEN
+        api_key = settings.UPSTOX_API_KEY
+        if access_token and _jwt_expired(access_token):
+            logger.info("[Upstox] Platform token expired, trying user personal token")
+            access_token = None
+            # Also clear stale pool credentials so they get refreshed
+            pool._credentials.pop("upstox", None)
+
+        if not access_token:
+            result = await db.execute(
+                select(BrokerConnection).where(
+                    BrokerConnection.user_id == user.id,
+                    BrokerConnection.broker == "upstox",
+                    BrokerConnection.is_active == True,
+                )
+            )
+            conn = result.scalar_one_or_none()
+            if conn and conn.access_token and not _jwt_expired(conn.access_token):
+                access_token = conn.access_token
+            elif conn and conn.access_token:
+                logger.warning("[Upstox] User personal token also expired — reconnect needed")
+
+        if api_key and access_token:
             pool.set_credentials("upstox", {
-                "api_key": settings.UPSTOX_API_KEY,
-                "access_token": settings.UPSTOX_ACCESS_TOKEN,
+                "api_key": api_key,
+                "access_token": access_token,
             })
             return True
         return False
