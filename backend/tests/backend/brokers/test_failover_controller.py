@@ -6,6 +6,7 @@ import pytest_asyncio
 from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
+from app.constants.brokers import ORG_ACTIVE_BROKERS
 from app.services.brokers.market_data.ticker.failover import FailoverController
 from app.services.brokers.market_data.ticker.health import (
     HealthMonitor,
@@ -51,9 +52,11 @@ def controller(mock_pool, mock_router, health_monitor):
 class TestInitialization:
     def test_defaults(self):
         fc = FailoverController()
-        assert fc.primary_broker == "smartapi"
-        assert fc.secondary_broker == "kite"
-        assert fc.active_broker == "smartapi"
+        assert fc.primary_broker == ORG_ACTIVE_BROKERS[0]
+        assert fc.secondary_broker == (
+            ORG_ACTIVE_BROKERS[1] if len(ORG_ACTIVE_BROKERS) > 1 else ORG_ACTIVE_BROKERS[0]
+        )
+        assert fc.active_broker == ORG_ACTIVE_BROKERS[0]
         assert not fc.is_failed_over
 
     def test_custom_brokers(self):
