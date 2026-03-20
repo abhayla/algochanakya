@@ -15,7 +15,7 @@ Singleton — access via TickerPool.get_instance()
 import asyncio
 import logging
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Callable, Dict, List, Optional, Set, Type, Any
 
 from app.services.brokers.market_data.ticker.adapter_base import TickerAdapter
@@ -118,6 +118,41 @@ class TickerPool:
     def set_credentials(self, broker_type: str, credentials: dict) -> None:
         """Set credentials for a broker. Called before first subscription."""
         self._credentials[broker_type] = credentials
+
+    def credentials_valid(self, broker_type: str) -> bool:
+        """Check if cached credentials exist and are not expired.
+
+        Returns True if credentials are set and either:
+        - No token_expiry is set (static tokens, never expire)
+        - token_expiry is in the future
+
+        Returns False if:
+        - No credentials set for this broker
+        - token_expiry is in the past
+        """
+        creds = self._credentials.get(broker_type)
+        if not creds:
+            return False
+
+        expiry = creds.get("token_expiry")
+        if expiry is None:
+            return True
+
+        return datetime.now(timezone.utc) < expiry
+
+    def clear_expired_credentials(self) -> list[str]:
+        """Remove cached credentials that have expired.
+
+        Returns list of broker_types that were cleared.
+        """
+        expired = []
+        for broker_type, creds in list(self._credentials.items()):
+            expiry = creds.get("token_expiry")
+            if expiry is not None and datetime.now(timezone.utc) >= expiry:
+                del self._credentials[broker_type]
+                expired.append(broker_type)
+                logger.info("[TickerPool] Cleared expired credentials for %s", broker_type)
+        return expired
 
     # ═══════════════════════════════════════════════════════════════════════
     # ADAPTER LIFECYCLE (lazy creation)

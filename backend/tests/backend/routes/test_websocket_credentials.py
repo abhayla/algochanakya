@@ -91,6 +91,8 @@ def mock_pool():
     pool = MagicMock()
     pool._credentials = {}
     pool.set_credentials = MagicMock()
+    pool.credentials_valid = MagicMock(return_value=False)
+    pool.clear_expired_credentials = MagicMock(return_value=[])
     return pool
 
 

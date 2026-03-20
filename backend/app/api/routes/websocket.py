@@ -94,9 +94,12 @@ async def _ensure_broker_credentials(
     """
     pool = TickerPool.get_instance()
 
-    # Skip if credentials already set for this broker (Upstox is re-checked for expiry below)
-    if pool._credentials.get(broker_type) and broker_type != MarketDataSource.UPSTOX:
+    # Skip if valid (non-expired) credentials already cached
+    if pool.credentials_valid(broker_type):
         return True
+
+    # Clear any expired credentials so we re-fetch below
+    pool.clear_expired_credentials()
 
     if broker_type == MarketDataSource.SMARTAPI:
         # Try user-level SmartAPI credentials first
@@ -151,6 +154,7 @@ async def _ensure_broker_credentials(
                 "client_id": credentials.client_id,
                 "feed_token": credentials.feed_token,
                 "token_map": token_map,
+                "token_expiry": credentials.token_expiry,
             })
             return True
         return False
