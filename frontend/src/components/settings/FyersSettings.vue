@@ -7,11 +7,13 @@
  */
 import { ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { initiateSettingsConnect } from '@/services/settings_credentials'
 
 const emit = defineEmits(['credentials-updated'])
 
 const authStore = useAuthStore()
 const error = ref(null)
+const connecting = ref(false)
 const disconnecting = ref(false)
 
 const isConnected = ref(
@@ -20,7 +22,9 @@ const isConnected = ref(
 
 async function handleConnect() {
   error.value = null
-  const result = await authStore.initiateFyersLogin()
+  connecting.value = true
+  const result = await initiateSettingsConnect('fyers')
+  connecting.value = false
   if (!result.success) {
     error.value = result.error
   }
@@ -52,11 +56,11 @@ async function handleDisconnect() {
     <div class="btn-row">
       <button
         @click="handleConnect"
-        :disabled="authStore.fyersLoading"
+        :disabled="connecting"
         class="btn btn-primary"
         data-testid="settings-fyers-connect-btn"
       >
-        {{ authStore.fyersLoading ? 'Connecting...' : (isConnected ? 'Reconnect' : 'Connect Fyers') }}
+        {{ connecting ? 'Connecting...' : (isConnected ? 'Reconnect' : 'Connect Fyers') }}
       </button>
 
       <button

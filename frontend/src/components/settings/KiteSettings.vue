@@ -8,6 +8,7 @@
  */
 import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { initiateSettingsConnect } from '@/services/settings_credentials'
 import * as zerodhaCredentials from '@/services/zerodha_credentials'
 
 const emit = defineEmits(['credentials-updated'])
@@ -49,7 +50,7 @@ async function loadCredentials() {
 
 async function handleConnect() {
   error.value = null
-  const result = await authStore.initiateZerodhaLogin()
+  const result = await initiateSettingsConnect('zerodha')
   if (!result.success) error.value = result.error
 }
 

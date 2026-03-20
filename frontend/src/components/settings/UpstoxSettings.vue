@@ -8,6 +8,7 @@
  */
 import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { initiateSettingsConnect } from '@/services/settings_credentials'
 import * as upstoxCredentials from '@/services/upstox_credentials'
 
 const emit = defineEmits(['credentials-updated'])
@@ -49,7 +50,7 @@ async function loadCredentials() {
 
 async function handleConnect() {
   error.value = null
-  const result = await authStore.initiateUpstoxLogin()
+  const result = await initiateSettingsConnect('upstox')
   if (!result.success) error.value = result.error
 }
 

@@ -8,12 +8,14 @@
  */
 import { ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { initiateSettingsConnect } from '@/services/settings_credentials'
 import api from '@/services/api'
 
 const emit = defineEmits(['credentials-updated'])
 
 const authStore = useAuthStore()
 const error = ref(null)
+const connecting = ref(false)
 const disconnecting = ref(false)
 const publicTokenSaving = ref(false)
 const publicTokenSaved = ref(false)
@@ -25,7 +27,9 @@ const isConnected = ref(
 
 async function handleConnect() {
   error.value = null
-  const result = await authStore.initiatePaytmLogin()
+  connecting.value = true
+  const result = await initiateSettingsConnect('paytm')
+  connecting.value = false
   if (!result.success) {
     error.value = result.error
   }
@@ -74,11 +78,11 @@ async function savePublicToken() {
     <div class="btn-row">
       <button
         @click="handleConnect"
-        :disabled="authStore.paytmLoading"
+        :disabled="connecting"
         class="btn btn-primary"
         data-testid="settings-paytm-connect-btn"
       >
-        {{ authStore.paytmLoading ? 'Connecting...' : (isConnected ? 'Reconnect' : 'Connect Paytm Money') }}
+        {{ connecting ? 'Connecting...' : (isConnected ? 'Reconnect' : 'Connect Paytm Money') }}
       </button>
 
       <button
