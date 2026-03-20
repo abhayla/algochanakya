@@ -3,7 +3,7 @@
     "allow": [
       "Bash(python -m venv:*)",
       "Bash(dir:*)",
-      "Bash(python C:\\Abhay\\VideCoding\\algochanakya\\.claude\\hooks\\*)"
+      "Bash(python D:\\Abhay\\VibeCoding\\algochanakya\\.claude\\hooks\\*)"
     ],
     "deny": [
       "Write(C:\\Apps\\algochanakya/**)",
@@ -43,27 +43,22 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cmd /c python C:\\Abhay\\VideCoding\\algochanakya\\.claude\\hooks\\protect_sensitive_files.py",
+            "command": "cmd /c bash D:\\Abhay\\VibeCoding\\algochanakya\\.claude\\hooks\\secret-scanner.sh",
             "timeout": 5
           },
           {
             "type": "command",
-            "command": "cmd /c bash C:\\Abhay\\VideCoding\\algochanakya\\.claude\\hooks\\secret-scanner.sh",
+            "command": "cmd /c python D:\\Abhay\\VibeCoding\\algochanakya\\.claude\\hooks\\guard_folder_structure.py",
             "timeout": 5
           },
           {
             "type": "command",
-            "command": "cmd /c python C:\\Abhay\\VideCoding\\algochanakya\\.claude\\hooks\\guard_folder_structure.py",
+            "command": "cmd /c python D:\\Abhay\\VibeCoding\\algochanakya\\.claude\\hooks\\guard_cross_feature_imports.py",
             "timeout": 5
           },
           {
             "type": "command",
-            "command": "cmd /c python C:\\Abhay\\VideCoding\\algochanakya\\.claude\\hooks\\guard_cross_feature_imports.py",
-            "timeout": 5
-          },
-          {
-            "type": "command",
-            "command": "cmd /c python C:\\Abhay\\VideCoding\\algochanakya\\.claude\\hooks\\validate_workflow_step.py",
+            "command": "cmd /c python D:\\Abhay\\VibeCoding\\algochanakya\\.claude\\hooks\\validate_workflow_step.py",
             "timeout": 10
           }
         ]
@@ -73,27 +68,22 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cmd /c python C:\\Abhay\\VideCoding\\algochanakya\\.claude\\hooks\\protect_sensitive_files.py",
+            "command": "cmd /c bash D:\\Abhay\\VibeCoding\\algochanakya\\.claude\\hooks\\secret-scanner.sh",
             "timeout": 5
           },
           {
             "type": "command",
-            "command": "cmd /c bash C:\\Abhay\\VideCoding\\algochanakya\\.claude\\hooks\\secret-scanner.sh",
+            "command": "cmd /c python D:\\Abhay\\VibeCoding\\algochanakya\\.claude\\hooks\\guard_folder_structure.py",
             "timeout": 5
           },
           {
             "type": "command",
-            "command": "cmd /c python C:\\Abhay\\VideCoding\\algochanakya\\.claude\\hooks\\guard_folder_structure.py",
+            "command": "cmd /c python D:\\Abhay\\VibeCoding\\algochanakya\\.claude\\hooks\\guard_cross_feature_imports.py",
             "timeout": 5
           },
           {
             "type": "command",
-            "command": "cmd /c python C:\\Abhay\\VideCoding\\algochanakya\\.claude\\hooks\\guard_cross_feature_imports.py",
-            "timeout": 5
-          },
-          {
-            "type": "command",
-            "command": "cmd /c python C:\\Abhay\\VideCoding\\algochanakya\\.claude\\hooks\\validate_workflow_step.py",
+            "command": "cmd /c python D:\\Abhay\\VibeCoding\\algochanakya\\.claude\\hooks\\validate_workflow_step.py",
             "timeout": 10
           }
         ]
@@ -103,12 +93,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cmd /c bash C:\\Abhay\\VideCoding\\algochanakya\\.claude\\hooks\\dangerous-command-blocker.sh",
+            "command": "cmd /c bash D:\\Abhay\\VibeCoding\\algochanakya\\.claude\\hooks\\dangerous-command-blocker.sh",
             "timeout": 5
           },
           {
             "type": "command",
-            "command": "cmd /c python C:\\Abhay\\VideCoding\\algochanakya\\.claude\\hooks\\validate_workflow_step.py",
+            "command": "cmd /c python D:\\Abhay\\VibeCoding\\algochanakya\\.claude\\hooks\\validate_workflow_step.py",
             "timeout": 10
           }
         ]
@@ -120,17 +110,17 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cmd /c python C:\\Abhay\\VideCoding\\algochanakya\\.claude\\hooks\\post_test_update.py",
+            "command": "cmd /c python D:\\Abhay\\VibeCoding\\algochanakya\\.claude\\hooks\\post_test_update.py",
             "timeout": 30
           },
           {
             "type": "command",
-            "command": "cmd /c python C:\\Abhay\\VideCoding\\algochanakya\\.claude\\hooks\\post_screenshot_resize.py",
+            "command": "cmd /c python D:\\Abhay\\VibeCoding\\algochanakya\\.claude\\hooks\\post_screenshot_resize.py",
             "timeout": 30
           },
           {
             "type": "command",
-            "command": "cmd /c python C:\\Abhay\\VideCoding\\algochanakya\\.claude\\hooks\\log_workflow.py",
+            "command": "cmd /c python D:\\Abhay\\VibeCoding\\algochanakya\\.claude\\hooks\\log_workflow.py",
             "timeout": 5
           }
         ]
@@ -140,7 +130,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cmd /c python C:\\Abhay\\VideCoding\\algochanakya\\.claude\\hooks\\post_screenshot_resize.py",
+            "command": "cmd /c python D:\\Abhay\\VibeCoding\\algochanakya\\.claude\\hooks\\post_screenshot_resize.py",
             "timeout": 30
           }
         ]
@@ -150,7 +140,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cmd /c python C:\\Abhay\\VideCoding\\algochanakya\\.claude\\hooks\\log_workflow.py",
+            "command": "cmd /c python D:\\Abhay\\VibeCoding\\algochanakya\\.claude\\hooks\\log_workflow.py",
             "timeout": 5
           }
         ]
@@ -160,12 +150,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cmd /c python C:\\Abhay\\VideCoding\\algochanakya\\.claude\\hooks\\log_workflow.py",
+            "command": "cmd /c python D:\\Abhay\\VibeCoding\\algochanakya\\.claude\\hooks\\log_workflow.py",
             "timeout": 5
           },
           {
             "type": "command",
-            "command": "cmd /c python C:\\Abhay\\VideCoding\\algochanakya\\.claude\\hooks\\schema_parity_reminder.py",
+            "command": "cmd /c python D:\\Abhay\\VibeCoding\\algochanakya\\.claude\\hooks\\schema_parity_reminder.py",
             "timeout": 10
           }
         ]
@@ -175,12 +165,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cmd /c python C:\\Abhay\\VideCoding\\algochanakya\\.claude\\hooks\\log_workflow.py",
+            "command": "cmd /c python D:\\Abhay\\VibeCoding\\algochanakya\\.claude\\hooks\\log_workflow.py",
             "timeout": 5
           },
           {
             "type": "command",
-            "command": "cmd /c python C:\\Abhay\\VideCoding\\algochanakya\\.claude\\hooks\\schema_parity_reminder.py",
+            "command": "cmd /c python D:\\Abhay\\VibeCoding\\algochanakya\\.claude\\hooks\\schema_parity_reminder.py",
             "timeout": 10
           }
         ]
