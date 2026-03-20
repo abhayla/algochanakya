@@ -2,8 +2,8 @@
 name: upstox-expert
 description: Upstox expert — broker overview, products, pricing, Upstox API,
   and AlgoChanakya adapter guidance. Use for any Upstox question.
-version: "3.2"
-last_verified: "2026-03-19"
+version: "3.3"
+last_verified: "2026-03-20"
 ---
 
 # Upstox Expert
@@ -133,7 +133,16 @@ Upstox supports Time-based OTP (TOTP) as an alternative to SMS OTP during login.
 5. Enter a generated TOTP code to confirm setup
 6. **Warning:** Enabling TOTP logs out all active sessions
 
-**Auto-login flow** (with TOTP secret saved): API Key + API Secret + Phone + TOTP Secret + PIN enables fully automated OAuth login via Playwright or similar browser automation. Use `pyotp` to generate TOTP codes:
+**Auto-login flow** (with TOTP secret saved): API Key + API Secret + Phone + TOTP Secret + PIN enables fully automated OAuth login. Four automation approaches exist (see auth-flow.md for details):
+
+| Approach | Automation | Dependencies | Recommendation |
+|----------|-----------|--------------|----------------|
+| HTTP-Based TOTP Login | Fully automated | `pyotp`, `httpx` | **RECOMMENDED** — used in AlgoChanakya |
+| V3 Token Request API | Requires human approval | None | Not suitable for automated refresh |
+| Playwright/Selenium | Fully automated | Browser binary | Legacy — fragile, heavy |
+| upstox-totp package | Fully automated | `upstox-totp`, `curl_cffi` | Third-party alternative |
+
+AlgoChanakya uses the HTTP-based approach via `UpstoxHttpAuth` in `backend/app/services/brokers/platform_token_refresh.py`, called automatically on backend startup.
 
 ```python
 import pyotp
@@ -145,10 +154,12 @@ code = totp.now()  # 6-digit TOTP code
 
 | Token | Purpose | Validity | Notes |
 |-------|---------|----------|-------|
-| `access_token` | Full API access | Until ~6:30 AM next day | Standard OAuth token |
+| `access_token` | Full API access | Until ~6:30 AM next day | JWT (check `exp` claim). No refresh token available. |
 | `extended_token` | Read-only access | 1 year (renewable) | Long-lived, market data only |
 
 **Extended Token:** Valid 1 year, read-only (market data, instruments, portfolio view). Cannot place/modify/cancel orders. Ideal for market data adapter — no daily re-auth.
+
+**Daily Refresh:** Access tokens require daily re-authentication. AlgoChanakya handles this automatically via `UpstoxHttpAuth` in `platform_token_refresh.py` on backend startup. See [auth-flow.md](./references/auth-flow.md#automated-token-refresh-options-researched-march-2026) for all 4 refresh approaches.
 
 See [auth-flow.md](./references/auth-flow.md) for complete request/response examples, TOTP setup, sandbox tokens, IP whitelisting, and Access Token Flow (Beta).
 
@@ -488,6 +499,10 @@ order_id = await adapter.place_order(order_params)
 
 15. **Brokerage higher on Plus** — ₹30/order on Plus vs ₹20/order on Basic. Plus has other benefits (5 WS, D30) but higher per-order cost.
 
+16. **No refresh token** — Upstox access tokens are JWTs that expire daily (~6:30 AM IST). There is no refresh token mechanism. Must re-authenticate daily. AlgoChanakya handles this via `UpstoxHttpAuth` on startup.
+
+17. **HTTP login endpoints are internal** — The `service.upstox.com` endpoints used for automated TOTP login are internal/undocumented. They may change without notice. The `upstox-totp` package uses `curl_cffi` with Chrome impersonation to avoid bot detection on these endpoints.
+
 ---
 
 ## 6. Related Skills
@@ -510,10 +525,10 @@ order_id = await adapter.place_order(order_params)
 
 | Reference File | Last Verified | Check Frequency |
 |---|---|---|
-| SKILL.md | 2026-03-19 | Quarterly |
+| SKILL.md | 2026-03-20 | Quarterly |
 | upstox-overview.md | 2026-03-04 | Quarterly |
 | endpoints-catalog.md | 2026-02-25 | Monthly |
-| auth-flow.md | 2026-03-18 | Quarterly |
+| auth-flow.md | 2026-03-20 | Quarterly |
 | error-codes.md | 2026-02-25 | Monthly |
 | websocket-protocol.md | 2026-02-25 | Monthly |
 | symbol-format.md | 2026-02-25 | Quarterly |
@@ -541,6 +556,7 @@ order_id = await adapter.place_order(order_params)
 
 | Version | Date | Changes |
 |---|---|---|
+| 3.3 | 2026-03-20 | Added automated token refresh options (4 approaches: HTTP-based TOTP, V3 Token Request API, Playwright, upstox-totp package). Documented UpstoxHttpAuth implementation in platform_token_refresh.py. Added JWT exp claim check, no-refresh-token caveat. Two new gotchas (#16, #17). Updated auth-flow.md with full 6-step HTTP login endpoint details. |
 | 3.2 | 2026-03-19 | Restructured credentials section into dual credential system (platform-level universal API vs user-level OAuth login). Added Upstox Developer App Setup guide (similar to kite-app-setup.md). Clarified `.env` keys are platform-level, not personal. OAuth login verified working. |
 | 3.1 | 2026-03-18 | Added TOTP support (setup location, auto-login flow with pyotp), .env configuration section with all 7 keys, OAuth login flow details (Playwright-tested), confirmed free option chain with Greeks (133 strikes). Updated freshness dates. |
 | 3.0 | 2026-03-04 | Restructured: Upstox overview + pricing sections added, API content reorganized as subsection. New `upstox-overview.md` reference file. File renamed from `skill.md` to `SKILL.md`. All existing API content preserved. |

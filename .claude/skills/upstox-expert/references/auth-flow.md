@@ -1,6 +1,6 @@
 # Upstox Authentication Flow
 
-> Source: [Upstox API Docs](https://upstox.com/developer/api-documentation/open-api) | Last verified: 2026-03-18
+> Source: [Upstox API Docs](https://upstox.com/developer/api-documentation/open-api) | Last verified: 2026-03-20
 
 Complete OAuth 2.0 authentication sequence for Upstox API.
 
@@ -189,6 +189,83 @@ Login: access_token valid until ~6:30 AM next trading day
 ~6:30 AM: access_token expires → must re-do OAuth
            extended_token remains valid for read operations
 ```
+
+- Access token is a JWT — check the `exp` claim to verify validity
+- No refresh token is available from the Upstox API
+- Daily re-authentication is required for order execution
+
+---
+
+## Automated Token Refresh Options (Researched March 2026)
+
+Four approaches exist for automated daily token refresh. Listed in order of recommendation.
+
+### Option 1: HTTP-Based TOTP Login (RECOMMENDED)
+
+Pure HTTP flow, no browser needed. Uses Upstox internal login endpoints (6 steps):
+
+| Step | Method | Endpoint | Body / Notes |
+|------|--------|----------|--------------|
+| 1 | GET | `https://api.upstox.com/v2/login/authorization/dialog?client_id=...&redirect_uri=...&response_type=code` | Follow redirect, extract `user_id` from redirect URL |
+| 2 | POST | `https://service.upstox.com/login/open/v6/auth/1fa/otp/generate` | `{"data": {"mobileNumber": phone, "userId": user_id}}` — returns `validateOTPToken` |
+| 3 | POST | `https://service.upstox.com/login/open/v4/auth/1fa/otp-totp/verify` | `{"data": {"otp": totp_code, "validateOtpToken": token}}` |
+| 4 | POST | `https://service.upstox.com/login/open/v3/auth/2fa` | `{"data": {"twoFAMethod": "SECRET_PIN", "inputText": base64_encoded_pin}}` |
+| 5 | POST | `https://service.upstox.com/login/v2/oauth/authorize` | `{"data": {"userOAuthApproval": true}}` — extract `code` from redirect |
+| 6 | POST | `https://api.upstox.com/v2/login/authorization/token` | Standard OAuth code exchange (same as Step 3 above) |
+
+**Advantages:** No browser binary, fast (~2-3 seconds), reliable, no UI breakage risk.
+**Requires:** `UPSTOX_API_KEY`, `UPSTOX_API_SECRET`, `UPSTOX_REDIRECT_URL`, `UPSTOX_LOGIN_PHONE`, `UPSTOX_LOGIN_PIN`, `UPSTOX_TOTP_SECRET`
+
+### Option 2: V3 Access Token Request API (Push Notification)
+
+Uses Upstox push notification mechanism:
+
+```
+POST https://api.upstox.com/v3/login/auth/token/request/{client_id}
+Body: { "client_secret": "..." }
+```
+
+- Sends push notification to user's Upstox app + WhatsApp
+- User must approve manually on their device
+- Token delivered to a webhook URL configured in the app
+- **NOT fully automated** — requires human approval each time
+- Useful for multi-user platforms where each user approves their own token
+
+### Option 3: Playwright/Selenium Browser Automation (Legacy)
+
+Headless browser fills in the login forms programmatically:
+- Uses Playwright or Selenium to navigate login.upstox.com
+- Fills phone, TOTP code, PIN in sequence
+- Extracts authorization code from redirect URL
+- **Fragile** — breaks when Upstox changes their login UI
+- **Heavy** — requires browser binary (Chromium) on server
+- **Superseded** by Option 1 (HTTP-based approach)
+
+### Option 4: upstox-totp Python Package (Third-Party)
+
+`pip install upstox-totp` — third-party library implementing the same HTTP-based flow as Option 1.
+
+- Source: https://github.com/batpool/upstox-totp
+- Docs: https://upstox-totp.readthedocs.io
+- Uses `curl_cffi` with Chrome impersonation to avoid bot detection
+- Convenient if you want a pre-built solution, but adds an external dependency
+- AlgoChanakya uses its own implementation (Option 1) instead
+
+### AlgoChanakya Implementation
+
+The HTTP-based approach (Option 1) is implemented in AlgoChanakya:
+
+| Component | Location |
+|-----------|----------|
+| Auth class | `backend/app/services/brokers/platform_token_refresh.py` — `UpstoxHttpAuth` class |
+| Startup hook | Called automatically on backend startup via `main.py` lifespan |
+| Token storage | Saved to `.env` as `UPSTOX_ACCESS_TOKEN` and updated in-memory via `os.environ` |
+
+**Flow on backend startup:**
+1. `UpstoxHttpAuth` reads credentials from environment
+2. Executes the 6-step HTTP login flow
+3. Saves new `access_token` to `.env` file and updates `os.environ`
+4. Platform market data adapter picks up the fresh token automatically
 
 ---
 
