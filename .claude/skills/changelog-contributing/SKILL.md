@@ -1,10 +1,9 @@
 ---
 name: changelog-contributing
 description: >
-  Auto-generate CHANGELOG.md from conventional commits and create a project-specific
-  CONTRIBUTING.md with development setup, commit format, branch naming, testing
-  requirements, and PR process. Parses git log, groups entries by type following
-  Keep a Changelog format, and optionally integrates with CI for automatic updates.
+  Generate CHANGELOG.md from conventional commits and create a project-specific
+  CONTRIBUTING.md with development setup, commit format, and PR process. Use when
+  preparing a release, onboarding contributors, or setting up changelog automation.
 triggers:
   - changelog
   - contributing
@@ -202,4 +201,4 @@ Changelog & Contributing: GENERATED
 - `/doc-structure-enforcer` — CHANGELOG.md and CONTRIBUTING.md are root docs (allowed at project root, not enforced into `docs/`)
 - `/doc-staleness` — Detect when changelog or contributing docs have drifted from actual project conventions
 - `/adr` — Major architectural decisions often correspond to changelog entries
-- `docs-manager` agent — Orchestrates project-wide documentation updates, delegates changelog generation to this skill
+- `docs-manager-agent` — Orchestrates project-wide documentation updates, delegates changelog generation to this skill

@@ -315,14 +315,19 @@ GitHub Actions runs on push/PR to `main` and `develop`. Workflows: backend tests
 | `rules/broker-name-mapping.md` | Broker Name Mapping |
 | `rules/canonical-symbol-format.md` | Canonical Symbol Format |
 | `rules/claude-behavior.md` | Universal behavioral rules for how Claude should approach all tasks. |
+| `rules/configuration-ssot.md` | Scope: global |
 | `rules/context-management.md` | Rules for managing context window, token usage, and documentation references. |
 | `rules/cross-layer-import-guard.md` | Cross Layer Import Guard |
 | `rules/decimal-not-float-prices.md` | Decimal Not Float Prices |
 | `rules/e2e-data-testid-only.md` | E2E Data Testid Only |
 | `rules/fastapi-backend.md` | FastAPI backend development rules and patterns. |
 | `rules/fastapi-database.md` | Database and migration rules for FastAPI + SQLAlchemy + Alembic. |
+| `rules/prompt-auto-enhance-rule.md` | Auto-enhance every user prompt with project-specific context before acting. Prefix every response with a brief *Enhanced: ...* indicator.
+ |
+| `rules/rule-writing-meta.md` | Meta-guidance for writing effective CLAUDE.md rules, choosing config file placement, and structuring project instructions. |
 | `rules/sqlite-test-compat.md` | Sqlite Test Compat |
-| `rules/tdd.md` | Test-driven development workflow rules for red-green-refactor cycle. |
+| `rules/tdd.md` | Tdd |
+| `rules/tdd-rule.md` | Test-driven development workflow rules for red-green-refactor cycle. |
 | `rules/testing.md` | Testing conventions and best practices. |
 | `rules/trading-constants-centralized.md` | Trading Constants Centralized |
 | `rules/vue.md` | Vue 3 Composition API patterns and conventions. |
@@ -330,6 +335,6 @@ GitHub Actions runs on push/PR to `main` and `develop`. Workflows: backend tests
 
 ## Claude Code Configuration
 
-The `.claude/` directory contains skills, agents, and rules for Claude Code.
+The `.claude/` directory contains 161 skills, 44 agents, and 23 rules for Claude Code.
 
 <!-- hub:best-practices:end -->

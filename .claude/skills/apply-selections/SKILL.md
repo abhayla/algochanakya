@@ -2,8 +2,8 @@
 name: apply-selections
 description: >
   Apply user-selected patterns from a nice-to-have PR by parsing checkbox state
-  in the PR body and removing unchecked files from the branch. Works with PRs
-  created by recommend.py --provision that contain checkbox lists of optional patterns.
+  in the PR body and removing unchecked files from the branch. Use when a
+  recommend.py --provision PR contains checkbox lists and the user has made selections.
 type: workflow
 allowed-tools: "Bash Read Grep Glob"
 argument-hint: "<pr-url>"
@@ -58,7 +58,7 @@ Parse the PR body to extract checked and unchecked patterns:
 - [ ] `workflow` — description
 
 ### Agents
-- [ ] `docs-manager` — description
+- [ ] `docs-manager-agent` — description
 ```
 
 Build two lists:

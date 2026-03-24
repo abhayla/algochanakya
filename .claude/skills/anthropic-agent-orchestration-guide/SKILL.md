@@ -1,10 +1,9 @@
 ---
 name: anthropic-agent-orchestration-guide
 description: >
-  Reference guide for designing multi-agent orchestration systems. Covers
-  Anthropic's 5 workflow patterns, agent vs skill decision framework,
-  orchestration architecture, anti-patterns, and context management.
-  Consult when designing new orchestrators or refactoring existing ones.
+  Design multi-agent orchestration systems using Anthropic's 5 workflow patterns,
+  agent vs skill decision framework, orchestration architecture, and context
+  management. Use when designing new orchestrators or refactoring existing ones.
 type: reference
 allowed-tools: "Read Grep Glob"
 argument-hint: "[pattern name or question about orchestration]"
@@ -145,7 +144,7 @@ Agents and skills serve different purposes. Choosing wrong creates unnecessary c
 | Single-purpose workflow with defined steps | `/code-quality-gate` — 9 analysis steps |
 | No subagent dispatch needed | `/writing-plans` — works entirely in main context |
 | Invoked by the user as a slash command | `/brainstorm`, `/implement` |
-| Read-only analysis or reference lookup | `/agent-orchestration-guide` (this skill) |
+| Read-only analysis or reference lookup | `/anthropic-agent-orchestration-guide` (this skill) |
 | Produces a single output artifact | `/prd-parser` → normalized PRD |
 
 ### Use an Agent When
@@ -153,10 +152,10 @@ Agents and skills serve different purposes. Choosing wrong creates unnecessary c
 | Signal | Example |
 |--------|---------|
 | Dispatches 2+ subagents or sequences 3+ skills | `pipeline-orchestrator` — dispatches stage agents |
-| Needs its own context window (bulk reading) | `planner-researcher` — reads many files for analysis |
-| Runs as a worker dispatched by an orchestrator | `security-auditor` — dispatched by review-gate |
-| Requires tool scoping different from the caller | `code-reviewer` — needs only read tools |
-| Long-running with progress tracking | `plan-executor` — executes across many tasks |
+| Needs its own context window (bulk reading) | `planner-researcher-agent` — reads many files for analysis |
+| Runs as a worker dispatched by an orchestrator | `security-auditor-agent` — dispatched by review-gate |
+| Requires tool scoping different from the caller | `code-reviewer-agent` — needs only read tools |
+| Long-running with progress tracking | `plan-executor-agent` — executes across many tasks |
 
 ### Hybrid: Agent + Thin Skill Wrapper
 
@@ -336,7 +335,7 @@ For pipelines exceeding 30 minutes or 10+ stages:
 - [Anthropic: Building Effective Agents](https://docs.anthropic.com/en/docs/build-with-claude/agentic-patterns) — Canonical source for the 5 workflow patterns
 - [Anthropic: Prompt Engineering Guide](https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering) — Foundations for agent prompt design
 - `config/pipeline-stages.yaml` — Pipeline DAG configuration
-- `.claude/agents/pipeline-orchestrator.md` — Production orchestrator implementation
+- `.claude/agents/project-manager-agent.md` — Production orchestrator implementation
 - `.claude/skills/subagent-driven-dev/SKILL.md` — Detailed subagent dispatch patterns
 - `.claude/rules/agent-orchestration.md` — Enforced constraints for orchestration
 

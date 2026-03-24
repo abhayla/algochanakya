@@ -1,241 +1,126 @@
 ---
 name: start-session
-description: Resume a previously saved session with full context restoration. Use when starting a new conversation to continue previous work. Triggers on 'resume session', 'continue where I left off', 'load session', or 'start session'.
-metadata:
-  author: AlgoChanakya
-  version: "1.0"
+description: >
+  Restore a previously saved session checkpoint. Reads a session file from .claude/sessions/,
+  loads working files into context, and presents a structured briefing with task progress
+  and resume notes. Use when starting a new conversation to pick up where you left off.
+type: workflow
+allowed-tools: "Bash Read Grep Glob"
+argument-hint: "[session-name | --list]"
+version: "1.0.0"
 ---
 
-# Start Session
+# Start Session — Restore a Saved Checkpoint
 
-## When to Use
-- Starting work and want to continue from a previous session
-- User invokes /start-session [name]
-- User invokes /start-session (loads most recent)
-- User invokes /start-session --list (shows available sessions)
+Load a session file created by `/save-session` and restore working context for seamless resumption.
 
-## When NOT to Use
-
-- Mid-session when already working (context is already loaded)
-- To save session (use save-session instead)
-
-## Automatic Session Loading
-
-**Auto-Load on Startup:** The `load_session_context.py` hook automatically loads key context from the most recent session file when you start Claude Code. This includes:
-- "Where I Left Off" section
-- "Resume Prompt" section
-
-**Manual `/start-session` vs Auto-Load:**
-- **Auto-load:** Shows brief context (500 chars) on startup - non-intrusive reminder
-- **Manual start:** Full context restoration with file reads, doc links, todo recreation
-
-**When to use manual `/start-session`:**
-- Need full context restoration (not just reminder)
-- Want to select specific session (not latest)
-- Need to read working files mentioned in session
-- Want to restore todo list state
-- Need to review linked documentation
-
-**Auto-load is sufficient for:**
-- Quick reminder of last session
-- Continuity between closely-spaced sessions
-- Checking what was in progress
-
-## Workflow
-
-### Step 1: Find Session
-**If name provided:**
-- Load `.claude/sessions/{name}.md`
-- If not found, show error with available sessions
-
-**If no name:**
-- List all `.md` files in `.claude/sessions/`
-- Sort by timestamp (most recent first)
-- Load the most recent session
-
-**If --list flag:**
-- List all available sessions with timestamps and summaries
-- Do not load, just display list
-
-### Step 2: Parse Session File
-Extract the following sections:
-- **Summary** - Overall context of what was being worked on
-- **Working Files** - Files that were being modified/read
-- **Recent Changes** - Git changes that were in progress
-- **Todo State** - Todo list if present
-- **Key Decisions** - Important decisions made
-- **Where Left Off** - Specific state when session was saved
-- **Resume Prompt** - Pre-written prompt for resuming work
-
-### Step 3: Restore Context
-1. **Read the working files** mentioned in the session
-   - Use Read tool for each file listed
-   - Focus on specific line ranges if mentioned
-2. **Restore todo list** if present
-   - Use TodoWrite to recreate the todo state
-3. **Review key decisions**
-   - Load relevant docs if referenced
-   - Understand architectural choices made
-4. **Read linked documentation**
-   - Load any docs referenced in "Relevant Docs" section
-
-### Step 4: Present Context
-Output to user:
-- **Session Name and Timestamp**
-- **Summary** - Brief overview of the session
-- **What was being worked on** - Main task/goal
-- **Current State** - What was completed, what's in progress
-- **Suggested Next Steps** - Clear action items from "Where I Left Off"
-- **Any Blockers** - Open questions or issues noted
-
-**Output Format:**
-```markdown
-# Resuming Session: {name}
-**Saved:** {timestamp}
-
-## Summary
-{Session summary}
-
-## What Was Being Worked On
-{Main task/goal}
-
-## Current State
-**Completed:**
-- {completed items}
-
-**In Progress:**
-- {in-progress items}
-
-**Pending:**
-- {pending items}
-
-## Suggested Next Steps
-1. {next action from "Where I Left Off"}
-2. {follow-up actions}
-
-## Blockers/Open Questions
-- {any blockers noted in session}
+**Key distinction:** `/start-session` restores file-level context from a structured checkpoint. `/continue` gives a lightweight git-state briefing without session files. Use `/start-session` when you have a saved session; use `/continue` for a quick orientation.
 
 ---
-Context has been restored. Ready to continue!
-```
 
-### Step 5: Validate Resume
-After user continues work (at end of this session or next save):
-- **Was the context sufficient?** Did user have all info needed?
-- **What was missing?** Did user ask for files/info not in session?
-- **Friction points?** Were there gaps in understanding?
-- Update learnings in this SKILL.md
+## STEP 1: Find Session
 
-## Commands
+Determine which session to load based on the argument:
 
+### If `--list` is provided:
 ```bash
-/start-session                    # Load most recent session
-/start-session {name}             # Load specific session by name
-/start-session --list             # Show all available sessions
+ls -lt .claude/sessions/*.md 2>/dev/null
 ```
+Present a numbered list of available sessions with dates and names. Ask the user to pick one. If no sessions exist, inform the user and suggest running `/save-session` first.
 
-## Context Restoration Logic
+### If a session name is provided:
+Look for `.claude/sessions/{name}.md`. If not found:
+1. Try fuzzy match — list sessions containing the provided name
+2. If exactly one match, confirm and use it
+3. If multiple matches, present them and ask the user to pick
+4. If no matches, inform the user and list available sessions
 
-### File Reading Priority
-1. Files marked as "modified" - read in full
-2. Files marked as "created" - read in full
-3. Files marked as "read" with line numbers - read those sections
-4. Files marked as "read" without line numbers - ask user if full read needed
-
-### Documentation Loading
-- Always load docs mentioned in "Relevant Docs"
-- If architectural terms present, preemptively load relevant architecture docs
-- Limit to 3-5 most relevant docs to avoid context overload
-
-### Todo State Restoration
-- If todo list present: Restore using TodoWrite with exact state
-- If no todo list: Ask user if they want to create one from "Next Steps"
-
-## Self-Improvement Section
-
-### Learnings Log
-<!-- Auto-updated based on resume success -->
-
-**Instructions for self-update:**
-After each /start-session use, when the session ends or next save occurs:
-- Check if context was sufficient
-- Note what additional files/info user requested
-- Track if "Where I Left Off" was clear enough
-- Append findings below
-
-**Format:**
+### If no argument is provided:
+Load the most recent session file (by filesystem modification time):
+```bash
+ls -t .claude/sessions/*.md 2>/dev/null | head -1
 ```
-- YYYY-MM-DD: Session "{name}" - [What worked / What was missing]
-```
-
-### Missing Context Patterns
-<!-- Track what context types were frequently missing -->
-
-**Pattern Tracking:**
-If certain types of context are frequently missing across multiple sessions:
-- Git branch information
-- Environment variables
-- Database schema state
-- Test results
-- Build/compile errors
-
-Then update the save-session skill to include these by default.
-
-### Improvement History
-| Date | Change | Reason |
-|------|--------|--------|
-| 2026-01-14 | Initial creation | First implementation of session management |
+If no sessions exist, inform the user and suggest `/save-session`.
 
 ---
 
-## Session List Output Format
+## STEP 2: Parse Session File
 
-When user runs `/start-session --list`:
+Read the session file and extract these sections:
+- **Working Files** — file paths, statuses, and notes
+- **Git State** — branch, recent commits, uncommitted changes
+- **Key Decisions** — architectural choices and rationale
+- **Task Progress** — completed, in-progress, and blocked items
+- **Resume Notes** — what to do first, gotchas, context needed
+
+Handle missing sections gracefully — if a section is absent, note it as "not captured" rather than failing.
+
+---
+
+## STEP 3: Restore Context
+
+Load working files into context in priority order:
+
+### Priority order:
+1. **Modified files** — most likely to need immediate attention
+2. **Created files** — new code that needs continuation
+3. **Read files with specific lines noted** — targeted context
+4. **Read files without specific lines** — background context
+
+### Constraints:
+- **Limit to 10 files maximum** — if more than 10 working files are listed, load the top 10 by priority and note the remainder
+- **Verify files exist** — before reading each file, check it exists. If a file is missing, warn: "File `{path}` from session no longer exists (may have been renamed or deleted)"
+- **Check branch match** — compare the current branch to the session's branch:
+  ```bash
+  git branch --show-current
+  ```
+  If branches differ, warn: "Session was on branch `{session-branch}` but you're on `{current-branch}`. Some files may have different content."
+
+Read each existing file using the Read tool.
+
+---
+
+## STEP 4: Present Briefing
+
+Present a structured briefing — do NOT auto-start any work.
 
 ```markdown
-# Available Sessions
+## Session Restored: {session-name}
 
-| Name | Saved | Summary |
-|------|-------|---------|
-| broker-docs | 2026-01-14 15:30 | Documenting multi-broker architecture |
-| test-fixes | 2026-01-13 18:45 | Fixing AutoPilot E2E tests |
-| api-refactor | 2026-01-12 14:20 | Refactoring order execution API |
+**Saved:** {date}
+**Branch:** {session-branch} {⚠️ current: {current-branch} if different}
 
-**Most Recent:** broker-docs (2026-01-14 15:30)
+### Working Files Loaded
+- {file} ({status}) — {notes}
+- ... ({N} of {total} files loaded)
 
-Use `/start-session {name}` to load a specific session, or `/start-session` to load the most recent.
+### Task Progress
+**Completed:** {count}
+**In Progress:** {count}
+- {in-progress item 1}
+- {in-progress item 2}
+**Blocked:** {count}
+- {blocked item} — {blocker}
+
+### Key Decisions
+- {decision summary}
+
+### Resume Notes
+> {what to do first}
+> {watch out for}
+
+### Suggested Action
+> {specific next step based on in-progress/blocked items}
 ```
 
-## Troubleshooting
+---
 
-**Session Not Found:**
-```
-❌ Session "{name}" not found.
+## CRITICAL RULES
 
-Available sessions:
-- broker-docs (2026-01-14 15:30)
-- test-fixes (2026-01-13 18:45)
-
-Use `/start-session --list` for full list with summaries.
-```
-
-**No Sessions Available:**
-```
-❌ No saved sessions found.
-
-Use `/save-session [name]` to save your current session for later resumption.
-```
-
-## Usage Examples
-
-```bash
-# Load most recent session
-/start-session
-
-# Load specific session
-/start-session broker-docs
-
-# List all sessions
-/start-session --list
-```
+- MUST NOT modify any files — this skill is strictly read-only
+- MUST NOT auto-start work after presenting the briefing — wait for user direction
+- MUST warn if the current branch differs from the session's branch
+- MUST handle missing files gracefully — warn and continue, do not fail
+- MUST limit file reads to 10 maximum to avoid context overload
+- MUST handle missing sections in session files without errors
+- MUST inform the user if no sessions exist and suggest `/save-session`

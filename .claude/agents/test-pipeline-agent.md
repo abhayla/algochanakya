@@ -28,7 +28,7 @@ chain from fix-loop through auto-verify to post-fix-pipeline.
 ### INIT
 
 1. Read `config/test-pipeline.yml` for stage definitions
-2. Read `tests/config/test-evidence-config.json` (if exists) for capture_proof setting
+2. Read `test-evidence-config.json` (if exists) for capture_proof setting
 3. Generate run_id: `{ISO-8601-timestamp}_{short-git-sha}`
 4. Clean ephemeral directories:
    ```bash

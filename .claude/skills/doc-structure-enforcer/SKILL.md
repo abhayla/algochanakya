@@ -2,9 +2,9 @@
 name: doc-structure-enforcer
 description: >
   Enforce a stage-based documentation folder structure via config-driven rules.
-  Two modes: audit (report misplaced files) or enforce (git mv + update all path
-  references). Auto-generates .doc-structure.yml on first run if missing. Aligns
-  with pipeline-orchestrator-agent's 11-stage artifact layout.
+  Two modes: audit (report misplaced files) or enforce (git mv + update path
+  references). Use when documentation files are disorganized or when onboarding
+  a project to a structured docs layout.
 type: workflow
 allowed-tools: "Bash Read Write Edit Grep Glob"
 argument-hint: "--audit | --enforce [--config <path>]"
@@ -410,4 +410,4 @@ grep -rn "<old-path>" --include="*.md" --include="*.yml" --include="*.py" --incl
 - `/adr` — Create Architecture Decision Records; routed to `docs/stages/stage-2-plan/output/` by default config
 - `/api-docs-generator` — Generate API docs that belong in `docs/api/`
 - `/changelog-contributing` — Generate CHANGELOG.md and CONTRIBUTING.md; these are root docs, not enforced by this skill
-- `docs-manager` agent — Orchestrates documentation updates, delegates structure enforcement to this skill
+- `docs-manager-agent` — Orchestrates documentation updates, delegates structure enforcement to this skill

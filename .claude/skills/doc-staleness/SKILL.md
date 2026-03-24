@@ -1,9 +1,9 @@
 ---
 name: doc-staleness
 description: >
-  Detect documentation that has drifted from the codebase. Compares docs against
-  recent code changes to find stale references, outdated examples, missing modules,
-  and broken links. Produces a prioritized staleness report with fix suggestions.
+  Detect documentation that has drifted from the codebase by comparing docs against
+  recent code changes to find stale references, outdated examples, and broken links.
+  Use when docs may be outdated after significant code changes or before a release.
 type: workflow
 allowed-tools: "Bash Read Grep Glob"
 argument-hint: "[docs-directory] [--since <commit-or-date>] [--fix]"
@@ -243,4 +243,4 @@ If `--fix` flag is set, apply the critical and high fixes automatically using Ed
 - `/doc-structure-enforcer` — Enforce folder structure rules; run before staleness scan to ensure files are in expected locations
 - `/changelog-contributing` — Update CHANGELOG.md when staleness scan reveals undocumented changes
 - `/adr` — Architecture Decision Records may reference stale symbols or deleted files
-- `docs-manager` agent — Orchestrates documentation updates, can delegate staleness scanning to this skill
+- `docs-manager-agent` — Orchestrates documentation updates, can delegate staleness scanning to this skill

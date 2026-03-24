@@ -3,7 +3,8 @@ name: regression-test
 description: >
   Run targeted regression tests based on code changes. Analyze git diffs to identify affected
   source files, map them to test files via import graphs and naming conventions, classify risk,
-  execute tests in priority order, and report confidence in the change.
+  execute tests in priority order, and report confidence. Use when verifying that code changes
+  do not break existing functionality.
 type: workflow
 allowed-tools: "Bash Read Grep Glob Agent"
 argument-hint: "<branch|commit-range|staged> [--full] [--framework pytest|jest|gradle]"
@@ -21,6 +22,11 @@ version: "1.1.0"
 Identify what changed, find the tests that cover those changes, run them in priority order, and report confidence. Fast feedback on targeted tests first, broader regression only when warranted.
 
 **Critical constraint:** This skill MUST NOT modify source code or test files. It is a diagnostic workflow.
+
+**Consumer note:** This skill is the canonical change-to-test mapper for the
+pipeline. `/auto-verify` delegates its Step 1 here rather than maintaining its
+own mapping logic. Changes to the mapping algorithm or output schema affect
+all downstream consumers.
 
 **Target:** $ARGUMENTS
 
@@ -52,6 +58,7 @@ Argument modes: `staged` (cached only), branch name (diff HEAD against it), `abc
 | Build/CI | `Dockerfile`, `*.gradle`, `pom.xml`, `package.json` | Flag for full suite |
 | Documentation | `*.md`, `*.rst`, `*.txt` | Skip — no tests needed |
 | Migrations | `migrations/**`, `alembic/**` | Flag as high risk |
+| Test fixtures/factories | `tests/factories/**`, `tests/fixtures/**`, `tests/conftest.py`, `**/conftest.py`, `tests/helpers/**` | Re-run ALL tests that import the changed fixture — shared fixtures affect many tests |
 
 Record `CHANGED_SOURCE_FILES`, `CHANGED_TEST_FILES`, `CHANGED_CONFIG_FILES`, and `TOTAL_CHANGED`.
 
@@ -258,11 +265,17 @@ Write to `test-results/regression-test.json`:
   "summary": { "total": 47, "passed": 46, "failed": 1, "skipped": 0, "flaky": 0 },
   "change_scope": { "source_files": 8, "test_files": 3, "config_files": 1, "overall_risk": "HIGH" },
   "coverage_gaps": ["<files with no mapped tests>"],
-  "confidence": "MEDIUM",
+  "confidence": "HIGH|MEDIUM|LOW|BLOCKED",
   "failures": [{ "test": "<name>", "file": "<path>", "message": "<error>" }],
   "duration_ms": 12300
 }
 ```
+
+**Result vs Confidence clarification:**
+- `result` is always `PASSED` or `FAILED` (binary gate signal for downstream consumers)
+- `confidence` is the nuanced assessment: `HIGH`, `MEDIUM`, `LOW`, or `BLOCKED`
+- `BLOCKED` means test infrastructure is broken (cannot run tests at all) — this maps to `result: "FAILED"` with `confidence: "BLOCKED"`
+- Downstream consumer `/auto-verify` checks: if `confidence == "BLOCKED"` → halt pipeline; if `result == "FAILED"` with `confidence != "BLOCKED"` → proceed with caution (tester-agent will re-run)
 
 ---
 

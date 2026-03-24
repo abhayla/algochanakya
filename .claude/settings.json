@@ -35,6 +35,15 @@
             "timeout": 5
           }
         ]
+      },
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/prompt-enhance-reminder.sh"
+          }
+        ]
       }
     ],
     "PreToolUse": [

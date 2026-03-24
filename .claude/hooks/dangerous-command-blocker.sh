@@ -20,7 +20,6 @@
 #     }
 #   }
 
-export PATH="/d/Abhay/tools:$PATH"
 COMMAND=$(echo "$TOOL_INPUT" | jq -r '.command // empty')
 if [[ -z "$COMMAND" ]]; then exit 0; fi
 

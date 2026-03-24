@@ -1,186 +1,170 @@
 ---
 name: save-session
-description: Save current session context for later resumption including active tasks, modified files, and pending work. Use when ending a work session, switching tasks, or before context limits are reached. Triggers on 'save session', 'save progress', or 'pause work'.
-metadata:
-  author: AlgoChanakya
-  version: "1.0"
+description: >
+  Save a structured session checkpoint capturing working files, git state, key decisions,
+  and task progress. Creates a resumable session file in .claude/sessions/ that
+  /start-session can restore in a future conversation. Use when pausing work, before
+  long breaks, or when the session-reminder hook fires.
+type: workflow
+allowed-tools: "Bash Read Write Grep Glob"
+argument-hint: "[session-name]"
+version: "1.1.0"
 ---
 
-# Save Session
+# Save Session — Checkpoint Your Progress
 
-## When to Use
-- When ending a work session and want to continue later
-- Before switching to a different task
-- When user explicitly invokes /save-session
+Capture the current working state into a structured session file for later resumption via `/start-session`.
 
-## When NOT to Use
-
-- At the very start of a session (use start-session to load instead)
-- When no work has been done yet
-
-## Automatic Session Management
-
-**Auto-Save on Exit:** The `quality_gate.py` hook automatically saves a lightweight session summary when you exit Claude Code. This creates `{date}-auto-save.md` files in `.claude/sessions/`.
-
-**Manual `/save-session` vs Auto-Save:**
-- **Auto-save:** Lightweight summary with workflow state, files changed, progress tracking
-- **Manual save:** Rich session context with decisions, documentation links, detailed "where I left off"
-
-**When to use manual `/save-session`:**
-- Before major context switch (feature to feature)
-- After important architectural decisions
-- When specific documentation links should be preserved
-- When "resume prompt" needs to be customized
-
-**Auto-saves are sufficient for:**
-- Normal end-of-day workflow
-- Short breaks
-- Simple progress tracking
-
-## Workflow
-
-### Step 1: Gather Context
-Collect the following information:
-- **Current working files** - Recently read or modified files (check tool usage in current conversation)
-- **Recent changes summary** - Run `git diff` and `git status` to capture uncommitted changes
-- **Current todo list state** - If TodoWrite was used, capture the current state
-- **Key decisions made** - Extract important decisions or design choices from conversation
-- **Relevant documentation references** - Track which docs were referenced
-
-### Step 2: Detect Relevant Docs
-Scan work context and auto-link docs from:
-- `docs/features/{feature}/` if working on a specific feature
-- `docs/architecture/` if working on system design
-- `docs/testing/` if working on tests
-- `docs/api/` if working on API changes
-- `docs/decisions/` if referencing ADRs
-
-**Detection Logic:**
-- Check file paths for feature names (e.g., `backend/app/api/routes/autopilot.py` → `docs/features/autopilot/`)
-- Check conversation for explicit doc mentions
-- Check for architectural terms (WebSocket, authentication, broker, etc.) → link relevant architecture docs
-
-### Step 3: Generate Session File
-Create `.claude/sessions/{session-name}.md` with:
-- Session metadata (timestamp, name)
-- Context summary in natural language
-- File references with specific line numbers if available
-- Todo state if present
-- Doc references with relevance explanation
-- "Where I left off" summary with clear next steps
-- "Resume Prompt" - pre-written prompt for /start-session
-
-### Step 4: Self-Improvement Check
-After each save, evaluate:
-- Was all relevant context captured?
-- Were the right docs linked?
-- Is the "where I left off" summary clear enough?
-- Append findings to Learnings Log below
-
-## Session File Format
-
-```markdown
-# Session: {name}
-**Saved:** {timestamp}
-**Auto-generated:** {true/false}
-
-## Summary
-{Natural language summary of current state - what was being worked on, main goal, progress made}
-
-## Working Files
-- path/to/file1.py (lines X-Y) - {what was being done}
-- path/to/file2.vue (modified) - {changes made}
-- path/to/file3.md (read) - {why it was referenced}
-
-## Recent Changes
-{Git diff summary or manual description of uncommitted changes}
-
-## Todo State
-{Current todo list if any, with status of each item}
-
-## Key Decisions
-- Decision 1: {what was decided and why}
-- Decision 2: {rationale for approach taken}
-
-## Relevant Docs
-- [Doc Name](../../docs/path/to/doc.md) - {why relevant to this session}
-- [ADR-XXX](../../docs/decisions/XXX.md) - {related architectural decision}
-
-## Where I Left Off
-{Clear description of:
-- What was just completed
-- What was in progress
-- What needs to be done next
-- Any blockers or open questions
-}
-
-## Resume Prompt
-{Pre-written prompt to feed to /start-session that includes:
-- Brief context summary
-- Specific next action
-- File references if needed
-}
-```
-
-## Implementation Notes
-
-### Session Naming
-- If user provides a name: Use it as-is
-- If no name provided: Auto-generate from `{date}-{task-summary}`
-  - Example: `2026-01-14-broker-abstraction-docs`
-  - Task summary: Extract from conversation context (max 3-4 words)
-
-### File Path Handling
-- Use relative paths from project root
-- Include line numbers when specific sections were modified
-- Mark files as: (modified), (read), (created), (deleted)
-
-### Git Integration
-- Always run `git status` to check for uncommitted changes
-- Run `git diff` to capture actual changes
-- If no git changes: Note "No uncommitted changes"
-
-## Self-Improvement Section
-
-### Learnings Log
-<!-- Auto-updated based on usage patterns -->
-
-**Instructions for self-update:**
-After each /save-session use, append an entry here with:
-- Date
-- What worked well (context captured correctly)
-- What was missing (if user later reports something missing)
-- Adjustments made to workflow
-
-**Format:**
-```
-- YYYY-MM-DD: [Learning or observation]
-```
-
-### Improvement History
-| Date | Change | Reason |
-|------|--------|--------|
-| 2026-01-14 | Initial creation | First implementation of session management |
+**Key distinction:** `/save-session` captures file-level working state for exact resumption. `/handover` produces a narrative handoff document for broader context transfer. `/continue` is a lightweight git-state briefing. These serve different needs — use all three as appropriate.
 
 ---
 
-## Troubleshooting
+## STEP 1: Determine Session Name
 
-| Problem | Cause | Fix |
-|---------|-------|-----|
-| Sessions directory missing | Never created | Create: `mkdir -p .claude/sessions/` |
-| Session name collision | Two sessions with same name | Use unique names or append timestamp |
-| Session file corrupted | Manual edit broke format | Restore from git or recreate session |
-| Context not captured | Skill didn't gather all files | Manually add files to "Working Files" section before saving |
+If the user provided a session name argument, use it. Otherwise, auto-generate one:
+
+1. Get the current date: `date +%Y-%m-%d`
+2. Get the current branch name: `git branch --show-current`
+3. Get recent commit messages: `git log --oneline -3`
+4. Derive a 2-4 word task summary from the branch name or recent commits
+5. Format: `{YYYY-MM-DD}-{task-summary}` (e.g., `2026-03-19-add-session-skills`)
+
+**Collision check:** If `.claude/sessions/{name}.md` already exists:
+- Ask the user: overwrite, append a numeric suffix (`-2`, `-3`), or choose a different name
+- MUST NOT silently overwrite
+
+**Sanitization:** Convert the name to filesystem-safe kebab-case:
+- Lowercase, replace spaces and underscores with hyphens
+- Remove characters not in `[a-z0-9-]`
+- Collapse consecutive hyphens
 
 ---
 
-## Usage Examples
+## STEP 2: Gather Context
 
-```
-/save-session broker-docs
-→ Saves current context as broker-docs.md
+Collect all context inline (no subagent delegation).
 
-/save-session
-→ Auto-generates name like "2026-01-14-session-management-skills"
+### 2.1: Working Files
+
+```bash
+git status --short
+git diff --name-status HEAD
 ```
+
+Classify each file:
+- **modified** — existing file with changes (staged or unstaged)
+- **created** — new untracked or newly added file
+- **deleted** — removed file
+- **read** — files that were read during the session but not changed (scan conversation history for Read tool calls on files not in the diff)
+
+For modified/created files, note a brief context of what changed (1 line).
+
+### 2.2: Git State
+
+```bash
+git branch --show-current
+git log --oneline -5
+git diff --stat
+git stash list
+```
+
+Record: current branch, last 5 commits, uncommitted change summary, stash entries.
+
+### 2.3: Key Decisions
+
+Scan the conversation for architectural choices, design decisions, or trade-offs discussed. Look for:
+- Choices between approaches ("went with X because...")
+- Rejected alternatives
+- Constraints discovered during implementation
+
+Format as bullet points with rationale.
+
+### 2.4: Task Progress
+
+Categorize work items from the conversation into:
+- **Completed** — finished and verified
+- **In Progress** — started but not finished
+- **Blocked** — waiting on something (specify the blocker)
+
+### 2.5: Relevant Docs
+
+Scan the project for documentation files that are relevant to the current work:
+
+```bash
+# Check for common doc locations (skip if they don't exist)
+ls README.md docs/ ARCHITECTURE.md CONTRIBUTING.md 2>/dev/null
+```
+
+Only include docs that are directly relevant to the work in this session.
+
+---
+
+## STEP 3: Generate Session File
+
+1. Read the template from the skill's references directory. If running from a project that copied this skill, the template is at `.claude/skills/save-session/references/session-template.md`. If the template is not found, use the structure from memory (the template format is documented in this skill).
+
+2. Populate the template with gathered context from Step 2.
+
+3. Create the sessions directory if it doesn't exist:
+   ```bash
+   mkdir -p .claude/sessions
+   ```
+
+4. Write the populated session file:
+   ```
+   .claude/sessions/{session-name}.md
+   ```
+
+---
+
+## STEP 4: Purge Expired Sessions
+
+Automatically delete session files older than 5 days. This runs silently with no user interaction.
+
+```bash
+find .claude/sessions -name "*.md" -mtime +5 -delete 2>/dev/null
+```
+
+On Windows (Git Bash / MSYS2 may not support `-mtime`), use this fallback:
+
+```bash
+python3 -c "
+import os, time, glob
+cutoff = time.time() - 5 * 86400
+for f in glob.glob('.claude/sessions/*.md'):
+    if os.path.getmtime(f) < cutoff:
+        os.remove(f)
+" 2>/dev/null || true
+```
+
+MUST NOT prompt the user or log individual deletions. If no expired sessions exist, this step is a silent no-op.
+
+---
+
+## STEP 5: Post-Save Summary
+
+After saving, present:
+
+1. **Confirmation:** "Session saved to `.claude/sessions/{name}.md`"
+2. **Gitignore suggestion:** If `.claude/sessions/` is not in `.gitignore`, suggest adding it:
+   ```
+   # Session files (local working state)
+   .claude/sessions/
+   ```
+   Note: Teams that want to share session state can skip this.
+3. **Resume command:** "To restore this session later, run: `/start-session {name}`"
+4. **Quick stats:** Number of working files captured, completed/in-progress/blocked counts
+
+---
+
+## CRITICAL RULES
+
+- MUST NOT hardcode project-specific paths — use generic discovery (`ls`, `find`) for docs
+- MUST NOT include self-improvement or learnings sections — `/learn-n-improve` handles that
+- MUST NOT overwrite an existing session file without explicit user confirmation
+- MUST create `.claude/sessions/` directory if it does not exist
+- MUST sanitize session names to filesystem-safe kebab-case
+- MUST NOT delegate context gathering to subagents — gather inline in this skill
+- MUST read the session template from `references/session-template.md` when available
+- MUST automatically purge session files older than 5 days — no user confirmation required
+- MUST NOT log or display individual file deletions during purge — silent cleanup only

@@ -7,7 +7,7 @@ description: >
   Use --skip-hub for synthesis only, --skip-synthesis for hub patterns only.
 allowed-tools: "Bash Read Grep Glob Write Edit"
 argument-hint: "[--repo owner/name] [--update] [--dry-run] [--skip-hub] [--skip-synthesis] [--only skills|rules|agents] [--tier must-have|improved|nice-to-have|all]"
-version: "3.0.0"
+version: "4.0.0"
 type: workflow
 ---
 
@@ -158,118 +158,14 @@ Gather project structure and configuration to understand what this project is an
 
 Based on what you learned in Step 2, identify 10-20 candidate conventions worth encoding as patterns.
 
-### Rules — conventions worth encoding as always-on constraints
 
-A convention is worth a **rule** when:
-- It's a consistent pattern followed across multiple files
-- Breaking it would cause bugs, inconsistency, or confusion
-- A new developer (or AI) working on the project might not know about it
-- It's specific to THIS project, not a generic best practice
-
-### Skills — workflows worth encoding as on-demand procedures
-
-A convention is worth a **skill** when:
-- It's a multi-step procedure that developers repeat (e.g., "add a new DB model", "create a new feature module", "run and debug E2E tests")
-- The steps are project-specific — not just "run tests" but "run tests in this specific order with these specific fixtures and this specific setup"
-- Getting the steps wrong causes subtle bugs (e.g., forgetting one of 5 locations when adding a model)
-- It involves coordination across multiple files or modules
-
-### Agents — tasks worth delegating to a specialized subagent
-
-A convention is worth an **agent** when:
-- It's a review or analysis task that benefits from a dedicated persona (e.g., "review this meal generation output for dietary constraint violations")
-- It requires reading many files and producing a structured assessment
-- It's a recurring quality gate specific to this project's domain
-
-### NOT worth encoding (any type)
-
-- Already enforced by a linter, formatter, or type checker
-- A language/framework default documented in official docs
-- A one-off implementation detail in a single file
-- A generic best practice (e.g., "write tests", "use descriptive names")
-
-### Identification checklist
-
-For each candidate, note:
-1. **Name** — short descriptive name
-2. **Hypothesis** — what you believe the convention is
-3. **Evidence needed** — which specific source files to read to confirm (max 5 per convention)
-4. **Category** — `correctness` | `safety` | `consistency` | `testing` | `deployment`
-5. **Pattern type** — choose using this decision table:
-
-   | Signal | Type |
-   |--------|------|
-   | "Always do X when working on Y files" | **rule** |
-   | "When you need to do X, follow these N steps" | **skill** |
-   | "Review/analyze X and produce a structured report" | **agent** |
-   | Multi-step procedure across 3+ files | **skill** |
-   | A constraint that applies to every edit in scope | **rule** |
-   | A task that benefits from a dedicated persona/focus | **agent** |
-
-6. **Confidence** — `high` (seen in 5+ files) | `medium` (seen in 2-4 files) | `low` (seen in 1 file)
-
-**Aim for a mix of types.** A project with only rules is missing workflow automation. A project with only skills is missing guardrails. Target roughly: 40-60% rules, 30-50% skills, 0-20% agents.
-
-Drop any candidate with `low` confidence immediately. A missing pattern is better than a wrong one.
-
-### Present findings to user
-
-Before proceeding, print the full candidate list as a table for the user to review:
-
-```
-Candidate Conventions ([N] identified):
-
-| # | Name | Type | Category | Confidence | Hypothesis |
-|---|------|------|----------|------------|------------|
-| 1 | ... | rule | correctness | high | ... |
-| 2 | ... | skill | consistency | medium | ... |
-| 3 | ... | agent | testing | medium | ... |
-
-Type mix: [N] rules, [N] skills, [N] agents
-```
-
-Then list which conventions were dropped and why:
-
-```
-Dropped ([N]):
-- [name]: low confidence (seen in 1 file only)
-- [name]: already enforced by [linter/formatter]
-- [name]: generic best practice, not project-specific
-```
-
-**Wait for user acknowledgment** before proceeding to Step 4. The user may want to add, remove, or reprioritize conventions.
-
-### Dedup against hub patterns
-
-Before proceeding, compare each candidate convention against the hub patterns copied in Step 1 (if Step 1 ran). If a hub pattern already covers the convention (even generically), check whether the project-specific version adds genuine value beyond what the hub provides. Drop conventions where the hub pattern is sufficient.
-
-**Examples of "hub covers it":**
-- Hub has `android-arch` skill covering clean architecture → don't generate `module-dependency-direction` rule unless project has non-standard dependency rules
-- Hub has `testing.md` rule → don't generate test fixture rule unless project has unique fixture conventions
-
-**Examples of "project-specific adds value":**
-- Hub has generic `db-migrate` skill → project has 5-location model import rule (completely unique)
-- Hub has generic `tdd` skill → project has specific `BaseViewModel<T : BaseUiState>` pattern
-
-Print the dedup results:
-
-```
-Hub dedup: [N] conventions dropped (already covered by hub patterns):
-- [name]: covered by hub's [pattern-name] ([reason])
-- [name]: covered by hub's [pattern-name] ([reason])
-
-Remaining after dedup: [N] conventions to investigate
-```
-
-**If `--update` mode:** Compare candidates against existing patterns. Only keep:
-- New conventions not covered by existing patterns
-- Existing patterns that are now stale (code changed, pattern didn't)
+**Read:** `references/identify-conventions-with-dedup-against-hub.md` for detailed step 3: identify conventions (with dedup against hub) reference material.
 
 ## STEP 4: Read Evidence and Confirm
 
 For each remaining candidate convention, read the source files listed in "evidence needed."
 
-1. Read the files using `Read` — deduplicate across conventions (if two conventions need the same file, you already have it in context)
+1. Read the files using `Read` — deduplicate across conventions (if two conventions need the same file, you already have it in context). **Deep scan (default):** Read ALL evidence files needed to confirm conventions. Do NOT cap at an arbitrary number. If total evidence files exceed 15, delegate overflow to subagents to manage context — but NEVER skip evidence files entirely.
 2. For each convention, confirm or reject:
    - **Confirmed** — the convention holds across the evidence files with no major counter-examples
    - **Rejected** — the evidence is inconsistent, or the convention is weaker than hypothesized
@@ -444,69 +340,15 @@ Scan each generated pattern for keywords: `auth`, `secret`, `token`, `credential
 2. **Validate** — For each generated pattern, write it to a temp file and run validators:
    ```bash
    # Structural validation (required)
-   PYTHONPATH=. python scripts/validate_patterns.py [temp-pattern-file]
+   PYTHONPATH=. python scripts/workflow_quality_gate_validate_patterns.py [temp-pattern-file]
 
    # Dedup check against existing patterns (required)
    PYTHONPATH=. python scripts/dedup_check.py --check [temp-pattern-file]
    ```
-   If `validate_patterns.py` or `dedup_check.py` are not available (running outside the hub repo), perform manual validation against the quality checks above. Drop any pattern that fails.
+   If `workflow_quality_gate_validate_patterns.py` or `dedup_check.py` are not available (running outside the hub repo), perform manual validation against the quality checks above. Drop any pattern that fails.
 
-### Local mode: write directly
 
-3. **Write patterns** to the project's `.claude/` directory:
-   - Rules → `.claude/rules/[convention-name].md`
-   - Skills → `.claude/skills/[skill-name]/SKILL.md`
-   - Agents → `.claude/agents/[agent-name].md`
-
-### Remote mode (`--repo`): create a PR
-
-3. **Create a branch** on the remote repo:
-   ```bash
-   # Get default branch SHA
-   DEFAULT_SHA=$(gh api repos/owner/name/git/refs/heads/main --jq '.object.sha')
-
-   # Create branch
-   gh api repos/owner/name/git/refs -f ref="refs/heads/synthesize-project/$(date +%Y-%m-%d)" -f sha="$DEFAULT_SHA"
-   ```
-
-4. **Push each pattern file** to the branch:
-   ```bash
-   # For each generated pattern, create/update the file on the branch
-   echo "PATTERN_CONTENT" | base64 | gh api repos/owner/name/contents/.claude/rules/[name].md \
-     -X PUT \
-     -f message="feat: add synthesized pattern [name]" \
-     -f content="$(echo 'PATTERN_CONTENT' | base64)" \
-     -f branch="synthesize-project/$(date +%Y-%m-%d)"
-   ```
-
-5. **Push `synthesis-config.yml`** if it doesn't exist in the repo (check first via `gh api`).
-
-6. **Create a PR:**
-   ```bash
-   gh pr create --repo owner/name \
-     --head "synthesize-project/$(date +%Y-%m-%d)" \
-     --title "feat: synthesized .claude/ patterns for this project" \
-     --body "$(cat <<'EOF'
-   ## Summary
-
-   Auto-generated `.claude/` patterns by analyzing this project's codebase.
-   These patterns encode conventions specific to this project.
-
-   ## Generated Patterns
-
-   [List each pattern with name, type, and one-line description]
-
-   ## Review Checklist
-
-   - [ ] Patterns accurately reflect project conventions
-   - [ ] No sensitive information exposed (check `private: true` patterns)
-   - [ ] No generic advice — each pattern is project-specific
-
-   ---
-   Generated by `/synthesize-project` from the [claude-best-practices](https://github.com/abhayla/claude-best-practices) hub.
-   EOF
-   )"
-   ```
+**Read:** `references/validate-and-write.md` for detailed step 7: validate and write reference material.
 
 ## STEP 8: Generate synthesis-config.yml
 
@@ -543,93 +385,7 @@ scan_log: false
 
 ## STEP 9: Summary
 
-Print a summary showing both hub provisioning and synthesis results.
-
-**Read `synthesis-config.yml`** to determine sharing status.
-
-**If sharing is OFF (default):**
-
-```
-Provision complete:
-
-Hub patterns:
-  Must-have:     [N] new patterns
-  Improved:      [N] hub upgrades to existing patterns
-  Nice-to-have:  [N] optional (checkbox PR created in remote mode)
-  Skipped:       [N]
-  CLAUDE.md:     created|updated|appended|skipped
-  settings.json: created|merged|skipped
-
-Synthesized patterns:
-  Rules generated:    [N]
-  Skills generated:   [N]
-  Agents generated:   [N]
-  Skipped (overlap):  [N] (covered by hub patterns)
-  Skipped (low conf): [N]
-
-All patterns are local — nothing has been shared.
-
-╭─ Synthesize Flywheel ──────────────────────────────────────────╮
-│                                                                 │
-│  Your patterns can improve over time via the hub, but it's a    │
-│  two-way exchange:                                              │
-│                                                                 │
-│  • Share ON  → hub can learn from your patterns, AND you        │
-│                receive new/improved patterns from the hub        │
-│  • Share OFF → fully standalone, no data leaves, no updates     │
-│                arrive (this is the default)                      │
-│                                                                 │
-│  To opt in:                                                     │
-│    Set allow_hub_sharing: true in .claude/synthesis-config.yml  │
-│                                                                 │
-╰─────────────────────────────────────────────────────────────────╯
-```
-
-**If sharing is ON:**
-
-```
-Provision complete:
-
-Hub patterns:
-  Must-have:     [N] new patterns
-  Improved:      [N] hub upgrades to existing patterns
-  Nice-to-have:  [N] optional (checkbox PR created in remote mode)
-  Skipped:       [N]
-  CLAUDE.md:     created|updated|appended|skipped
-  settings.json: created|merged|skipped
-
-Synthesized patterns:
-  Rules generated:    [N]
-  Skills generated:   [N]
-  Agents generated:   [N]
-  Skipped (overlap):  [N] (covered by hub patterns)
-  Skipped (low conf): [N]
-
-Hub sharing is ON — your patterns contribute to the hub, and you receive updates.
-```
-
-**If `--skip-hub` was set,** omit the "Hub patterns" section entirely.
-
-**If `--skip-synthesis` was set,** omit the "Synthesized patterns" section entirely.
-
-**If `--update` mode, also show:**
-
-```
-  Updated: [N] (stale patterns refreshed)
-  New:     [N] (new conventions detected)
-  Removed: [N] (conventions no longer present in codebase — files left for manual review)
-```
-
-**If `--repo` mode, also show:**
-
-```
-  PR created: https://github.com/owner/name/pull/[N]
-  Branch:     synthesize-project/[date]
-
-  The project owner should review the PR and merge patterns they agree with.
-```
-
----
+**Read:** `references/summary.md` for detailed step 9: summary reference material.
 
 ## CRITICAL RULES
 
@@ -641,4 +397,7 @@ Hub sharing is ON — your patterns contribute to the hub, and you receive updat
 - If `--update` mode finds stale patterns, do NOT delete them automatically. Write them to the summary as "candidates for removal" and let the developer decide.
 - Mark patterns as `private: true` if they mention auth, secrets, tokens, credentials, billing, payment, or similar sensitive topics. When in doubt, mark private.
 - Each generated pattern MUST have at least 30 lines of actual content. No stubs.
+- NEVER cap, limit, or prioritize a subset of confirmed conventions. Generate ALL of them. Do NOT pick "top 10" or defer to a follow-up run. The user expects complete, exhaustive coverage.
+- ALWAYS create SEPARATE PRs for each tier (must-have, nice-to-have, enhanced) in remote mode. NEVER combine tiers into a single PR. NEVER skip a tier that has patterns. NEVER make arbitrary decisions about which resources to include or exclude from a PR.
+- ALWAYS perform deep scan — read ALL evidence files needed to confirm conventions. Do NOT limit evidence reads to an arbitrary budget. If more than 15 files are needed, delegate to subagents, but NEVER skip evidence.
 - When deduping against hub patterns in Step 3, err on the side of KEEPING the project-specific convention. Only drop it if the hub pattern genuinely covers the same ground. A project-specific pattern that adds even small value over the hub pattern is worth keeping.

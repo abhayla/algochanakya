@@ -1,9 +1,9 @@
 ---
 name: react-native-e2e
 description: >
-  React Native E2E testing with Detox and visual regression with React Native Owl.
-  Covers setup, flow writing, screenshot comparison, and CI integration.
-  Use for end-to-end testing of React Native apps on Android and iOS.
+  Run end-to-end tests for React Native apps using Detox and visual regression
+  with React Native Owl. Covers setup, flow writing, screenshot comparison, and
+  CI integration. Use when testing React Native apps on Android and iOS.
 allowed-tools: "Bash Read Grep Glob Write Edit"
 triggers:
   - react native e2e
@@ -291,6 +291,38 @@ jobs:
             __owl__/diff/
             __owl__/report/
 ```
+
+---
+
+## CAPTURE PROOF MODE
+
+When invoked with `--capture-proof`, enable always-capture mode for both
+Detox (functional) and Owl (visual regression) tests.
+
+### Detox Always-Capture
+
+```javascript
+// In e2e/config.js or jest setup:
+afterEach(async () => {
+  const testName = expect.getState().currentTestName.replace(/\s/g, '_');
+  const passed = expect.getState().assertionCalls === expect.getState().numPassingAsserts;
+  await device.takeScreenshot(`${testName}.${passed ? 'pass' : 'fail'}`);
+});
+```
+
+### Owl Always-Capture
+
+```bash
+# Run Owl with --capture-all flag (captures every screen, not just visual tests)
+npx owl test --capture-all
+```
+
+### Evidence Output
+
+Screenshots stored in `test-evidence/{run_id}/screenshots/`:
+`{test_name}.{pass|fail}.png`
+
+Platform suffix for cross-platform: `{test_name}.{android|ios}.{pass|fail}.png`
 
 ---
 
