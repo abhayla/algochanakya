@@ -3,7 +3,7 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 **AlgoChanakya:** Multi-broker options trading platform (Indian markets)
-**Working Directory:** `D:\Abhay\VibeCoding\algochanakya` (development)
+**Working Directory:** `C:\Abhay\VideCoding\algochanakya` (development)
 
 ## Quick Reference
 
@@ -32,16 +32,23 @@ npm run test        # Watch mode
 alembic upgrade head
 alembic revision --autogenerate -m "description"
 
-# Linting (from backend/, venv active)
+# Backend linting (from backend/, venv active)
 ruff check app/ --fix && ruff format app/
+
+# Frontend linting (from frontend/)
+npm run lint:fix && npm run format
+
+# E2E tests by screen (from project root)
+npm run test:specs:optionchain                     # Single screen
+npm run test:happy                                 # All happy paths
 ```
 
 **After code changes:** invoke `auto-verify` skill. To fix failures: `test-fixer` skill.
 
 ## CRITICAL: Never Touch Production
 
-- **✅ Dev:** `D:\Abhay\VibeCoding\algochanakya` (backend port 8001, frontend port 5173)
-- **❌ NEVER:** `C:\Apps\algochanakya` (production — port 8000/3004)
+- **Dev:** `C:\Abhay\VideCoding\algochanakya` (backend port 8001, frontend port 5173)
+- **NEVER:** `C:\Apps\algochanakya` (production — port 8000/3004)
 
 ## Navigation
 

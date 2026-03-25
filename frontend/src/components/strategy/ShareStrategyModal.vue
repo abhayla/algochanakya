@@ -5,8 +5,8 @@
       <div class="fixed inset-0 bg-black bg-opacity-50" @click="$emit('close')"></div>
 
       <!-- Modal -->
-      <div class="relative bg-white rounded-lg shadow-xl max-w-lg w-full p-6">
-        <h3 class="text-lg font-medium text-gray-900 mb-4">Share Strategy</h3>
+      <div class="relative bg-white rounded-lg shadow-xl max-w-lg w-full p-6" data-testid="strategy-share-modal">
+        <h3 class="text-lg font-medium text-gray-900 mb-4" data-testid="strategy-share-modal-title">Share Strategy</h3>
 
         <p class="text-sm text-gray-600 mb-4">
           Share this link with others to let them view your strategy:
@@ -19,6 +19,7 @@
             :value="shareUrl"
             readonly
             class="flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-sm"
+            data-testid="strategy-share-url"
           />
           <button
             @click="copyToClipboard"
@@ -28,6 +29,7 @@
                 ? 'text-white bg-green-600'
                 : 'text-white bg-[#387ed1] hover:bg-[#2c6cb8]'
             ]"
+            data-testid="strategy-share-copy-btn"
           >
             {{ copied ? 'Copied!' : 'Copy' }}
           </button>
@@ -37,6 +39,7 @@
           <button
             @click="$emit('close')"
             class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+            data-testid="strategy-share-close-btn"
           >
             Close
           </button>
