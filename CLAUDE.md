@@ -81,3 +81,8 @@ Multi-broker platform where all 6 brokers (Zerodha, AngelOne, Dhan, Fyers, Paytm
 ## Rules
 
 All architectural constraints in `.claude/rules/` (auto-loaded per file type). SSOT: each fact in one file only.
+
+## Rules for Claude
+
+1. **Bug Fixing**: Use `/fix-loop` or `/fix-issue`. Start by writing a test that reproduces the bug, then fix and prove with a passing test.
+2. All architectural constraints auto-load from `.claude/rules/` based on file context — no need to read them manually.

@@ -71,84 +71,33 @@ See [.claude/rules.md](../.claude/rules.md) for all enforced folder structure ru
 
 ---
 
-## E2E Test Rules (CRITICAL)
+## E2E Test Rules
 
-**Complete E2E guidelines:** [E2E Test Rules](../docs/testing/e2e-test-rules.md) | [Testing README](../docs/testing/README.md)
+E2E conventions auto-load from `.claude/rules/e2e-*.md`. Key docs: [E2E Test Rules](../docs/testing/e2e-test-rules.md) | [Testing README](../docs/testing/README.md)
 
-**Key rules (quick reference):**
-- **Use `data-testid` ONLY** - no CSS classes, tags, or text selectors
-- **Import from `auth.fixture.js`** (NOT `@playwright/test`)
-- **Use `authenticatedPage` fixture** for authenticated tests
-- **data-testid convention:** `[screen]-[component]-[element]` (e.g., `positions-exit-modal`)
-- **Headless mode:** `playwright.config.js` sets `headless: false` by default for better debugging.
+**Headless mode:** `playwright.config.js` sets `headless: false` by default for debugging.
 
 ---
 
 ## Environment Variables
 
-**Setup:** Copy `.env.example` to `.env` and update with actual values.
-
-**Frontend (`frontend/.env`):** `VITE_API_BASE_URL=http://localhost:8001` (dev port), `VITE_WS_URL=ws://localhost:8001` (optional, defaults to API URL)
-
-**Frontend Local Override (`frontend/.env.local`):** Overrides `.env` for local development. **CRITICAL:** Must point to `http://localhost:8001` for dev backend. Common mistake: pointing to wrong port (8005, 8000). This file is git-ignored. **Note:** `.env.example` shows port 8000 (production default) - manually change to 8001 for development.
-
-**Production Build:** `frontend/.env.production` is **git-tracked** with `VITE_API_BASE_URL=https://algochanakya.com` and `VITE_WS_URL=algochanakya.com`. No manual creation needed for builds.
+- `frontend/.env`: `VITE_API_BASE_URL=http://localhost:8001`, `VITE_WS_URL=ws://localhost:8001`
+- `frontend/.env.local`: Overrides `.env` — **MUST** point to `http://localhost:8001` for dev (not 8005/8000). Git-ignored.
+- `frontend/.env.production`: Git-tracked, points to `https://algochanakya.com`.
 
 ---
 
-## Trading Constants (Frontend)
+## WebSocket
 
-**NEVER hardcode lot sizes, strike steps, or index tokens.** Always use centralized constants:
-
-```javascript
-// Frontend - loaded from backend API on app init
-// File: frontend/src/constants/trading.js
-import { getLotSize, getStrikeStep, useTradingConstants } from '@/constants/trading'
-
-// Direct function calls
-const lotSize = getLotSize('NIFTY')  // 75
-
-// Or use the composable for reactive access
-const { LOT_SIZES, STRIKE_STEPS, loadTradingConstants } = useTradingConstants()
-```
-
-**Note:** Frontend constants are fetched from `/api/constants/trading` on app initialization. The file contains fallback defaults that match backend values.
-
----
-
-## WebSocket Patterns
-
-**Connection URLs:**
-- Dev: `ws://localhost:8001/ws/ticks?token=<jwt>`
-- Prod: `wss://algochanakya.com/ws/ticks?token=<jwt>`
-- Index tokens: NIFTY=256265, BANKNIFTY=260105, FINNIFTY=257801, SENSEX=265
-
-**Cleanup:** Always close WebSocket subscriptions in `onUnmounted()` to prevent memory leaks.
-
-**Key files:**
-- `src/services/api.js` - HTTP interceptor
-- `src/stores/auth.js` - Auth state management
-
----
-
-## Authentication (Frontend)
-
-The axios interceptor in `src/services/api.js` handles 401 responses by:
-1. Clearing `access_token` from localStorage
-2. Redirecting to `/login`
-
-**Key Files:**
-- `src/services/api.js` - HTTP interceptor (lines 27-35)
-- `src/stores/auth.js` - Auth state management
+- Dev: `ws://localhost:8001/ws/ticks?token=<jwt>` | Prod: `wss://algochanakya.com/ws/ticks?token=<jwt>`
+- Always close subscriptions in `onUnmounted()` to prevent memory leaks
+- Trading constants loaded from `/api/constants/trading` on app init (`src/constants/trading.js`)
 
 ---
 
 ## Frontend-Specific Pitfalls
 
-- **Missing `data-testid`** - Required for E2E tests; use `[screen]-[component]-[element]`
-- **WebSocket not cleaned up** - Close subscriptions in `onUnmounted()`
-- **Direct Kite API calls** - All broker operations go through backend
-- **Wrong backend port in `.env.local`** - Frontend `.env.local` overrides `.env`. Must point to `http://localhost:8001` for dev, not 8005 or 8000
-- **AngelOne login timeout** - AngelOne auth with auto-TOTP takes 20-25 seconds. Default axios timeout (10s) is too short. Use `timeout: 35000` in POST request to `/api/auth/angelone/login`
-- **Wrong import in tests** - Use `auth.fixture.js`, NOT `@playwright/test`
-- **CSS/text selectors in tests** - Use `data-testid` only
+- **Wrong port in `.env.local`** — must be `http://localhost:8001` (not 8005/8000)
+- **AngelOne login timeout** — auto-TOTP takes 20-25s, use `timeout: 35000` in axios POST
+- **WebSocket not cleaned up** — close subscriptions in `onUnmounted()`
+- E2E pitfalls (testid, fixtures, selectors) auto-load from `.claude/rules/e2e-*.md`

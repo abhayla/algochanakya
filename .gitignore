@@ -39,6 +39,7 @@ logs/
 # Claude Code (allow specific .claude/ subdirectories to be committed for team sharing)
 .claude/*
 !.claude/skills/
+!.claude/rules/
 !.claude/learning/
 !.claude/hooks/
 !.claude/commands/
