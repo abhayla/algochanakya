@@ -159,16 +159,16 @@ class TestConstants:
 
     def test_lot_sizes(self):
         """Test lot sizes are correct."""
-        assert LOT_SIZES["NIFTY"] == 25
-        assert LOT_SIZES["BANKNIFTY"] == 15
-        assert LOT_SIZES["FINNIFTY"] == 25
-        assert LOT_SIZES["SENSEX"] == 10
+        assert LOT_SIZES["NIFTY"] == 75
+        assert LOT_SIZES["BANKNIFTY"] == 35
+        assert LOT_SIZES["FINNIFTY"] == 65
+        assert LOT_SIZES["SENSEX"] == 20
 
     def test_strike_steps(self):
         """Test strike steps are correct."""
-        assert STRIKE_STEPS["NIFTY"] == 50
+        assert STRIKE_STEPS["NIFTY"] == 100
         assert STRIKE_STEPS["BANKNIFTY"] == 100
-        assert STRIKE_STEPS["FINNIFTY"] == 50
+        assert STRIKE_STEPS["FINNIFTY"] == 100
         assert STRIKE_STEPS["SENSEX"] == 100
 
 

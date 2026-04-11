@@ -279,9 +279,9 @@ class TestLotSize:
     """Test lot size retrieval."""
 
     def test_nifty_lot_size(self):
-        """NIFTY lot size should be 25."""
-        assert PnLCalculator.get_lot_size("NIFTY") == 25
+        """NIFTY lot size should be 75 (updated Nov 2024 NSE circular)."""
+        assert PnLCalculator.get_lot_size("NIFTY") == 75
 
     def test_banknifty_lot_size(self):
-        """BANKNIFTY lot size should be 15."""
-        assert PnLCalculator.get_lot_size("BANKNIFTY") == 15
+        """BANKNIFTY lot size should be 35 (updated NSE circular)."""
+        assert PnLCalculator.get_lot_size("BANKNIFTY") == 35

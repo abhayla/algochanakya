@@ -185,8 +185,8 @@ class StrategyListItem(BaseModel):
     underlying: Underlying
     lots: int
     leg_count: int
-    current_pnl: Optional[Decimal] = None
-    margin_used: Optional[Decimal] = None
+    current_pnl: Optional[float] = None
+    margin_used: Optional[float] = None
     priority: int
     created_at: datetime
     updated_at: datetime
@@ -278,11 +278,11 @@ class UserSettingsUpdateRequest(BaseModel):
 
 # Dashboard Schemas
 class RiskMetrics(BaseModel):
-    daily_loss_limit: Decimal
-    daily_loss_used: Decimal
+    daily_loss_limit: float
+    daily_loss_used: float
     daily_loss_pct: float
-    max_capital: Decimal
-    capital_used: Decimal
+    max_capital: float
+    capital_used: float
     capital_pct: float
     max_active_strategies: int
     active_strategies_count: int
@@ -293,9 +293,9 @@ class DashboardSummary(BaseModel):
     active_strategies: int
     waiting_strategies: int
     pending_confirmations: int
-    today_realized_pnl: Decimal
-    today_unrealized_pnl: Decimal
-    today_total_pnl: Decimal
+    today_realized_pnl: float
+    today_unrealized_pnl: float
+    today_total_pnl: float
     risk_metrics: RiskMetrics
     strategies: List[StrategyListItem]
     kite_connected: bool
@@ -550,9 +550,9 @@ class DashboardSummaryWithKillSwitch(BaseModel):
     active_strategies: int
     waiting_strategies: int
     pending_confirmations: int
-    today_realized_pnl: Decimal
-    today_unrealized_pnl: Decimal
-    today_total_pnl: Decimal
+    today_realized_pnl: float
+    today_unrealized_pnl: float
+    today_total_pnl: float
     risk_metrics: RiskMetrics
     strategies: List[StrategyListItem]
     kite_connected: bool
