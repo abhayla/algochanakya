@@ -17,6 +17,11 @@
 import { chromium } from '@playwright/test';
 import fs from 'fs';
 import path from 'path';
+import dotenv from 'dotenv';
+import { generateSync } from 'otplib';
+
+// Load backend .env for AngelOne credentials (ANGEL_CLIENT_ID, ANGEL_PIN, ANGEL_TOTP_SECRET)
+dotenv.config({ path: path.resolve(import.meta.dirname, '../../backend/.env') });
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 // Dev backend uses port 8001 (production uses 8000 - NEVER use 8000 for dev)
@@ -95,11 +100,24 @@ async function performAngelOneLogin() {
 
   // --- Attempt direct API login (fastest, most reliable) ---
   try {
-    console.log('Calling POST /api/auth/angelone/login with stored credentials...');
+    const clientId = process.env.ANGEL_CLIENT_ID;
+    const pin = process.env.ANGEL_PIN;
+    const totpSecret = process.env.ANGEL_TOTP_SECRET;
+
+    if (!clientId || !pin || !totpSecret) {
+      throw new Error(`Missing AngelOne credentials in backend/.env: ${[
+        !clientId && 'ANGEL_CLIENT_ID',
+        !pin && 'ANGEL_PIN',
+        !totpSecret && 'ANGEL_TOTP_SECRET'
+      ].filter(Boolean).join(', ')}`);
+    }
+
+    const totpCode = generateSync({ secret: totpSecret });
+    console.log(`Calling POST /api/auth/angelone/login (client: ${clientId}, TOTP: auto-generated)...`);
     const response = await fetch(`${API_BASE}/api/auth/angelone/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({})  // empty body = use stored SmartAPI credentials + auto-TOTP
+      body: JSON.stringify({ client_id: clientId, pin: pin, totp_code: totpCode })
     });
 
     if (!response.ok) {
