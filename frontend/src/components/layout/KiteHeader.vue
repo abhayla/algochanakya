@@ -174,8 +174,7 @@ const navItems = [
   { path: '/ofo', label: 'OFO', title: 'Options For Options — Find optimal strategy combinations' },
   { path: '/strategy', label: 'Strategy' },
   { path: '/positions', label: 'Positions' },
-  // Hidden for initial deployment - not fully tested
-  // { path: '/autopilot', label: 'AutoPilot', icon: 'robot' },
+  { path: '/autopilot', label: 'AutoPilot', icon: 'robot' },
   // { path: '/ai/settings', label: 'AI Settings', icon: 'brain' },
 ];
 

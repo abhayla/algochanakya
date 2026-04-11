@@ -20,7 +20,7 @@ test.describe('Login - API Validation @api', () => {
   });
 
   test('health check endpoint responds', async ({ request }) => {
-    const response = await request.get(`${API_BASE}/health`);
+    const response = await request.get(`${API_BASE}/api/health`);
 
     expect(response.ok()).toBe(true);
     const data = await response.json();

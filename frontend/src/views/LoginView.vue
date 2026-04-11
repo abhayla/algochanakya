@@ -397,7 +397,7 @@ const scrollToLogin = () => {
   font-size: 13px;
   font-weight: 500;
   color: #ffffff;
-  background: #387ed1;
+  background: #2d6ab8;
   border: none;
   border-radius: 3px;
   cursor: pointer;
@@ -405,7 +405,7 @@ const scrollToLogin = () => {
 }
 
 .login-btn:hover {
-  background: #2d6ab8;
+  background: #2660a4;
 }
 
 /* Force two-column layout at lg breakpoint since Tailwind JIT isn't generating responsive classes */
@@ -534,7 +534,7 @@ const scrollToLogin = () => {
   font-size: 14px;
   font-weight: 600;
   color: #ffffff;
-  background: #387ed1;
+  background: #2d6ab8;
   border: none;
   border-radius: 8px;
   cursor: pointer;
@@ -542,7 +542,7 @@ const scrollToLogin = () => {
 }
 
 .login-submit-btn:hover:not(:disabled) {
-  background: #2d6ab8;
+  background: #2660a4;
 }
 
 .login-submit-btn:disabled {
@@ -579,7 +579,7 @@ const scrollToLogin = () => {
   align-items: center;
   gap: 6px;
   font-size: 0.875rem;
-  color: #387ed1;
+  color: #2d6ab8;
   background: none;
   border: none;
   cursor: pointer;
@@ -589,8 +589,8 @@ const scrollToLogin = () => {
 }
 
 .safety-faq-btn:hover {
-  color: #2d6ab8;
-  border-bottom-color: #2d6ab8;
+  color: #2660a4;
+  border-bottom-color: #2660a4;
 }
 
 .safety-faq-chevron {

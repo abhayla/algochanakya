@@ -47,12 +47,13 @@ test.describe('Navigation Menu - AutoPilot Across All Screens', () => {
   test('navigation bar is consistent across all screens', async ({ authenticatedPage }) => {
     for (const screen of screens) {
       await authenticatedPage.goto(screen.path);
-      await authenticatedPage.waitForLoadState('networkidle');
+      await authenticatedPage.waitForLoadState('domcontentloaded');
 
-      // Check that all 7 nav items exist
+      // Check that all 6 nav items exist (dashboard, optionchain, ofo, strategy, positions, autopilot)
       const navItems = authenticatedPage.locator('[data-testid="kite-header-nav"] a');
+      await expect(navItems.first()).toBeVisible(); // wait for Vue to mount
       const count = await navItems.count();
-      expect(count).toBe(7);
+      expect(count).toBe(6);
 
       // Check AutoPilot is always last
       const lastItem = navItems.last();

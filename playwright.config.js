@@ -85,7 +85,7 @@ export default defineConfig({
       testMatch: /.*\.isolated\.spec\.js/,
       use: {
         browserName: 'chromium',
-        storageState: undefined, // Fresh context, no saved auth
+        storageState: { cookies: [], origins: [] }, // Explicitly empty — undefined doesn't override global storageState
       },
     },
   ],

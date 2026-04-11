@@ -28,21 +28,23 @@ test.describe('Login - Isolated Tests @isolated', () => {
     expect(page.url()).toContain('/login');
   });
 
-  test('Zerodha login button is visible and default', async () => {
-    await expect(loginPage.zerodhaButton).toBeVisible();
-    await expect(loginPage.zerodhaButton).toContainText('Zerodha');
+  test('Zerodha is available in broker dropdown', async () => {
+    await expect(loginPage.brokerSelect).toBeVisible();
+    const options = await loginPage.brokerSelect.locator('option').allTextContents();
+    expect(options.some(o => o.includes('Zerodha'))).toBeTruthy();
   });
 
-  test('Angel One login button is visible', async () => {
-    await expect(loginPage.angelOneButton).toBeVisible();
-    await expect(loginPage.angelOneButton).toContainText('Angel One');
+  test('Angel One is available in broker dropdown', async () => {
+    await expect(loginPage.brokerSelect).toBeVisible();
+    const options = await loginPage.brokerSelect.locator('option').allTextContents();
+    expect(options.some(o => o.includes('Angel One'))).toBeTruthy();
   });
 
-  test('displays platform features', async ({ page }) => {
-    // Check for feature descriptions
-    await expect(page.getByText('Advanced Strategy Builder')).toBeVisible();
-    await expect(page.getByText('Live Market Data')).toBeVisible();
-    await expect(page.getByText('Secure Broker Integration')).toBeVisible();
+  test('displays login help sections', async ({ page }) => {
+    // Check for help sections present in the current UI
+    await expect(page.getByText('Which broker should I select?')).toBeVisible();
+    await expect(page.getByText('Is it safe to connect?')).toBeVisible();
+    await expect(page.getByText('Having trouble logging in?')).toBeVisible();
   });
 
   test('safety toggle shows info when clicked', async () => {

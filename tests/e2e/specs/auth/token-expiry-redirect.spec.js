@@ -51,8 +51,9 @@ test.describe('Token Expiry Redirect @auth', () => {
     // Navigate to a protected page
     await page.goto('/optionchain');
 
-    // Wait for redirect
+    // Wait for redirect, then wait for login form to mount (ensures Vue context is stable)
     await page.waitForURL('**/login**', { timeout: 15000 });
+    await page.waitForSelector('[data-testid="login-broker-select"]', { state: 'visible', timeout: 10000 });
 
     // Verify token was cleared
     const token = await page.evaluate(() => localStorage.getItem('access_token'));

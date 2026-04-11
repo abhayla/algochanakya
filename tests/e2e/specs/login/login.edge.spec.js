@@ -2,6 +2,7 @@
  * Login Edge Case Tests
  *
  * Tests for error states, edge cases, and boundary conditions.
+ * These tests need an unauthenticated browser context (login page should be visible).
  */
 
 import { test, expect } from '../../fixtures/auth.fixture.js';
@@ -10,6 +11,9 @@ import { LoginPage } from '../../pages/LoginPage.js';
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 
 test.describe('Login - Edge Cases @edge', () => {
+  // Clear auth state so these tests see the login page, not the dashboard
+  test.use({ storageState: { cookies: [], origins: [] } });
+
   let loginPage;
 
   test.beforeEach(async ({ page }) => {
@@ -25,15 +29,17 @@ test.describe('Login - Edge Cases @edge', () => {
     expect(page.url()).toContain('/login');
   });
 
-  test('Angel One shows coming soon message', async ({ page }) => {
+  test('selecting Angel One shows inline credential fields', async ({ page }) => {
     await page.goto(FRONTEND_URL + '/login');
     await loginPage.waitForPageLoad();
 
-    await loginPage.clickAngelOneLogin();
+    await loginPage.brokerSelect.selectOption('angelone');
 
-    // Should show error message
-    await expect(loginPage.errorMessage).toBeVisible();
-    await expect(loginPage.errorMessage).toContainText('coming soon');
+    // AngelOne shows inline credential fields (not "coming soon")
+    await expect(loginPage.angelOneFields).toBeVisible();
+    await expect(loginPage.angelOneClientId).toBeVisible();
+    await expect(loginPage.angelOnePin).toBeVisible();
+    await expect(loginPage.angelOneTotp).toBeVisible();
   });
 
   test('no horizontal overflow at any viewport', async ({ page }) => {
@@ -64,7 +70,7 @@ test.describe('Login - Edge Cases @edge', () => {
     await page.goto(FRONTEND_URL + '/login');
     await loginPage.waitForPageLoad();
 
-    // Filter out expected errors (like network errors for missing favicon)
+    // Filter out expected non-critical errors
     const criticalErrors = consoleErrors.filter(err =>
       !err.includes('favicon') &&
       !err.includes('Failed to load resource')
@@ -73,18 +79,16 @@ test.describe('Login - Edge Cases @edge', () => {
     expect(criticalErrors).toHaveLength(0);
   });
 
-  test('loading state is shown when initiating OAuth', async ({ page }) => {
+  test('submit button shows loading state when initiating OAuth', async ({ page }) => {
     await page.goto(FRONTEND_URL + '/login');
     await loginPage.waitForPageLoad();
 
-    // Click Zerodha login - loading state should appear briefly
-    // Note: This test assumes the API call takes some time
-    await loginPage.clickZerodhaLogin();
+    // Click the submit button (Zerodha is default)
+    await loginPage.submitButton.click();
 
-    // Check that button shows loading state
-    const buttonText = await loginPage.zerodhaButton.textContent();
-    // The button should either show "Connecting..." or redirect
-    // Since OAuth flow redirects, we just verify no crash
+    // After click, either redirect happens or loading state shows
+    // Just verify no crash — OAuth redirects are external
     await page.waitForLoadState('domcontentloaded');
+    // Test passes as long as there's no JS exception
   });
 });

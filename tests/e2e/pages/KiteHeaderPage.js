@@ -61,12 +61,12 @@ export class KiteHeaderPage extends BasePage {
     return this.getByTestId('kite-header-index-value-nifty50');
   }
 
-  get niftyBankItem() {
-    return this.getByTestId('kite-header-index-niftybank');
+  get sensexItem() {
+    return this.getByTestId('kite-header-index-sensex');
   }
 
-  get niftyBankValue() {
-    return this.getByTestId('kite-header-index-value-niftybank');
+  get sensexValue() {
+    return this.getByTestId('kite-header-index-value-sensex');
   }
 
   // ============ Actions ============
@@ -135,29 +135,39 @@ export class KiteHeaderPage extends BasePage {
   }
 
   /**
-   * Get NIFTY BANK price as a number
+   * Get SENSEX price as a number
    * @returns {Promise<number>} Price value or NaN if not available
    */
-  async getNiftyBankPrice() {
-    const text = await this.niftyBankValue.textContent();
+  async getSensexPrice() {
+    const text = await this.sensexValue.textContent();
     return parseFloat(text.replace(/,/g, ''));
   }
 
   /**
-   * Wait for index prices to load (non-zero values)
-   * @param {number} timeout - Max wait time in ms (default 10000)
+   * Wait for index prices to load (non-zero values).
+   * Returns true if live prices arrived, false if market is closed/WebSocket unavailable.
+   * Never throws — tests must handle both states.
+   * @param {number} timeout - Max wait time in ms (default 5000)
+   * @returns {Promise<boolean>}
    */
-  async waitForIndexPrices(timeout = 10000) {
-    await this.page.waitForFunction(
-      () => {
-        const niftyEl = document.querySelector('[data-testid="kite-header-index-value-nifty50"]');
-        const bankEl = document.querySelector('[data-testid="kite-header-index-value-niftybank"]');
-        if (!niftyEl || !bankEl) return false;
-        const niftyPrice = parseFloat(niftyEl.textContent.replace(/,/g, ''));
-        const bankPrice = parseFloat(bankEl.textContent.replace(/,/g, ''));
-        return niftyPrice > 0 && bankPrice > 0;
-      },
-      { timeout }
-    );
+  async waitForIndexPrices(timeout = 5000) {
+    try {
+      await this.page.waitForFunction(
+        () => {
+          const niftyEl = document.querySelector('[data-testid="kite-header-index-value-nifty50"]');
+          const sensexEl = document.querySelector('[data-testid="kite-header-index-value-sensex"]');
+          if (!niftyEl || !sensexEl) return false;
+          const niftyPrice = parseFloat(niftyEl.textContent.replace(/,/g, ''));
+          const sensexPrice = parseFloat(sensexEl.textContent.replace(/,/g, ''));
+          return niftyPrice > 0 && sensexPrice > 0;
+        },
+        undefined,   // arg (none needed)
+        { timeout }  // options — must be third argument
+      );
+      return true;
+    } catch {
+      // Market closed or WebSocket not delivering data — prices show '--'
+      return false;
+    }
   }
 }

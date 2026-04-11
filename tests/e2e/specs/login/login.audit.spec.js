@@ -12,6 +12,9 @@ import { StyleAudit, DESIGN_TOKENS } from '../../helpers/style-audit.helper.js';
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 
 test.describe('Login - Style & Accessibility Audit @audit', () => {
+  // Login page requires unauthenticated context — authenticated users get redirected to dashboard
+  test.use({ storageState: { cookies: [], origins: [] } });
+
   let loginPage;
   let audit;
 
