@@ -126,18 +126,19 @@ This is the same mechanism used by `SmartAPIAuth` in `backend/app/services/legac
 All AngelOne credentials in `backend/.env` (use placeholders, never real values):
 
 ```
-ANGEL_API_KEY=your-angelone-live-api-key
-ANGEL_API_SECRET=your-angelone-live-api-secret
-ANGEL_HIST_API_KEY=your-angelone-historical-api-key
-ANGEL_HIST_API_SECRET=your-angelone-historical-api-secret
-ANGEL_TRADE_API_KEY=your-angelone-trade-api-key
-ANGEL_TRADE_API_SECRET=your-angelone-trade-api-secret
+# SmartAPI uses ONE key per account — all 3 slots get the SAME value
+ANGEL_API_KEY=your-angelone-api-key
+ANGEL_API_SECRET=your-angelone-api-secret
+ANGEL_HIST_API_KEY=your-angelone-api-key        # same key
+ANGEL_HIST_API_SECRET=your-angelone-api-secret   # same secret
+ANGEL_TRADE_API_KEY=your-angelone-api-key        # same key
+ANGEL_TRADE_API_SECRET=your-angelone-api-secret  # same secret
 ANGEL_CLIENT_ID=your-angelone-client-id
 ANGEL_PIN=your-angelone-trading-pin
 ANGEL_TOTP_SECRET=your-angelone-totp-base32-secret
 ```
 
-See the [CLAUDE.md AngelOne 3-key table](../../../CLAUDE.md) for which key serves which purpose.
+**Note:** SmartAPI generates one API Key per account, not per app. The 3 `.env` slots exist for historical reasons but MUST all contain the same value. See gotcha #3 below.
 
 For the three-tier credential architecture (platform data API vs user login vs user personal API), see [authentication.md](../../../docs/architecture/authentication.md#three-tier-credential-architecture).
 
@@ -460,9 +461,9 @@ token = await token_manager.get_broker_token("NIFTY25APR25000CE", "smartapi")
 
 1. **PAISE vs RUPEES** - WebSocket V2 and historical API return prices in PAISE. Always divide by 100. REST quote API returns RUPEES. Option Chain API returns RUPEES. This inconsistency is the #1 source of bugs.
 
-2. **Static IP registration required (since Aug 2025)** - You must register your server's public IPv4 address in the Angel One developer dashboard before API calls will work. Up to 5 IPv4 addresses per API key. A 403 Forbidden response almost always means the IP is not registered. See [auth-flow.md](./references/auth-flow.md#static-ip-registration) for setup steps.
+2. **Static IP registration required (since Aug 2025)** - You must register your server's public IPv4 address in the SmartAPI publisher portal before API calls will work. Each app has one Primary and one optional Secondary IP. **An IP can only be assigned to ONE app** — attempting to use the same IP on a second app fails with "Primary static IP is already associated with another app." IPs can only be updated once per week. A 403 Forbidden response almost always means the IP is not registered. See [auth-flow.md](./references/auth-flow.md#static-ip-registration) for setup steps.
 
-3. **3 separate API keys** - Angel One uses 3 API keys in `backend/.env`: `ANGEL_API_KEY` (market data), `ANGEL_HIST_API_KEY` (historical data), `ANGEL_TRADE_API_KEY` (order execution). Using the wrong key returns `AG8001 Invalid Token`.
+3. **ONE API key per account (not per app)** - SmartAPI generates a single API Key + Secret Key per account, shared across all apps (max 5 apps). The "apps" on the publisher portal only control IP whitelisting and redirect URLs — they do NOT generate separate keys. AlgoChanakya's `.env` has 3 key slots (`ANGEL_API_KEY`, `ANGEL_HIST_API_KEY`, `ANGEL_TRADE_API_KEY`) but all 3 MUST be set to the same value. The old assumption of "3 separate keys" was incorrect — verified 2026-04-11. "Invalid API Key or App not found" means the app was deleted/expired on the publisher portal, not just a token expiry.
 
 4. **Instrument master is 50MB** - Download once, cache for 12 hours. Don't download on every request. AlgoChanakya uses `smartapi_instruments.py` singleton with 12h cache.
 
@@ -536,6 +537,7 @@ token = await token_manager.get_broker_token("NIFTY25APR25000CE", "smartapi")
 
 | Version | Date | Changes |
 |---|---|---|
+| 3.2 | 2026-04-11 | **CRITICAL FIX:** Discovered SmartAPI uses ONE API key per account (not per-app). Old 3-key assumption was wrong — all 3 `.env` slots must have same value. Updated gotcha #3, `.env` config section. Added: IP can only be on ONE app (no duplicate IPs across apps). Publisher portal URL is `smartapi.angelone.in/publisher-login/v2/login/` (not `/publisher`). Localhost not allowed as redirect URL. App name max 20 chars. |
 | 3.1 | 2026-03-18 | Confirmed auto-login fully working via pyotp (no manual TOTP needed). Documented AngelOne as default market data source and one of 2 brokers with FREE option chain + Greeks. Added complete .env configuration section with all 9 keys. Expanded credential storage table with hist/trade keys. Updated freshness date. |
 | 3.0 | 2026-03-04 | Renamed from `smartapi-expert` to `angelone-expert`. Restructured: Angel One overview + pricing sections added, SmartAPI content reorganized as subsection. New `angelone-overview.md` reference file. All existing API content preserved. Added 3-key API gotcha. |
 | 2.5 | 2026-02-25 | Static IP registration (Aug 2025), order rate limit 20/sec, order update WebSocket, GTT orders section, option chain section, webhook section, sandbox section, AG8008 error code, 4 new reference files, maintenance log |

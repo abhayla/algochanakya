@@ -15,7 +15,13 @@ source_hash: "angelone-3key-v1"
 
 # AngelOne 3-Key Troubleshooting Guide
 
-Diagnose AG8001 "Invalid Token" errors caused by AngelOne's 3-key JWT binding system.
+> **DEPRECATED (2026-04-11):** SmartAPI uses ONE API key per account, not 3 separate keys.
+> The 3-key `.env` slots (`ANGEL_API_KEY`, `ANGEL_HIST_API_KEY`, `ANGEL_TRADE_API_KEY`) must all
+> contain the SAME value. "Invalid API Key or App not found" means the app expired on the
+> publisher portal — recreate at `smartapi.angelone.in/publisher-login/v2/login/`.
+> See `angelone-expert` skill (gotcha #3) for current guidance.
+
+Diagnose AG8001 "Invalid Token" errors caused by AngelOne's credential system.
 
 **Request:** $ARGUMENTS
 

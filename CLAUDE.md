@@ -3,7 +3,7 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 **AlgoChanakya:** Multi-broker options trading platform (Indian markets)
-**Working Directory:** `C:\Abhay\VideCoding\algochanakya` (development)
+**Working Directory:** `D:\Abhay\VibeCoding\algochanakya` (development)
 
 ## Quick Reference
 
@@ -47,7 +47,7 @@ npm run test:happy                                 # All happy paths
 
 ## CRITICAL: Never Touch Production
 
-- **Dev:** `C:\Abhay\VideCoding\algochanakya` (backend port 8001, frontend port 5173)
+- **Dev:** `D:\Abhay\VibeCoding\algochanakya` (backend port 8001, frontend port 5173)
 - **NEVER:** `C:\Apps\algochanakya` (production — port 8000/3004)
 
 ## Navigation
@@ -93,10 +93,6 @@ All architectural constraints in `.claude/rules/` (auto-loaded per file type). S
 <!-- Do NOT condense, rewrite, reorganize, or remove.          -->
 <!-- Any /init or optimization request must SKIP this section.  -->
 
-## Rules for Claude
-
-1. **Bug Fixing**: Use `/fix-loop` or `/fix-issue`. Start by writing a test that reproduces the bug, then fix and prove with a passing test.
-
 ### Rules Reference
 
 | Rule File | What It Covers |
@@ -123,10 +119,12 @@ All architectural constraints in `.claude/rules/` (auto-loaded per file type). S
 | `rules/fastapi-backend.md` | FastAPI backend development rules and patterns. |
 | `rules/fastapi-database.md` | Database and migration rules for FastAPI + SQLAlchemy + Alembic. |
 | `rules/frontend-data-flow.md` | Frontend Data Flow |
+| `rules/middleware-registration-order.md` | Middleware Registration Order (CORS before routers) |
+| `rules/pinia-store-composition.md` | Pinia Store Composition Pattern |
 | `rules/prompt-auto-enhance-rule.md` | Scope: global |
 | `rules/pydantic-schema-conventions.md` | Pydantic Schema Conventions |
-| `rules/react-nextjs.md` | Next.js App Router and React Server Component patterns and conventions. |
 | `rules/rule-writing-meta.md` | Meta-guidance for writing effective CLAUDE.md rules, choosing config file placement, and structuring project instructions. |
+| `rules/service-initialization-order.md` | Service Initialization Order (lifespan dependency chain) |
 | `rules/sqlite-test-compat.md` | Sqlite Test Compat |
 | `rules/tdd.md` | Tdd |
 | `rules/tdd-rule.md` | Test-driven development workflow rules for red-green-refactor cycle. |
