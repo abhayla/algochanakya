@@ -1,9 +1,9 @@
 ---
 name: writing-skills
 description: >
-  Author new Claude Code skills from scratch or from observed patterns. Covers YAML
-  frontmatter, step structure, trigger design, quality validation, testing, hub
-  promotion, and a full template library. Use when creating or refining skills
+  Author new Claude Code skills or update existing ones. Covers YAML frontmatter,
+  step structure, trigger design, quality validation, testing, hub promotion,
+  and a full template library. Use when creating, updating, or refining skills
   for the .claude/skills/ directory.
 triggers:
   - write-skill
@@ -12,19 +12,26 @@ triggers:
   - how to write a skill
   - new skill
   - author skill
-allowed-tools: "Bash Read Write Edit Grep Glob"
+  - update skill
+  - modify skill
+  - improve skill
+  - edit skill
+  - refine skill
+allowed-tools: "Bash Read Write Edit Grep Glob Agent"
 argument-hint: "<skill-name or 'from-session' to extract from conversation>"
 type: workflow
-version: "2.6.0"
+version: "3.0.0"
 ---
 
 # Writing Skills — The Skill Authoring Guide
 
-Author new Claude Code skills from scratch, from observed patterns, or from session analysis.
+Author new Claude Code skills or update existing ones — from scratch, from observed patterns, or from session analysis.
 
 **Request:** $ARGUMENTS
 
 ---
+
+> Aligned with Anthropic's [Skill Authoring Best Practices](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices) and [Skills for Enterprise](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/enterprise) as of 2026-04.
 
 ## STEP 1: Determine Authoring Mode
 
@@ -32,10 +39,64 @@ Parse `$ARGUMENTS` to choose the path:
 
 | Input | Mode | Starting Point |
 |-------|------|----------------|
-| A skill name or description | **From Scratch** | Start at Step 2 |
-| `from-session` | **From Session Analysis** | Start at Step 3 |
+| `from-session` | **From Session** (recommended) | Start at Step 3 — best skills come from real tasks |
+| A skill name or description | **From Scratch** or **Update** | Check if skill exists → Update (Step 1.3) or create (Step 2) |
 | A URL or file path to existing workflow | **From Reference** | Start at Step 2, pre-fill from reference |
 | Empty / vague | **Interactive** | Ask: "What repeated task do you want to automate?" |
+
+**Auto-detect Update mode:** When `$ARGUMENTS` names an existing skill (directory exists in `.claude/skills/` or `core/.claude/skills/`), switch to Update mode (Step 1.3). Do not treat updates as new skill creation.
+
+### 1.1 Skill Necessity Check
+
+Before authoring, verify the skill adds value over the agent's baseline:
+
+1. **Auto-generate 3 representative tasks** from `$ARGUMENTS` — realistic prompts a user would type within the skill's intended scope
+2. **Run each task WITHOUT a skill** in a subagent (clean context)
+3. **Evaluate results:**
+
+| Result | Action |
+|--------|--------|
+| Agent handles all 3 well | STOP — report "skill not needed" |
+| Agent struggles on 1-2 | Capture gaps — these define the skill's value. Proceed |
+| Agent fails on all 3 | Strong signal — use failure patterns to drive Step 2.3 |
+
+The gaps captured here feed directly into the skill's instructions.
+
+### 1.2 Design Initial Evaluations
+
+Before authoring, formalize the gaps from 1.1 into 3 eval scenarios.
+These become the acceptance criteria that drive Step 2.
+
+1. **Convert each gap into a test case:** realistic user prompt + expected behavior
+2. **Establish baseline:** the without-skill results from 1.1 ARE the baseline
+3. **Store scenarios** for use in Step 6 (formal evaluation)
+
+| Gap Identified | Eval Scenario | Expected Behavior |
+|---|---|---|
+| {from 1.1} | {realistic prompt} | {what success looks like} |
+
+These scenarios drive what to include in Step 2 — write ONLY what's needed
+to pass them. Resist comprehensive documentation until evals confirm value.
+
+### 1.3 Update Mode — Modify an Existing Skill
+
+When the target skill already exists, follow this workflow instead of creating from scratch.
+
+1. **Read the existing skill** — load the full SKILL.md and any references
+2. **Identify what needs to change** — based on user request, conversation context, or known gaps
+3. **Classify the change scope** for SemVer bump:
+
+| Change Type | Version Bump | Examples |
+|---|---|---|
+| Breaking: output format change, removed steps, renamed arguments | **MAJOR** | Changing JSON output schema, removing a step |
+| Additive: new optional steps, new modes, expanded examples | **MINOR** | Adding an update mode, new decision table |
+| Fix: typo, wording, formatting, bug fix | **PATCH** | Fixing a code block, clarifying a step |
+
+4. **Apply changes** — edit the existing SKILL.md using the Edit tool (not rewrite)
+5. **Bump the version** in frontmatter per the classification above
+6. **Skip Steps 1.1–1.2 and Steps 2–3** — the skill's value is already proven
+7. **Run Steps 4–5** — validate naming, organization, and quality checklist
+8. **Run Step 6** with `--baseline` flag — evaluates the update against the previous version
 
 ---
 
@@ -43,19 +104,22 @@ Parse `$ARGUMENTS` to choose the path:
 
 <role>Act as a Claude skill architect who designs prompts with built-in failure prevention from the start.</role>
 
-Build a skill file from the ground up following the canonical format. The goal is a production-ready skill that eliminates the most common failure modes before they happen.
+Build a minimal skill that addresses the gaps identified in Step 1.1.
+Write only what's needed to pass the eval scenarios from Step 1.2 — you'll
+iterate in Step 6. Focus on failure prevention from the start.
 
+### 2.0 Understand the Runtime Model
 
-**Read:** `references/skill-authoring-from-scratch.md` for detailed step 2: skill authoring — from scratch reference material.
+**Read:** `references/runtime-model.md` — how Claude loads and navigates
+skills at runtime. This shapes every structural decision in Step 2.
 
-# Skill Title — Brief Subtitle
+### 2.1–2.2 Frontmatter, Naming, Content Standards
 
-One sentence explaining what this skill does in practical terms.
-
-**Request:** $ARGUMENTS
-```
-
-The `$ARGUMENTS` variable is replaced with the user's input at runtime. Always include it so the skill knows what to act on.
+**Read:** `references/skill-authoring-from-scratch.md` for the complete
+authoring reference: YAML frontmatter fields, naming conventions (gerund
+form, 64-char limit), context budget (500-line target), content quality
+(consistent terminology, no time-sensitive info, MCP qualified names),
+and reference structure (one level deep, TOC for >100 lines).
 
 ### 2.3 Failure Mode Analysis
 
@@ -177,6 +241,12 @@ Rules for writing MUST DO / MUST NOT DO:
 - Do not repeat what the steps already say — these are for edge cases and guardrails
 - Constraints from the failure mode analysis (Step 2.3) MUST appear here with their mapped preventions
 
+#### Instruction Writing Patterns
+
+Eleven patterns improve instruction quality within steps.
+
+**Read:** `references/instruction-writing-patterns.md` for calibrating control, gotchas sections, validation loops, plan-validate-execute, defaults over menus, procedures over declarations, script design for agentic use, checklists, input/output examples, conditional workflow routing, and install-then-use patterns.
+
 ### 2.6 Validate Before Saving
 
 Before writing the skill file, run through the quality checklist in Step 5.
@@ -189,11 +259,23 @@ Extract skill candidates from the current conversation by identifying repeated w
 
 ### 3.1 Scan for Repeated Patterns
 
-Review the conversation history for multi-step sequences that were performed 2+ times:
+Review conversation history for multi-step sequences performed 2+ times:
+1. **Steps that worked** — action sequence that led to success
+2. **Corrections you made** — where you steered the agent's approach
+3. **Input/output formats** — data shape going in and out
+4. **Context you provided** — project-specific facts the agent didn't know
+5. **Repeated tool call sequences** — same 3+ calls in same order
+6. **Repeated file access patterns** — same files across tasks
 
-1. **Identify repeated tool call sequences** — Look for the same 3+ tool calls in the same order appearing multiple times
-2. **Identify repeated file access patterns** — The same set of files read/edited across multiple tasks
-3. **Identify repeated command sequences** — The same bash commands run in succession
+### 3.1b Synthesize from Project Artifacts
+
+**Warning:** Do NOT generate a skill from LLM general knowledge alone — the result is vague procedures ("handle errors appropriately"). Always ground in project-specific material:
+
+- Internal documentation, runbooks, and style guides
+- API specifications, schemas, and configuration files
+- Code review comments and issue trackers
+- Version control history, especially patches and fixes
+- Real-world failure cases and their resolutions
 
 ### 3.2 Classify Candidates
 
@@ -264,6 +346,7 @@ Skills live in `core/.claude/skills/<name>/SKILL.md` (or `.claude/skills/<name>/
 | New workflow that does not overlap with any existing skill | Create new skill |
 | Existing skill covers 80%+ of the workflow | Extend the existing skill with a new mode or step |
 | Two skills share 50%+ of their steps | Consolidate into one skill with modes |
+| Skills scoped too narrowly for one task | Broaden — multiple narrow skills loading risks overhead and conflicting instructions |
 | Workflow is a single rule (no steps) | Use `.claude/rules/` instead — skills are for multi-step workflows |
 | Workflow is a one-liner command | Use a hook instead — skills are overkill for single commands |
 
@@ -298,6 +381,7 @@ Before saving the skill, validate every item. Do NOT skip this step.
 | `version` is valid SemVer | Format: `"1.0.0"` — required for version tracking |
 | `triggers` has 3-6 entries | Mix of slash commands and natural language |
 | `allowed-tools` is minimal | No unused tools listed. Read-only skills MUST NOT include `Write`, `Edit`, or `Bash` |
+| No high-risk indicators without justification | Scripts, MCP refs, network access, or broad file access are documented and necessary (see `references/security-review.md` risk tiers) |
 | `argument-hint` uses `<>` and `[]` correctly | Required in angle brackets, optional in square brackets |
 | No placeholder markers | No TODO/FIXME/PLACEHOLDER HTML comment markers in the body |
 
@@ -313,6 +397,8 @@ Before saving the skill, validate every item. Do NOT skip this step.
 | MUST DO section has 4-8 items | Each explains the consequence of skipping |
 | MUST NOT DO section has 4-8 items | Each states what to do instead |
 | No vague language | No "consider", "maybe", "try to", "think about" |
+| No Windows-style paths | All file paths use forward slashes (`/`), even on Windows |
+| Install-then-use for deps | Package usage shows install command before import |
 
 ### 5.3 Overlap Check
 
@@ -355,30 +441,72 @@ skill-name/
     config.yaml
 ```
 
+### 5.5 Model Compatibility
+
+If the skill will be used across model tiers, test with the smallest
+target model. What works for Opus may need more guidance for Haiku:
+- **Haiku:** Does the skill provide enough guidance for the task?
+- **Sonnet:** Is the skill clear and efficient?
+- **Opus:** Does the skill avoid over-explaining?
+
 ---
 
-## STEP 6: Skill Testing and Stress Testing
+## STEP 6: Evaluate and Iterate with /skill-evaluator
 
-Generate test scenarios to validate the skill works correctly, then stress test with adversarial inputs before promoting it. Covers: 5 validation scenarios (3 happy-path + 2 edge-case), 10 adversarial inputs with severity scoring, and a stress test score gate.
+Invoke `/skill-evaluator` via the Agent tool. The entire evaluate-fix-re-evaluate loop runs autonomously with one human approval at the end.
 
+**Read:** `references/iterative-development.md` for the full Claude A/B
+development methodology — how to test with fresh instances, diagnose issues
+from observation, and gather team feedback.
 
-**Read:** `references/skill-testing.md` for detailed step 6: skill testing and stress testing reference material.
+**Before formal eval:** Run the skill informally against one real task. Read the execution trace (not just output). Fix obvious issues first.
 
-### 6.4 Baseline Comparison Testing
+### 6.1 Invoke Evaluation
 
-When enhancing an existing skill (adding constraints, feedback loops, or
-structural changes), run the original and enhanced versions against the same
-5 inputs to prove the enhancement helps without regressing quality. Triggers
-when modifying an existing skill's constraints/steps/CRITICAL RULES — not for
-brand-new skills.
+For new skills:
+```
+Agent(subagent_type="general-purpose",
+  prompt="/skill-evaluator full <skill-path>")
+```
 
-**Gate rule**: Enhanced version MUST NOT regress on any scoring dimension for
-any input. A single regression blocks promotion.
+For updated skills:
+```
+Agent(subagent_type="general-purpose",
+  prompt="/skill-evaluator full <skill-path> --baseline")
+```
 
-**Read:** `references/baseline-comparison.md` for the full procedure (input
-selection, scoring dimensions, comparison template) and design philosophy.
+### 6.2 Auto-Fix Routing
 
-## STEP 6.5: Failure Prevention Map
+When skill-evaluator returns FIX or FAIL, apply the mapped fix:
+
+| Eval Failure Type | Automated Fix |
+|---|---|
+| Should-trigger failing (<80%) | Broaden description: add user-intent phrases, expand scope |
+| Should-not-trigger firing (>20%) | Narrow description: add boundary ("do NOT use when...") |
+| Cross-skill conflict | Make triggers more specific, add distinguishing context |
+| Trigger regression (--baseline) | Restore key phrases from old description |
+| Scenario assertion failures | Add/clarify the step that produces the failing output |
+| Stress test CRITICAL | Add guardrail to MUST DO, embed prevention in earliest step |
+| Stress test MAJOR | Add edge case handling to relevant step's decision table |
+| Stress score <90% overall | Re-run failure mode analysis (Step 2.3), add preventions |
+| Skill adds no value over baseline | STOP — report to user: "skill not needed" |
+
+### 6.3 Iterate Until PASS
+
+1. Apply fix from routing table
+2. Re-invoke `/skill-evaluator full <skill-path>`
+3. If FIX/FAIL: apply next fix (each iteration MUST try a different fix)
+4. If PASS: proceed to 6.4
+
+**Max 5 iterations.** After 5 without PASS: STOP, present full iteration history, user decides.
+
+### 6.4 Present for Approval
+
+Present to user: final skill draft, eval report, iteration history, skill necessity delta.
+
+**Wait for user approval before proceeding to Step 7.** This is the single human touchpoint.
+
+### 6.5 Failure Prevention Map
 
 Before promoting, produce a failure prevention map that documents every guardrail in the skill. This is the "proof of failure resistance" artifact.
 
@@ -399,6 +527,45 @@ Present this map to the user alongside the skill draft. The map makes failure pr
 
 ---
 
+### 6.6 Domain Pattern Review
+
+When the authored pattern is an agent or orchestration-related skill, validate it against
+domain-specific reference patterns — not just structural quality gates.
+
+### When to Trigger
+
+| Authored Pattern Type | Domain References to Check |
+|----------------------|---------------------------|
+| Agent (any `agents/*.md`) | `agent-orchestration.md` rule (tier model, responsibilities, state) |
+| Orchestration agent or skill | `anthropic-agent-orchestration-guide` (5 workflow patterns, decision framework) |
+| Multi-agent system pattern | `anthropic-multi-agent-research-system-skill` (8 principles, evaluation, production) |
+| Non-orchestration skill or rule | **SKIP** — domain review is not applicable |
+
+### How to Review
+
+1. **Identify the authored pattern type** from the table above
+2. **Read the matched reference pattern(s)** — these are the audit baseline
+3. **Spawn `anthropic-multi-agent-reviewer-agent`** with the authored pattern and matched references:
+   ```
+   Agent(subagent_type="anthropic-multi-agent-reviewer-agent",
+         prompt="Review this pattern against the 8 principles: <pattern content>")
+   ```
+4. **Evaluate the gap report:**
+   - **Grade A-B** → PASS — proceed to Step 7
+   - **Grade C** → WARN — present gaps to user, fix if user agrees, then proceed
+   - **Grade D-F** → FAIL — must fix before hub promotion
+
+### Why This Step Exists
+
+Structural quality gates (Step 5) check *shape* — does the pattern have frontmatter, steps,
+MUST DO sections? Domain review checks *substance* — does the orchestrator follow the
+8 principles? Does it scale effort appropriately? Does it have evaluation infrastructure?
+
+A pattern can pass every structural gate while violating every orchestration best practice.
+This step closes that gap.
+
+---
+
 ## STEP 7: Hub Promotion Workflow
 
 If the skill is valuable enough to share across projects via the hub.
@@ -416,6 +583,7 @@ If the skill is valuable enough to share across projects via the hub.
 | `type` field present | `workflow` or `reference` declared |
 | `allowed-tools` is least-privilege | Read-only skills don't include Write/Edit/Bash |
 | No project-specific hardcoded paths | Replace with `$ARGUMENTS` or documented placeholders |
+| Team feedback gathered (if applicable) | At least one teammate has used the skill on a real task |
 | No placeholder markers | No TODO/FIXME HTML comment markers or stub content |
 | Under size limit | SKILL.md under 1000 lines; use `references/` for supplementary material |
 | No secrets or credentials | Scan for API keys, tokens, passwords |
@@ -438,7 +606,23 @@ If contributing from a downstream project:
 ---
 
 
-## STEP 8: Template Library
+## STEP 8: Post-Promotion Lifecycle
+
+What happens after a skill ships: security vetting, deployment governance,
+monitoring, version management, deprecation, and scaling considerations.
+
+**Read:** `references/post-promotion-lifecycle.md` for the full lifecycle
+covering security review gates (8.1), deployment governance with registry
+requirements (8.2), monitoring and drift detection (8.3), version management
+with rollback plans (8.4), deprecation lifecycle (8.5), and scaling
+considerations including recall limits and consolidation triggers (8.6).
+
+**Also read:** `references/security-review.md` for the detailed risk tier
+assessment and 8-step review checklist referenced by Step 8.1.
+
+---
+
+## STEP 9: Template Library
 
 Pre-built starting skeletons for common skill types. Copy the appropriate template and fill in the placeholders.
 
@@ -446,9 +630,9 @@ Pre-built starting skeletons for common skill types. Copy the appropriate templa
 
 ---
 
-## Deprecation Workflow and Anti-Patterns
+## Anti-Patterns
 
-> **Reference:** See [references/anti-patterns.md](references/anti-patterns.md) for the deprecation lifecycle and 8 common skill anti-patterns to avoid.
+> **Reference:** See [references/anti-patterns.md](references/anti-patterns.md) for 9 common skill anti-patterns to avoid.
 
 ---
 
@@ -468,6 +652,12 @@ Pre-built starting skeletons for common skill types. Copy the appropriate templa
 - Always lock the output format with a code block template for skills that produce structured output — Why: ambiguous output formats cause inconsistent behavior across invocations
 - Always produce a failure prevention map (Step 6.5) before hub promotion — Why: makes guardrails visible and auditable during review
 - Always evaluate multi-phase decomposition (Step 2.4) when a prompt covers a full end-to-end workflow — Why: monolithic skills exceeding 400 lines become hard to test, reuse, and maintain
+- Always run domain pattern review (Step 6.6) for agents and orchestration patterns before hub promotion — Why: structural gates pass patterns that violate orchestration best practices; domain review catches substance violations
+- Always invoke `/skill-evaluator` via Agent tool for evaluation — do not evaluate inline
+- Always apply auto-fix routing for FIX/FAIL verdicts — do not ask user what to fix
+- Always present final skill + eval report for user approval before hub promotion
+- Always use gerund or action-oriented naming for skill names — Why: consistent naming improves discoverability and professionalism across the skill library
+- Always keep reference files one level deep from SKILL.md — Why: Claude partially reads deeply nested files, resulting in incomplete information
 
 ## MUST NOT DO
 
@@ -479,3 +669,9 @@ Pre-built starting skeletons for common skill types. Copy the appropriate templa
 - MUST NOT save a skill without running the quality checklist
 - MUST NOT create skills that duplicate existing ones — extend or consolidate instead
 - MUST NOT skip the MUST DO / MUST NOT DO sections — they are mandatory guardrails
+- MUST NOT ask user to manually invoke `/skill-evaluator` — invoke it autonomously via Agent tool
+- MUST NOT proceed to Step 7 without user approval of the final skill + eval report
+- MUST NOT write descriptions in first or second person ("I analyze...", "You can use...") — always third person ("Analyzes...") because descriptions are injected into the system prompt and inconsistent POV causes discovery problems
+- MUST NOT chain reference files (SKILL.md → ref1.md → ref2.md) — keep one level deep from SKILL.md
+- MUST NOT include time-sensitive content ("before August 2025") — use collapsible "Old patterns" section instead
+- MUST NOT be the sole reviewer of your own skill for hub promotion — Why: separation of duties prevents blind spots and catches adversarial patterns the author may overlook (see Step 8.1)

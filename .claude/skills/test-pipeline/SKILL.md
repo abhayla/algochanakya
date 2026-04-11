@@ -10,18 +10,20 @@ allowed-tools: "Agent Read Grep Glob"
 argument-hint: "[--capture-proof | --no-capture-proof] [--skip-fix] [failure_output]"
 triggers:
   - test pipeline
-  - run tests
+  - fix verify commit
   - verify and commit
-  - full test
-  - test verification
-  - run full test
-version: "1.0.0"
+  - full test pipeline
+  - test verification pipeline
+  - run test pipeline
+version: "1.1.0"
 ---
 
 # Test Pipeline — Full Verification Chain
 
 Run the complete test verification pipeline with enforced gates, artifact
 cleanup, and optional screenshot-as-proof capture.
+
+**Critical:** This skill delegates entirely to test-pipeline-agent. Do not inline orchestration. For the broader TDD-through-quality-gates chain, use `/testing-pipeline-workflow` instead. For just verification without fix, use `/auto-verify`.
 
 **Arguments:** $ARGUMENTS
 

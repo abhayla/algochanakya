@@ -1,12 +1,20 @@
 ---
 name: auto-verify
 description: >
-  Run a verification pipeline that identifies changed files, maps to targeted tests,
-  executes tests with smart priority, analyzes failures, and applies fixes with approval.
-  Use after making code changes to verify correctness before committing.
-allowed-tools: "Bash Read Grep Glob Write Edit Skill Agent"
+  Run a post-change verification pipeline that maps changed files to targeted tests,
+  executes via tester-agent with UI screenshot verdicts, enforces quality gates, and
+  produces structured results for pipeline consumption. Does NOT fix — use /fix-loop
+  for fixes, /test-pipeline for the full fix-verify-commit chain.
+triggers:
+  - auto-verify
+  - verify my changes
+  - post-change verification
+  - run verification
+  - verify before commit
+  - verify correctness
+allowed-tools: "Bash Read Grep Glob Write Skill Agent"
 argument-hint: "[--files <paths>] [--full-suite] [--strict-gates] [--capture-proof | --no-capture-proof]"
-version: "3.0.0"
+version: "3.2.0"
 type: workflow
 ---
 
@@ -23,8 +31,8 @@ enforcing quality gates. Does NOT apply fixes — fixing belongs in `/fix-loop`.
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| `--files` | git diff | Specific files to verify |
-| `--full-suite` | false | Run full test suite regardless of risk |
+| `--files` | git diff | Specific files to verify (overridden by `--full-suite`) |
+| `--full-suite` | false | Run full test suite regardless of risk (overrides `--files`) |
 | `--strict-gates` | false | Missing upstream JSON = BLOCK (set by orchestrator) |
 | `--capture-proof` | true (from config) | Capture screenshots on every test, pass or fail |
 | `--no-capture-proof` | — | Disable screenshot capture even if config says true |
@@ -46,12 +54,25 @@ Check if the upstream `fix-loop` stage passed:
 
 ```bash
 if [ -f test-results/fix-loop.json ]; then
-  UPSTREAM_RESULT=$(python3 -c "import json; print(json.load(open('test-results/fix-loop.json'))['result'])")
+  UPSTREAM_RESULT=$(python3 -c "
+import json, sys
+try:
+    data = json.load(open('test-results/fix-loop.json'))
+    print(data.get('result', 'UNKNOWN'))
+except (json.JSONDecodeError, IOError) as e:
+    print(f'WARN: Could not parse fix-loop.json: {e}', file=sys.stderr)
+    print('UNKNOWN')
+")
   if [ "$UPSTREAM_RESULT" = "FAILED" ] || [ "$UPSTREAM_RESULT" = "FLAKY" ]; then
     echo "BLOCKED: fix-loop reported $UPSTREAM_RESULT"
     exit 1
   fi
-  echo "fix-loop result: $UPSTREAM_RESULT — proceeding"
+  if [ "$UPSTREAM_RESULT" = "UNKNOWN" ]; then
+    echo "WARN: fix-loop.json unreadable — treating as missing"
+    # Fall through to the missing-file logic below
+  else
+    echo "fix-loop result: $UPSTREAM_RESULT — proceeding"
+  fi
 else
   if [ "$STRICT_GATES" = "true" ]; then
     echo "BLOCKED: fix-loop output missing (--strict-gates enforced)"
@@ -79,6 +100,12 @@ execution where tests run once for mapping and again for verification.
 Skill("/regression-test", args="$FILES_ARG --framework auto")
 ```
 
+**Fallback if `/regression-test` is not installed:** Use `git diff --name-only` to
+identify changed files, then map to tests by naming convention (`*_test.py`,
+`test_*.py`, `*.test.ts`, `*.spec.ts`) and directory adjacency. Set risk to
+MEDIUM (no import graph tracing available). Log: "WARN: /regression-test not
+available — using fallback file-based test mapping."
+
 After `/regression-test` completes, read `test-results/regression-test.json`:
 
 1. Extract the affected test list and overall risk level
@@ -88,11 +115,26 @@ After `/regression-test` completes, read `test-results/regression-test.json`:
    (some tests failed during mapping) → note failures but proceed to STEP 2
    (tester-agent will re-run them with full verdict rules)
 4. Use the mapped test files and risk classification for STEP 2
+5. If zero affected tests found → skip Steps 2-3, write auto-verify.json with
+   `result: "PASSED"`, `summary.total: 0`, and `warnings: ["No tests mapped to
+   changed files"]`. Proceed to Step 4 (quality gates still run).
 
 Coverage gaps flagged by `/regression-test` (source files with no mapped tests)
 are reported in the final auto-verify output as warnings.
 
 ## STEP 2: Execute Tests (via tester-agent)
+
+**Fallback if `tester-agent` is not installed:** Run tests directly using the
+project's test runner (detect from CLAUDE.md, pyproject.toml, package.json, or
+build.gradle). All tests use exit-code verdicts (no screenshot verification).
+Log: "WARN: tester-agent not available — running tests directly without UI
+screenshot verification."
+
+**Terminal failure if no test runner detected:** If none of CLAUDE.md test
+commands, pyproject.toml, package.json, or build.gradle exist, write
+`test-results/auto-verify.json` with `result: "FAILED"`,
+`failures: [{"test": "N/A", "category": "INFRA_MISSING", "message": "No test
+framework detected — cannot execute tests"}]` and exit.
 
 Delegate test execution to `tester-agent`, which provides:
 - **UI test detection** — auto-classifies tests by scanning imports for UI frameworks
@@ -430,3 +472,19 @@ array includes `verdict_source: "screenshot"` for each UI test failure.
 ```
 
 Create `test-results/` directory if it doesn't exist. This JSON is consumed by stage gates — see `testing.md` for the full schema.
+
+**Standalone cleanup:** When running outside the pipeline (no Pipeline ID),
+delete stale `test-results/auto-verify.json` before starting to prevent the
+stage gate aggregator from reading results from a previous run.
+
+---
+
+## CRITICAL RULES
+
+- MUST NOT apply fixes — fixing belongs in `/fix-loop`. — Why: mixing verification and fixing in one skill creates circular dependencies and unclear verdicts.
+- MUST produce `test-results/auto-verify.json` on every run, even when BLOCKED or zero tests found. — Why: downstream stage gates read this file; missing file = pipeline hang.
+- MUST use `result` as the canonical gate field name — never `status`, `verdict`, or `outcome`. — Why: all pipeline skills parse `result` by convention; renaming breaks the aggregator.
+- MUST distinguish UI test verdicts (screenshot-authoritative) from non-UI (exit-code-authoritative). — Why: UI tests can pass exit code but fail visually (empty table, broken layout).
+- MUST NOT proceed past Step 0 if upstream fix-loop reported FAILED or FLAKY. — Why: verifying known-broken code wastes compute and produces misleading results.
+- MUST report pre-existing failures separately from regression failures in the output. — Why: blocking on pre-existing failures prevents any new work from passing verification.
+- MUST degrade gracefully if `/regression-test` or `tester-agent` are missing — use fallbacks, not hard failures. — Why: not all projects have these installed; hard failure makes the skill unusable in simpler setups.

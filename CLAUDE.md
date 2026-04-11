@@ -86,3 +86,58 @@ All architectural constraints in `.claude/rules/` (auto-loaded per file type). S
 
 1. **Bug Fixing**: Use `/fix-loop` or `/fix-issue`. Start by writing a test that reproduces the bug, then fix and prove with a passing test.
 2. All architectural constraints auto-load from `.claude/rules/` based on file context — no need to read them manually.
+
+<!-- hub:best-practices:start -->
+
+<!-- PROTECTED SECTION — managed by claude-best-practices hub. -->
+<!-- Do NOT condense, rewrite, reorganize, or remove.          -->
+<!-- Any /init or optimization request must SKIP this section.  -->
+
+## Rules for Claude
+
+1. **Bug Fixing**: Use `/fix-loop` or `/fix-issue`. Start by writing a test that reproduces the bug, then fix and prove with a passing test.
+
+### Rules Reference
+
+| Rule File | What It Covers |
+|-----------|---------------|
+| `rules/adjustment-offensive-defensive.md` | Adjustment Offensive Defensive |
+| `rules/alembic-model-import.md` | Alembic Model Import |
+| `rules/api-error-response-pattern.md` | Api Error Response Pattern |
+| `rules/async-db-session-pattern.md` | Async Db Session Pattern |
+| `rules/auth-401-handling.md` | Auth 401 Handling |
+| `rules/backend-services-subdirectory.md` | Backend Services Subdirectory |
+| `rules/broker-adapter-only.md` | Broker Adapter Only |
+| `rules/broker-name-mapping.md` | Broker Name Mapping |
+| `rules/canonical-symbol-format.md` | Canonical Symbol Format |
+| `rules/claude-behavior.md` | Scope: global |
+| `rules/configuration-ssot.md` | Scope: global |
+| `rules/context-management.md` | Scope: global |
+| `rules/cross-layer-import-guard.md` | Cross Layer Import Guard |
+| `rules/decimal-not-float-prices.md` | Decimal Not Float Prices |
+| `rules/e2e-auth-and-naming.md` | E2E Auth And Naming |
+| `rules/e2e-data-testid-only.md` | E2E Data Testid Only |
+| `rules/e2e-page-object-pattern.md` | E2E Page Object Pattern |
+| `rules/e2e-test-naming-convention.md` | E2E Test Naming Convention |
+| `rules/e2e-test-writing.md` | Nudges to e2e-best-practices skill when writing or modifying E2E tests. |
+| `rules/fastapi-backend.md` | FastAPI backend development rules and patterns. |
+| `rules/fastapi-database.md` | Database and migration rules for FastAPI + SQLAlchemy + Alembic. |
+| `rules/frontend-data-flow.md` | Frontend Data Flow |
+| `rules/prompt-auto-enhance-rule.md` | Scope: global |
+| `rules/pydantic-schema-conventions.md` | Pydantic Schema Conventions |
+| `rules/react-nextjs.md` | Next.js App Router and React Server Component patterns and conventions. |
+| `rules/rule-writing-meta.md` | Meta-guidance for writing effective CLAUDE.md rules, choosing config file placement, and structuring project instructions. |
+| `rules/sqlite-test-compat.md` | Sqlite Test Compat |
+| `rules/tdd.md` | Tdd |
+| `rules/tdd-rule.md` | Test-driven development workflow rules for red-green-refactor cycle. |
+| `rules/testing.md` | Testing conventions and best practices. |
+| `rules/trading-constants-centralized.md` | Trading Constants Centralized |
+| `rules/vue.md` | Vue 3 Composition API patterns and conventions. |
+| `rules/websocket-ticker-architecture.md` | Websocket Ticker Architecture |
+| `rules/workflow.md` | Scope: global |
+
+## Claude Code Configuration
+
+The `.claude/` directory contains 167 skills, 49 agents, and 34 rules for Claude Code.
+
+<!-- hub:best-practices:end -->
