@@ -43,6 +43,7 @@ export const useOFOStore = defineStore('ofo', () => {
   // UI state
   const isLoading = ref(false)
   const error = ref(null)
+  const dataFreshness = ref('LIVE')  // 'LIVE' | 'LAST_KNOWN'
 
   // Available strategies (loaded from API)
   const availableStrategies = ref([
@@ -189,6 +190,7 @@ export const useOFOStore = defineStore('ofo', () => {
       calculationTimeMs.value = data.calculation_time_ms || 0
       totalCombinationsEvaluated.value = data.total_combinations_evaluated || 0
       lastCalculated.value = data.calculated_at || new Date().toISOString()
+      dataFreshness.value = data.data_freshness || 'LIVE'
 
       console.log(`[OFO] Calculated ${totalCombinationsEvaluated.value} combinations in ${calculationTimeMs.value}ms`)
     } catch (err) {
@@ -330,6 +332,7 @@ export const useOFOStore = defineStore('ofo', () => {
     autoRefreshInterval,
     isLoading,
     error,
+    dataFreshness,
     availableStrategies,
 
     // Getters

@@ -15,7 +15,9 @@ import logging
 from app.database import get_db
 from app.models import User
 from app.services.brokers.market_data import get_user_market_data_adapter
+from app.services.brokers.market_data.factory import get_platform_market_data_adapter
 from app.services.autopilot.strike_finder_service import StrikeFinderService
+from app.utils.market_hours import get_data_freshness
 from app.utils.dependencies import get_current_user
 from app.schemas.autopilot import (
     StrikeFindByDeltaRequest,
@@ -206,21 +208,48 @@ async def get_option_chain(
                     detail="Invalid date format. Use YYYY-MM-DD or DD-MMM-YYYY"
                 )
 
-        # Get market data adapter (automatically uses user's preferred broker)
-        print(f"[OptionChain DEBUG] Fetching market data via adapter for {underlying}")
+        # Get market data adapter — try user's preferred broker, fall back to platform adapter
         logger.info(f"[OptionChain] Fetching market data via adapter for {underlying}")
-        adapter = await get_user_market_data_adapter(user.id, db)
+        try:
+            adapter = await get_user_market_data_adapter(user.id, db)
+        except Exception as user_adapter_err:
+            logger.warning(
+                f"[OptionChain] User adapter init failed ({user_adapter_err}), "
+                "falling back to platform adapter"
+            )
+            adapter = None
 
         lot_size = LOT_SIZES.get(underlying, 1)
 
-        # Get spot price via adapter
-        ltp_map = await adapter.get_ltp([underlying])
-        spot_price = float(ltp_map.get(underlying, 0))
+        spot_price = 0.0
+
+        # get_best_price() returns LTP when market is open, previous close when closed
+        if adapter:
+            try:
+                price_map = await adapter.get_best_price([underlying])
+                spot_price = float(price_map.get(underlying, 0))
+            except Exception as e:
+                logger.warning(
+                    f"[OptionChain] User adapter get_best_price failed ({e}), "
+                    "falling back to platform adapter"
+                )
+
+        # Fall back to platform adapter if user adapter failed or returned 0
+        if not spot_price:
+            try:
+                platform_adapter = await get_platform_market_data_adapter(db)
+                price_map = await platform_adapter.get_best_price([underlying])
+                spot_price = float(price_map.get(underlying, 0))
+                if spot_price:
+                    adapter = platform_adapter
+                    logger.info(f"[OptionChain] Using platform adapter for {underlying}")
+            except Exception as platform_err:
+                logger.warning(f"[OptionChain] Platform adapter failed: {platform_err}")
 
         if not spot_price:
             raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Could not get spot price"
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"Could not get spot price for {underlying} — market data unavailable",
             )
 
         # Get instruments for this expiry from DB (populated by InstrumentMasterService)
@@ -320,20 +349,35 @@ async def get_option_chain(
 
         logger.info(f"[OptionChain] Organized {len(strikes_data)} strikes, fetching quotes for {len(token_to_symbol)} instruments")
 
-        # ── PRIMARY PATH: WebSocket V2 Snap Quote (Mode 3) ────────────────────
-        # WebSocket streams ticks for ALL strikes including illiquid/untraded ones.
-        # REST get_quote returns 0 for strikes that haven't traded yet this session.
+        # ── PRIMARY PATH: adapter-specific option chain fetch ─────────────────
+        # Priority order:
+        #   1. Upstox option chain API — has close_price per strike (works when market closed)
+        #   2. SmartAPI WebSocket V2 snap — ticks for near-ATM strikes (live market preferred)
+        #   3. Batched get_quote() REST calls — universal fallback
         all_quotes = {}
         canonical_symbols = list(token_to_symbol.values())
 
+        # PATH 1: Upstox dedicated option chain endpoint
+        # market_data.close_price is always the previous day's close — never 0
+        if hasattr(adapter, 'get_option_chain_quotes'):
+            try:
+                import time as _time
+                oc_start = _time.time()
+                all_quotes = await adapter.get_option_chain_quotes(underlying, expiry)
+                logger.info(
+                    f"[OptionChain] Upstox option chain: {len(all_quotes)} contracts "
+                    f"in {_time.time()-oc_start:.1f}s"
+                )
+            except Exception as e:
+                logger.warning(f"[OptionChain] Upstox option chain failed, falling back: {e}")
+                all_quotes = {}
+
+        # PATH 2: SmartAPI WebSocket V2 snap (near-ATM only, requires active session)
         ws_quotes = {}
-        if hasattr(adapter, 'get_option_chain_snap') and token_to_symbol:
+        if not all_quotes and hasattr(adapter, 'get_option_chain_snap') and token_to_symbol:
             try:
                 import time as _time
                 ws_start = _time.time()
-                # Pass the pre-built token_to_symbol dict directly — it maps
-                # instruments.instrument_token (SmartAPI token string) → canonical_symbol.
-                # This bypasses lookup_token which only understands Kite-format symbols.
                 ws_quotes = await adapter.get_option_chain_snap(
                     canonical_symbols=[],
                     timeout=7.0,
@@ -347,7 +391,6 @@ async def get_option_chain(
                 logger.warning(f"[OptionChain] WebSocket snap failed, falling back to REST: {e}")
 
         if ws_quotes:
-            # Convert WebSocket tick dict to the all_quotes format expected by downstream code
             for canonical_symbol, tick in ws_quotes.items():
                 symbol_key = f"NFO:{canonical_symbol}"
                 all_quotes[symbol_key] = {
@@ -362,9 +405,9 @@ async def get_option_chain(
                     },
                     "depth": {"buy": [], "sell": []},
                 }
-        else:
-            # ── FALLBACK PATH: batched get_quote() calls ──────────────────────
-            # Used when WebSocket snap is unavailable (non-SmartAPI adapter, API error, etc.)
+
+        # PATH 3: Batched REST get_quote() fallback
+        if not all_quotes:
             for i in range(0, len(canonical_symbols), 100):
                 batch_symbols = canonical_symbols[i:i+100]
                 if not batch_symbols:
@@ -435,6 +478,9 @@ async def get_option_chain(
                 ce_volume = ce_quote.get("volume", 0)
                 ce_ohlc = ce_quote.get("ohlc", {})
                 ce_close = ce_ohlc.get("close", 0)
+                # When market is closed, LTP is 0 — use last close as display price
+                if not ce_ltp and ce_close:
+                    ce_ltp = ce_close
                 ce_change = ce_ltp - ce_close if ce_close else 0
                 ce_change_pct = (ce_change / ce_close * 100) if ce_close else 0
 
@@ -471,6 +517,9 @@ async def get_option_chain(
                 pe_volume = pe_quote.get("volume", 0)
                 pe_ohlc = pe_quote.get("ohlc", {})
                 pe_close = pe_ohlc.get("close", 0)
+                # When market is closed, LTP is 0 — use last close as display price
+                if not pe_ltp and pe_close:
+                    pe_ltp = pe_close
                 pe_change = pe_ltp - pe_close if pe_close else 0
                 pe_change_pct = (pe_change / pe_close * 100) if pe_close else 0
 
@@ -517,6 +566,7 @@ async def get_option_chain(
             "spot_price": spot_price,
             "days_to_expiry": days_to_expiry,
             "lot_size": LOT_SIZES.get(underlying, 75),
+            "data_freshness": get_data_freshness(),
             "chain": option_chain,
             "summary": {
                 "total_ce_oi": total_ce_oi,

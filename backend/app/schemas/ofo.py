@@ -118,6 +118,10 @@ class OFOCalculateResponse(BaseModel):
         ...,
         description="Results grouped by strategy type, each containing top 3 combinations"
     )
+    data_freshness: str = Field(
+        default="LIVE",
+        description="'LIVE' when market is open, 'LAST_KNOWN' when showing previous session's close prices"
+    )
 
     class Config:
         json_schema_extra = {

@@ -290,12 +290,13 @@ class UpstoxMarketDataAdapter(MarketDataBrokerAdapter):
         """
         Fetch Last Traded Price for a list of canonical symbols.
 
-        Uses GET /v2/market-quote/ltp?instrument_key=NSE_FO|12345,...
+        Uses GET /v3/market-quote/ltp (preferred — has 'cp' for previous close).
+        Falls back to v2 if v3 fails.
+        When market is closed, ltp=0 — returns 'cp' (previous close) instead.
         """
         # Map canonical symbols to instrument_keys
         key_to_canonical: Dict[str, str] = {}
         for sym in symbols:
-            # Check if it's a bare index name first
             index_key = self.INDEX_KEY_MAP.get(sym.upper())
             if index_key:
                 key_to_canonical[index_key] = sym
@@ -307,6 +308,32 @@ class UpstoxMarketDataAdapter(MarketDataBrokerAdapter):
 
         instrument_keys_param = ",".join(key_to_canonical.keys())
 
+        # Try v3 first — it has 'cp' (previous close) unlike v2
+        try:
+            resp = await self._make_request(
+                "GET", "/v3/market-quote/ltp",
+                params={"instrument_key": instrument_keys_param},
+                _base_override="https://api.upstox.com",
+            )
+            result: Dict[str, Decimal] = {}
+            for instr_key, item in resp.get("data", {}).items():
+                normalized_key = instr_key.replace(":", "|")
+                lookup_key = instr_key if instr_key in key_to_canonical else normalized_key
+                if lookup_key not in key_to_canonical:
+                    continue
+                canonical = key_to_canonical[lookup_key]
+                last_price = float(item.get("last_price", 0) or 0)
+                cp = float(item.get("cp", 0) or 0)  # previous close — always populated
+                # Use previous close when ltp is 0 (market closed)
+                result[canonical] = Decimal(str(last_price if last_price else cp))
+            return result
+        except Exception as e:
+            err_str = str(e).lower()
+            if "401" in err_str or "unauthorized" in err_str:
+                raise AuthenticationError("upstox", str(e))
+            logger.warning(f"[UpstoxAdapter] v3 LTP failed ({e}), falling back to v2")
+
+        # Fallback: v2 (no previous close — returns 0 when market is closed)
         try:
             resp = await self._make_request(
                 "GET", "/market-quote/ltp",
@@ -320,7 +347,6 @@ class UpstoxMarketDataAdapter(MarketDataBrokerAdapter):
 
         result: Dict[str, Decimal] = {}
         for instr_key, item in resp.get("data", {}).items():
-            # Upstox returns keys with ":" separator but we store with "|"
             normalized_key = instr_key.replace(":", "|")
             lookup_key = instr_key if instr_key in key_to_canonical else normalized_key
             if lookup_key not in key_to_canonical:
@@ -328,6 +354,70 @@ class UpstoxMarketDataAdapter(MarketDataBrokerAdapter):
             canonical = key_to_canonical[lookup_key]
             result[canonical] = Decimal(str(item["last_price"]))
         return result
+
+    async def get_option_chain_quotes(self, underlying: str, expiry_date: str) -> dict:
+        """
+        Fetch option chain data from Upstox /v2/option/chain endpoint.
+
+        Returns all_quotes dict in the same format used by optionchain.py:
+            {"NFO:<tradingsymbol>": {"last_price", "oi", "volume", "ohlc": {"close", ...}}}
+
+        Key advantage: market_data.close_price is the previous day's close — always
+        non-zero even when market is closed (confirmed by Upstox support).
+        When ltp=0 (market closed), last_price is set to close_price automatically.
+
+        Args:
+            underlying: "NIFTY", "BANKNIFTY", "FINNIFTY"
+            expiry_date: "YYYY-MM-DD"
+        """
+        instrument_key = self.INDEX_KEY_MAP.get(underlying.upper())
+        if not instrument_key:
+            raise InvalidSymbolError("upstox", underlying)
+
+        try:
+            resp = await self._make_request(
+                "GET", "/option/chain",
+                params={"instrument_key": instrument_key, "expiry_date": expiry_date}
+            )
+        except Exception as e:
+            err_str = str(e).lower()
+            if "401" in err_str or "unauthorized" in err_str:
+                raise AuthenticationError("upstox", str(e))
+            raise BrokerAPIError("upstox", f"get_option_chain_quotes failed: {e}")
+
+        all_quotes: dict = {}
+        for entry in resp.get("data", []):
+            for side_key in ("call_options", "put_options"):
+                opt = entry.get(side_key)
+                if not opt:
+                    continue
+                trading_symbol = opt.get("trading_symbol", "")
+                if not trading_symbol:
+                    continue
+
+                md = opt.get("market_data", {})
+                ltp = float(md.get("ltp", 0) or 0)
+                close_price = float(md.get("close_price", 0) or 0)
+
+                symbol_key = f"NFO:{trading_symbol}"
+                all_quotes[symbol_key] = {
+                    "last_price": ltp if ltp else close_price,  # use close when ltp=0
+                    "oi": int(md.get("oi", 0) or 0),
+                    "volume": int(md.get("volume", 0) or 0),
+                    "ohlc": {
+                        "open": float(md.get("open_price", 0) or 0),
+                        "high": float(md.get("high_price", 0) or 0),
+                        "low": float(md.get("low_price", 0) or 0),
+                        "close": close_price,
+                    },
+                    "depth": {
+                        "buy": [{"price": float(md.get("bid_price", 0) or 0), "quantity": int(md.get("bid_qty", 0) or 0)}] if md.get("bid_price") else [],
+                        "sell": [{"price": float(md.get("ask_price", 0) or 0), "quantity": int(md.get("ask_qty", 0) or 0)}] if md.get("ask_price") else [],
+                    },
+                }
+
+        logger.info(f"[UpstoxAdapter] get_option_chain_quotes: {len(all_quotes)} contracts for {underlying} {expiry_date}")
+        return all_quotes
 
     async def get_quote(self, symbols: List[str]) -> Dict[str, UnifiedQuote]:
         """
@@ -553,13 +643,16 @@ class UpstoxMarketDataAdapter(MarketDataBrokerAdapter):
         *,
         json: Optional[dict] = None,
         params: Optional[dict] = None,
+        _base_override: Optional[str] = None,
     ) -> dict:
         """
         Execute an authenticated HTTP request against Upstox API.
 
         Raises exceptions for HTTP errors; returns parsed JSON dict.
+        _base_override replaces UPSTOX_API_BASE for the request (used for v3 paths).
         """
-        url = f"{UPSTOX_API_BASE}{path}"
+        base = _base_override if _base_override else UPSTOX_API_BASE
+        url = f"{base}{path}"
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.request(
                 method,

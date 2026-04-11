@@ -18,6 +18,7 @@ export const usePositionsStore = defineStore('positions', {
     groupBy: null, // null, 'underlying', 'expiry'
     isLoading: false,
     error: null,
+    dataFreshness: 'LIVE',  // 'LIVE' | 'LAST_KNOWN'
 
     // For exit modal
     exitModal: {
@@ -77,6 +78,7 @@ export const usePositionsStore = defineStore('positions', {
 
         this.positions = response.data.positions;
         this.summary = response.data.summary;
+        this.dataFreshness = response.data.data_freshness || 'LIVE';
 
       } catch (error) {
         console.error('Error fetching positions:', error);

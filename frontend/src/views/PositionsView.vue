@@ -3,11 +3,7 @@
     <div class="positions-page" data-testid="positions-page">
 
       <BrokerUpgradeBanner screen="positions" />
-
-      <!-- Market Closed Banner (#1) -->
-      <div v-if="isMarketClosed" class="market-closed-banner" data-testid="positions-market-closed">
-        Market Closed — P&L and LTP values reflect last traded prices. Live data updates at 9:15 AM IST.
-      </div>
+      <MarketStatusBanner :data-freshness="store.dataFreshness" screen="positions" />
 
       <!-- Page Header -->
       <div class="page-header">
@@ -427,6 +423,7 @@ import { usePositionsStore } from '@/stores/positions';
 import { useScrollIndicator } from '@/composables/useScrollIndicator';
 import BrokerUpgradeBanner from '@/components/common/BrokerUpgradeBanner.vue';
 import DataSourceBadge from '@/components/common/DataSourceBadge.vue';
+import MarketStatusBanner from '@/components/common/MarketStatusBanner.vue';
 
 const store = usePositionsStore();
 

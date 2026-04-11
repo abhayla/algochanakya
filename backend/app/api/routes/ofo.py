@@ -21,6 +21,7 @@ from app.schemas.ofo import (
     OFO_AVAILABLE_STRATEGIES
 )
 from app.constants import LOT_SIZES
+from app.utils.market_hours import get_data_freshness
 
 logger = logging.getLogger(__name__)
 
@@ -93,9 +94,9 @@ async def calculate_ofo_strategies(
 
         lot_size = LOT_SIZES.get(underlying, 1)
 
-        # Get spot price via adapter
-        ltp_map = await adapter.get_ltp([underlying])
-        spot_price = float(ltp_map.get(underlying, 0))
+        # Get spot price — get_best_price returns previous close when market is closed
+        price_map = await adapter.get_best_price([underlying])
+        spot_price = float(price_map.get(underlying, 0))
 
         if not spot_price:
             raise HTTPException(
@@ -158,10 +159,12 @@ async def calculate_ofo_strategies(
                 try:
                     quotes = await adapter.get_quote(batch)
                     for symbol, unified_quote in quotes.items():
-                        # Store with NFO: prefix for compatibility
                         symbol_key = f"NFO:{symbol}"
+                        ltp = float(unified_quote.last_price)
+                        close = float(unified_quote.close)
                         all_quotes[symbol_key] = {
-                            "last_price": float(unified_quote.last_price),
+                            "last_price": ltp or close,  # use close when ltp=0 (market closed)
+                            "close": close,
                             "oi": unified_quote.oi,
                             "volume": unified_quote.volume
                         }
@@ -258,7 +261,8 @@ async def calculate_ofo_strategies(
             calculated_at=calculation_result["calculated_at"],
             calculation_time_ms=calculation_result["calculation_time_ms"],
             total_combinations_evaluated=calculation_result["total_combinations_evaluated"],
-            results=formatted_results
+            results=formatted_results,
+            data_freshness=get_data_freshness(),
         )
 
     except HTTPException:

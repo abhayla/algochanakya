@@ -221,12 +221,47 @@ class MarketDataBrokerAdapter(ABC):
 
         Returns:
             Dict mapping canonical symbol to LTP (Decimal, in RUPEES)
+            Returns 0 when market is closed — use get_best_price() for display purposes.
 
         Raises:
             RateLimitError: If rate limit exceeded
             BrokerAPIError: If broker API call fails
         """
         pass
+
+    async def get_best_price(self, symbols: List[str]) -> Dict[str, Decimal]:
+        """
+        Get best available price for symbols — LTP when market is open,
+        previous close when market is closed.
+
+        This is the correct method to use for displaying prices to users.
+        Use get_ltp() only when you specifically need live-only prices
+        (e.g., order placement, live P&L ticks).
+
+        Returns:
+            Dict mapping canonical symbol to best available price (Decimal, in RUPEES).
+            Never returns 0 for a valid symbol — falls back to previous close.
+
+        Raises:
+            BrokerAPIError: If both LTP and quote calls fail
+        """
+        prices = await self.get_ltp(symbols)
+
+        # Find any symbols where LTP is 0 (market closed or illiquid)
+        zero_symbols = [s for s, p in prices.items() if not p]
+        if not zero_symbols:
+            return prices
+
+        # Fall back to previous close from get_quote()
+        try:
+            quotes = await self.get_quote(zero_symbols)
+            for sym, quote in quotes.items():
+                if quote.close:
+                    prices[sym] = quote.close
+        except Exception:
+            pass  # Return whatever LTP we have (may still be 0 for truly missing data)
+
+        return prices
 
     # ═══════════════════════════════════════════════════════════════════════
     # WEBSOCKET TICKS

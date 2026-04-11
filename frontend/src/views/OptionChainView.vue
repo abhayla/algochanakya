@@ -3,6 +3,7 @@
     <div class="optionchain-page" data-testid="optionchain-page">
 
       <BrokerUpgradeBanner screen="optionchain" />
+      <MarketStatusBanner :data-freshness="store.dataFreshness" screen="optionchain" />
 
       <!-- Page Header -->
       <div class="page-header" data-testid="optionchain-header">
@@ -322,6 +323,7 @@ import { useOptionChainStore } from '@/stores/optionchain'
 import { useStrategyStore } from '@/stores/strategy'
 import BrokerUpgradeBanner from '@/components/common/BrokerUpgradeBanner.vue'
 import DataSourceBadge from '@/components/common/DataSourceBadge.vue'
+import MarketStatusBanner from '@/components/common/MarketStatusBanner.vue'
 import { useWatchlistStore } from '@/stores/watchlist'
 import { useScrollIndicator } from '@/composables/useScrollIndicator'
 

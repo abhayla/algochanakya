@@ -19,6 +19,7 @@ from app.services.brokers import (
     quote_to_legacy_format,
 )
 from app.utils.dependencies import get_current_user, get_current_broker_connection, get_broker_adapter_dep
+from app.utils.market_hours import get_data_freshness
 from sqlalchemy import select, and_
 from app.constants import LOT_SIZES
 
@@ -146,7 +147,10 @@ async def get_positions(
             symbol_key = f"{pos['exchange']}:{pos['tradingsymbol']}"
             quote = quotes.get(symbol_key, {})
 
-            ltp = quote.get("last_price", pos.get("last_price", 0))
+            # Use previous close as fallback when market is closed (ltp=0)
+            last_price = quote.get("last_price", 0)
+            close_price = quote.get("ohlc", {}).get("close", 0)
+            ltp = last_price or close_price or pos.get("last_price", 0)
 
             # Calculate P&L
             quantity = pos.get("quantity", 0)
@@ -220,6 +224,7 @@ async def get_positions(
 
         return {
             "positions": processed_positions,
+            "data_freshness": get_data_freshness(),
             "summary": {
                 "total_pnl": round(total_pnl, 2),
                 "total_pnl_pct": round((total_pnl / used_margin * 100) if used_margin > 0 else 0, 2),

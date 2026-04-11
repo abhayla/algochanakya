@@ -147,8 +147,10 @@ test.describe('Option Chain - Data Validation @validation', () => {
         }
       }
 
-      // ── 4. PCR range check ───────────────────────────────────────────────
-      if (summary?.pcr && summary.pcr !== 0) {
+      // ── 4. PCR range check (LIVE market only) ───────────────────────────────
+      // When market is closed, OI data is sparse (few strikes have non-zero OI)
+      // causing PCR to be unreliable. Only validate PCR during live market hours.
+      if (expectation === 'LIVE' && summary?.pcr && summary.pcr !== 0) {
         expect(summary.pcr, `PCR ${summary.pcr} out of valid range [0.3–3.0]`).toBeGreaterThan(0.3);
         expect(summary.pcr, `PCR ${summary.pcr} out of valid range [0.3–3.0]`).toBeLessThan(3.0);
       }
@@ -256,6 +258,33 @@ test.describe('Option Chain - Data Validation @validation', () => {
       }
 
       console.log(`${underlying} spot price: ${spot}`);
+    });
+  }
+
+  // ── data_freshness field: must be present and valid ───────────────────────
+  for (const underlying of UNDERLYINGS) {
+    test(`${underlying}: API response includes valid data_freshness field`, async ({ authenticatedPage }) => {
+      const token = getStoredAuthToken();
+      if (!token) test.skip('No auth token');
+
+      const expiries = await fetchAppExpiries(authenticatedPage.request, token, underlying);
+      if (!expiries?.length) test.skip('No expiries available');
+
+      let chain;
+      try {
+        chain = await fetchAppOptionChain(authenticatedPage.request, token, underlying, expiries[0]);
+      } catch {
+        test.skip('Chain API failed');
+      }
+
+      if (!chain) test.skip('No chain data');
+
+      // data_freshness must be present and one of the two valid values
+      expect(chain.data_freshness, 'data_freshness field must be present in chain response').toBeDefined();
+      expect(['LIVE', 'LAST_KNOWN'], `data_freshness must be 'LIVE' or 'LAST_KNOWN', got '${chain.data_freshness}'`)
+        .toContain(chain.data_freshness);
+
+      console.log(`${underlying} data_freshness: ${chain.data_freshness}`);
     });
   }
 });

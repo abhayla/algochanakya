@@ -130,22 +130,34 @@ export function isPreOpen() {
 /**
  * Returns the data expectation for the current market state.
  *
- * @returns {'LIVE' | 'LAST_KNOWN' | 'PRE_OPEN' | 'CLOSED'}
+ * @returns {'LIVE' | 'LAST_KNOWN' | 'PRE_OPEN'}
  *
  * - LIVE: Market is open. Expect real-time ticking data. No empty states expected.
  * - PRE_OPEN: Pre-open session. Data may be delayed/partial. ATM strikes may shift.
- * - LAST_KNOWN: After market close on a trading day. Previous close data available.
- * - CLOSED: Weekend or holiday. Only historical data. WebSocket may show stale data.
+ * - LAST_KNOWN: Market closed (after hours, weekend, or holiday). Last close price
+ *   data is ALWAYS available from the backend — option chain shows previous close LTP.
+ *   Tests MUST assert data is present, not skip.
+ *
+ * Note: CLOSED state has been merged into LAST_KNOWN because the backend always
+ * serves last close price data regardless of weekend/holiday. There is no state
+ * where option chain data is unavailable.
  */
 export function getDataExpectation() {
   if (isMarketOpen()) return 'LIVE';
   if (isPreOpen()) return 'PRE_OPEN';
-
-  const { weekday } = getISTNow();
-  if (weekday === 0 || weekday === 6 || isTodayHoliday()) return 'CLOSED';
-
-  // Weekday, but outside market hours — last known data from today/previous session
+  // Weekend, holiday, or after-hours — backend serves last close price data
   return 'LAST_KNOWN';
+}
+
+/**
+ * Returns true if today is a weekend or NSE trading holiday.
+ * Use in WebSocket tests that need to know whether live ticker connections
+ * are expected (weekday after-hours may still have active connections;
+ * weekends typically do not).
+ */
+export function isWeekendOrHoliday() {
+  const { weekday } = getISTNow();
+  return weekday === 0 || weekday === 6 || isTodayHoliday();
 }
 
 /**
@@ -178,9 +190,19 @@ export function isHolidayListStale() {
  * @param {string} emptyTestId - testid of the empty state element
  * @param {import('@playwright/test').expect} expect - Playwright expect
  */
-export async function assertDataOrEmptyState(page, dataTestId, emptyTestId, expect) {
+export async function assertDataOrEmptyState(page, dataTestId, emptyTestId, expect, timeout = 15000) {
   const dataLocator = page.locator(`[data-testid="${dataTestId}"]`);
   const emptyLocator = page.locator(`[data-testid="${emptyTestId}"]`);
+
+  // Wait for either element — page may still be loading when this is called
+  try {
+    await Promise.race([
+      dataLocator.waitFor({ state: 'visible', timeout }),
+      emptyLocator.waitFor({ state: 'visible', timeout }),
+    ]);
+  } catch {
+    // Neither appeared within timeout — fall through to descriptive error below
+  }
 
   const hasData = await dataLocator.isVisible().catch(() => false);
   const hasEmpty = await emptyLocator.isVisible().catch(() => false);

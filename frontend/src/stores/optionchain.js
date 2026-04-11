@@ -24,6 +24,7 @@ export const useOptionChainStore = defineStore('optionchain', () => {
   })
   const lotSize = ref(getLotSize('NIFTY'))
   const chain = ref([])
+  const dataFreshness = ref('LIVE')  // 'LIVE' | 'LAST_KNOWN'
   const summary = ref({
     total_ce_oi: 0,
     total_pe_oi: 0,
@@ -250,6 +251,7 @@ export const useOptionChainStore = defineStore('optionchain', () => {
       lotSize.value = response.data.lot_size
       chain.value = response.data.chain
       summary.value = response.data.summary
+      dataFreshness.value = response.data.data_freshness || 'LIVE'
 
       return { success: true }
     } catch (err) {
@@ -467,6 +469,7 @@ export const useOptionChainStore = defineStore('optionchain', () => {
     daysToExpiry,
     lotSize,
     chain,
+    dataFreshness,
     summary,
     isLoading,
     error,

@@ -148,10 +148,8 @@
         </div>
       </div>
 
-      <!-- Market Closed Banner (#1, #2) -->
-      <div v-if="isMarketClosed" class="market-closed-banner" data-testid="ofo-market-closed">
-        Market Closed — calculations use last available prices. Live prices update when market opens at 9:15 AM IST.
-      </div>
+      <!-- Market Closed Banner -->
+      <MarketStatusBanner :data-freshness="store.dataFreshness" screen="ofo" />
 
       <!-- Error Message (#9: with retry) -->
       <div v-if="store.error" class="error-message" data-testid="ofo-error">
@@ -237,28 +235,17 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted, computed } from 'vue'
+import { onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import KiteLayout from '@/components/layout/KiteLayout.vue'
 import StrategyMultiSelect from '@/components/ofo/StrategyMultiSelect.vue'
 import OFOResultCard from '@/components/ofo/OFOResultCard.vue'
+import MarketStatusBanner from '@/components/common/MarketStatusBanner.vue'
 import { useOFOStore } from '@/stores/ofo'
 import { getLotSize } from '@/constants/trading'
 
 const router = useRouter()
 const store = useOFOStore()
-
-// #2: Market closed detection (same logic as OptionChainView)
-const isMarketClosed = computed(() => {
-  const now = new Date()
-  const ist = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }))
-  const hours = ist.getHours()
-  const minutes = ist.getMinutes()
-  const day = ist.getDay()
-  const timeInMinutes = hours * 60 + minutes
-  if (day === 0 || day === 6) return true
-  return timeInMinutes < 555 || timeInMinutes > 930
-})
 
 // #8: Popular strategies for quick-select
 const popularStrategies = [
