@@ -1,9 +1,13 @@
 ---
 name: broker-shared
-description: Cross-broker comparison, shared gotchas, and broker selection guidance.
+description: Cross-broker comparison, shared gotchas, instrument token architecture, and broker selection guidance.
   Use for questions spanning multiple brokers or common integration patterns.
-version: "1.0.0"
-last_verified: "2026-03-18"
+  Triggers on instrument token, instrument_token, exchange token, exchange_token,
+  symbol token, symboltoken, instrument key, instrument_key, tradingsymbol,
+  trading_symbol, token mapping, token_to_symbol, instrument master, broker token,
+  NSE token, cross-broker token, token mismatch, duplicate instrument, source_broker.
+version: "2.0.0"
+last_verified: "2026-04-12"
 ---
 
 # Broker Shared Knowledge
@@ -94,6 +98,23 @@ If the question is about a single broker's internals, respond with:
 This is a broker-specific question. Use `/[broker]-expert` for detailed guidance.
 ```
 
+### 6. Auto-Capture New Findings
+
+When new cross-broker instrument or token knowledge is discovered during debugging or research,
+append it to `references/instrument-token-architecture.md` without waiting for user prompting.
+
+Format for new entries:
+```markdown
+## New Finding: {title}
+
+**Date:** YYYY-MM-DD
+**Source:** {how this was discovered — debugging session, API testing, documentation review}
+
+{content}
+```
+
+This ensures the reference stays current as the platform evolves and new broker behaviors are discovered.
+
 ## Platform Failover Chain
 
 ```
@@ -108,11 +129,13 @@ Platform-level credentials serve ALL users by default. User-level (own API key) 
 | Version | Date | Changes |
 |---|---|---|
 | 1.0.0 | 2026-03-18 | Frontmatter aligned with broker-expert pattern (top-level version + last_verified, removed nested metadata). Added Version Changelog section. No content changes. |
+| 2.0.0 | 2026-04-12 | Added instrument-token-architecture reference, trigger words for auto-discovery, auto-capture workflow for new findings. |
 
 ## Cross-References
 
 - **Comparison Matrix:** `comparison-matrix.md` (same directory) — detailed feature-by-feature comparison
 - **Common Gotchas:** `references/common-gotchas.md` — shared integration pitfalls
+- **Instrument Token Architecture:** `references/instrument-token-architecture.md` — Cross-broker instrument token architecture, NSE exchange token equivalence, tradingsymbol formats
 - **Architecture:** `docs/architecture/broker-abstraction.md` — adapter pattern design
 - **Working Doc:** `docs/architecture/Working-Doc-AlgoChanakya-Multi-Broker-Architecture-Platform-Level.md`
 - **Individual experts:** `/zerodha-expert`, `/angelone-expert`, `/upstox-expert`, `/dhan-expert`, `/fyers-expert`, `/paytm-expert`
