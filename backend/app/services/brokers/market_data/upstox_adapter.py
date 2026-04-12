@@ -355,7 +355,7 @@ class UpstoxMarketDataAdapter(MarketDataBrokerAdapter):
             result[canonical] = Decimal(str(item["last_price"]))
         return result
 
-    async def get_option_chain_quotes(self, underlying: str, expiry_date: str) -> dict:
+    async def get_option_chain_quotes(self, underlying: str, expiry_date: str, token_to_symbol: dict = None) -> dict:
         """
         Fetch option chain data from Upstox /v2/option/chain endpoint.
 
@@ -391,15 +391,26 @@ class UpstoxMarketDataAdapter(MarketDataBrokerAdapter):
                 opt = entry.get(side_key)
                 if not opt:
                     continue
-                trading_symbol = opt.get("trading_symbol", "")
-                if not trading_symbol:
+
+                # Extract token from instrument_key (e.g., "NSE_FO|54771" → "54771")
+                instr_key = opt.get("instrument_key", "")
+                token = instr_key.split("|")[-1] if "|" in instr_key else ""
+
+                # Map token to canonical symbol via caller-provided mapping
+                canonical_symbol = ""
+                if token_to_symbol and token:
+                    canonical_symbol = token_to_symbol.get(token, "")
+                if not canonical_symbol:
                     continue
 
                 md = opt.get("market_data", {})
                 ltp = float(md.get("ltp", 0) or 0)
                 close_price = float(md.get("close_price", 0) or 0)
 
-                symbol_key = f"NFO:{trading_symbol}"
+                # Extract pre-calculated Greeks from Upstox response
+                greeks_data = opt.get("option_greeks", {})
+
+                symbol_key = f"NFO:{canonical_symbol}"
                 all_quotes[symbol_key] = {
                     "last_price": ltp if ltp else close_price,  # use close when ltp=0
                     "oi": int(md.get("oi", 0) or 0),
@@ -414,6 +425,13 @@ class UpstoxMarketDataAdapter(MarketDataBrokerAdapter):
                         "buy": [{"price": float(md.get("bid_price", 0) or 0), "quantity": int(md.get("bid_qty", 0) or 0)}] if md.get("bid_price") else [],
                         "sell": [{"price": float(md.get("ask_price", 0) or 0), "quantity": int(md.get("ask_qty", 0) or 0)}] if md.get("ask_price") else [],
                     },
+                    "greeks": {
+                        "iv": float(greeks_data.get("iv", 0) or 0),
+                        "delta": float(greeks_data.get("delta", 0) or 0),
+                        "gamma": float(greeks_data.get("gamma", 0) or 0),
+                        "theta": float(greeks_data.get("theta", 0) or 0),
+                        "vega": float(greeks_data.get("vega", 0) or 0),
+                    } if greeks_data else None,
                 }
 
         logger.info(f"[UpstoxAdapter] get_option_chain_quotes: {len(all_quotes)} contracts for {underlying} {expiry_date}")

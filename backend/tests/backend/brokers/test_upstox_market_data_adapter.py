@@ -535,3 +535,138 @@ def test_auth_header_uses_bearer(adapter):
 def test_auth_header_contains_token(adapter, credentials):
     """Authorization header must include the actual access token."""
     assert credentials.access_token in adapter._headers["Authorization"]
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# GET_OPTION_CHAIN_QUOTES
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Sample Upstox /v2/option/chain response — matches real API structure.
+# NOTE: Upstox does NOT return a "trading_symbol" field; only "instrument_key".
+SAMPLE_OPTION_CHAIN_RESPONSE = {
+    "status": "success",
+    "data": [
+        {
+            "expiry": "2026-04-13",
+            "strike_price": 24000.0,
+            "underlying_key": "NSE_INDEX|Nifty 50",
+            "underlying_spot_price": 24050.6,
+            "call_options": {
+                "instrument_key": "NSE_FO|54771",
+                "market_data": {
+                    "ltp": 150.25,
+                    "volume": 125000,
+                    "oi": 5000000,
+                    "close_price": 145.50,
+                    "bid_price": 150.0,
+                    "bid_qty": 500,
+                    "ask_price": 150.50,
+                    "ask_qty": 400,
+                    "prev_oi": 4800000,
+                    "open_price": 148.0,
+                    "high_price": 155.0,
+                    "low_price": 147.5,
+                },
+                "option_greeks": {
+                    "vega": 8.25,
+                    "theta": -12.50,
+                    "gamma": 0.0003,
+                    "delta": 0.55,
+                    "iv": 18.50,
+                    "pop": 52.3,
+                },
+            },
+            "put_options": {
+                "instrument_key": "NSE_FO|54772",
+                "market_data": {
+                    "ltp": 45.75,
+                    "volume": 80000,
+                    "oi": 3000000,
+                    "close_price": 50.25,
+                    "bid_price": 45.50,
+                    "bid_qty": 300,
+                    "ask_price": 46.00,
+                    "ask_qty": 250,
+                    "prev_oi": 2900000,
+                    "open_price": 50.0,
+                    "high_price": 52.0,
+                    "low_price": 44.0,
+                },
+                "option_greeks": {
+                    "vega": 8.25,
+                    "theta": -10.30,
+                    "gamma": 0.0003,
+                    "delta": -0.45,
+                    "iv": 19.20,
+                    "pop": 47.7,
+                },
+            },
+        },
+    ],
+}
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_get_option_chain_quotes_with_token_mapping(adapter):
+    """Quotes must be keyed by canonical symbol via token_to_symbol mapping."""
+    token_to_symbol = {"54771": "NIFTY26041324000CE", "54772": "NIFTY26041324000PE"}
+    with patch.object(adapter, "_make_request", new_callable=AsyncMock) as mock_req:
+        mock_req.return_value = SAMPLE_OPTION_CHAIN_RESPONSE
+        result = await adapter.get_option_chain_quotes("NIFTY", "2026-04-13", token_to_symbol=token_to_symbol)
+    assert "NFO:NIFTY26041324000CE" in result
+    assert "NFO:NIFTY26041324000PE" in result
+    assert result["NFO:NIFTY26041324000CE"]["last_price"] == 150.25
+    assert result["NFO:NIFTY26041324000CE"]["oi"] == 5000000
+    # The broken key "NFO:" must NOT exist
+    assert "NFO:" not in result
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_get_option_chain_quotes_no_token_mapping(adapter):
+    """Without token_to_symbol, should return empty dict (graceful degradation)."""
+    with patch.object(adapter, "_make_request", new_callable=AsyncMock) as mock_req:
+        mock_req.return_value = SAMPLE_OPTION_CHAIN_RESPONSE
+        result = await adapter.get_option_chain_quotes("NIFTY", "2026-04-13")
+    assert result == {}
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_get_option_chain_quotes_market_closed(adapter):
+    """When ltp=0 (market closed), should fall back to close_price."""
+    closed_response = {
+        "status": "success",
+        "data": [{
+            "strike_price": 24000.0,
+            "call_options": {
+                "instrument_key": "NSE_FO|54771",
+                "market_data": {"ltp": 0, "close_price": 145.50, "oi": 5000000, "volume": 0},
+                "option_greeks": {"iv": 18.5, "delta": 0.55, "gamma": 0.0003, "theta": -12.5, "vega": 8.25},
+            },
+            "put_options": None,
+        }],
+    }
+    token_to_symbol = {"54771": "NIFTY26041324000CE"}
+    with patch.object(adapter, "_make_request", new_callable=AsyncMock) as mock_req:
+        mock_req.return_value = closed_response
+        result = await adapter.get_option_chain_quotes("NIFTY", "2026-04-13", token_to_symbol=token_to_symbol)
+    assert result["NFO:NIFTY26041324000CE"]["last_price"] == 145.50
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_get_option_chain_quotes_includes_greeks(adapter):
+    """Upstox pre-calculated Greeks must be included in the quote."""
+    token_to_symbol = {"54771": "NIFTY26041324000CE"}
+    with patch.object(adapter, "_make_request", new_callable=AsyncMock) as mock_req:
+        mock_req.return_value = SAMPLE_OPTION_CHAIN_RESPONSE
+        result = await adapter.get_option_chain_quotes("NIFTY", "2026-04-13", token_to_symbol=token_to_symbol)
+    quote = result["NFO:NIFTY26041324000CE"]
+    assert "greeks" in quote
+    assert quote["greeks"]["iv"] == 18.50
+    assert quote["greeks"]["delta"] == 0.55
+    assert quote["greeks"]["gamma"] == 0.0003
+    assert quote["greeks"]["theta"] == -12.50
+    assert quote["greeks"]["vega"] == 8.25

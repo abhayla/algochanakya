@@ -363,7 +363,7 @@ async def get_option_chain(
             try:
                 import time as _time
                 oc_start = _time.time()
-                all_quotes = await adapter.get_option_chain_quotes(underlying, expiry)
+                all_quotes = await adapter.get_option_chain_quotes(underlying, expiry, token_to_symbol=token_to_symbol)
                 logger.info(
                     f"[OptionChain] Upstox option chain: {len(all_quotes)} contracts "
                     f"in {_time.time()-oc_start:.1f}s"
@@ -489,8 +489,19 @@ async def get_option_chain(
                 ce_bid = ce_depth.get("buy", [{}])[0].get("price", 0) if ce_depth.get("buy") else 0
                 ce_ask = ce_depth.get("sell", [{}])[0].get("price", 0) if ce_depth.get("sell") else 0
 
-                ce_iv = calculate_iv(ce_ltp, spot_price, strike, days_to_expiry, True)
-                ce_greeks = calculate_greeks(spot_price, strike, days_to_expiry, ce_iv, True)
+                # Use Upstox pre-calculated Greeks when available
+                ce_upstox_greeks = ce_quote.get("greeks")
+                if ce_upstox_greeks and ce_upstox_greeks.get("iv"):
+                    ce_iv = ce_upstox_greeks["iv"]
+                    ce_greeks = {
+                        "delta": round(ce_upstox_greeks.get("delta", 0), 4),
+                        "gamma": round(ce_upstox_greeks.get("gamma", 0), 6),
+                        "theta": round(ce_upstox_greeks.get("theta", 0), 2),
+                        "vega": round(ce_upstox_greeks.get("vega", 0), 2),
+                    }
+                else:
+                    ce_iv = calculate_iv(ce_ltp, spot_price, strike, days_to_expiry, True)
+                    ce_greeks = calculate_greeks(spot_price, strike, days_to_expiry, ce_iv, True)
 
                 row["ce"] = {
                     "instrument_token": data["ce"]["instrument_token"],
@@ -528,8 +539,19 @@ async def get_option_chain(
                 pe_bid = pe_depth.get("buy", [{}])[0].get("price", 0) if pe_depth.get("buy") else 0
                 pe_ask = pe_depth.get("sell", [{}])[0].get("price", 0) if pe_depth.get("sell") else 0
 
-                pe_iv = calculate_iv(pe_ltp, spot_price, strike, days_to_expiry, False)
-                pe_greeks = calculate_greeks(spot_price, strike, days_to_expiry, pe_iv, False)
+                # Use Upstox pre-calculated Greeks when available
+                pe_upstox_greeks = pe_quote.get("greeks")
+                if pe_upstox_greeks and pe_upstox_greeks.get("iv"):
+                    pe_iv = pe_upstox_greeks["iv"]
+                    pe_greeks = {
+                        "delta": round(pe_upstox_greeks.get("delta", 0), 4),
+                        "gamma": round(pe_upstox_greeks.get("gamma", 0), 6),
+                        "theta": round(pe_upstox_greeks.get("theta", 0), 2),
+                        "vega": round(pe_upstox_greeks.get("vega", 0), 2),
+                    }
+                else:
+                    pe_iv = calculate_iv(pe_ltp, spot_price, strike, days_to_expiry, False)
+                    pe_greeks = calculate_greeks(spot_price, strike, days_to_expiry, pe_iv, False)
 
                 row["pe"] = {
                     "instrument_token": data["pe"]["instrument_token"],
