@@ -35,7 +35,8 @@ logger = logging.getLogger(__name__)
 # NSE API client
 # ─────────────────────────────────────────────────────────────────────────────
 
-NSE_OPTION_CHAIN_URL = "https://www.nseindia.com/api/option-chain-indices"
+NSE_OPTION_CHAIN_V3_URL = "https://www.nseindia.com/api/option-chain-v3"
+NSE_OPTION_CHAIN_V1_URL = "https://www.nseindia.com/api/option-chain-indices"
 NSE_BASE_URL = "https://www.nseindia.com"
 
 # NSE blocks requests without a browser-like user-agent and valid cookies.
@@ -84,9 +85,8 @@ async def _fetch_nse_option_chain(symbol: str = "NIFTY") -> dict:
     """
     Fetch the official NSE option chain.
 
-    NSE requires:
-    1. First hit the main page to get cookies
-    2. Then hit the API with those cookies
+    Tries v3 API first (works on weekends with cached data), falls back to v1.
+    NSE requires cookies from visiting the option chain page first.
 
     Returns the full NSE response dict or raises on failure.
     """
@@ -103,25 +103,54 @@ async def _fetch_nse_option_chain(symbol: str = "NIFTY") -> dict:
                 f"NSE may be blocking automated requests."
             )
 
-        # Step 2: Fetch option chain data with cookies
+        # Step 2: Try v3 API first — returns cached data even on weekends.
+        # v3 requires an exact expiry date that NSE has. First fetch without
+        # expiry to discover available dates, then use the nearest one.
         resp = await client.get(
-            NSE_OPTION_CHAIN_URL,
+            NSE_OPTION_CHAIN_V1_URL,
             params={"symbol": symbol},
         )
-        if resp.status_code == 403:
-            raise RuntimeError(
-                "NSE returned 403 Forbidden — IP may be rate-limited or blocked. "
-                "Try again after a few minutes."
-            )
-        if resp.status_code != 200:
-            raise RuntimeError(f"NSE option chain API returned HTTP {resp.status_code}")
+        # Even when v1 returns empty data ({}), try v3 with known expiries
+        v1_data = resp.json() if resp.status_code == 200 else {}
+        available_expiries = v1_data.get("records", {}).get("expiryDates", [])
 
-        data = resp.json()
-        if "records" not in data or "filtered" not in data:
-            raise RuntimeError(
-                f"Unexpected NSE response structure. Keys: {list(data.keys())}"
+        # If v1 had no expiry list, try v3 with a guessed expiry to get the list
+        if not available_expiries:
+            guess_expiry = _nearest_expiry_thursday().strftime("%d-%b-%Y")
+            probe = await client.get(
+                NSE_OPTION_CHAIN_V3_URL,
+                params={"type": "Indices", "symbol": symbol, "expiry": guess_expiry},
             )
-        return data
+            if probe.status_code == 200:
+                probe_data = probe.json()
+                available_expiries = probe_data.get("records", {}).get("expiryDates", [])
+                # If the guessed expiry had data, use it directly
+                if probe_data.get("records", {}).get("data"):
+                    logger.info(f"[NSE] v3 API returned data for {symbol} expiry {guess_expiry}")
+                    return probe_data
+
+        # Try v3 with the nearest available expiry
+        if available_expiries:
+            for expiry_str in available_expiries[:3]:
+                resp = await client.get(
+                    NSE_OPTION_CHAIN_V3_URL,
+                    params={"type": "Indices", "symbol": symbol, "expiry": expiry_str},
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    if data.get("records", {}).get("data"):
+                        logger.info(f"[NSE] v3 API returned data for {symbol} expiry {expiry_str}")
+                        return data
+
+        # If v1 had full data, return it
+        if "records" in v1_data and "filtered" in v1_data and v1_data["records"].get("data"):
+            return v1_data
+
+        # Step 3: Nothing worked — raise so fixture can skip
+        raise RuntimeError(
+            "NSE option chain API returned no data from v3 or v1. "
+            f"Available expiries: {available_expiries[:3]}"
+        )
 
 
 def _parse_nse_chain(nse_data: dict, expiry_date: str = None) -> dict:
@@ -151,7 +180,8 @@ def _parse_nse_chain(nse_data: dict, expiry_date: str = None) -> dict:
         }
     """
     records = nse_data.get("filtered", nse_data.get("records", {}))
-    spot_price = records.get("underlyingValue", 0)
+    # v3 API may have underlyingValue=0 in "filtered" but correct value in "records"
+    spot_price = records.get("underlyingValue", 0) or nse_data.get("records", {}).get("underlyingValue", 0)
     all_expiries = nse_data.get("records", {}).get("expiryDates", [])
 
     strikes = {}
