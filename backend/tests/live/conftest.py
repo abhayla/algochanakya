@@ -35,11 +35,19 @@ async def live_db():
     Used by adapters (e.g. DhanMarketDataAdapter) that require DB-backed token
     lookups to resolve canonical symbols to broker-specific security IDs.
 
-    The session is closed after the test session ends.
+    The session is closed after the test session ends. The try/finally
+    suppresses asyncpg event-loop-closed errors during teardown (harmless
+    noise from the connection being garbage collected after the loop closes).
     """
     from app.database import AsyncSessionLocal
-    async with AsyncSessionLocal() as session:
+    session = AsyncSessionLocal()
+    try:
         yield session
+    finally:
+        try:
+            await session.close()
+        except RuntimeError:
+            pass  # Event loop closed — connection already torn down
 
 
 # ─────────────────────────────────────────────────────────────────────────────

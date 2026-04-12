@@ -240,9 +240,9 @@ def _pct_diff(a: float, b: float) -> float:
 # Fixtures
 # ─────────────────────────────────────────────────────────────────────────────
 
-@pytest_asyncio.fixture(scope="module")
+@pytest_asyncio.fixture(scope="session")
 async def nse_chain():
-    """Fetch NSE NIFTY option chain once per module."""
+    """Fetch NSE NIFTY option chain once per test session."""
     try:
         raw = await _fetch_nse_option_chain("NIFTY")
     except RuntimeError as e:
@@ -296,7 +296,10 @@ class TestUpstoxVsNSE:
     async def _get_upstox_chain(self, adapter, expiry_str: str) -> dict:
         """Fetch Upstox option chain with a dummy token_to_symbol that captures all."""
         # First, get instruments to build the token-to-symbol map
-        instruments = await adapter.get_instruments("NFO")
+        try:
+            instruments = await adapter.get_instruments("NFO")
+        except Exception as e:
+            pytest.skip(f"Upstox instrument CSV download failed: {e}")
         nifty_options = [
             i for i in instruments
             if "NIFTY" in (i.name or "").upper()
@@ -343,8 +346,8 @@ class TestUpstoxVsNSE:
         """Upstox NIFTY spot price should be within 1% of NSE spot."""
         nse_spot = nse_chain["spot_price"]
 
-        # Upstox get_ltp for NIFTY index
-        ltp_result = await upstox_adapter.get_ltp(["NSE_INDEX|Nifty 50"])
+        # Upstox get_ltp for NIFTY index (use bare name, not instrument_key format)
+        ltp_result = await upstox_adapter.get_ltp(["NIFTY"])
         if not ltp_result:
             pytest.skip("Upstox get_ltp returned empty for NIFTY index")
 
