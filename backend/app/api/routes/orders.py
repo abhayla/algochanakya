@@ -109,10 +109,14 @@ async def place_basket_order(
             )
 
         # Get trading symbols for instrument tokens
+        # Filter by source_broker to avoid duplicates from multiple instrument sources
         instrument_tokens = [leg.instrument_token for leg in request.legs]
         result = await db.execute(
             select(Instrument).where(
-                Instrument.instrument_token.in_(instrument_tokens)
+                and_(
+                    Instrument.instrument_token.in_(instrument_tokens),
+                    Instrument.source_broker == "kite",
+                )
             )
         )
         instruments = {inst.instrument_token: inst for inst in result.scalars().all()}
@@ -290,10 +294,14 @@ async def import_positions(
             return ImportPositionsResponse(positions=[], legs=[])
 
         # Get instrument details for positions
+        # Filter by source_broker to avoid duplicates from multiple instrument sources
         instrument_tokens = [leg["instrument_token"] for leg in position_legs]
         result = await db.execute(
             select(Instrument).where(
-                Instrument.instrument_token.in_(instrument_tokens)
+                and_(
+                    Instrument.instrument_token.in_(instrument_tokens),
+                    Instrument.source_broker == "kite",
+                )
             )
         )
         instruments = {inst.instrument_token: inst for inst in result.scalars().all()}

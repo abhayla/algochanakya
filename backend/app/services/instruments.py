@@ -208,7 +208,7 @@ class InstrumentService:
         try:
             stmt = select(Instrument).where(Instrument.instrument_token == token)
             result = await db.execute(stmt)
-            return result.scalar_one_or_none()
+            return result.scalars().first()
 
         except Exception as e:
             logger.error(f"Failed to get instrument by token: {e}")

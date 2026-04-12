@@ -50,12 +50,14 @@ async def get_expiries(
 
     try:
         # Query distinct expiry dates for the underlying
+        # Filter by source_broker to avoid duplicate rows from multiple instrument sources
         query = select(distinct(Instrument.expiry)).where(
             and_(
                 Instrument.name == UNDERLYING_MAP[underlying],
                 Instrument.exchange == "NFO",
                 Instrument.instrument_type.in_(["CE", "PE"]),
-                Instrument.expiry >= date.today()
+                Instrument.expiry >= date.today(),
+                Instrument.source_broker == "kite",
             )
         ).order_by(Instrument.expiry)
 
@@ -103,7 +105,8 @@ async def get_strikes(
             Instrument.name == UNDERLYING_MAP[underlying],
             Instrument.exchange == "NFO",
             Instrument.expiry == expiry,
-            Instrument.strike.isnot(None)
+            Instrument.strike.isnot(None),
+            Instrument.source_broker == "kite",
         ]
 
         if contract_type:
@@ -154,18 +157,9 @@ async def get_option_chain(
 
     try:
         # Query all options for the underlying and expiry
-        query = select(Instrument).where(
-            and_(
-                Instrument.name == UNDERLYING_MAP[underlying],
-                Instrument.exchange == "NFO",
-                Instrument.expiry == expiry,
-                Instrument.instrument_type.in_(["CE", "PE"]),
-                Instrument.strike.isnot(None)
-            )
-        ).order_by(Instrument.strike, Instrument.instrument_type)
-
-        result = await db.execute(query)
-        instruments = result.scalars().all()
+        # Uses helper to filter by source_broker (avoids duplicates)
+        from app.services.brokers.market_data.instrument_query import get_nfo_instruments
+        instruments = await get_nfo_instruments(db, UNDERLYING_MAP[underlying], expiry, broker_type="kite")
 
         options = [
             OptionChainItem(
@@ -229,18 +223,10 @@ async def get_instrument_by_params(
         )
 
     try:
-        query = select(Instrument).where(
-            and_(
-                Instrument.name == UNDERLYING_MAP[underlying],
-                Instrument.exchange == "NFO",
-                Instrument.expiry == expiry,
-                Instrument.strike == strike,
-                Instrument.instrument_type == contract_type
-            )
+        from app.services.brokers.market_data.instrument_query import get_single_instrument
+        instrument = await get_single_instrument(
+            db, UNDERLYING_MAP[underlying], expiry, strike, contract_type, broker_type="kite"
         )
-
-        result = await db.execute(query)
-        instrument = result.scalar_one_or_none()
 
         if not instrument:
             raise HTTPException(

@@ -217,18 +217,9 @@ class OIAnalysisService:
             else:
                 expiry_date = expiry
 
-            # Get instruments for this expiry
-            query = select(Instrument).where(
-                and_(
-                    Instrument.name == underlying,
-                    Instrument.expiry == expiry_date,
-                    Instrument.instrument_type.in_(["CE", "PE"]),
-                    Instrument.exchange == "NFO"
-                )
-            ).order_by(Instrument.strike)
-
-            result = await self.db.execute(query)
-            instruments = result.scalars().all()
+            # Get instruments for this expiry (source_broker-filtered to avoid duplicates)
+            from app.services.brokers.market_data.instrument_query import get_nfo_instruments
+            instruments = await get_nfo_instruments(self.db, underlying, expiry_date, broker_type="smartapi")
 
             if not instruments:
                 logger.warning(f"No instruments found for {underlying} {expiry}")

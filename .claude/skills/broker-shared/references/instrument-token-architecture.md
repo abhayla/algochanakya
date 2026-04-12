@@ -84,6 +84,86 @@ The `instruments` table has unique constraint on `(instrument_token, source_brok
 4. Daily refresh at startup — download from active broker's instrument master
 ```
 
+## Web Research Verification (April 2026)
+
+**Date:** 2026-04-12
+**Source:** Web research + Kite/SmartAPI/Upstox official docs and forums
+
+### Confirmed: NSE Exchange Token Equivalence
+
+For **F&O options**, the NSE exchange token is the same number across brokers:
+
+| Broker | Field | Token for NIFTY 24050 CE 13-Apr-2026 | Source |
+|--------|-------|--------------------------------------|--------|
+| Kite | `exchange_token` | 54816 | NSE-assigned |
+| Kite | `instrument_token` | 14032898 | **Kite-internal (DIFFERENT)** |
+| SmartAPI | `symboltoken` | 54816 | NSE-assigned |
+| Upstox | `exchange_token` (in `instrument_key`) | 54816 | NSE-assigned |
+
+**Verification sources:**
+- [Kite Connect docs](https://kite.trade/docs/connect/v3/market-data-and-instruments/) — `exchange_token` = "numerical identifier issued by the exchange"; `instrument_token` = Zerodha-internal
+- [Kite Forum](https://kite.trade/forum/discussion/2140/) — confirms `instrument_token` is derived from `exchange_token` + segment encoding
+- [Upstox docs](https://upstox.com/developer/api-documentation/instruments/) — `exchange_token` = "exchange-specific token assigned by the exchange"
+- AlgoChanakya live testing — confirmed SmartAPI `54816` == Upstox `54816` for same strike
+
+**Unverified:**
+- Dhan `security_id` — likely same NSE token but not confirmed from official docs
+- Fyers/Paytm — broken per org config, low priority
+
+**Token reuse warning:** NSE reuses exchange tokens after F&O expiry. Always pair token with expiry date.
+
+### Index Token Differences
+
+For index underlyings (not their options), tokens are **broker-specific**:
+
+| Broker | NIFTY token | BANKNIFTY token |
+|--------|------------|-----------------|
+| Kite | `instrument_token=256265`, `exchange_token=26000` | `260105` / `26009` |
+| SmartAPI | `99926000` | `99926009` |
+| Upstox | `"Nifty 50"` (string in instrument_key) | `"Nifty Bank"` |
+
+## Duplicate Row Fix — source_broker Filtering (Implemented April 2026)
+
+### The Problem
+
+The `instruments` table has a unique constraint on `(instrument_token, source_broker)`, allowing duplicate rows per strike — one from each broker's instrument download. Example: NIFTY 13-Apr-2026 had 696 rows (492 kite + 204 smartapi).
+
+11 query sites across 6 files queried without `source_broker` filter, mixing tokens from different numbering systems → wrong tokens in `token_to_symbol` → option chain LTP=0.
+
+### The Fix: `instrument_query.py`
+
+**Location:** `backend/app/services/brokers/market_data/instrument_query.py`
+
+**Broker-to-source mapping:**
+```python
+_SOURCE_BROKER_PREFERENCE = {
+    "smartapi": ["smartapi", "kite"],   # SmartAPI tokens = NSE exchange tokens
+    "upstox":   ["smartapi", "kite"],   # Upstox tokens = SmartAPI tokens (same NSE tokens)
+    "kite":     ["kite", "smartapi"],   # Kite uses its own instrument_token
+    "dhan":     ["smartapi", "kite"],   # Likely same NSE tokens (unverified)
+    "fyers":    ["smartapi", "kite"],
+    "paytm":    ["smartapi", "kite"],
+}
+```
+
+**Fallback chain:** Queries preferred `source_broker` first. If no instruments found, tries the next source in the list. Prevents empty results when only one broker's instruments are loaded.
+
+### Query Sites Updated
+
+| # | File | Lines | Query Purpose | Fix Applied |
+|---|------|-------|--------------|-------------|
+| 1 | `optionchain.py` | 259 | Main option chain instruments | `get_nfo_instruments()` with `adapter.broker_type` |
+| 2 | `options.py` | 53 | List expiry dates | `source_broker` filter added |
+| 3 | `options.py` | 115 | List strikes | `source_broker` filter added |
+| 4 | `options.py` | 157 | Option chain table | `get_nfo_instruments()` |
+| 5 | `options.py` | 232 | Single instrument lookup | `get_single_instrument()` |
+| 6 | `orders.py` | 113 | Validate order legs | `source_broker` filter added |
+| 7 | `orders.py` | 294 | Import positions | `source_broker` filter added |
+| 8 | `option_chain_service.py` | 199 | Service-layer chain fetch | `get_nfo_instruments()` |
+| 9 | `oi_analysis_service.py` | 221 | OI analysis | `get_nfo_instruments()` |
+| 10 | `expected_move_service.py` | 278 | Expected move calc 1 | `get_nfo_instruments()` |
+| 11 | `expected_move_service.py` | 350 | Expected move calc 2 | `get_nfo_instruments()` |
+
 ## Sources
 
 - Kite Connect v3 docs: market-data-and-instruments, market-quotes

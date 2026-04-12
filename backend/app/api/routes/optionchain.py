@@ -253,20 +253,10 @@ async def get_option_chain(
             )
 
         # Get instruments for this expiry from DB (populated by InstrumentMasterService)
-        from sqlalchemy import select, and_
-        from app.models.instruments import Instrument as InstrumentModel
-
-        query = select(InstrumentModel).where(
-            and_(
-                InstrumentModel.name == underlying,
-                InstrumentModel.exchange == "NFO",
-                InstrumentModel.instrument_type.in_(["CE", "PE"]),
-                InstrumentModel.expiry == expiry_date,
-                InstrumentModel.strike.isnot(None),
-            )
-        )
-        result = await db.execute(query)
-        db_instruments = result.scalars().all()
+        # Uses source_broker filtering to avoid duplicate rows from multiple broker sources
+        from app.services.brokers.market_data.instrument_query import get_nfo_instruments
+        broker_type = adapter.broker_type if adapter else "smartapi"
+        db_instruments = await get_nfo_instruments(db, underlying, expiry_date, broker_type=broker_type)
 
         logger.info(f"[OptionChain] DB query returned {len(db_instruments)} instruments for {underlying} expiry {expiry_date}")
 

@@ -193,21 +193,9 @@ class OptionChainService:
         """Fetch instruments for underlying and expiry from the DB (adapter path)
         or from Kite API (legacy path)."""
         if self._is_adapter():
-            from sqlalchemy import select, and_
-            from app.models.instruments import Instrument as InstrumentModel
-
-            result = await self.db.execute(
-                select(InstrumentModel).where(
-                    and_(
-                        InstrumentModel.name == underlying,
-                        InstrumentModel.exchange == "NFO",
-                        InstrumentModel.instrument_type.in_(["CE", "PE"]),
-                        InstrumentModel.expiry == expiry,
-                        InstrumentModel.strike.isnot(None),
-                    )
-                )
-            )
-            rows = result.scalars().all()
+            from app.services.brokers.market_data.instrument_query import get_nfo_instruments
+            broker_type = getattr(self.adapter, 'broker_type', 'smartapi')
+            rows = await get_nfo_instruments(self.db, underlying, expiry, broker_type=broker_type)
             return [
                 {
                     "instrument_token": r.instrument_token,
