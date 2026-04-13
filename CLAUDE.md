@@ -12,7 +12,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 git status && git log --oneline -5
 
 # Start full dev stack (two terminals)
-cd backend && venv\Scripts\activate && python run.py  # Terminal 1 → http://localhost:8001
+cd backend && source venv/Scripts/activate && python run.py  # Terminal 1 → http://localhost:8001
 cd frontend && npm run dev                             # Terminal 2 → http://localhost:5173
 
 # E2E tests (from project root)
@@ -65,6 +65,8 @@ npm run test:happy                                 # All happy paths
 
 Multi-broker platform where all 6 brokers (Zerodha, AngelOne, Dhan, Fyers, Paytm, Upstox) are abstracted behind a single adapter interface. Adding a broker = implement adapter + register in factory, zero core code changes.
 
+**Dual-broker system:** Market data and order execution are independent — a user can use AngelOne for live prices and Zerodha for placing orders simultaneously. Two separate adapter hierarchies: `BrokerAdapter` (orders) and `MarketDataBrokerAdapter` (data).
+
 **Three test layers:** Backend pytest (`backend/tests/`), Frontend Vitest (`frontend/tests/`), E2E Playwright (`tests/e2e/`).
 
 **Key pitfalls:**
@@ -105,6 +107,7 @@ All architectural constraints in `.claude/rules/` (auto-loaded per file type). S
 | `rules/backend-services-subdirectory.md` | Backend Services Subdirectory |
 | `rules/broker-adapter-only.md` | Broker Adapter Only |
 | `rules/broker-name-mapping.md` | Broker Name Mapping |
+| `rules/broker-skill-nudge.md` | Auto-triggers broker expert skills when editing broker-related files |
 | `rules/canonical-symbol-format.md` | Canonical Symbol Format |
 | `rules/claude-behavior.md` | Scope: global |
 | `rules/configuration-ssot.md` | Scope: global |
@@ -123,6 +126,7 @@ All architectural constraints in `.claude/rules/` (auto-loaded per file type). S
 | `rules/pinia-store-composition.md` | Pinia Store Composition Pattern |
 | `rules/prompt-auto-enhance-rule.md` | Scope: global |
 | `rules/pydantic-schema-conventions.md` | Pydantic Schema Conventions |
+| `rules/react-nextjs.md` | Next.js App Router and React Server Component patterns and conventions. |
 | `rules/rule-writing-meta.md` | Meta-guidance for writing effective CLAUDE.md rules, choosing config file placement, and structuring project instructions. |
 | `rules/service-initialization-order.md` | Service Initialization Order (lifespan dependency chain) |
 | `rules/sqlite-test-compat.md` | Sqlite Test Compat |
@@ -137,6 +141,6 @@ All architectural constraints in `.claude/rules/` (auto-loaded per file type). S
 
 ## Claude Code Configuration
 
-The `.claude/` directory contains 167 skills, 49 agents, and 34 rules for Claude Code.
+The `.claude/` directory contains 168 skills, 49 agents, and 39 rules for Claude Code.
 
 <!-- hub:best-practices:end -->

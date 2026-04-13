@@ -8,6 +8,7 @@
 2. **Break Large Tasks**: If a task requires changes to more than 3 files, stop and break it into smaller tasks first.
 3. **Risk & Uncertainty Assessment**: After writing code, list what could break and suggest tests to cover it. When making non-trivial decisions (architecture, trade-offs, library choices), MUST flag uncertainty ("not sure about X because Y") and state key assumptions prefixed with **Assumption:** so users can spot them. For critical assumptions, add what would change if wrong — keep flags brief, sentences not paragraphs.
 4. **Verification**: Always verify your work using tests, linters, or type checkers before reporting completion. Check logs and demonstrate correctness. Diff behavior between main and your changes when relevant. Ask yourself: "Would a staff engineer approve this?" Never mark a task complete without proving it works.
+> **IMPORTANT: Codex will review your output once you are done.** Write every response, code change, and commit message knowing it will be audited by Codex. Do not cut corners.
 
 ## Self-Improvement
 
