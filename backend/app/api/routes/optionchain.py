@@ -317,28 +317,58 @@ async def get_option_chain(
 
         spot_price = 0.0
 
-        # get_best_price() returns LTP when market is open, previous close when closed
-        if adapter:
+        # When market is closed, try NSE EOD snapshot first — brokers may have expired tokens
+        if not is_market_open():
             try:
-                price_map = await adapter.get_best_price([underlying])
-                spot_price = float(price_map.get(underlying, 0))
-            except Exception as e:
-                logger.warning(
-                    f"[OptionChain] User adapter get_best_price failed ({e}), "
-                    "falling back to platform adapter"
-                )
+                snapshot_svc = EODSnapshotService()
+                _eod_spot = await snapshot_svc.get_snapshot(underlying, expiry_date, db)
+                if _eod_spot:
+                    # EODSnapshotService stores spot_price on each row
+                    first_row = await snapshot_svc._load_from_db(underlying, expiry_date, db)
+                    if first_row and first_row[0].spot_price:
+                        spot_price = float(first_row[0].spot_price)
+                        logger.info(f"[OptionChain] Got spot price from EOD snapshot: {spot_price}")
+            except Exception as eod_err:
+                logger.warning(f"[OptionChain] EOD snapshot spot price failed: {eod_err}")
 
-        # Fall back to platform adapter if user adapter failed or returned 0
+        # If no EOD spot, try broker adapters
         if not spot_price:
+            # get_best_price() returns LTP when market is open, previous close when closed
+            if adapter:
+                try:
+                    price_map = await adapter.get_best_price([underlying])
+                    spot_price = float(price_map.get(underlying, 0))
+                except Exception as e:
+                    logger.warning(
+                        f"[OptionChain] User adapter get_best_price failed ({e}), "
+                        "falling back to platform adapter"
+                    )
+
+            # Fall back to platform adapter if user adapter failed or returned 0
+            if not spot_price:
+                try:
+                    platform_adapter = await get_platform_market_data_adapter(db)
+                    price_map = await platform_adapter.get_best_price([underlying])
+                    spot_price = float(price_map.get(underlying, 0))
+                    if spot_price:
+                        adapter = platform_adapter
+                        logger.info(f"[OptionChain] Using platform adapter for {underlying}")
+                except Exception as platform_err:
+                    logger.warning(f"[OptionChain] Platform adapter failed: {platform_err}")
+
+        # Last resort: fetch from NSE directly if no cached snapshot exists
+        if not spot_price and not is_market_open():
             try:
-                platform_adapter = await get_platform_market_data_adapter(db)
-                price_map = await platform_adapter.get_best_price([underlying])
-                spot_price = float(price_map.get(underlying, 0))
-                if spot_price:
-                    adapter = platform_adapter
-                    logger.info(f"[OptionChain] Using platform adapter for {underlying}")
-            except Exception as platform_err:
-                logger.warning(f"[OptionChain] Platform adapter failed: {platform_err}")
+                from app.services.options.nse_fetcher import NSEFetcher
+                fetcher = NSEFetcher()
+                nse_data = await fetcher.fetch_option_chain(underlying, expiry_date)
+                spot_price = float(nse_data["spot_price"])
+                # Store for subsequent requests
+                snapshot_svc = EODSnapshotService()
+                await snapshot_svc._store_snapshot(underlying, expiry_date, nse_data, db)
+                logger.info(f"[OptionChain] Got spot price from live NSE fetch: {spot_price}")
+            except Exception as nse_err:
+                logger.warning(f"[OptionChain] NSE live fetch for spot price failed: {nse_err}")
 
         if not spot_price:
             raise HTTPException(
