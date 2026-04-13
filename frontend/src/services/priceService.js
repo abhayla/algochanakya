@@ -26,9 +26,11 @@ function toTickFormat(data) {
  * @returns {Object} Tick format { ltp, change, change_percent }
  */
 function toTickFormatFromQuote(data) {
-  const ltp = data.last_price || 0
-  const close = data.ohlc?.close || ltp
-  const change = ltp - close
+  // Use close price when ltp is 0 (market closed, some brokers return 0)
+  const rawLtp = data.last_price || 0
+  const close = data.ohlc?.close || 0
+  const ltp = rawLtp || close
+  const change = close ? ltp - close : 0
   const changePercent = close ? (change / close) * 100 : 0
 
   return {
@@ -130,19 +132,29 @@ export async function fetchIndexPrices(updateTickFn) {
     'BSE:SENSEX': getIndexToken('SENSEX')
   }
 
+  let useOhlcFallback = false
+
   try {
     // Try quote first (works during market hours with full data)
     const data = await fetchQuote(instruments)
 
+    // Check if any index has a valid LTP — if all are 0, fall back to OHLC
+    let anyValidLtp = false
     for (const [key, token] of Object.entries(TOKEN_MAP)) {
       if (data[key]) {
-        updateTickFn(token, toTickFormatFromQuote(data[key]))
+        const tick = toTickFormatFromQuote(data[key])
+        if (tick.ltp) anyValidLtp = true
+        updateTickFn(token, tick)
       }
     }
+    if (!anyValidLtp) useOhlcFallback = true
   } catch (quoteError) {
     // Quote failed (likely outside market hours) - fallback to OHLC
     console.debug('Quote API failed, falling back to OHLC:', quoteError.message)
+    useOhlcFallback = true
+  }
 
+  if (useOhlcFallback) {
     try {
       const ohlcData = await fetchOHLC(instruments)
 

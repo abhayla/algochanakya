@@ -480,12 +480,10 @@ async def get_ltp(
         LTP data in format: {"EXCHANGE:SYMBOL": {"last_price": float}}
     """
     from app.services.brokers.market_data import get_user_market_data_adapter
+    from app.services.brokers.market_data.factory import get_platform_market_data_adapter
 
     try:
         instrument_list = [i.strip() for i in instruments.split(",")]
-
-        # Get market data adapter (automatically uses user's preferred broker)
-        adapter = await get_user_market_data_adapter(user.id, db)
 
         # Extract canonical symbols (remove EXCHANGE: prefix)
         canonical_symbols = []
@@ -499,8 +497,19 @@ async def get_ltp(
                 canonical_symbols.append(inst)
                 symbol_map[inst] = inst
 
-        # Get LTP via adapter (returns Decimal values)
-        ltp_data = await adapter.get_ltp(canonical_symbols)
+        # Try user's preferred adapter, fall back to platform adapter
+        ltp_data = None
+        try:
+            adapter = await get_user_market_data_adapter(user.id, db)
+            ltp_data = await adapter.get_ltp(canonical_symbols)
+        except Exception as user_err:
+            logger.warning(f"[Orders] User adapter LTP failed ({user_err}), falling back to platform adapter")
+            try:
+                adapter = await get_platform_market_data_adapter(db)
+                ltp_data = await adapter.get_ltp(canonical_symbols)
+            except Exception as platform_err:
+                logger.error(f"[Orders] Platform adapter LTP also failed: {platform_err}")
+                raise
 
         # Convert to expected format with original keys
         result = {}
@@ -536,12 +545,10 @@ async def get_quote(
         Quote data with OHLC, bid/ask spreads, volume, and depth
     """
     from app.services.brokers.market_data import get_user_market_data_adapter
+    from app.services.brokers.market_data.factory import get_platform_market_data_adapter
 
     try:
         instrument_list = [i.strip() for i in instruments.split(",")]
-
-        # Get market data adapter (automatically uses user's preferred broker)
-        adapter = await get_user_market_data_adapter(user.id, db)
 
         # Extract canonical symbols (remove EXCHANGE: prefix)
         canonical_symbols = []
@@ -555,8 +562,19 @@ async def get_quote(
                 canonical_symbols.append(inst)
                 symbol_map[inst] = inst
 
-        # Get quotes via adapter (returns UnifiedQuote objects)
-        quote_data = await adapter.get_quote(canonical_symbols)
+        # Try user's preferred adapter, fall back to platform adapter
+        quote_data = None
+        try:
+            adapter = await get_user_market_data_adapter(user.id, db)
+            quote_data = await adapter.get_quote(canonical_symbols)
+        except Exception as user_err:
+            logger.warning(f"[Orders] User adapter quote failed ({user_err}), falling back to platform adapter")
+            try:
+                adapter = await get_platform_market_data_adapter(db)
+                quote_data = await adapter.get_quote(canonical_symbols)
+            except Exception as platform_err:
+                logger.error(f"[Orders] Platform adapter quote also failed: {platform_err}")
+                raise
 
         # Convert to expected format with original keys
         result = {}
@@ -607,12 +625,10 @@ async def get_ohlc(
         OHLC data with open, high, low, close, and last_price
     """
     from app.services.brokers.market_data import get_user_market_data_adapter
+    from app.services.brokers.market_data.factory import get_platform_market_data_adapter
 
     try:
         instrument_list = [i.strip() for i in instruments.split(",")]
-
-        # Get market data adapter (automatically uses user's preferred broker)
-        adapter = await get_user_market_data_adapter(user.id, db)
 
         # Extract canonical symbols (remove EXCHANGE: prefix)
         canonical_symbols = []
@@ -626,8 +642,19 @@ async def get_ohlc(
                 canonical_symbols.append(inst)
                 symbol_map[inst] = inst
 
-        # Get quotes via adapter (returns UnifiedQuote objects)
-        quote_data = await adapter.get_quote(canonical_symbols)
+        # Try user's preferred adapter, fall back to platform adapter
+        quote_data = None
+        try:
+            adapter = await get_user_market_data_adapter(user.id, db)
+            quote_data = await adapter.get_quote(canonical_symbols)
+        except Exception as user_err:
+            logger.warning(f"[Orders] User adapter OHLC failed ({user_err}), falling back to platform adapter")
+            try:
+                adapter = await get_platform_market_data_adapter(db)
+                quote_data = await adapter.get_quote(canonical_symbols)
+            except Exception as platform_err:
+                logger.error(f"[Orders] Platform adapter OHLC also failed: {platform_err}")
+                raise
 
         # Convert to OHLC format with original keys
         result = {}

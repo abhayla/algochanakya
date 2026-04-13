@@ -488,9 +488,13 @@ class UpstoxMarketDataAdapter(MarketDataBrokerAdapter):
             bid_qty = int(buy_depth[0].get("quantity", 0)) if buy_depth else 0
             ask_qty = int(sell_depth[0].get("quantity", 0)) if sell_depth else 0
 
+            # Use close price when last_price is 0 (market closed)
+            last_price = float(item.get("last_price", 0) or 0)
+            close_price = float(ohlc.get("close", 0) or 0)
+
             result[canonical] = UnifiedQuote(
                 tradingsymbol=canonical,
-                last_price=Decimal(str(item.get("last_price", 0))),
+                last_price=Decimal(str(last_price if last_price else close_price)),
                 open=Decimal(str(ohlc.get("open", 0))),
                 high=Decimal(str(ohlc.get("high", 0))),
                 low=Decimal(str(ohlc.get("low", 0))),

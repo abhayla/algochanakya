@@ -107,7 +107,10 @@ async def get_current_broker_connection(
         query = query.where(BrokerConnection.id == broker_connection_id)
 
     result = await db.execute(query)
-    broker_connection = result.scalar_one_or_none()
+    # Use first() instead of scalar_one_or_none() to handle multiple active connections
+    # (e.g., when JWT has no broker_connection_id and user has multiple brokers)
+    row = result.first()
+    broker_connection = row[0] if row else None
 
     if not broker_connection:
         raise HTTPException(
