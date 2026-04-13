@@ -17,7 +17,8 @@ from app.models import User
 from app.services.brokers.market_data import get_user_market_data_adapter
 from app.services.brokers.market_data.factory import get_platform_market_data_adapter
 from app.services.autopilot.strike_finder_service import StrikeFinderService
-from app.utils.market_hours import get_data_freshness
+from app.utils.market_hours import get_data_freshness, is_market_open
+from app.services.options.eod_snapshot_service import EODSnapshotService
 from app.utils.dependencies import get_current_user
 from app.schemas.autopilot import (
     StrikeFindByDeltaRequest,
@@ -32,6 +33,99 @@ router = APIRouter()
 
 # Constants
 RISK_FREE_RATE = 0.07  # 7% for India
+
+
+def _should_use_eod_snapshot(all_quotes: dict) -> bool:
+    """Check if broker OI is mostly zeros (typical closed-market response).
+
+    Uses a 90% threshold — if >=90% of strikes have zero OI, snapshot is needed.
+    Upstox OC API sometimes returns OI for 1-2 ATM strikes even when closed.
+    """
+    if not all_quotes:
+        return True
+    total = len(all_quotes)
+    zero_count = sum(1 for q in all_quotes.values() if q.get("oi", 0) == 0)
+    return zero_count >= total * 0.9
+
+
+def _apply_eod_fallback(
+    all_quotes: dict,
+    eod_snapshot: dict | None,
+    strikes_data: dict,
+) -> dict:
+    """Apply EOD snapshot OI/volume/LTP to broker quotes.
+
+    Two modes:
+    1. all_quotes is populated (broker returned data with zero OI) — fill OI/volume from snapshot
+    2. all_quotes is empty (broker returned nothing) — create quote entries from strikes_data + snapshot
+
+    Mutates and returns all_quotes for convenience.
+    """
+    if not eod_snapshot:
+        return all_quotes
+
+    filled = 0
+
+    # Mode 2: all_quotes is empty — create entries from strikes_data + snapshot
+    if not all_quotes:
+        for strike_val, data in strikes_data.items():
+            snap_strike = Decimal(str(int(strike_val)))
+            # Try exact match, then with .00
+            snap = eod_snapshot.get(snap_strike)
+            if not snap:
+                snap_strike_dec = Decimal(f"{int(strike_val)}.00")
+                snap = eod_snapshot.get(snap_strike_dec)
+            if not snap:
+                continue
+
+            for side in ("ce", "pe"):
+                inst = data.get(side)
+                if not inst:
+                    continue
+                symbol_key = f"NFO:{inst['tradingsymbol']}"
+                ltp = float(snap.get(f"{side}_ltp", 0))
+                all_quotes[symbol_key] = {
+                    "last_price": ltp,
+                    "oi": snap.get(f"{side}_oi", 0),
+                    "volume": snap.get(f"{side}_volume", 0),
+                    "ohlc": {"open": 0, "high": 0, "low": 0, "close": ltp},
+                    "depth": {"buy": [], "sell": []},
+                }
+                filled += 1
+        logger.info(f"[EOD] Created {filled} quote entries from snapshot (all_quotes was empty)")
+        return all_quotes
+
+    # Mode 1: all_quotes has entries — fill zero-OI entries from snapshot
+    for key, quote in all_quotes.items():
+        if quote.get("oi", 0) != 0:
+            continue
+
+        symbol = key.split(":")[-1] if ":" in key else key
+        opt_type = symbol[-2:].upper()
+        if opt_type not in ("CE", "PE"):
+            continue
+
+        matched_strike = None
+        for snap_strike in eod_snapshot:
+            strike_int = int(snap_strike)
+            if symbol.endswith(f"{strike_int}{opt_type}"):
+                matched_strike = snap_strike
+                break
+
+        if matched_strike is None:
+            continue
+
+        snap = eod_snapshot[matched_strike]
+        if opt_type == "CE":
+            quote["oi"] = snap.get("ce_oi", 0)
+            quote["volume"] = snap.get("ce_volume", 0)
+        elif opt_type == "PE":
+            quote["oi"] = snap.get("pe_oi", 0)
+            quote["volume"] = snap.get("pe_volume", 0)
+        filled += 1
+
+    logger.info(f"[EOD] Filled {filled}/{len(all_quotes)} quote entries from snapshot")
+    return all_quotes
 
 
 def calculate_iv(option_price: float, spot: float, strike: float,
@@ -427,6 +521,22 @@ async def get_option_chain(
 
         logger.info(f"[OptionChain] Fetched quotes for {len(all_quotes)}/{len(list(token_to_symbol.values()))} instruments")
 
+        # EOD Snapshot fallback: when market is closed and broker OI is all zeros
+        eod_snapshot = None
+        use_eod = False
+        if not is_market_open() and _should_use_eod_snapshot(all_quotes):
+            try:
+                snapshot_svc = EODSnapshotService()
+                eod_snapshot = await snapshot_svc.get_snapshot(underlying, expiry_date, db)
+                if eod_snapshot:
+                    all_quotes = _apply_eod_fallback(
+                        all_quotes, eod_snapshot, strikes_data,
+                    )
+                    use_eod = True
+                    logger.info(f"[OptionChain] Applied EOD snapshot fallback ({len(eod_snapshot)} strikes)")
+            except Exception as e:
+                logger.warning(f"[OptionChain] EOD snapshot failed: {e}")
+
         if not strikes_data:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -578,7 +688,7 @@ async def get_option_chain(
             "spot_price": spot_price,
             "days_to_expiry": days_to_expiry,
             "lot_size": LOT_SIZES.get(underlying, 75),
-            "data_freshness": get_data_freshness(),
+            "data_freshness": "EOD_SNAPSHOT" if use_eod else get_data_freshness(),
             "chain": option_chain,
             "summary": {
                 "total_ce_oi": total_ce_oi,

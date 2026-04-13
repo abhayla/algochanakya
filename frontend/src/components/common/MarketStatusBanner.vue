@@ -2,12 +2,12 @@
 /**
  * MarketStatusBanner
  *
- * Shown when data_freshness === 'LAST_KNOWN' — market is closed and
- * prices reflect the previous trading session's close, not live ticks.
+ * Shown when data_freshness !== 'LIVE' — market is closed and
+ * prices reflect either the previous session's close or an EOD snapshot.
  * Mirrors the behavior of NSE India, Sensibull, and Opstra.
  */
 defineProps({
-  /** 'LIVE' | 'LAST_KNOWN' */
+  /** 'LIVE' | 'LAST_KNOWN' | 'EOD_SNAPSHOT' */
   dataFreshness: {
     type: String,
     default: 'LIVE'
@@ -30,6 +30,17 @@ defineProps({
     <span class="banner-icon" aria-hidden="true">🕒</span>
     <span class="banner-text">
       Market closed &mdash; showing previous session's closing prices
+    </span>
+  </div>
+  <div
+    v-else-if="dataFreshness === 'EOD_SNAPSHOT'"
+    class="market-status-banner eod-snapshot"
+    role="status"
+    :data-testid="`${screen}-eod-snapshot-banner`"
+  >
+    <span class="banner-icon" aria-hidden="true">📊</span>
+    <span class="banner-text">
+      Market closed &mdash; showing end-of-day snapshot data (OI, Volume, PCR, Max Pain)
     </span>
   </div>
 </template>
@@ -56,5 +67,11 @@ defineProps({
 
 .banner-text {
   line-height: 1.3;
+}
+
+.eod-snapshot {
+  background: #eff6ff;
+  border-color: #93c5fd;
+  color: #1e40af;
 }
 </style>

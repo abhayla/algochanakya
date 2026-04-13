@@ -228,39 +228,39 @@
               </td>
 
               <!-- CE Data -->
-              <td class="ce-col oi-col">
+              <td class="ce-col oi-col" :data-testid="'optionchain-ce-oi-' + row.strike">
                 <div class="oi-cell">
                   <div class="oi-bar ce" :style="{ width: store.getOIBarWidth(row.ce?.oi, 'ce') + 'px' }"></div>
                   <span>{{ formatOI(row.ce?.oi) }}</span>
                 </div>
               </td>
               <td class="ce-col" :class="getChangeClass(row.ce?.change)">{{ formatChange(row.ce?.change) }}</td>
-              <td class="ce-col text-muted">{{ formatOI(row.ce?.volume) }}</td>
-              <td class="ce-col">{{ row.ce?.iv || '-' }}</td>
+              <td class="ce-col text-muted" :data-testid="'optionchain-ce-volume-' + row.strike">{{ formatOI(row.ce?.volume) }}</td>
+              <td class="ce-col" :data-testid="'optionchain-ce-iv-' + row.strike">{{ row.ce?.iv || '-' }}</td>
               <td v-if="store.showGreeks" class="ce-col text-muted" :data-testid="'optionchain-ce-delta-' + row.strike">{{ row.ce?.delta?.toFixed(2) || '-' }}</td>
               <td v-if="store.showGreeks" class="ce-col text-muted" :data-testid="'optionchain-ce-gamma-' + row.strike">{{ row.ce?.gamma?.toFixed(4) || '-' }}</td>
               <td v-if="store.showGreeks" class="ce-col text-muted" :data-testid="'optionchain-ce-theta-' + row.strike">{{ row.ce?.theta?.toFixed(2) || '-' }}</td>
               <td v-if="store.showGreeks" class="ce-col text-muted" :data-testid="'optionchain-ce-vega-' + row.strike">{{ row.ce?.vega?.toFixed(2) || '-' }}</td>
-              <td class="ce-col ltp-col" :class="{ 'itm': row.is_itm_ce }" data-testid="optionchain-ltp-cell">{{ formatPrice(row.ce?.ltp) }}</td>
+              <td class="ce-col ltp-col" :class="{ 'itm': row.is_itm_ce }" :data-testid="'optionchain-ce-ltp-' + row.strike">{{ formatPrice(row.ce?.ltp) }}</td>
               <td class="ce-col" :class="getChangeClass(row.ce?.change)">{{ formatPct(row.ce?.change_pct) }}</td>
 
               <!-- Strike -->
-              <td class="strike-col">
+              <td class="strike-col" :data-testid="'optionchain-strike-' + row.strike">
                 <span class="strike-value">{{ row.strike }}</span>
                 <span v-if="row.is_atm" class="atm-badge" data-testid="optionchain-atm-badge">ATM</span>
               </td>
 
               <!-- PE Data -->
               <td class="pe-col" :class="getChangeClass(row.pe?.change)">{{ formatPct(row.pe?.change_pct) }}</td>
-              <td class="pe-col ltp-col" :class="{ 'itm': row.is_itm_pe }" data-testid="optionchain-ltp-cell">{{ formatPrice(row.pe?.ltp) }}</td>
+              <td class="pe-col ltp-col" :class="{ 'itm': row.is_itm_pe }" :data-testid="'optionchain-pe-ltp-' + row.strike">{{ formatPrice(row.pe?.ltp) }}</td>
               <td v-if="store.showGreeks" class="pe-col text-muted" :data-testid="'optionchain-pe-delta-' + row.strike">{{ row.pe?.delta?.toFixed(2) || '-' }}</td>
               <td v-if="store.showGreeks" class="pe-col text-muted" :data-testid="'optionchain-pe-gamma-' + row.strike">{{ row.pe?.gamma?.toFixed(4) || '-' }}</td>
               <td v-if="store.showGreeks" class="pe-col text-muted" :data-testid="'optionchain-pe-theta-' + row.strike">{{ row.pe?.theta?.toFixed(2) || '-' }}</td>
               <td v-if="store.showGreeks" class="pe-col text-muted" :data-testid="'optionchain-pe-vega-' + row.strike">{{ row.pe?.vega?.toFixed(2) || '-' }}</td>
-              <td class="pe-col">{{ row.pe?.iv || '-' }}</td>
-              <td class="pe-col text-muted">{{ formatOI(row.pe?.volume) }}</td>
+              <td class="pe-col" :data-testid="'optionchain-pe-iv-' + row.strike">{{ row.pe?.iv || '-' }}</td>
+              <td class="pe-col text-muted" :data-testid="'optionchain-pe-volume-' + row.strike">{{ formatOI(row.pe?.volume) }}</td>
               <td class="pe-col" :class="getChangeClass(row.pe?.change)">{{ formatChange(row.pe?.change) }}</td>
-              <td class="pe-col oi-col">
+              <td class="pe-col oi-col" :data-testid="'optionchain-pe-oi-' + row.strike">
                 <div class="oi-cell reverse">
                   <span>{{ formatOI(row.pe?.oi) }}</span>
                   <div class="oi-bar pe" :style="{ width: store.getOIBarWidth(row.pe?.oi, 'pe') + 'px' }"></div>

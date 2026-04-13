@@ -97,6 +97,7 @@ from app.main import app
 from app.models import User
 from app.models.broker_connections import BrokerConnection
 from app.models.strategy_templates import StrategyTemplate
+from app.models.eod_option_snapshot import EODOptionSnapshot
 
 
 # Test database URL - uses SQLite for testing
@@ -174,6 +175,7 @@ async def db_session(test_engine) -> AsyncGenerator[AsyncSession, None]:
 
     async with async_session() as session:
         # Clean up tables before each test for isolation
+        await session.execute(EODOptionSnapshot.__table__.delete())
         await session.execute(StrategyTemplate.__table__.delete())
         await session.execute(BrokerConnection.__table__.delete())
         await session.execute(User.__table__.delete())

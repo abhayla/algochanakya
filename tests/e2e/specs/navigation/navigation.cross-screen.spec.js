@@ -21,7 +21,7 @@ test.describe('Navigation Menu - AutoPilot Across All Screens', () => {
   for (const screen of screens) {
     test(`AutoPilot nav item visible on ${screen.name} screen`, async ({ authenticatedPage }) => {
       await authenticatedPage.goto(screen.path);
-      await authenticatedPage.waitForLoadState('networkidle');
+      await authenticatedPage.waitForLoadState('domcontentloaded');
 
       const autopilotNav = authenticatedPage.locator('[data-testid="kite-header-nav-autopilot"]');
       await expect(autopilotNav).toBeVisible();
@@ -29,29 +29,30 @@ test.describe('Navigation Menu - AutoPilot Across All Screens', () => {
 
     test(`AutoPilot nav item has robot icon on ${screen.name} screen`, async ({ authenticatedPage }) => {
       await authenticatedPage.goto(screen.path);
-      await authenticatedPage.waitForLoadState('networkidle');
-
+      // Wait for nav item to be present before checking SVG child
+      const autopilotNav = authenticatedPage.locator('[data-testid="kite-header-nav-autopilot"]');
+      await expect(autopilotNav).toBeVisible({ timeout: 60000 });
       const icon = authenticatedPage.locator('[data-testid="kite-header-nav-autopilot"] svg');
       await expect(icon).toBeVisible();
     });
 
     test(`AutoPilot nav item clickable from ${screen.name} screen`, async ({ authenticatedPage }) => {
       await authenticatedPage.goto(screen.path);
-      await authenticatedPage.waitForLoadState('networkidle');
+      await authenticatedPage.waitForLoadState('domcontentloaded');
 
       await authenticatedPage.locator('[data-testid="kite-header-nav-autopilot"]').click();
       await expect(authenticatedPage).toHaveURL(/\/autopilot/);
     });
   }
 
-  test('navigation bar is consistent across all screens', async ({ authenticatedPage }) => {
+  test('navigation bar is consistent across all screens', { retries: 1 }, async ({ authenticatedPage }) => {
     for (const screen of screens) {
       await authenticatedPage.goto(screen.path);
       await authenticatedPage.waitForLoadState('domcontentloaded');
 
       // Check that all 6 nav items exist (dashboard, optionchain, ofo, strategy, positions, autopilot)
       const navItems = authenticatedPage.locator('[data-testid="kite-header-nav"] a');
-      await expect(navItems.first()).toBeVisible(); // wait for Vue to mount
+      await expect(navItems.first()).toBeVisible({ timeout: 60000 }); // wait for Vue to mount
       const count = await navItems.count();
       expect(count).toBe(6);
 

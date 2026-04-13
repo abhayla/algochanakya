@@ -26,6 +26,7 @@ from app.models.ai_risk_state import AIRiskState, RiskState
 from app.models.ai_strategy_cooldown import AIStrategyCooldown
 from app.models.ai_regime_history import AIRegimeHistory
 from app.models.ai_regime_performance import AIRegimePerformance
+from app.models.eod_option_snapshot import EODOptionSnapshot
 
 __all__ = [
     "User", "BrokerConnection", "Watchlist", "Instrument", "Strategy", "StrategyLeg", "StrategyTemplate",
@@ -37,5 +38,6 @@ __all__ = [
     "AIRiskState", "RiskState",
     "AIStrategyCooldown",
     "AIRegimeHistory",
-    "AIRegimePerformance"
+    "AIRegimePerformance",
+    "EODOptionSnapshot"
 ]

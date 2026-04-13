@@ -22,7 +22,8 @@ from app.models import (
     AIRiskState, RiskState,
     AIStrategyCooldown,
     AIRegimeHistory,
-    AIRegimePerformance
+    AIRegimePerformance,
+    EODOptionSnapshot
 )  # Import all models
 
 # this is the Alembic Config object, which provides
