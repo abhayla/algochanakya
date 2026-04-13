@@ -6,11 +6,11 @@
       "Bash(npm run:*)"
     ]
   },
-  "model": "opusplan",
+  "model": "claude-opus-4-6",
   "modelProfiles": {
     "opusplan": {
-      "planningModel": "claude-opus-4-5-20251101",
-      "implementationModel": "claude-sonnet-4-5-20250929"
+      "planningModel": "claude-opus-4-6",
+      "implementationModel": "claude-opus-4-6"
     }
   }
 }
