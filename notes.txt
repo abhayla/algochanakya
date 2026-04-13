@@ -486,40 +486,32 @@ Task: Verify and Fix Live Market Data on Dashboard Header & Option Chain Screen 
 Steps:
 
 1. Read before touching anything:
-
-
-    - backend/app/services/brokers/market_data/ — understand the market data adapter interface
-    - backend/app/services/brokers/market_data/smartapi_adapter.py — AngelOne implementation
-    - backend/app/api/routes/ — find routes serving dashboard header and option chain data
-    - frontend/src/components/ — find the dashboard header component and option chain view
-    - .claude/rules.md — broker abstraction rules (CRITICAL, enforced by hooks)
+   - backend/app/services/brokers/market_data/ — understand the market data adapter interface
+   - backend/app/services/brokers/market_data/smartapi_adapter.py — AngelOne implementation
+   - backend/app/api/routes/ — find routes serving dashboard header and option chain data
+   - frontend/src/components/ — find the dashboard header component and option chain view
+   - .claude/rules.md — broker abstraction rules (CRITICAL, enforced by hooks)
 
 2. Verify the data flow end-to-end:
-
-
-    - Confirm dashboard header calls the correct backend endpoint for index prices
-    - Confirm Option Chain screen subscribes to live ticks via WebSocket or polls quotes via REST
-    - Confirm both use get_market_data_adapter() factory — NOT direct SmartAPI/KiteConnect imports
-    - Confirm index tokens use INDEX_TOKENS from app.constants.trading — NOT hardcoded values (256265, 260105, etc.)
+   - Confirm dashboard header calls the correct backend endpoint for index prices
+   - Confirm Option Chain screen subscribes to live ticks via WebSocket or polls quotes via REST
+   - Confirm both use get_market_data_adapter() factory — NOT direct SmartAPI/KiteConnect imports
+   - Confirm index tokens use INDEX_TOKENS from app.constants.trading — NOT hardcoded values (256265, 260105, etc.)
 
 3. Test with AngelOne credentials:
-
-
-    - Start dev backend (cd backend && venv\Scripts\activate && python run.py)
-    - Start dev frontend (cd frontend && npm run dev)
-    - Open http://localhost:5173/dashboard — verify Nifty, BankNifty, FinNifty, Sensex prices update live
-    - Open http://localhost:5173/optionchain — verify LTP column updates with live ticks
-    - Check browser console and backend logs for errors
+   - Start dev backend (cd backend && venv\Scripts\activate && python run.py)
+   - Start dev frontend (cd frontend && npm run dev)
+   - Open http://localhost:5173/dashboard — verify Nifty, BankNifty, FinNifty, Sensex prices update live
+   - Open http://localhost:5173/optionchain — verify LTP column updates with live ticks
+   - Check browser console and backend logs for errors
 
 4. Fix any issues found, strictly following broker abstraction:
-
-
-    - Backend: use get_market_data_adapter() from app.services.brokers.market_data.factory
-    - Backend: use token_manager.get_broker_token() for symbol→token mapping
-    - Backend: use INDEX_TOKENS["NIFTY"] etc., never hardcoded integers
-    - Frontend: all API calls through src/services/api.js or a feature-specific *Api.js module — never raw axios
-    - Frontend: WebSocket subscriptions must be cleaned up in onUnmounted()
-    - AngelOne API key mapping: ANGEL_API_KEY for live quotes/WebSocket, ANGEL_HIST_API_KEY for historical,
+   - Backend: use get_market_data_adapter() from app.services.brokers.market_data.factory
+   - Backend: use token_manager.get_broker_token() for symbol→token mapping
+   - Backend: use INDEX_TOKENS["NIFTY"] etc., never hardcoded integers
+   - Frontend: all API calls through src/services/api.js or a feature-specific \*Api.js module — never raw axios
+   - Frontend: WebSocket subscriptions must be cleaned up in onUnmounted()
+   - AngelOne API key mapping: ANGEL_API_KEY for live quotes/WebSocket, ANGEL_HIST_API_KEY for historical,
 
 ANGEL_TRADE_API_KEY for orders — using the wrong key returns AG8001 Invalid Token 5. After fixes: invoke auto-verify skill, then docs-maintainer if any architecture changed
 
@@ -530,3 +522,24 @@ Constraints:
 - DB stores 'angelone' but BrokerType enum uses 'angel' — use the broker name mapping utility if converting
 
 ---
+
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python C:/Abhay/VibeCoding/algochanakya/.claude/hooks/prompt_enhance_reminder.py",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash C:/Abhay/VibeCoding/algochanakya/.claude/hooks/prompt-enhance-reminder.sh"
+          }
+        ]
+      }
+    ],

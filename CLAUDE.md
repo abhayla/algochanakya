@@ -3,7 +3,7 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 **AlgoChanakya:** Multi-broker options trading platform (Indian markets)
-**Working Directory:** `D:\Abhay\VibeCoding\algochanakya` (development)
+**Working Directory:** Use the current working directory (varies per machine)
 
 ## Quick Reference
 
@@ -47,7 +47,7 @@ npm run test:happy                                 # All happy paths
 
 ## CRITICAL: Never Touch Production
 
-- **Dev:** `D:\Abhay\VibeCoding\algochanakya` (backend port 8001, frontend port 5173)
+- **Dev:** Current working directory (backend port 8001, frontend port 5173)
 - **NEVER:** `C:\Apps\algochanakya` (production — port 8000/3004)
 
 ## Navigation
