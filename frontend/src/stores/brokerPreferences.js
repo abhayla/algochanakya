@@ -112,6 +112,11 @@ export const useBrokerPreferencesStore = defineStore('brokerPreferences', {
       try {
         const response = await api.put('/api/user/preferences/', updates)
         this.preferences = response.data
+        // Clear stale WebSocket activeSource so the badge immediately reflects
+        // the saved preference (WebSocket will set it again once reconnected)
+        if ('market_data_source' in updates) {
+          this.activeSource = null
+        }
         return this.preferences
       } catch (error) {
         this.error = error.response?.data?.detail ?? error.message

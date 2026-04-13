@@ -155,4 +155,50 @@ describe('useBrokerPreferencesStore', () => {
 
     expect(store.activeSourceLabel).toBe('Platform Default')
   })
+
+  it('activeSourceLabel prefers WebSocket activeSource over saved preference', async () => {
+    api.get.mockResolvedValueOnce({ data: { ...mockPreferences, market_data_source: 'smartapi' } })
+    const store = useBrokerPreferencesStore()
+    await store.fetchPreferences()
+
+    store.setActiveSource('upstox')
+    expect(store.activeSourceLabel).toBe('Upstox')
+  })
+
+  // ---------------------------------------------------------------------------
+  // Bug regression: changing market_data_source must clear stale activeSource
+  // ---------------------------------------------------------------------------
+
+  it('updatePreferences clears activeSource when market_data_source changes', async () => {
+    api.get.mockResolvedValueOnce({ data: { ...mockPreferences, market_data_source: 'upstox' } })
+    const store = useBrokerPreferencesStore()
+    await store.fetchPreferences()
+
+    // WebSocket reports "upstox" as active source
+    store.setActiveSource('upstox')
+    expect(store.activeSourceLabel).toBe('Upstox')
+
+    // User changes to smartapi in settings
+    api.put.mockResolvedValueOnce({ data: { ...mockPreferences, market_data_source: 'smartapi' } })
+    await store.updatePreferences({ market_data_source: 'smartapi' })
+
+    // Badge should now show SmartAPI, not stale Upstox
+    expect(store.activeSource).toBeNull()
+    expect(store.activeSourceLabel).toBe('SmartAPI')
+  })
+
+  it('updatePreferences does not clear activeSource for non-market-data updates', async () => {
+    api.get.mockResolvedValueOnce({ data: mockPreferences })
+    const store = useBrokerPreferencesStore()
+    await store.fetchPreferences()
+
+    store.setActiveSource('upstox')
+
+    // Update order_broker only — activeSource should remain
+    api.put.mockResolvedValueOnce({ data: { ...mockPreferences, order_broker: 'dhan' } })
+    await store.updatePreferences({ order_broker: 'dhan' })
+
+    expect(store.activeSource).toBe('upstox')
+    expect(store.activeSourceLabel).toBe('Upstox')
+  })
 })
