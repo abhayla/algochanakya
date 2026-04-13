@@ -397,17 +397,24 @@ class PaytmTickerAdapter(TickerAdapter):
             return []
 
         elif msg_type == _MSG_ERROR:
+            error_msg = payload.get("message", "")
+            error_code = payload.get("code", "")
             logger.warning(
-                "[Paytm] Server error: %s (code=%s)",
-                payload.get("message"), payload.get("code"),
+                "[Paytm] Server error: %s (code=%s)", error_msg, error_code,
             )
+            if "ACCESS_TOKEN_EXPIRED" in str(error_code) or "SESSION_EXPIRED" in str(error_code):
+                self._report_auth_error(str(error_code), str(error_msg))
+            else:
+                self._report_error("server_error", f"code={error_code} message={error_msg}")
             return []
 
         elif msg_type == _MSG_CLOSE:
+            close_code = payload.get("code", "")
+            close_reason = payload.get("reason", "")
             logger.warning(
-                "[Paytm] Server close: code=%s reason=%s",
-                payload.get("code"), payload.get("reason"),
+                "[Paytm] Server close: code=%s reason=%s", close_code, close_reason,
             )
+            self._report_error("server_close", f"code={close_code} reason={close_reason}")
             return []
 
         else:
@@ -582,10 +589,12 @@ class PaytmTickerAdapter(TickerAdapter):
 
         except websockets.exceptions.ConnectionClosed as e:
             logger.warning("[Paytm] WebSocket connection closed: %s", e)
+            self._report_error("connection_closed", str(e))
             self._connected = False
 
         except Exception as e:
             logger.error("[Paytm] Receive loop error: %s", e, exc_info=True)
+            self._report_error("receive_loop_error", str(e))
             self._connected = False
 
         logger.info("[Paytm] Receive loop ended")

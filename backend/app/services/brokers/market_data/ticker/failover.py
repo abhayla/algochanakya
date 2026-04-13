@@ -14,6 +14,8 @@ from typing import Optional, TYPE_CHECKING
 from datetime import datetime
 
 from app.constants.brokers import ORG_ACTIVE_BROKERS
+from app.services.brokers.market_data.ticker.token_policy import can_auto_refresh
+from app.services.brokers.platform_token_refresh import refresh_broker_token
 
 if TYPE_CHECKING:
     from app.services.brokers.market_data.ticker.pool import TickerPool
@@ -202,7 +204,34 @@ class FailoverController:
                 self._primary_healthy_since = None
 
     async def _execute_failback(self) -> None:
-        """Execute failback (secondary -> primary)."""
+        """Execute failback (secondary -> primary).
+
+        Before switching back, verifies primary credentials are valid.
+        If invalid and broker can auto-refresh, attempts refresh first.
+        If refresh fails or broker can't auto-refresh, skips failback.
+        """
+        # Check primary credentials before failback
+        if self._pool and not self._pool.credentials_valid(self.primary_broker):
+            if can_auto_refresh(self.primary_broker):
+                logger.info(
+                    "[FailoverController] Primary %s credentials expired — refreshing",
+                    self.primary_broker,
+                )
+                refreshed = await refresh_broker_token(self.primary_broker)
+                if not refreshed or not self._pool.credentials_valid(self.primary_broker):
+                    logger.warning(
+                        "[FailoverController] Primary %s refresh failed — skipping failback",
+                        self.primary_broker,
+                    )
+                    return
+            else:
+                logger.warning(
+                    "[FailoverController] Primary %s credentials invalid and not refreshable "
+                    "— skipping failback",
+                    self.primary_broker,
+                )
+                return
+
         logger.warning(
             "[FailoverController] Executing failback: %s -> %s",
             self.secondary_broker, self.primary_broker,

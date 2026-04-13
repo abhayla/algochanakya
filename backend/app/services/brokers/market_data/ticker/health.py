@@ -16,6 +16,11 @@ from typing import Dict, Optional, Callable, Awaitable
 from datetime import datetime, timedelta
 from dataclasses import dataclass, field
 
+from app.services.brokers.market_data.ticker.token_policy import (
+    RetryCategory,
+    classify_auth_error,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -147,6 +152,36 @@ class HealthMonitor:
         health.avg_latency_ms = (
             sum(health.latency_samples) / len(health.latency_samples)
         )
+
+    async def record_auth_failure(
+        self, broker_type: str, error_code: str, error_msg: str
+    ) -> None:
+        """Record auth failure with classification-aware handling.
+
+        NOT_RETRYABLE / NOT_REFRESHABLE → instant failover (health=0, callback)
+        RETRYABLE / RETRYABLE_ONCE → gradual decay via record_error()
+        """
+        if broker_type not in self._adapter_health:
+            return
+
+        category = classify_auth_error(broker_type, error_code, error_msg)
+
+        if category in (RetryCategory.NOT_RETRYABLE, RetryCategory.NOT_REFRESHABLE):
+            # Instant failover: zero health, trigger callback immediately
+            health = self._adapter_health[broker_type]
+            health.health_score = 0.0
+            health.consecutive_low_count = self.CONSECUTIVE_LOW_COUNT  # Skip gradual check
+
+            logger.warning(
+                "[HealthMonitor] %s auth failure (%s): %s %s — instant failover",
+                broker_type, category.value, error_code, error_msg,
+            )
+
+            if self._on_health_change_callback:
+                await self._on_health_change_callback(broker_type, 0.0)
+        else:
+            # Retryable — use gradual decay path
+            self.record_error(broker_type, f"auth:{error_code}: {error_msg}")
 
     # ========== Health Queries ==========
 

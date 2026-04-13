@@ -402,9 +402,15 @@ class FyersTickerAdapter(TickerAdapter):
     def _on_error(self, message: Any) -> None:
         """Callback on WebSocket error (WS thread)."""
         logger.error("[Fyers] WebSocket error: %s", message)
+        msg_str = str(message) if message else ""
+        if "invalid_token" in msg_str.lower() or "-16" in msg_str:
+            self._report_auth_error("invalid_token", msg_str)
+        else:
+            self._report_error("websocket_error", msg_str)
 
     def _on_close(self, message: Any) -> None:
         """Callback when WebSocket closes (WS thread)."""
         logger.warning("[Fyers] WebSocket closed: %s", message)
+        self._report_error("connection_closed", str(message) if message else "")
         self._ws_connected_event.clear()
         self._connected = False

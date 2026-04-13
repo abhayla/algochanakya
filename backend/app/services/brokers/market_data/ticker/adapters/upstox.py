@@ -421,10 +421,15 @@ class UpstoxTickerAdapter(TickerAdapter):
         async with httpx.AsyncClient() as client:
             resp = await client.get(_REST_AUTHORIZE_URL, headers=headers)
             if resp.status_code != 200:
-                raise ConnectionError(
+                error_msg = (
                     f"[Upstox] Failed to get authorized WS URL "
                     f"(HTTP {resp.status_code}): {resp.text}"
                 )
+                if resp.status_code == 401:
+                    self._report_auth_error("UDAPI100050", error_msg)
+                else:
+                    self._report_error("http_error", error_msg)
+                raise ConnectionError(error_msg)
             data = resp.json()
 
         try:
@@ -811,10 +816,12 @@ class UpstoxTickerAdapter(TickerAdapter):
 
         except websockets.exceptions.ConnectionClosed as e:
             logger.warning("[Upstox] WebSocket connection closed: %s", e)
+            self._report_error("connection_closed", str(e))
             self._connected = False
 
         except Exception as e:
             logger.error("[Upstox] Receive loop error: %s", e, exc_info=True)
+            self._report_error("receive_loop_error", str(e))
             self._connected = False
 
         logger.info("[Upstox] Receive loop ended")

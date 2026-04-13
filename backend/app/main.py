@@ -161,14 +161,19 @@ async def lifespan(app: FastAPI):
         pool.register_adapter("upstox", UpstoxTickerAdapter)
         pool.register_adapter("paytm", PaytmTickerAdapter)
 
-        # Wire pool → router dispatch
-        router.set_pool(pool)
-        await pool.initialize(on_tick_callback=router.dispatch)
-
-        # Create health monitor and register adapters
+        # Create health monitor and register ALL broker adapters
+        # Depends on: nothing. Must happen BEFORE pool.initialize() so pool can forward events.
         ticker_health = TickerHealthMonitor()
         ticker_health.register_adapter("smartapi")
         ticker_health.register_adapter("kite")
+        ticker_health.register_adapter("dhan")
+        ticker_health.register_adapter("fyers")
+        ticker_health.register_adapter("upstox")
+        ticker_health.register_adapter("paytm")
+
+        # Wire pool → router dispatch + health monitor
+        router.set_pool(pool)
+        await pool.initialize(on_tick_callback=router.dispatch, health_monitor=ticker_health)
 
         # Create failover controller and wire dependencies
         failover = FailoverController(

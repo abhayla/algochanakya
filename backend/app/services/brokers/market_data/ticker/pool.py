@@ -20,6 +20,13 @@ from typing import Callable, Dict, List, Optional, Set, Type, Any
 
 from app.services.brokers.market_data.ticker.adapter_base import TickerAdapter
 from app.services.brokers.market_data.ticker.models import NormalizedTick
+from app.services.brokers.market_data.ticker.token_policy import can_auto_refresh
+from app.services.brokers.platform_token_refresh import refresh_broker_token
+
+# TYPE_CHECKING avoids circular import — HealthMonitor is only used for type hints
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from app.services.brokers.market_data.ticker.health import HealthMonitor
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +77,9 @@ class TickerPool:
         # Tick callback (set by initialize, typically TickerRouter.dispatch)
         self._on_tick: Optional[Callable[[List[NormalizedTick]], Any]] = None
 
+        # Health monitor (set by initialize, optional)
+        self._health_monitor: Optional["HealthMonitor"] = None
+
         # Background tasks
         self._idle_cleanup_task: Optional[asyncio.Task] = None
         self._initialized = False
@@ -81,12 +91,14 @@ class TickerPool:
     async def initialize(
         self,
         on_tick_callback: Callable[[List[NormalizedTick]], Any],
+        health_monitor: Optional["HealthMonitor"] = None,
     ) -> None:
         """Initialize the pool with a tick dispatch callback (typically TickerRouter.dispatch)."""
         self._on_tick = on_tick_callback
+        self._health_monitor = health_monitor
         self._idle_cleanup_task = asyncio.create_task(self._idle_cleanup_loop())
         self._initialized = True
-        logger.info("TickerPool initialized")
+        logger.info("TickerPool initialized (health_monitor=%s)", "enabled" if health_monitor else "disabled")
 
     async def shutdown(self) -> None:
         """Disconnect all adapters and cancel background tasks."""
@@ -159,7 +171,11 @@ class TickerPool:
     # ═══════════════════════════════════════════════════════════════════════
 
     async def get_or_create_adapter(self, broker_type: str) -> TickerAdapter:
-        """Get an existing adapter or create + connect a new one."""
+        """Get an existing adapter or create + connect a new one.
+
+        If credentials are expired and the broker supports auto-refresh,
+        attempts to refresh before connecting.
+        """
         if broker_type in self._adapters:
             adapter = self._adapters[broker_type]
             if adapter.is_connected:
@@ -175,6 +191,15 @@ class TickerPool:
         if broker_type not in self._adapter_classes:
             raise ValueError(f"No adapter registered for broker: {broker_type}")
 
+        # Check if credentials are expired — attempt auto-refresh
+        if not self.credentials_valid(broker_type) and can_auto_refresh(broker_type):
+            logger.info("[TickerPool] %s credentials expired — attempting refresh", broker_type)
+            refreshed = await refresh_broker_token(broker_type)
+            if not refreshed:
+                logger.warning("[TickerPool] %s refresh failed", broker_type)
+                # Clear expired credentials so the check below raises properly
+                self._credentials.pop(broker_type, None)
+
         creds = self._credentials.get(broker_type, {})
         if not creds:
             raise ValueError(f"No credentials set for broker: {broker_type}")
@@ -182,12 +207,15 @@ class TickerPool:
         adapter_class = self._adapter_classes[broker_type]
         adapter = adapter_class(broker_type)
         adapter.set_on_tick_callback(self._on_adapter_tick)
+        adapter.set_on_error_callback(self._on_adapter_error)
         loop = asyncio.get_running_loop()
         adapter.set_event_loop(loop)
         await adapter.connect(creds)
 
         self._adapters[broker_type] = adapter
         self._idle_since.pop(broker_type, None)
+        if self._health_monitor:
+            self._health_monitor.record_connect(broker_type)
         logger.info("Created and connected adapter: %s", broker_type)
         return adapter
 
@@ -199,6 +227,8 @@ class TickerPool:
                 await adapter.disconnect()
             except Exception as e:
                 logger.warning("Error disconnecting %s adapter: %s", broker_type, e)
+        if self._health_monitor:
+            self._health_monitor.record_disconnect(broker_type)
         self._subscriptions.pop(broker_type, None)
         self._idle_since.pop(broker_type, None)
         logger.info("Removed adapter: %s", broker_type)
@@ -271,7 +301,10 @@ class TickerPool:
     # ═══════════════════════════════════════════════════════════════════════
 
     async def _on_adapter_tick(self, ticks: List[NormalizedTick]) -> None:
-        """Called by adapters when ticks arrive. Forwards to router."""
+        """Called by adapters when ticks arrive. Forwards to router and records in health monitor."""
+        if self._health_monitor and ticks:
+            broker_type = ticks[0].broker_type
+            self._health_monitor.record_ticks(broker_type, len(ticks))
         if self._on_tick:
             try:
                 result = self._on_tick(ticks)
@@ -279,6 +312,11 @@ class TickerPool:
                     await result
             except Exception as e:
                 logger.error("Error dispatching ticks to router: %s", e, exc_info=True)
+
+    def _on_adapter_error(self, broker_type: str, error_type: str, error_msg: str) -> None:
+        """Called by adapters on errors. Forwards to health monitor."""
+        if self._health_monitor:
+            self._health_monitor.record_error(broker_type, f"{error_type}: {error_msg}")
 
     # ═══════════════════════════════════════════════════════════════════════
     # FAILOVER SUPPORT

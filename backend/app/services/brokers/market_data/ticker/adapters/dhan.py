@@ -566,10 +566,12 @@ class DhanTickerAdapter(TickerAdapter):
 
         except websockets.exceptions.ConnectionClosed as e:
             logger.warning("[Dhan] WebSocket connection closed: %s", e)
+            self._report_error("connection_closed", str(e))
             self._connected = False
 
         except Exception as e:
             logger.error("[Dhan] Receive loop error: %s", e, exc_info=True)
+            self._report_error("receive_loop_error", str(e))
             self._connected = False
 
         logger.info("[Dhan] Receive loop ended")

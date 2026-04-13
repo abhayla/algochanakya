@@ -129,6 +129,7 @@ All architectural constraints in `.claude/rules/` (auto-loaded per file type). S
 | `rules/tdd.md` | Tdd |
 | `rules/tdd-rule.md` | Test-driven development workflow rules for red-green-refactor cycle. |
 | `rules/testing.md` | Testing conventions and best practices. |
+| `rules/token-auto-refresh.md` | Token Auto-Refresh: error classification, retry categories, per-broker refresh capability |
 | `rules/trading-constants-centralized.md` | Trading Constants Centralized |
 | `rules/vue.md` | Vue 3 Composition API patterns and conventions. |
 | `rules/websocket-ticker-architecture.md` | Websocket Ticker Architecture |

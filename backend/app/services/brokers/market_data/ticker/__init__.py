@@ -8,6 +8,7 @@ Components:
 - TickerRouter: User WebSocket fan-out + tick dispatch (singleton)
 - HealthMonitor: Per-broker health scoring (5s heartbeat)
 - FailoverController: Make-before-break switching + failback
+- token_policy: Auth error classification + retry categories
 
 Usage:
     from app.services.brokers.market_data.ticker import (

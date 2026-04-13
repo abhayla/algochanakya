@@ -3,7 +3,9 @@ Platform Token Auto-Refresh Tests
 
 Tests for automatic refresh of platform-level broker tokens on startup.
 Covers AngelOne (SmartAPI) and Upstox (HTTP-based TOTP login).
+Also tests refresh_broker_token() dispatcher (Layer 3.1).
 """
+import asyncio
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, timezone, timedelta
@@ -110,3 +112,108 @@ class TestPlatformTokenRefreshService:
 
         assert results["upstox"] == "failed"
         assert results["angelone"] == "skipped"
+
+
+# ─── refresh_broker_token() dispatcher (Layer 3.1) ──────────────────────────
+
+class TestRefreshBrokerTokenDispatch:
+    @pytest.mark.asyncio
+    async def test_upstox_calls_refresh_upstox(self):
+        """refresh_broker_token('upstox') should call _refresh_upstox_token."""
+        from app.services.brokers.platform_token_refresh import refresh_broker_token
+
+        with patch(
+            "app.services.brokers.platform_token_refresh._refresh_upstox_token",
+            new_callable=AsyncMock,
+            return_value="new_token",
+        ) as mock_refresh:
+            result = await refresh_broker_token("upstox")
+            assert result is True
+            mock_refresh.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_smartapi_calls_refresh_smartapi(self):
+        """refresh_broker_token('smartapi') should call _refresh_smartapi_token."""
+        from app.services.brokers.platform_token_refresh import refresh_broker_token
+
+        with patch(
+            "app.services.brokers.platform_token_refresh._refresh_smartapi_token",
+            new_callable=AsyncMock,
+            return_value="new_token",
+        ) as mock_refresh:
+            result = await refresh_broker_token("smartapi")
+            assert result is True
+            mock_refresh.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_kite_returns_false(self):
+        from app.services.brokers.platform_token_refresh import refresh_broker_token
+        result = await refresh_broker_token("kite")
+        assert result is False
+
+    @pytest.mark.asyncio
+    async def test_dhan_returns_false(self):
+        from app.services.brokers.platform_token_refresh import refresh_broker_token
+        result = await refresh_broker_token("dhan")
+        assert result is False
+
+    @pytest.mark.asyncio
+    async def test_fyers_returns_false(self):
+        from app.services.brokers.platform_token_refresh import refresh_broker_token
+        result = await refresh_broker_token("fyers")
+        assert result is False
+
+    @pytest.mark.asyncio
+    async def test_paytm_returns_false(self):
+        from app.services.brokers.platform_token_refresh import refresh_broker_token
+        result = await refresh_broker_token("paytm")
+        assert result is False
+
+    @pytest.mark.asyncio
+    async def test_unknown_broker_returns_false(self):
+        from app.services.brokers.platform_token_refresh import refresh_broker_token
+        result = await refresh_broker_token("unknown_broker")
+        assert result is False
+
+
+class TestRefreshBrokerTokenFailure:
+    @pytest.mark.asyncio
+    async def test_upstox_refresh_failure_returns_false(self):
+        """If the underlying refresh raises, refresh_broker_token returns False."""
+        from app.services.brokers.platform_token_refresh import refresh_broker_token
+
+        with patch(
+            "app.services.brokers.platform_token_refresh._refresh_upstox_token",
+            new_callable=AsyncMock,
+            side_effect=RuntimeError("Auth failed"),
+        ):
+            result = await refresh_broker_token("upstox")
+            assert result is False
+
+
+class TestRefreshBrokerTokenConcurrency:
+    @pytest.mark.asyncio
+    async def test_concurrent_refresh_serialized_by_lock(self):
+        """Two concurrent calls for the same broker are serialized by lock."""
+        from app.services.brokers.platform_token_refresh import refresh_broker_token
+
+        call_count = 0
+
+        async def slow_refresh():
+            nonlocal call_count
+            call_count += 1
+            await asyncio.sleep(0.05)
+            return "token"
+
+        with patch(
+            "app.services.brokers.platform_token_refresh._refresh_upstox_token",
+            new_callable=AsyncMock,
+            side_effect=slow_refresh,
+        ):
+            results = await asyncio.gather(
+                refresh_broker_token("upstox"),
+                refresh_broker_token("upstox"),
+            )
+            assert all(results)
+            # Both calls go through (serialized), so count should be 2
+            assert call_count == 2

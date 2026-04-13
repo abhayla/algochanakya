@@ -34,8 +34,10 @@ class TickerAdapter(ABC):
         self._connected = False
         self._subscribed_tokens: Set[int] = set()  # canonical tokens
         self._on_tick_callback: Optional[Callable[[List[NormalizedTick]], Any]] = None
+        self._on_error_callback: Optional[Callable[[str, str, str], Any]] = None
         self._event_loop: Optional[asyncio.AbstractEventLoop] = None
         self._last_tick_time: Optional[datetime] = None
+        self._last_error: Optional[Dict[str, str]] = None
         self._reconnect_count: int = 0
 
     # ═══════════════════════════════════════════════════════════════════════
@@ -133,6 +135,31 @@ class TickerAdapter(ABC):
         """Set the asyncio event loop for thread → async bridging."""
         self._event_loop = loop
 
+    def set_on_error_callback(self, callback: Callable[[str, str, str], Any]) -> None:
+        """Register callback invoked on errors. Signature: (broker_type, error_type, error_msg)."""
+        self._on_error_callback = callback
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # ERROR REPORTING (used by subclasses)
+    # ═══════════════════════════════════════════════════════════════════════
+
+    def _report_error(self, error_type: str, error_msg: str) -> None:
+        """Report a general error. Stores in last_error and notifies callback."""
+        self._last_error = {"error_type": error_type, "error_msg": error_msg}
+        if self._on_error_callback:
+            self._on_error_callback(self.broker_type, error_type, error_msg)
+
+    def _report_auth_error(self, error_code: str, error_msg: str) -> None:
+        """Report an authentication error. Stores error_code in last_error."""
+        combined_msg = f"{error_code}: {error_msg}"
+        self._last_error = {
+            "error_type": "auth",
+            "error_code": error_code,
+            "error_msg": combined_msg,
+        }
+        if self._on_error_callback:
+            self._on_error_callback(self.broker_type, "auth", combined_msg)
+
     # ═══════════════════════════════════════════════════════════════════════
     # PROPERTIES
     # ═══════════════════════════════════════════════════════════════════════
@@ -148,6 +175,10 @@ class TickerAdapter(ABC):
     @property
     def last_tick_time(self) -> Optional[datetime]:
         return self._last_tick_time
+
+    @property
+    def last_error(self) -> Optional[Dict[str, str]]:
+        return self._last_error
 
     @property
     def reconnect_count(self) -> int:

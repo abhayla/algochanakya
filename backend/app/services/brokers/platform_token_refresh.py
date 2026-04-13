@@ -15,9 +15,15 @@ from pathlib import Path
 from typing import Optional
 
 
+import asyncio as _asyncio
+
 from app.config import settings
+from app.services.brokers.market_data.ticker.token_policy import can_auto_refresh
 
 logger = logging.getLogger(__name__)
+
+# Per-broker locks to prevent concurrent refresh attempts
+_refresh_locks: dict[str, _asyncio.Lock] = {}
 
 
 # ============================================================================
@@ -177,6 +183,51 @@ async def _refresh_upstox_token() -> str:
     # Update in-memory settings
     settings.UPSTOX_ACCESS_TOKEN = token
     return token
+
+
+async def _refresh_smartapi_token() -> str:
+    """Refresh SmartAPI platform token using auto-TOTP.
+
+    SmartAPI uses api_key + client_id + TOTP for auth. The platform
+    credentials are in .env. Returns the new JWT token.
+    """
+    from app.services.legacy.smartapi_auth import SmartAPIAuthService
+
+    auth_service = SmartAPIAuthService()
+    result = await auth_service.authenticate_platform()
+    token = result.get("jwtToken") or result.get("data", {}).get("jwtToken", "")
+    if not token:
+        raise RuntimeError("SmartAPI auth returned no jwtToken")
+    logger.info("[SmartAPI Refresh] Platform token refreshed")
+    return token
+
+
+async def refresh_broker_token(broker: str) -> bool:
+    """Refresh credentials for a broker. Returns True on success, False otherwise.
+
+    Only auto-refreshable brokers (smartapi, upstox) are supported.
+    Non-refreshable brokers (kite, dhan, fyers, paytm) return False immediately.
+    Uses per-broker locks to prevent concurrent refresh attempts.
+    """
+    if not can_auto_refresh(broker):
+        return False
+
+    # Get or create per-broker lock
+    if broker not in _refresh_locks:
+        _refresh_locks[broker] = _asyncio.Lock()
+
+    async with _refresh_locks[broker]:
+        try:
+            if broker == "upstox":
+                await _refresh_upstox_token()
+            elif broker == "smartapi":
+                await _refresh_smartapi_token()
+            else:
+                return False
+            return True
+        except Exception as e:
+            logger.error("[TokenRefresh] %s refresh failed: %s", broker, e)
+            return False
 
 
 async def refresh_platform_tokens() -> dict:

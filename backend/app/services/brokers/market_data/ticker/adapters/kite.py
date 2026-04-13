@@ -281,10 +281,16 @@ class KiteTickerAdapter(TickerAdapter):
     def _on_error(self, ws, code, reason) -> None:
         """Callback on WebSocket error (KiteTicker thread)."""
         logger.error("[Kite] WebSocket error: code=%s reason=%s", code, reason)
+        reason_str = str(reason) if reason else ""
+        if "TokenException" in reason_str or code == 403:
+            self._report_auth_error("TokenException", reason_str)
+        else:
+            self._report_error("websocket_error", f"code={code} reason={reason}")
 
     def _on_close(self, ws, code, reason) -> None:
         """Callback when WebSocket closes (KiteTicker thread)."""
         logger.warning("[Kite] WebSocket closed: code=%s reason=%s", code, reason)
+        self._report_error("connection_closed", f"code={code} reason={reason}")
         self._ws_connected_event.clear()
         self._connected = False
 

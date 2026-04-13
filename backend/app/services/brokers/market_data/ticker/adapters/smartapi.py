@@ -345,9 +345,15 @@ class SmartAPITickerAdapter(TickerAdapter):
     def _on_error(self, ws, error) -> None:
         """Callback on WebSocket error (WS thread)."""
         logger.error("[SmartAPI] WebSocket error: %s", error)
+        error_str = str(error)
+        if "AB1010" in error_str or "Invalid Token" in error_str:
+            self._report_auth_error("AB1010", error_str)
+        else:
+            self._report_error("websocket_error", error_str)
 
     def _on_close(self, ws, code, reason) -> None:
         """Callback when WebSocket closes (WS thread)."""
         logger.warning("[SmartAPI] WebSocket closed: code=%s reason=%s", code, reason)
+        self._report_error("connection_closed", f"code={code} reason={reason}")
         self._ws_connected_event.clear()
         self._connected = False
