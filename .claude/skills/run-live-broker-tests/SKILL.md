@@ -54,6 +54,25 @@ Slow tests include historical data fetches that download large datasets.
 
 Live test constants are in `backend/tests/live/constants.py` -- known instrument tokens, test symbols, etc.
 
+## STEP 7: Token Refresh & Health Pipeline Tests
+
+These tests use mocks and don't require live broker credentials:
+
+1. **Token policy tests**:
+   ```bash
+   cd backend && PYTHONPATH=. pytest tests/backend/brokers/test_token_policy.py -v
+   ```
+
+2. **Health pipeline tests**:
+   ```bash
+   PYTHONPATH=. pytest tests/backend/brokers/test_pool_health_wiring.py tests/backend/brokers/test_health_auth_aware.py -v
+   ```
+
+3. **Credential refresh tests**:
+   ```bash
+   PYTHONPATH=. pytest tests/backend/brokers/test_pool_credential_refresh.py tests/backend/brokers/test_failover_credential_check.py -v
+   ```
+
 ## CRITICAL RULES
 
 - Live tests hit REAL broker APIs -- they cost API quota

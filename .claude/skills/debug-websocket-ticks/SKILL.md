@@ -3,6 +3,10 @@ name: debug-websocket-ticks
 description: >
   Debug when WebSocket ticks are not flowing or option chain shows LTP=0.
   Traces the 5-component ticker architecture to find the failure point.
+  INVOKE when: discussing ticker health, failover triggered, no ticks received,
+  WebSocket disconnected, adapter health score, broker switching, token expired on ticker,
+  market data not updating, health monitor, HealthMonitor, FailoverController,
+  record_auth_failure, ticker pool errors.
 type: workflow
 allowed-tools: "Bash Read Grep Glob"
 argument-hint: "[--ltp-zero | --no-ticks]"
@@ -47,6 +51,17 @@ In `websocket.py`, `_ensure_broker_credentials()` loads canonical-to-broker toke
 ## STEP 6: Check Failover
 
 If ticks were flowing but stopped: HealthMonitor scores adapters on 5-second heartbeat. FailoverController triggers make-before-break failover. Check if secondary broker has valid credentials.
+
+## STEP 7: Check Health Pipeline & Token Policy
+
+When debugging WebSocket failures, verify the health pipeline is working:
+
+1. **Check health scores**: Look for `record_ticks`, `record_connect`, `record_error` in logs
+2. **Check error classification**: If auth errors occur, verify `token_policy.py` classifies them correctly
+   - RETRYABLE errors should show gradual health decay (3 consecutive low scores over 15s)
+   - NOT_RETRYABLE/NOT_REFRESHABLE should trigger instant failover (health=0)
+3. **Check auto-refresh**: For SmartAPI/Upstox, verify `refresh_broker_token()` is called when credentials expire
+4. **Check failback**: After failover, verify failback checks `credentials_valid()` before switching back
 
 ## CRITICAL RULES
 

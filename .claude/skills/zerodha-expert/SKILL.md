@@ -1,9 +1,13 @@
 ---
 name: zerodha-expert
-description: Zerodha expert — broker overview, products, pricing, Kite Connect API,
-  and AlgoChanakya adapter guidance. Use for any Zerodha or Kite Connect question.
-version: "3.0"
-last_verified: "2026-03-03"
+description: >
+  Zerodha/Kite Connect broker expert — API, adapter, and AlgoChanakya integration guidance.
+  INVOKE when: talking about Zerodha, Kite, Kite Connect, discussing Zerodha login,
+  Zerodha OAuth, Zerodha token, Zerodha data source, Zerodha daily re-login; editing
+  kite_adapter, kite.py ticker, zerodha_auth; debugging kite 403, TokenException,
+  kite token expired, KiteTicker reconnect, kiteconnect SDK, NOT_REFRESHABLE Kite.
+version: "3.1"
+last_verified: "2026-04-13"
 ---
 
 # Zerodha Expert
@@ -313,6 +317,20 @@ See [auth-flow.md](./references/auth-flow.md) for sandbox configuration details.
 | `503` | `NetworkException` | Service unavailable | Yes - retry |
 
 See [error-codes.md](./references/error-codes.md) for complete error catalog including GTT-specific errors.
+
+### Token Auto-Refresh & Error Classification
+
+Kite (Zerodha) is **NOT auto-refreshable** — requires OAuth browser flow for re-authentication.
+
+**Error classification** (`token_policy.py`):
+
+| Error Pattern | Category | Action |
+|--------------|----------|--------|
+| `TokenException` | NOT_REFRESHABLE | Instant failover + frontend notification: "Re-login via Kite OAuth" |
+| `NetworkException` | RETRYABLE | 3x exponential backoff |
+| `GeneralException` | RETRYABLE | 3x exponential backoff |
+
+**Health pipeline**: Adapter reports errors via `_report_auth_error()` -> Pool forwards to HealthMonitor. TokenException triggers instant failover (health=0) since credentials cannot be auto-refreshed.
 
 ---
 

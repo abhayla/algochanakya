@@ -41,6 +41,7 @@ ruff format app/                           # Format
   - **Token map loading (CRITICAL):** `_ensure_broker_credentials()` in `websocket.py` loads the canonical↔broker token mapping from `broker_instrument_tokens` table and passes it via `credentials["token_map"]`. Without this, `SmartAPITickerAdapter` cannot translate canonical tokens to SmartAPI tokens and subscribes to nothing (no ticks flow). Hardcoded index token fallback ensures NIFTY/BANKNIFTY/FINNIFTY/SENSEX work even if the DB table is empty.
   - **Credential loading order:** `_ensure_broker_credentials()` checks (1) user's `broker_api_credentials` row, (2) platform `.env` credentials, (3) `_try_fallback_brokers()` which iterates `ORG_ACTIVE_BROKERS` chain as last resort.
   - **TickerPool expiry checks:** `TickerPool.credentials_valid(broker_type)` and `TickerPool.clear_expired_credentials()` are called on every WebSocket connect to avoid using stale tokens.
+  - **Token Policy**: Auth errors classified by `token_policy.py` into 4 categories (RETRYABLE, NOT_RETRYABLE, NOT_REFRESHABLE, RETRYABLE_ONCE). Auto-refresh for SmartAPI/Upstox via `platform_token_refresh.py`. See `.claude/rules/token-auto-refresh.md`.
 - **Option Chain** - IV via Newton-Raphson, Greeks via Black-Scholes. Max Pain, PCR calculated.
 - **Strategy Builder** - P/L modes: "At Expiry" (intrinsic) and "Current" (Black-Scholes via scipy)
 - **AutoPilot** - Automated execution with conditions, adjustments, kill switch. 16 database tables. See [docs/autopilot/](../docs/autopilot/)

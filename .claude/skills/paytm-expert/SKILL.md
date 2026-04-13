@@ -1,9 +1,13 @@
 ---
 name: paytm-expert
-description: Paytm Money expert — broker overview, products, pricing, Paytm Money API,
-  and AlgoChanakya adapter guidance. Use for any Paytm Money question.
-version: "3.1"
-last_verified: "2026-03-18"
+description: >
+  Paytm Money broker expert — API, adapter, and AlgoChanakya integration guidance.
+  INVOKE when: talking about Paytm, Paytm Money, discussing Paytm data source,
+  Paytm OAuth, Paytm token, Paytm market data; editing paytm_adapter, paytm.py ticker,
+  paytm_auth; debugging paytm 401, public_access_token, paytm WebSocket disconnect,
+  paytm 3-token system, paytm developer console broken, NOT_REFRESHABLE Paytm.
+version: "3.2"
+last_verified: "2026-04-13"
 ---
 
 # Paytm Money Expert
@@ -298,6 +302,19 @@ See [webhook.md](./references/webhook.md) for polling implementation and broker 
 | `500` | Server error | Yes - retry |
 
 See [error-codes.md](./references/error-codes.md) for complete error catalog.
+
+### Token Auto-Refresh & Error Classification
+
+Paytm Money is **NOT auto-refreshable** — portal authentication is broken/unreliable.
+
+**Error classification** (`token_policy.py`):
+
+| Error Pattern | Category | Action |
+|--------------|----------|--------|
+| `ACCESS_TOKEN_EXPIRED` | NOT_REFRESHABLE | Instant failover + frontend notification: "Re-login from Paytm Money portal" |
+| `SESSION_EXPIRED` | NOT_REFRESHABLE | Instant failover + frontend notification |
+
+**Health pipeline**: Adapter reports errors via `_report_auth_error()` -> Pool forwards to HealthMonitor. Auth errors trigger instant failover (health=0) since Paytm tokens cannot be auto-refreshed.
 
 ## 4. AlgoChanakya Integration
 

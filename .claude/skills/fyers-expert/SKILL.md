@@ -1,9 +1,13 @@
 ---
 name: fyers-expert
-description: Fyers expert — broker overview, products, pricing, Fyers API,
-  and AlgoChanakya adapter guidance. Use for any Fyers question.
-version: "3.0"
-last_verified: "2026-03-04"
+description: >
+  Fyers broker expert — API, adapter, and AlgoChanakya integration guidance.
+  INVOKE when: talking about Fyers, discussing Fyers data source, Fyers OAuth,
+  Fyers token midnight expiry, Fyers market data; editing fyers_adapter, fyers.py ticker,
+  fyers_auth; debugging fyers token expired, fyers 5-socket WebSocket, appIdHash,
+  fyers order adapter, fyers midnight IST reset, NOT_REFRESHABLE Fyers.
+version: "3.1"
+last_verified: "2026-04-13"
 ---
 
 # Fyers Expert
@@ -288,6 +292,20 @@ fyers = fyersModel.FyersModel(
 | `-99` | 500 | Server error | Yes - retry |
 
 See [error-codes.md](./references/error-codes.md) for complete error catalog.
+
+### Token Auto-Refresh & Error Classification
+
+Fyers is **NOT auto-refreshable** — requires OAuth browser flow for re-authentication.
+
+**Error classification** (`token_policy.py`):
+
+| Error Pattern | Category | Action |
+|--------------|----------|--------|
+| `invalid_token` | NOT_REFRESHABLE | Instant failover + frontend notification: "Re-login via Fyers OAuth" |
+| Error code `-16` | NOT_REFRESHABLE | Instant failover + frontend notification |
+| Error code `-300` (Rate limit) | RETRYABLE | 3x exponential backoff |
+
+**Health pipeline**: Adapter reports errors via `_report_auth_error()` -> Pool forwards to HealthMonitor. Token errors trigger instant failover (health=0) since credentials cannot be auto-refreshed.
 
 ## 4. AlgoChanakya Integration
 

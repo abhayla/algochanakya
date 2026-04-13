@@ -102,6 +102,10 @@ This index consolidates all documentation for the multi-broker ticker architectu
 2. Refer to **[../api/multi-broker-ticker-api.md](../api/multi-broker-ticker-api.md)** (TickerAdapter interface)
 3. Review **[../architecture/broker-abstraction.md](../architecture/broker-abstraction.md)** (broker comparison matrix)
 
+| Key Source File | Purpose |
+|-----------------|---------|
+| `token_policy.py` | Auth error classification per broker — 4 categories (RETRYABLE, RETRYABLE_ONCE, NOT_RETRYABLE, NOT_REFRESHABLE). Drives instant failover vs gradual decay in HealthMonitor. |
+
 ### Troubleshoot Issues
 1. Check **[../guides/TICKER-IMPLEMENTATION-GUIDE.md](../guides/TICKER-IMPLEMENTATION-GUIDE.md)** troubleshooting section
 2. Review **[TICKER-DESIGN-SPEC.md](TICKER-DESIGN-SPEC.md)** design constraints

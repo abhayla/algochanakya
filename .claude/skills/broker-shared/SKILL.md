@@ -1,8 +1,11 @@
 ---
 name: broker-shared
-description: Cross-broker comparison, shared gotchas, instrument token architecture, and broker selection guidance.
-  Use for questions spanning multiple brokers or common integration patterns.
-  Triggers on instrument token, instrument_token, exchange token, exchange_token,
+description: >
+  Cross-broker comparison, shared gotchas, instrument token architecture, and broker selection guidance.
+  INVOKE when: discussing multiple brokers, comparing brokers, broker failover, broker selection,
+  auto-refresh across brokers, platform_token_refresh, token expiry patterns, NOT_REFRESHABLE brokers,
+  failover chain order, token_policy.py, refresh_broker_token.
+  Also triggers on instrument token, instrument_token, exchange token, exchange_token,
   symbol token, symboltoken, instrument key, instrument_key, tradingsymbol,
   trading_symbol, token mapping, token_to_symbol, instrument master, broker token,
   NSE token, cross-broker token, token mismatch, duplicate instrument, source_broker.
@@ -123,6 +126,22 @@ SmartAPI → Dhan → Fyers → Paytm → Upstox → Kite Connect
 ```
 
 Platform-level credentials serve ALL users by default. User-level (own API key) is an optional upgrade.
+
+## Token Auto-Refresh & Error Classification
+
+All broker auth errors are classified by `token_policy.py` into 4 categories:
+
+| Category | Action | Brokers |
+|----------|--------|---------|
+| RETRYABLE | 3x exponential backoff | All (network errors, rate limits) |
+| RETRYABLE_ONCE | 30s TOTP wait + 1 retry | SmartAPI (TOTP timing) |
+| NOT_RETRYABLE | Instant failover | All (config errors like wrong API key) |
+| NOT_REFRESHABLE | Instant failover + frontend notification | Kite, Dhan, Fyers, Paytm |
+
+**Auto-refreshable**: SmartAPI (pyotp TOTP), Upstox (upstox-totp library)
+**Manual refresh required**: Kite (OAuth), Dhan (portal), Fyers (OAuth), Paytm (portal)
+
+Key files: `token_policy.py` (classification), `platform_token_refresh.py` (refresh logic), `health.py` (scoring), `failover.py` (switching)
 
 ## Version Changelog
 

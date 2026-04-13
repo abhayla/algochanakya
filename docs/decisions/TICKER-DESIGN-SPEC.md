@@ -267,6 +267,24 @@ health_score = (
 - `error_score`: max(0, 100 - error_count_5min * 20)
 - `staleness_score`: 100 if last_tick <10s ago, else max(0, 100 - seconds*2)
 
+### Auth-Aware Error Classification
+
+The health pipeline classifies broker auth errors via `token_policy.py` into 4 categories:
+
+| Category | Health Impact | Action |
+|----------|-------------|--------|
+| RETRYABLE | Gradual decay (3 errors over 15s) | Exponential backoff, max 3 retries |
+| RETRYABLE_ONCE | Gradual decay | 30s TOTP wait + 1 retry |
+| NOT_RETRYABLE | Instant health=0 | Immediate failover (config error) |
+| NOT_REFRESHABLE | Instant health=0 | Immediate failover + frontend notification |
+
+**Auto-refreshable brokers**: SmartAPI (pyotp TOTP), Upstox (upstox-totp)
+**Manual refresh required**: Kite (OAuth), Dhan (portal), Fyers (OAuth), Paytm (portal)
+
+Flow: `Adapter._report_auth_error()` → `Pool._on_adapter_error()` → `HealthMonitor.record_auth_failure()` → `classify_auth_error()` → instant failover or gradual decay.
+
+TickerPool auto-refreshes expired credentials before reconnecting (SmartAPI/Upstox only). FailoverController verifies primary credentials before failback.
+
 ### FailoverController
 
 **File:** `backend/app/services/ticker/failover.py`

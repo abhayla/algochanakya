@@ -127,6 +127,23 @@ Add broker option to `frontend/src/components/settings/BrokerSettings.vue`:
 
 If the DB name differs from enum value, add to the broker name mapping in relevant utilities.
 
+## STEP 10: Token Policy Integration
+
+When adding a new broker adapter, you MUST also:
+
+1. **Add error classification** in `backend/app/services/brokers/market_data/ticker/token_policy.py`:
+   - Add broker's error codes to `_BROKER_ERRORS` dict
+   - Classify each error as RETRYABLE, RETRYABLE_ONCE, NOT_RETRYABLE, or NOT_REFRESHABLE
+   - If broker supports auto-refresh, add to `_AUTO_REFRESHABLE_BROKERS` set
+   - Add frontend notification message in `get_frontend_notification()` if NOT_REFRESHABLE
+
+2. **Register in health monitor** in `backend/app/main.py` lifespan:
+   - Add `ticker_health.register_adapter("new_broker")` in startup sequence
+
+3. **Wire error reporting** in the adapter:
+   - Call `self._report_error()` in error handlers
+   - Call `self._report_auth_error()` for authentication failures with the broker's error code
+
 ## CRITICAL RULES
 
 - ZERO changes to routes or business logic — all broker specifics are encapsulated in adapters

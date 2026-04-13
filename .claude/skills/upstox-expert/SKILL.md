@@ -1,9 +1,14 @@
 ---
 name: upstox-expert
-description: Upstox expert — broker overview, products, pricing, Upstox API,
-  and AlgoChanakya adapter guidance. Use for any Upstox question.
-version: "3.3"
-last_verified: "2026-03-20"
+description: >
+  Upstox broker expert — API, adapter, and AlgoChanakya integration guidance.
+  INVOKE when: talking about Upstox, discussing Upstox data source, Upstox market data,
+  Upstox OAuth, Upstox token refresh or expiry, Upstox TOTP, Upstox WebSocket, Upstox
+  protobuf feed; editing upstox_adapter, upstox.py ticker, upstox_auth,
+  platform_token_refresh upstox section; debugging UDAPI100050, UDAPI100010, upstox 401,
+  upstox token expired, upstox authorize URL failure, upstox protobuf MarketDataFeedV3.
+version: "3.4"
+last_verified: "2026-04-13"
 ---
 
 # Upstox Expert
@@ -162,6 +167,20 @@ code = totp.now()  # 6-digit TOTP code
 **Daily Refresh:** Access tokens require daily re-authentication. AlgoChanakya handles this automatically via `UpstoxHttpAuth` in `platform_token_refresh.py` on backend startup. See [auth-flow.md](./references/auth-flow.md#automated-token-refresh-options-researched-march-2026) for all 4 refresh approaches.
 
 See [auth-flow.md](./references/auth-flow.md) for complete request/response examples, TOTP setup, sandbox tokens, IP whitelisting, and Access Token Flow (Beta).
+
+### Token Auto-Refresh & Error Classification
+
+Upstox is **auto-refreshable** via the `upstox-totp` library (HTTP-based, no browser needed).
+
+**Error classification** (`token_policy.py`):
+
+| Error Code | Category | Action |
+|-----------|----------|--------|
+| `UDAPI100050` (Invalid token) | RETRYABLE | 3x exponential backoff, then auto-refresh via `refresh_broker_token("upstox")` |
+| `UDAPI100010` (Rate limited) | RETRYABLE | 3x exponential backoff |
+| HTTP 403 (Forbidden) | NOT_RETRYABLE | Instant failover to secondary broker |
+
+**Health pipeline**: Adapter reports errors via `_report_auth_error()` -> Pool forwards to HealthMonitor -> scores drive failover decisions. See `token_policy.py` for full classification.
 
 ### Dual Credential System (Platform vs User)
 

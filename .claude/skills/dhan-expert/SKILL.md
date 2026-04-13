@@ -1,9 +1,13 @@
 ---
 name: dhan-expert
-description: Dhan expert — broker overview, products, pricing, DhanHQ API,
-  and AlgoChanakya adapter guidance. Use for any Dhan question.
-version: "3.1"
-last_verified: "2026-03-19"
+description: >
+  Dhan/DhanHQ broker expert — API, adapter, and AlgoChanakya integration guidance.
+  INVOKE when: talking about Dhan, DhanHQ, discussing Dhan data source, Dhan token,
+  Dhan static token regeneration, Dhan market data; editing dhan_adapter, dhan.py ticker,
+  dhan_auth; debugging dhan 401, error 806 data API not subscribed, error 810 wrong
+  client ID, dhan binary WebSocket, little-endian, dhan access token expired, NOT_REFRESHABLE Dhan.
+version: "3.2"
+last_verified: "2026-04-13"
 ---
 
 # Dhan Expert
@@ -399,6 +403,19 @@ if response.status_code == 401:
 **In tests:** Catch `DataNotAvailableError` and call `pytest.skip()`. Never fail on error 806 — it's a subscription config issue, not a code bug.
 
 See [error-codes.md](./references/error-codes.md) for complete error catalog.
+
+### Token Auto-Refresh & Error Classification
+
+Dhan is **NOT auto-refreshable** — uses static tokens generated from the Dhan portal.
+
+**Error classification** (`token_policy.py`):
+
+| Error Pattern | Category | Action |
+|--------------|----------|--------|
+| HTTP 401 | NOT_REFRESHABLE | Instant failover + frontend notification: "Regenerate token from Dhan portal" |
+| `DH-901` (Invalid token) | NOT_REFRESHABLE | Instant failover + frontend notification |
+
+**Health pipeline**: Adapter reports errors via `_report_auth_error()` -> Pool forwards to HealthMonitor. Auth errors trigger instant failover (health=0) since Dhan tokens cannot be auto-refreshed.
 
 ---
 

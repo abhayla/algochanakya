@@ -488,6 +488,22 @@ After `broker_api_credentials` is implemented, the refresh strategy per broker:
 | **Fyers** | Cannot auto-refresh (OAuth only). Same as Zerodha. | Same pattern — check expiry, show red indicator. |
 | **Paytm** | Cannot auto-refresh (OAuth only). Same as Zerodha. | Same pattern — check expiry, show red indicator. |
 
+### Runtime Auto-Refresh (Ticker System)
+
+When a ticker adapter encounters an expired credential:
+
+1. Adapter calls `_report_auth_error(error_code, error_msg)`
+2. Pool forwards to `HealthMonitor.record_auth_failure()`
+3. `token_policy.classify_auth_error()` determines category
+4. If RETRYABLE and broker is auto-refreshable:
+   - `refresh_broker_token(broker)` attempts credential refresh
+   - SmartAPI: pyotp TOTP + refresh_token
+   - Upstox: upstox-totp HTTP login (no browser)
+5. If refresh succeeds: adapter reconnects with new credentials
+6. If refresh fails: failover to secondary broker
+
+Key file: `backend/app/services/brokers/platform_token_refresh.py`
+
 ### TickerPool Credential Cache Expiry (Gap Q)
 
 **Current problem:** `TickerPool._credentials[broker_type]` is set once and never checked again (except Upstox partial check). If a token expires mid-session:

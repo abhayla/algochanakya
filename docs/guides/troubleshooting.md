@@ -239,6 +239,25 @@ Remote PostgreSQL server is blocking connections from your current IP address.
 3. If table is empty, the hardcoded index fallback is used automatically (NIFTY/BANKNIFTY/FINNIFTY/SENSEX only)
 4. If problem persists, restart backend to reload credentials with token map
 
+### Upstox 401 (UDAPI100050 "Invalid token")
+
+**Symptom**: WebSocket disconnects, option chain shows stale data
+**Cause**: Upstox access token expired (daily expiry)
+**Resolution**: System auto-refreshes via `upstox-totp`. If auto-refresh fails:
+1. Check `.env` has all 6 Upstox fields (API key/secret, redirect URI, phone, PIN, TOTP secret)
+2. Check `platform_token_refresh.py` logs for refresh errors
+3. Manual fix: Re-authenticate via Settings > Upstox > Connect
+
+### Token Refresh Failed
+
+**Symptom**: Backend logs show "refresh failed — skipping failback" or "refresh_broker_token returned False"
+**Cause**: Auto-refresh mechanism failed (wrong credentials, network issue, TOTP timing)
+**Resolution**:
+1. Check `.env` credentials are current for the failing broker
+2. For Upstox: verify `UPSTOX_TOTP_SECRET` is the latest TOTP seed
+3. For SmartAPI: verify `ANGEL_API_KEY` and client credentials
+4. System will fail over to secondary broker automatically
+
 ### No Tick Data
 
 **Symptoms:**

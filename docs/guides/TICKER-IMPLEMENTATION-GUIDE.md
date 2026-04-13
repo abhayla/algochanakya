@@ -3491,6 +3491,20 @@ git commit -m "feat(ticker): Phase T3 - Health monitoring + failover controller"
 git tag post-phase-t3
 ```
 
+### Token Policy Integration
+
+When implementing or modifying a ticker adapter, integrate with `token_policy.py`:
+
+1. **Classify error codes**: Add broker-specific error codes to `_BROKER_ERRORS` in `token_policy.py`
+2. **Report auth errors**: Call `self._report_auth_error(error_code, error_msg)` in adapter error handlers
+3. **Report general errors**: Call `self._report_error(error_type, error_msg)` for non-auth failures
+4. **Health pipeline flow**:
+   ```
+   Adapter._report_auth_error() → Pool._on_adapter_error() → HealthMonitor.record_auth_failure()
+   → classify_auth_error() → instant failover (NOT_RETRYABLE) or gradual decay (RETRYABLE)
+   ```
+5. **Auto-refresh**: If broker supports credential refresh, add to `_AUTO_REFRESHABLE_BROKERS` and implement refresh in `platform_token_refresh.py`
+
 ---
 
 ## Phase T4: System Credentials + Remaining Adapters (6 hours)

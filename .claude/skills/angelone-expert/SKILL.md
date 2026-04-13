@@ -1,9 +1,13 @@
 ---
 name: angelone-expert
-description: Angel One expert — broker overview, products, pricing, SmartAPI,
-  and AlgoChanakya adapter guidance. Use for any Angel One or SmartAPI question.
-version: "3.1"
-last_verified: "2026-03-18"
+description: >
+  AngelOne/SmartAPI broker expert — API, adapter, and AlgoChanakya integration guidance.
+  INVOKE when: talking about AngelOne, Angel One, SmartAPI, discussing AngelOne data source,
+  AngelOne market data, AngelOne token, SmartAPI login; editing smartapi_adapter, smartapi.py
+  ticker, smartapi_auth, smartapi_historical; debugging AG8001, AB1010, AB1004, AB2000,
+  smartapi 401, angel token expired, SmartWebSocketV2, feed token, TOTP secret, 3-key system.
+version: "3.2"
+last_verified: "2026-04-13"
 ---
 
 # Angel One Expert
@@ -156,6 +160,20 @@ For the three-tier credential architecture (platform data API vs user login vs u
 **Codebase:** `backend/app/services/legacy/smartapi_auth.py` handles authentication with auto-TOTP.
 
 See [auth-flow.md](./references/auth-flow.md) for complete request/response examples, static IP setup, and error scenarios.
+
+### Token Auto-Refresh & Error Classification
+
+AngelOne (SmartAPI) is **auto-refreshable** via pyotp TOTP + refresh_token flow.
+
+**Error classification** (`token_policy.py`):
+
+| Error Code | Category | Action |
+|-----------|----------|--------|
+| `AB1010` (Invalid Token) | RETRYABLE | 3x exponential backoff, then auto-refresh via `refresh_broker_token("smartapi")` |
+| `AB1004` (Invalid API Key) | NOT_RETRYABLE | Instant failover — wrong API key, config error |
+| `AB2000` (Rate Limited) | RETRYABLE | 3x exponential backoff |
+
+**Health pipeline**: Adapter reports errors via `_report_auth_error()` -> Pool forwards to HealthMonitor -> scores drive failover decisions. See `token_policy.py` for full classification.
 
 ### Key Endpoints Quick Reference
 

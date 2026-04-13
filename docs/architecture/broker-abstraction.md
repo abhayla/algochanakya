@@ -421,6 +421,21 @@ Full definitions in `backend/app/services/brokers/base.py` and `ticker/models.py
 
 ---
 
+### Token Auto-Refresh Capability
+
+| Broker | Auto-Refreshable | Mechanism | On Failure |
+|--------|-----------------|-----------|------------|
+| SmartAPI (AngelOne) | Yes | pyotp TOTP + refresh_token | Failover to secondary |
+| Upstox | Yes | upstox-totp HTTP login | Failover to secondary |
+| Kite (Zerodha) | No | OAuth browser flow required | Failover + frontend notification |
+| Dhan | No | Static token from portal | Failover + frontend notification |
+| Fyers | No | OAuth browser flow required | Failover + frontend notification |
+| Paytm | No | Portal authentication (broken) | Failover + frontend notification |
+
+Error classification: `backend/app/services/brokers/market_data/ticker/token_policy.py`
+
+---
+
 ## Adding a New Broker
 
 ### For Market Data (REST)
