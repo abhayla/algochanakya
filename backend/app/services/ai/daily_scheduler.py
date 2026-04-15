@@ -20,6 +20,7 @@ from app.database import get_db
 from app.services.ai.market_regime import MarketRegimeClassifier
 from app.services.ai.claude_advisor import ClaudeAdvisor
 from app.services.ai.deployment_executor import DeploymentExecutor
+from app.services.ai.learning_pipeline import LearningPipeline
 from app.constants.trading import UNDERLYINGS
 from app.models.ai import AIUserConfig
 from sqlalchemy import select
@@ -324,7 +325,22 @@ class DailyScheduler:
                             performance=performance
                         )
                         logger.info(f"Post-market review generated for user {config.user_id}")
-                        # TODO: Store review in ai_learning_reports table
+
+                        # Run learning pipeline to score decisions and update models
+                        try:
+                            learning_pipeline = LearningPipeline(db)
+                            learning_report = await learning_pipeline.run_daily_learning(
+                                user_id=config.user_id
+                            )
+                            logger.info(
+                                f"Learning pipeline completed for user {config.user_id}: "
+                                f"{learning_report.get('total_trades', 0)} trades scored, "
+                                f"win rate {learning_report.get('win_rate', 0):.1f}%"
+                            )
+                        except Exception as learn_err:
+                            logger.error(
+                                f"Learning pipeline failed for user {config.user_id}: {learn_err}"
+                            )
 
                     except Exception as e:
                         logger.error(f"Error generating review for user {config.user_id}: {e}")

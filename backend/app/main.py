@@ -16,6 +16,7 @@ from app.api.routes import dhan_credentials as dhan_creds_router
 from app.api.routes import settings_credentials as settings_creds_router
 from app.api.v1.autopilot import router as autopilot_router
 from app.api.v1.ai import router as ai_router
+from app.services.ai.daily_scheduler import start_scheduler, stop_scheduler
 from app.websocket.routes import router as autopilot_ws_router
 from app.models import Instrument
 
@@ -194,9 +195,24 @@ async def lifespan(app: FastAPI):
         print(f"[WARNING] Ticker system failed to initialize: {e}")
         logger.error("Ticker system init failed: %s", e, exc_info=True)
 
+    # Start AI Daily Scheduler (cron-based: premarket 8:45, deploy 9:20, postmarket 4:00 PM)
+    # Depends on: init_db (needs DB for AI configs)
+    try:
+        await start_scheduler()
+        print("[SUCCESS] AI Daily Scheduler: Started")
+    except Exception as e:
+        print(f"[WARNING] AI Daily Scheduler failed to start: {e}")
+        logger.error("AI Daily Scheduler init failed: %s", e, exc_info=True)
+
     yield
 
     # Shutdown
+    # Stop AI Daily Scheduler
+    try:
+        await stop_scheduler()
+    except Exception:
+        pass
+
     from app.services.autopilot.strategy_monitor import stop_strategy_monitor
     await stop_strategy_monitor()
 

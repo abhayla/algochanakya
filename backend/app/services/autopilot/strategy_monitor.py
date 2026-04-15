@@ -125,6 +125,9 @@ class StrategyMonitor:
         # Phase 5 services (initialized per-session in methods that need db)
         self.position_leg_service = None
 
+        # AI integration — injected externally when AI module is active
+        self.ai_monitor = None
+
     async def start(self):
         """Start the monitor background task."""
         if self._running:
@@ -211,6 +214,37 @@ class StrategyMonitor:
                     await self._process_strategy(db, strategy)
                 except Exception as e:
                     logger.error(f"Error processing strategy {strategy.id}: {e}")
+
+    async def _process_ai_strategies(
+        self,
+        db: AsyncSession,
+        strategies: list,
+        ai_config
+    ):
+        """
+        Process AI-managed strategies via AIMonitor.
+
+        Filters strategies to only AI-managed ones, then delegates to
+        ai_monitor.process_ai_strategies(). Errors are caught to protect
+        the main monitoring loop.
+        """
+        if not self.ai_monitor:
+            return
+
+        # Filter to AI-managed strategies only
+        ai_strategies = [s for s in strategies if getattr(s, 'ai_managed', False)]
+        if not ai_strategies or not ai_config or not getattr(ai_config, 'ai_enabled', False):
+            return
+
+        try:
+            user_id = str(ai_strategies[0].user_id)
+            await self.ai_monitor.process_ai_strategies(
+                user_id=user_id,
+                user_config=ai_config,
+                active_strategies=ai_strategies
+            )
+        except Exception as e:
+            logger.error(f"AI monitor error (non-fatal): {e}")
 
     async def _process_strategy(self, db: AsyncSession, strategy: AutoPilotStrategy):
         """Process a single strategy."""

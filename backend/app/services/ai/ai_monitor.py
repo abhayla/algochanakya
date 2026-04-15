@@ -95,6 +95,8 @@ class AIMonitor:
         self._last_regime: Optional[RegimeResponse] = None
         self._regime_change_threshold = 15.0  # % confidence change
         self._block_new_deployments = False  # Set by extreme events
+        self.kill_switch = None  # Injected: KillSwitchService for emergency exits
+        self.adjustment_engine = None  # Injected: AdjustmentEngine for position adjustments
 
     async def process_ai_strategies(
         self,
@@ -166,13 +168,17 @@ class AIMonitor:
 
                 for event in extreme_events:
                     if event["severity"] == ExtremeEventSeverity.CRITICAL:
-                        # Handle critical event (triggers kill switch)
-                        # Note: kill_switch_service needs to be available
-                        # For now, log critical event and let user handle manually
                         logger.critical(f"CRITICAL extreme event detected: {event['message']}")
 
-                        # Send WebSocket alert if ws_manager is available
-                        # ws_manager would need to be passed to this method
+                        # Trigger kill switch if available
+                        if self.kill_switch:
+                            try:
+                                await self.kill_switch.trigger(
+                                    reason=f"AI extreme event: {event['message']}"
+                                )
+                                logger.warning("Kill switch triggered by AI extreme event detection")
+                            except Exception as ks_err:
+                                logger.error(f"Failed to trigger kill switch: {ks_err}")
 
                         # Create decision record
                         critical_decision = AIDecision(
@@ -322,7 +328,7 @@ class AIMonitor:
             if health_decision:
                 decisions.append(health_decision)
 
-            # Step 4: Check for adjustment opportunities
+            # Step 4: Check for adjustment opportunities and execute via engine
             for strategy in active_strategies:
                 adjustment_decision = await self._evaluate_adjustment(
                     strategy,
@@ -330,6 +336,21 @@ class AIMonitor:
                 )
                 if adjustment_decision:
                     decisions.append(adjustment_decision)
+
+                    # Execute adjustment if engine is available
+                    if self.adjustment_engine and adjustment_decision.action_taken != "none":
+                        try:
+                            await self.adjustment_engine.execute_adjustment(
+                                strategy=strategy,
+                                rule={"type": adjustment_decision.decision_type},
+                                evaluation={"action": adjustment_decision.action_taken}
+                            )
+                            logger.info(
+                                f"AI adjustment executed: {adjustment_decision.action_taken} "
+                                f"for strategy {strategy.get('id', 'unknown')}"
+                            )
+                        except Exception as adj_err:
+                            logger.error(f"Failed to execute AI adjustment: {adj_err}")
 
             # Step 5: Log all decisions to database
             for decision in decisions:
