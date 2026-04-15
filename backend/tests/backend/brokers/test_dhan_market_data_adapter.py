@@ -74,6 +74,11 @@ def adapter(credentials, mock_db, mock_token_manager):
     return a
 
 
+# ─── UNVERIFIED: Hand-crafted responses (no real API credentials available) ──
+# These should be replaced with recorded responses when broker credentials
+# are available. See tests/fixtures/real_responses.py for the pattern.
+# Record via: cd backend && PYTHONPATH=. python -m tests.fixtures.record_raw_responses --broker dhan
+
 # ─── Sample API responses ───────────────────────────────────────────────────
 
 SAMPLE_LTP_RESPONSE = {

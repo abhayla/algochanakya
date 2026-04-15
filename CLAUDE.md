@@ -141,6 +141,6 @@ All architectural constraints in `.claude/rules/` (auto-loaded per file type). S
 
 ## Claude Code Configuration
 
-The `.claude/` directory contains 168 skills, 49 agents, and 39 rules for Claude Code.
+The `.claude/` directory contains 168 skills, 50 agents, and 39 rules for Claude Code.
 
 <!-- hub:best-practices:end -->

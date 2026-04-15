@@ -25,6 +25,13 @@ from app.services.brokers.market_data.exceptions import (
     AuthenticationError,
     DataNotAvailableError,
 )
+from tests.fixtures.real_responses import (
+    UPSTOX_V2_PROFILE,
+    UPSTOX_V2_QUOTE_FNO,
+    UPSTOX_V3_LTP_FNO,
+    UPSTOX_V2_LTP_FNO,
+    UPSTOX_V2_HISTORICAL_FNO,
+)
 
 
 @pytest.fixture
@@ -60,50 +67,14 @@ def adapter(credentials, mock_db, mock_token_manager):
     return a
 
 
-# ─── Sample responses ────────────────────────────────────────────────────────
+# ─── Real recorded responses (from tests/fixtures/real_responses.py) ──────────
+# These replace hand-crafted SAMPLE_* constants with real API shapes.
+# Re-record via: cd backend && PYTHONPATH=. python -m tests.fixtures.record_raw_responses --broker all
 
-SAMPLE_PROFILE = {"data": {"user_id": "TEST123", "name": "Test User"}, "status": "success"}
-
-SAMPLE_LTP_RESPONSE = {
-    "status": "success",
-    "data": {
-        "NSE_FO|12345": {
-            "last_price": 150.25,
-        }
-    }
-}
-
-SAMPLE_QUOTE_RESPONSE = {
-    "status": "success",
-    "data": {
-        "NSE_FO|12345": {
-            "last_price": 150.25,
-            "ohlc": {
-                "open": 148.00,
-                "high": 155.00,
-                "low": 147.50,
-                "close": 149.00,
-            },
-            "volume": 125000,
-            "oi": 5000000,
-            "depth": {
-                "buy": [{"price": 150.20, "quantity": 500, "orders": 5}],
-                "sell": [{"price": 150.30, "quantity": 400, "orders": 4}],
-            },
-        }
-    }
-}
-
-# Historical candles: descending order (newest first), format: [epoch, O, H, L, C, V]
-SAMPLE_HISTORICAL = {
-    "status": "success",
-    "data": {
-        "candles": [
-            [1704153600, 2410.0, 2460.0, 2395.0, 2445.0, 1800000],
-            [1704067200, 2400.0, 2450.0, 2390.0, 2430.0, 1500000],
-        ]
-    }
-}
+SAMPLE_PROFILE = UPSTOX_V2_PROFILE
+SAMPLE_LTP_RESPONSE = UPSTOX_V3_LTP_FNO
+SAMPLE_QUOTE_RESPONSE = UPSTOX_V2_QUOTE_FNO
+SAMPLE_HISTORICAL = UPSTOX_V2_HISTORICAL_FNO
 
 SAMPLE_CSV = (
     "instrument_key,exchange_token,tradingsymbol,name,last_price,expiry,strike,tick_size,lot_size,"
