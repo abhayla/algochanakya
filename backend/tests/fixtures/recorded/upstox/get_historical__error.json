@@ -1,0 +1,11 @@
+{
+  "broker": "upstox",
+  "method": "get_historical__error",
+  "recorded_at": "2026-04-14T19:03:38.105602",
+  "market_open": false,
+  "metadata": {},
+  "response": {
+    "error": "[NIFTY 50] Invalid or unknown symbol: upstox",
+    "type": "InvalidSymbolError"
+  }
+}

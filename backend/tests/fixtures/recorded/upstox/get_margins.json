@@ -1,0 +1,27 @@
+{
+  "broker": "upstox",
+  "method": "get_margins",
+  "recorded_at": "2026-04-14T19:03:38.809119",
+  "market_open": false,
+  "metadata": {},
+  "response": {
+    "commodity": {
+      "used_margin": 0.0,
+      "payin_amount": 0.0,
+      "span_margin": 0.0,
+      "adhoc_margin": 0.0,
+      "notional_cash": 0.0,
+      "available_margin": 0.0,
+      "exposure_margin": 0.0
+    },
+    "equity": {
+      "used_margin": 0.0,
+      "payin_amount": 0.0,
+      "span_margin": 0.0,
+      "adhoc_margin": 0.0,
+      "notional_cash": -531.0,
+      "available_margin": -531.0,
+      "exposure_margin": 0.0
+    }
+  }
+}

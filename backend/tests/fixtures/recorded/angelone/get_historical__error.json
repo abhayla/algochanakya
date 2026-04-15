@@ -1,0 +1,11 @@
+{
+  "broker": "angelone",
+  "method": "get_historical__error",
+  "recorded_at": "2026-04-14T19:02:34.606280",
+  "market_open": false,
+  "metadata": {},
+  "response": {
+    "error": "[smartapi] Historical fetch failed: Invalid Token",
+    "type": "DataNotAvailableError"
+  }
+}

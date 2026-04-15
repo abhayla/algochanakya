@@ -1,0 +1,33 @@
+{
+  "status": "success",
+  "data": {
+    "email": "abhayinfosys@gmail.com",
+    "exchanges": [
+      "BSE",
+      "CDS",
+      "NSE",
+      "NFO",
+      "BFO",
+      "BCD"
+    ],
+    "products": [
+      "OCO",
+      "D",
+      "CO",
+      "I"
+    ],
+    "broker": "UPSTOX",
+    "user_id": "198547",
+    "user_name": "ABHAY KUMAR",
+    "order_types": [
+      "MARKET",
+      "LIMIT",
+      "SL",
+      "SL-M"
+    ],
+    "user_type": "individual",
+    "poa": false,
+    "ddpi": false,
+    "is_active": true
+  }
+}

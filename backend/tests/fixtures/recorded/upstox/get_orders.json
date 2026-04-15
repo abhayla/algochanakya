@@ -1,0 +1,8 @@
+{
+  "broker": "upstox",
+  "method": "get_orders",
+  "recorded_at": "2026-04-14T19:03:39.381274",
+  "market_open": false,
+  "metadata": {},
+  "response": []
+}

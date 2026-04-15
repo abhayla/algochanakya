@@ -1,0 +1,59 @@
+{
+  "status": "success",
+  "data": {
+    "NSE_INDEX:Nifty Bank": {
+      "ohlc": {
+        "open": 56343.45,
+        "high": 56786.25,
+        "low": 56109.2,
+        "close": 56327.15
+      },
+      "depth": {
+        "buy": [],
+        "sell": []
+      },
+      "timestamp": "2026-04-15T14:21:15.657+05:30",
+      "instrument_token": "NSE_INDEX|Nifty Bank",
+      "symbol": "NA",
+      "last_price": 56327.15,
+      "volume": null,
+      "average_price": null,
+      "oi": null,
+      "net_change": 722.1,
+      "total_buy_quantity": null,
+      "total_sell_quantity": null,
+      "lower_circuit_limit": null,
+      "upper_circuit_limit": null,
+      "last_trade_time": "1776243075000",
+      "oi_day_high": null,
+      "oi_day_low": null
+    },
+    "NSE_INDEX:Nifty 50": {
+      "ohlc": {
+        "open": 24163.8,
+        "high": 24280.9,
+        "low": 24145.8,
+        "close": 24234.15
+      },
+      "depth": {
+        "buy": [],
+        "sell": []
+      },
+      "timestamp": "2026-04-15T14:21:15.657+05:30",
+      "instrument_token": "NSE_INDEX|Nifty 50",
+      "symbol": "NA",
+      "last_price": 24234.15,
+      "volume": null,
+      "average_price": null,
+      "oi": null,
+      "net_change": 391.5,
+      "total_buy_quantity": null,
+      "total_sell_quantity": null,
+      "lower_circuit_limit": null,
+      "upper_circuit_limit": null,
+      "last_trade_time": "1776243075000",
+      "oi_day_high": null,
+      "oi_day_low": null
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "broker": "angelone",
+  "method": "order_adapter__error",
+  "recorded_at": "2026-04-14T19:01:56.109115",
+  "market_open": false,
+  "metadata": {},
+  "response": {
+    "error": "'coroutine' object has no attribute 'initialize'",
+    "type": "AttributeError"
+  }
+}

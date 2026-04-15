@@ -1,0 +1,22 @@
+{
+  "status": true,
+  "message": "SUCCESS",
+  "errorcode": "",
+  "data": {
+    "fetched": [
+      {
+        "exchange": "NSE",
+        "tradingSymbol": "Nifty 50",
+        "symbolToken": "99926000",
+        "ltp": 24223.0
+      },
+      {
+        "exchange": "NSE",
+        "tradingSymbol": "Nifty Bank",
+        "symbolToken": "99926009",
+        "ltp": 56303.85
+      }
+    ],
+    "unfetched": []
+  }
+}

@@ -1,0 +1,170 @@
+{
+  "status": true,
+  "message": "SUCCESS",
+  "errorcode": "",
+  "data": {
+    "fetched": [
+      {
+        "exchange": "NSE",
+        "tradingSymbol": "Nifty 50",
+        "symbolToken": "99926000",
+        "ltp": 24223.0,
+        "open": 24163.8,
+        "high": 24280.9,
+        "low": 24145.8,
+        "close": 23842.65,
+        "lastTradeQty": 0,
+        "exchFeedTime": "15-Apr-2026 14:23:53",
+        "exchTradeTime": "01-Jan-1970 05:30:00",
+        "netChange": 380.35,
+        "percentChange": 1.6,
+        "avgPrice": 0.0,
+        "tradeVolume": 0,
+        "opnInterest": 0,
+        "lowerCircuit": 0.0,
+        "upperCircuit": 0.0,
+        "totBuyQuan": 0,
+        "totSellQuan": 0,
+        "52WeekLow": 0.0,
+        "52WeekHigh": 0.0,
+        "depth": {
+          "buy": [
+            {
+              "price": 0.0,
+              "quantity": 0,
+              "orders": 0
+            },
+            {
+              "price": 0.0,
+              "quantity": 0,
+              "orders": 0
+            },
+            {
+              "price": 0.0,
+              "quantity": 0,
+              "orders": 0
+            },
+            {
+              "price": 0.0,
+              "quantity": 0,
+              "orders": 0
+            },
+            {
+              "price": 0.0,
+              "quantity": 0,
+              "orders": 0
+            }
+          ],
+          "sell": [
+            {
+              "price": 0.0,
+              "quantity": 0,
+              "orders": 0
+            },
+            {
+              "price": 0.0,
+              "quantity": 0,
+              "orders": 0
+            },
+            {
+              "price": 0.0,
+              "quantity": 0,
+              "orders": 0
+            },
+            {
+              "price": 0.0,
+              "quantity": 0,
+              "orders": 0
+            },
+            {
+              "price": 0.0,
+              "quantity": 0,
+              "orders": 0
+            }
+          ]
+        }
+      },
+      {
+        "exchange": "NSE",
+        "tradingSymbol": "Nifty Bank",
+        "symbolToken": "99926009",
+        "ltp": 56303.85,
+        "open": 56343.45,
+        "high": 56786.25,
+        "low": 56109.2,
+        "close": 55605.05,
+        "lastTradeQty": 0,
+        "exchFeedTime": "15-Apr-2026 14:23:53",
+        "exchTradeTime": "01-Jan-1970 05:30:00",
+        "netChange": 698.8,
+        "percentChange": 1.26,
+        "avgPrice": 0.0,
+        "tradeVolume": 0,
+        "opnInterest": 0,
+        "lowerCircuit": 0.0,
+        "upperCircuit": 0.0,
+        "totBuyQuan": 0,
+        "totSellQuan": 0,
+        "52WeekLow": 0.0,
+        "52WeekHigh": 0.0,
+        "depth": {
+          "buy": [
+            {
+              "price": 0.0,
+              "quantity": 0,
+              "orders": 0
+            },
+            {
+              "price": 0.0,
+              "quantity": 0,
+              "orders": 0
+            },
+            {
+              "price": 0.0,
+              "quantity": 0,
+              "orders": 0
+            },
+            {
+              "price": 0.0,
+              "quantity": 0,
+              "orders": 0
+            },
+            {
+              "price": 0.0,
+              "quantity": 0,
+              "orders": 0
+            }
+          ],
+          "sell": [
+            {
+              "price": 0.0,
+              "quantity": 0,
+              "orders": 0
+            },
+            {
+              "price": 0.0,
+              "quantity": 0,
+              "orders": 0
+            },
+            {
+              "price": 0.0,
+              "quantity": 0,
+              "orders": 0
+            },
+            {
+              "price": 0.0,
+              "quantity": 0,
+              "orders": 0
+            },
+            {
+              "price": 0.0,
+              "quantity": 0,
+              "orders": 0
+            }
+          ]
+        }
+      }
+    ],
+    "unfetched": []
+  }
+}

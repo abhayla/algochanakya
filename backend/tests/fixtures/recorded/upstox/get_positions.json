@@ -1,0 +1,8 @@
+{
+  "broker": "upstox",
+  "method": "get_positions",
+  "recorded_at": "2026-04-14T19:03:39.115151",
+  "market_open": false,
+  "metadata": {},
+  "response": []
+}

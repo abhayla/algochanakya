@@ -1,0 +1,328 @@
+{
+  "broker": "angelone",
+  "method": "get_quote",
+  "recorded_at": "2026-04-14T19:02:32.977593",
+  "market_open": false,
+  "metadata": {
+    "symbols": [
+      "NIFTY 50",
+      "NIFTY BANK"
+    ]
+  },
+  "response": {
+    "NIFTY 50": {
+      "tradingsymbol": "NIFTY 50",
+      "exchange": "NSE",
+      "instrument_token": "99926000",
+      "last_price": {
+        "__decimal__": "23842.65"
+      },
+      "open": {
+        "__decimal__": "23589.6"
+      },
+      "high": {
+        "__decimal__": "23907.4"
+      },
+      "low": {
+        "__decimal__": "23555.6"
+      },
+      "close": {
+        "__decimal__": "24050.6"
+      },
+      "change": {
+        "__decimal__": "-207.95"
+      },
+      "change_percent": {
+        "__decimal__": "-0.8646353937115913948092771074"
+      },
+      "volume": 0,
+      "oi": 0,
+      "oi_change": 0,
+      "bid_price": {
+        "__decimal__": "0"
+      },
+      "bid_quantity": 0,
+      "ask_price": {
+        "__decimal__": "0"
+      },
+      "ask_quantity": 0,
+      "last_trade_time": {
+        "__datetime__": "2026-04-14T19:02:31.948793"
+      },
+      "exchange_timestamp": null,
+      "raw_response": {
+        "token": "99926000",
+        "tradingsymbol": "Nifty 50",
+        "exchange": "NSE",
+        "ltp": {
+          "__decimal__": "23842.65"
+        },
+        "open": {
+          "__decimal__": "23589.6"
+        },
+        "high": {
+          "__decimal__": "23907.4"
+        },
+        "low": {
+          "__decimal__": "23555.6"
+        },
+        "close": {
+          "__decimal__": "24050.6"
+        },
+        "volume": 0,
+        "oi": 0,
+        "oi_change": 0,
+        "total_buy_qty": 0,
+        "total_sell_qty": 0,
+        "52_week_high": {
+          "__decimal__": "0.0"
+        },
+        "52_week_low": {
+          "__decimal__": "0.0"
+        },
+        "upper_circuit": {
+          "__decimal__": "0.0"
+        },
+        "lower_circuit": {
+          "__decimal__": "0.0"
+        },
+        "last_trade_time": "01-Jan-1970 05:30:00",
+        "exchange_timestamp": "14-Apr-2026 06:40:05",
+        "depth": {
+          "buy": [
+            {
+              "price": {
+                "__decimal__": "0.0"
+              },
+              "quantity": 0,
+              "orders": 0
+            },
+            {
+              "price": {
+                "__decimal__": "0.0"
+              },
+              "quantity": 0,
+              "orders": 0
+            },
+            {
+              "price": {
+                "__decimal__": "0.0"
+              },
+              "quantity": 0,
+              "orders": 0
+            },
+            {
+              "price": {
+                "__decimal__": "0.0"
+              },
+              "quantity": 0,
+              "orders": 0
+            },
+            {
+              "price": {
+                "__decimal__": "0.0"
+              },
+              "quantity": 0,
+              "orders": 0
+            }
+          ],
+          "sell": [
+            {
+              "price": {
+                "__decimal__": "0.0"
+              },
+              "quantity": 0,
+              "orders": 0
+            },
+            {
+              "price": {
+                "__decimal__": "0.0"
+              },
+              "quantity": 0,
+              "orders": 0
+            },
+            {
+              "price": {
+                "__decimal__": "0.0"
+              },
+              "quantity": 0,
+              "orders": 0
+            },
+            {
+              "price": {
+                "__decimal__": "0.0"
+              },
+              "quantity": 0,
+              "orders": 0
+            },
+            {
+              "price": {
+                "__decimal__": "0.0"
+              },
+              "quantity": 0,
+              "orders": 0
+            }
+          ]
+        }
+      },
+      "__type__": "UnifiedQuote"
+    },
+    "NIFTY BANK": {
+      "tradingsymbol": "NIFTY BANK",
+      "exchange": "NSE",
+      "instrument_token": "99926009",
+      "last_price": {
+        "__decimal__": "55605.05"
+      },
+      "open": {
+        "__decimal__": "54646.0"
+      },
+      "high": {
+        "__decimal__": "55752.65"
+      },
+      "low": {
+        "__decimal__": "54356.2"
+      },
+      "close": {
+        "__decimal__": "55912.75"
+      },
+      "change": {
+        "__decimal__": "-307.70"
+      },
+      "change_percent": {
+        "__decimal__": "-0.5503217065874956964198684558"
+      },
+      "volume": 0,
+      "oi": 0,
+      "oi_change": 0,
+      "bid_price": {
+        "__decimal__": "0"
+      },
+      "bid_quantity": 0,
+      "ask_price": {
+        "__decimal__": "0"
+      },
+      "ask_quantity": 0,
+      "last_trade_time": {
+        "__datetime__": "2026-04-14T19:02:32.977245"
+      },
+      "exchange_timestamp": null,
+      "raw_response": {
+        "token": "99926009",
+        "tradingsymbol": "Nifty Bank",
+        "exchange": "NSE",
+        "ltp": {
+          "__decimal__": "55605.05"
+        },
+        "open": {
+          "__decimal__": "54646.0"
+        },
+        "high": {
+          "__decimal__": "55752.65"
+        },
+        "low": {
+          "__decimal__": "54356.2"
+        },
+        "close": {
+          "__decimal__": "55912.75"
+        },
+        "volume": 0,
+        "oi": 0,
+        "oi_change": 0,
+        "total_buy_qty": 0,
+        "total_sell_qty": 0,
+        "52_week_high": {
+          "__decimal__": "0.0"
+        },
+        "52_week_low": {
+          "__decimal__": "0.0"
+        },
+        "upper_circuit": {
+          "__decimal__": "0.0"
+        },
+        "lower_circuit": {
+          "__decimal__": "0.0"
+        },
+        "last_trade_time": "01-Jan-1970 05:30:00",
+        "exchange_timestamp": "14-Apr-2026 06:40:05",
+        "depth": {
+          "buy": [
+            {
+              "price": {
+                "__decimal__": "0.0"
+              },
+              "quantity": 0,
+              "orders": 0
+            },
+            {
+              "price": {
+                "__decimal__": "0.0"
+              },
+              "quantity": 0,
+              "orders": 0
+            },
+            {
+              "price": {
+                "__decimal__": "0.0"
+              },
+              "quantity": 0,
+              "orders": 0
+            },
+            {
+              "price": {
+                "__decimal__": "0.0"
+              },
+              "quantity": 0,
+              "orders": 0
+            },
+            {
+              "price": {
+                "__decimal__": "0.0"
+              },
+              "quantity": 0,
+              "orders": 0
+            }
+          ],
+          "sell": [
+            {
+              "price": {
+                "__decimal__": "0.0"
+              },
+              "quantity": 0,
+              "orders": 0
+            },
+            {
+              "price": {
+                "__decimal__": "0.0"
+              },
+              "quantity": 0,
+              "orders": 0
+            },
+            {
+              "price": {
+                "__decimal__": "0.0"
+              },
+              "quantity": 0,
+              "orders": 0
+            },
+            {
+              "price": {
+                "__decimal__": "0.0"
+              },
+              "quantity": 0,
+              "orders": 0
+            },
+            {
+              "price": {
+                "__decimal__": "0.0"
+              },
+              "quantity": 0,
+              "orders": 0
+            }
+          ]
+        }
+      },
+      "__type__": "UnifiedQuote"
+    }
+  }
+}

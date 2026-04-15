@@ -1,0 +1,19 @@
+{
+  "status": "success",
+  "data": {
+    "NSE_INDEX:Nifty Bank": {
+      "last_price": 56327.15,
+      "instrument_token": "NSE_INDEX|Nifty Bank",
+      "ltq": 0,
+      "volume": 0,
+      "cp": 55605.05
+    },
+    "NSE_INDEX:Nifty 50": {
+      "last_price": 24234.15,
+      "instrument_token": "NSE_INDEX|Nifty 50",
+      "ltq": 0,
+      "volume": 0,
+      "cp": 23842.65
+    }
+  }
+}

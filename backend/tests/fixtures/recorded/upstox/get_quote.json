@@ -1,0 +1,96 @@
+{
+  "broker": "upstox",
+  "method": "get_quote",
+  "recorded_at": "2026-04-14T19:03:16.706267",
+  "market_open": false,
+  "metadata": {
+    "symbols": [
+      "NIFTY 50",
+      "NIFTY BANK"
+    ]
+  },
+  "response": {
+    "NIFTY BANK": {
+      "tradingsymbol": "NIFTY BANK",
+      "exchange": "",
+      "instrument_token": null,
+      "last_price": {
+        "__decimal__": "55605.05"
+      },
+      "open": {
+        "__decimal__": "54646.0"
+      },
+      "high": {
+        "__decimal__": "55752.65"
+      },
+      "low": {
+        "__decimal__": "54356.2"
+      },
+      "close": {
+        "__decimal__": "55605.05"
+      },
+      "change": {
+        "__decimal__": "0"
+      },
+      "change_percent": {
+        "__decimal__": "0"
+      },
+      "volume": 0,
+      "oi": 0,
+      "oi_change": 0,
+      "bid_price": {
+        "__decimal__": "0"
+      },
+      "bid_quantity": 0,
+      "ask_price": {
+        "__decimal__": "0"
+      },
+      "ask_quantity": 0,
+      "last_trade_time": null,
+      "exchange_timestamp": null,
+      "raw_response": null,
+      "__type__": "UnifiedQuote"
+    },
+    "NIFTY 50": {
+      "tradingsymbol": "NIFTY 50",
+      "exchange": "",
+      "instrument_token": null,
+      "last_price": {
+        "__decimal__": "23842.65"
+      },
+      "open": {
+        "__decimal__": "23589.6"
+      },
+      "high": {
+        "__decimal__": "23907.4"
+      },
+      "low": {
+        "__decimal__": "23555.6"
+      },
+      "close": {
+        "__decimal__": "23842.65"
+      },
+      "change": {
+        "__decimal__": "0"
+      },
+      "change_percent": {
+        "__decimal__": "0"
+      },
+      "volume": 0,
+      "oi": 0,
+      "oi_change": 0,
+      "bid_price": {
+        "__decimal__": "0"
+      },
+      "bid_quantity": 0,
+      "ask_price": {
+        "__decimal__": "0"
+      },
+      "ask_quantity": 0,
+      "last_trade_time": null,
+      "exchange_timestamp": null,
+      "raw_response": null,
+      "__type__": "UnifiedQuote"
+    }
+  }
+}

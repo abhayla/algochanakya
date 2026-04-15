@@ -1,0 +1,6203 @@
+{
+  "status": "success",
+  "data": [
+    {
+      "expiry": "2026-04-21",
+      "strike_price": 20100.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63113",
+        "market_data": {
+          "ltp": 0.0,
+          "volume": 0,
+          "oi": 0.0,
+          "close_price": 3616.05,
+          "bid_price": 4082.15,
+          "bid_qty": 390,
+          "ask_price": 4190.8,
+          "ask_qty": 780,
+          "prev_oi": 0.0
+        },
+        "option_greeks": {
+          "vega": 0.0,
+          "theta": 0.0,
+          "gamma": 0.0,
+          "delta": 1.0,
+          "iv": 0.0,
+          "pop": 99.0
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63119",
+        "market_data": {
+          "ltp": 1.15,
+          "volume": 4526990,
+          "oi": 2088320.0,
+          "close_price": 2.4,
+          "bid_price": 1.15,
+          "bid_qty": 182130,
+          "ask_price": 1.2,
+          "ask_qty": 230555,
+          "prev_oi": 1727895.0
+        },
+        "option_greeks": {
+          "vega": 0.2328,
+          "theta": -1.0056,
+          "gamma": 0.0,
+          "delta": -0.0024,
+          "iv": 52.25,
+          "pop": 0.29
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "strike_price": 20150.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63120",
+        "market_data": {
+          "ltp": 0.0,
+          "volume": 0,
+          "oi": 0.0,
+          "close_price": 3566.4,
+          "bid_price": 3799.75,
+          "bid_qty": 780,
+          "ask_price": 4140.0,
+          "ask_qty": 780,
+          "prev_oi": 0.0
+        },
+        "option_greeks": {
+          "vega": 0.0,
+          "theta": 0.0,
+          "gamma": 0.0,
+          "delta": 1.0,
+          "iv": 0.0,
+          "pop": 99.0
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63127",
+        "market_data": {
+          "ltp": 1.1,
+          "volume": 667550,
+          "oi": 114270.0,
+          "close_price": 2.5,
+          "bid_price": 1.1,
+          "bid_qty": 35230,
+          "ask_price": 1.15,
+          "ask_qty": 23075,
+          "prev_oi": 30550.0
+        },
+        "option_greeks": {
+          "vega": 0.2233,
+          "theta": -0.9466,
+          "gamma": 0.0,
+          "delta": -0.0023,
+          "iv": 51.27,
+          "pop": 0.28
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "strike_price": 20200.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63128",
+        "market_data": {
+          "ltp": 0.0,
+          "volume": 0,
+          "oi": 0.0,
+          "close_price": 3516.75,
+          "bid_price": 3758.7,
+          "bid_qty": 780,
+          "ask_price": 4090.1,
+          "ask_qty": 780,
+          "prev_oi": 0.0
+        },
+        "option_greeks": {
+          "vega": 0.0,
+          "theta": 0.0,
+          "gamma": 0.0,
+          "delta": 1.0,
+          "iv": 0.0,
+          "pop": 99.0
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63129",
+        "market_data": {
+          "ltp": 1.15,
+          "volume": 1477125,
+          "oi": 275405.0,
+          "close_price": 2.4,
+          "bid_price": 1.1,
+          "bid_qty": 36985,
+          "ask_price": 1.15,
+          "ask_qty": 49465,
+          "prev_oi": 283270.0
+        },
+        "option_greeks": {
+          "vega": 0.2306,
+          "theta": -0.9683,
+          "gamma": 0.0,
+          "delta": -0.0024,
+          "iv": 50.78,
+          "pop": 0.29
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "strike_price": 20250.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63130",
+        "market_data": {
+          "ltp": 0.0,
+          "volume": 0,
+          "oi": 0.0,
+          "close_price": 3467.1,
+          "bid_price": 3706.9,
+          "bid_qty": 780,
+          "ask_price": 4043.25,
+          "ask_qty": 780,
+          "prev_oi": 0.0
+        },
+        "option_greeks": {
+          "vega": 0.0,
+          "theta": 0.0,
+          "gamma": 0.0,
+          "delta": 1.0,
+          "iv": 0.0,
+          "pop": 99.0
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63131",
+        "market_data": {
+          "ltp": 1.25,
+          "volume": 133575,
+          "oi": 34320.0,
+          "close_price": 2.65,
+          "bid_price": 1.25,
+          "bid_qty": 1170,
+          "ask_price": 1.3,
+          "ask_qty": 1690,
+          "prev_oi": 11960.0
+        },
+        "option_greeks": {
+          "vega": 0.2564,
+          "theta": -1.0767,
+          "gamma": 0.0,
+          "delta": -0.0027,
+          "iv": 50.78,
+          "pop": 0.32
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "strike_price": 20300.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63132",
+        "market_data": {
+          "ltp": 0.0,
+          "volume": 0,
+          "oi": 0.0,
+          "close_price": 3417.45,
+          "bid_price": 3651.0,
+          "bid_qty": 780,
+          "ask_price": 4004.2,
+          "ask_qty": 1690,
+          "prev_oi": 0.0
+        },
+        "option_greeks": {
+          "vega": 0.0,
+          "theta": 0.0,
+          "gamma": 0.0,
+          "delta": 1.0,
+          "iv": 0.0,
+          "pop": 99.0
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63133",
+        "market_data": {
+          "ltp": 1.25,
+          "volume": 211575,
+          "oi": 51025.0,
+          "close_price": 2.65,
+          "bid_price": 1.25,
+          "bid_qty": 130,
+          "ask_price": 1.3,
+          "ask_qty": 7410,
+          "prev_oi": 27430.0
+        },
+        "option_greeks": {
+          "vega": 0.2553,
+          "theta": -1.0566,
+          "gamma": 0.0,
+          "delta": -0.0027,
+          "iv": 50.05,
+          "pop": 0.32
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "strike_price": 20350.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63134",
+        "market_data": {
+          "ltp": 0.0,
+          "volume": 0,
+          "oi": 0.0,
+          "close_price": 3367.85,
+          "bid_price": 3638.75,
+          "bid_qty": 780,
+          "ask_price": 4021.6,
+          "ask_qty": 780,
+          "prev_oi": 0.0
+        },
+        "option_greeks": {
+          "vega": 0.0,
+          "theta": 0.0,
+          "gamma": 0.0,
+          "delta": 1.0,
+          "iv": 0.0,
+          "pop": 99.0
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63135",
+        "market_data": {
+          "ltp": 1.3,
+          "volume": 143845,
+          "oi": 47710.0,
+          "close_price": 2.55,
+          "bid_price": 1.3,
+          "bid_qty": 130,
+          "ask_price": 1.35,
+          "ask_qty": 2340,
+          "prev_oi": 8905.0
+        },
+        "option_greeks": {
+          "vega": 0.2636,
+          "theta": -1.0803,
+          "gamma": 0.0,
+          "delta": -0.0027,
+          "iv": 49.56,
+          "pop": 0.33
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "strike_price": 20400.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63136",
+        "market_data": {
+          "ltp": 0.0,
+          "volume": 0,
+          "oi": 0.0,
+          "close_price": 3318.2,
+          "bid_price": 3570.25,
+          "bid_qty": 780,
+          "ask_price": 3990.25,
+          "ask_qty": 780,
+          "prev_oi": 0.0
+        },
+        "option_greeks": {
+          "vega": 0.0,
+          "theta": 0.0,
+          "gamma": 0.0,
+          "delta": 1.0,
+          "iv": 0.0,
+          "pop": 99.0
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63137",
+        "market_data": {
+          "ltp": 1.3,
+          "volume": 260975,
+          "oi": 72085.0,
+          "close_price": 3.0,
+          "bid_price": 1.3,
+          "bid_qty": 18785,
+          "ask_price": 1.35,
+          "ask_qty": 8060,
+          "prev_oi": 37180.0
+        },
+        "option_greeks": {
+          "vega": 0.2624,
+          "theta": -1.0595,
+          "gamma": 0.0,
+          "delta": -0.0027,
+          "iv": 48.83,
+          "pop": 0.33
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "strike_price": 20450.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63138",
+        "market_data": {
+          "ltp": 0.0,
+          "volume": 0,
+          "oi": 0.0,
+          "close_price": 3268.55,
+          "bid_price": 3522.25,
+          "bid_qty": 780,
+          "ask_price": 3971.95,
+          "ask_qty": 780,
+          "prev_oi": 0.0
+        },
+        "option_greeks": {
+          "vega": 0.0,
+          "theta": 0.0,
+          "gamma": 0.0,
+          "delta": 1.0,
+          "iv": 0.0,
+          "pop": 99.0
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63150",
+        "market_data": {
+          "ltp": 1.4,
+          "volume": 95485,
+          "oi": 26910.0,
+          "close_price": 3.05,
+          "bid_price": 1.4,
+          "bid_qty": 520,
+          "ask_price": 1.45,
+          "ask_qty": 1755,
+          "prev_oi": 18785.0
+        },
+        "option_greeks": {
+          "vega": 0.2922,
+          "theta": -1.1797,
+          "gamma": 0.0,
+          "delta": -0.0031,
+          "iv": 48.83,
+          "pop": 0.37
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 22213.0,
+      "strike_price": 20500.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63151",
+        "market_data": {
+          "ltp": 3530.0,
+          "volume": 0,
+          "oi": 65.0,
+          "close_price": 3530.0,
+          "bid_price": 3722.7,
+          "bid_qty": 325,
+          "ask_price": 3749.05,
+          "ask_qty": 65,
+          "prev_oi": 65.0
+        },
+        "option_greeks": {
+          "vega": 0.0,
+          "theta": 0.0,
+          "gamma": 0.0,
+          "delta": 1.0,
+          "iv": 0.0,
+          "pop": 99.0
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63152",
+        "market_data": {
+          "ltp": 1.35,
+          "volume": 4026165,
+          "oi": 1443845.0,
+          "close_price": 3.05,
+          "bid_price": 1.35,
+          "bid_qty": 130195,
+          "ask_price": 1.4,
+          "ask_qty": 188955,
+          "prev_oi": 1360580.0
+        },
+        "option_greeks": {
+          "vega": 0.2911,
+          "theta": -1.1578,
+          "gamma": 0.0,
+          "delta": -0.0031,
+          "iv": 48.1,
+          "pop": 0.37
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "strike_price": 20550.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63153",
+        "market_data": {
+          "ltp": 0.0,
+          "volume": 0,
+          "oi": 0.0,
+          "close_price": 3169.35,
+          "bid_price": 3463.05,
+          "bid_qty": 780,
+          "ask_price": 3809.65,
+          "ask_qty": 780,
+          "prev_oi": 0.0
+        },
+        "option_greeks": {
+          "vega": 0.0,
+          "theta": 0.0,
+          "gamma": 0.0,
+          "delta": 1.0,
+          "iv": 0.0,
+          "pop": 99.0
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63160",
+        "market_data": {
+          "ltp": 1.5,
+          "volume": 83980,
+          "oi": 10075.0,
+          "close_price": 3.15,
+          "bid_price": 1.5,
+          "bid_qty": 650,
+          "ask_price": 1.55,
+          "ask_qty": 195,
+          "prev_oi": 5980.0
+        },
+        "option_greeks": {
+          "vega": 0.3126,
+          "theta": -1.237,
+          "gamma": 0.0,
+          "delta": -0.0033,
+          "iv": 47.85,
+          "pop": 0.4
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "strike_price": 20600.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63161",
+        "market_data": {
+          "ltp": 0.0,
+          "volume": 0,
+          "oi": 0.0,
+          "close_price": 3119.75,
+          "bid_price": 3400.65,
+          "bid_qty": 780,
+          "ask_price": 3737.9,
+          "ask_qty": 1690,
+          "prev_oi": 0.0
+        },
+        "option_greeks": {
+          "vega": 0.0,
+          "theta": 0.0,
+          "gamma": 0.0,
+          "delta": 1.0,
+          "iv": 0.0,
+          "pop": 99.0
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63162",
+        "market_data": {
+          "ltp": 1.55,
+          "volume": 543530,
+          "oi": 152165.0,
+          "close_price": 3.3,
+          "bid_price": 1.55,
+          "bid_qty": 22100,
+          "ask_price": 1.6,
+          "ask_qty": 21905,
+          "prev_oi": 102245.0
+        },
+        "option_greeks": {
+          "vega": 0.3234,
+          "theta": -1.2666,
+          "gamma": 0.0,
+          "delta": -0.0034,
+          "iv": 47.36,
+          "pop": 0.41
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "strike_price": 20650.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63163",
+        "market_data": {
+          "ltp": 0.0,
+          "volume": 0,
+          "oi": 0.0,
+          "close_price": 3070.15,
+          "bid_price": 3327.9,
+          "bid_qty": 780,
+          "ask_price": 3697.5,
+          "ask_qty": 780,
+          "prev_oi": 0.0
+        },
+        "option_greeks": {
+          "vega": 0.0,
+          "theta": 0.0,
+          "gamma": 0.0,
+          "delta": 1.0,
+          "iv": 0.0,
+          "pop": 99.0
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63164",
+        "market_data": {
+          "ltp": 1.65,
+          "volume": 83915,
+          "oi": 13130.0,
+          "close_price": 3.45,
+          "bid_price": 1.5,
+          "bid_qty": 3575,
+          "ask_price": 1.65,
+          "ask_qty": 130,
+          "prev_oi": 9815.0
+        },
+        "option_greeks": {
+          "vega": 0.3344,
+          "theta": -1.2962,
+          "gamma": 0.0,
+          "delta": -0.0036,
+          "iv": 46.88,
+          "pop": 0.43
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "strike_price": 20700.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63165",
+        "market_data": {
+          "ltp": 0.0,
+          "volume": 0,
+          "oi": 0.0,
+          "close_price": 3020.55,
+          "bid_price": 3308.65,
+          "bid_qty": 780,
+          "ask_price": 3692.5,
+          "ask_qty": 780,
+          "prev_oi": 0.0
+        },
+        "option_greeks": {
+          "vega": 0.0,
+          "theta": 0.0,
+          "gamma": 0.0,
+          "delta": 1.0,
+          "iv": 0.0,
+          "pop": 99.0
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63166",
+        "market_data": {
+          "ltp": 1.7,
+          "volume": 895440,
+          "oi": 163865.0,
+          "close_price": 3.55,
+          "bid_price": 1.65,
+          "bid_qty": 30030,
+          "ask_price": 1.7,
+          "ask_qty": 30420,
+          "prev_oi": 152620.0
+        },
+        "option_greeks": {
+          "vega": 0.3461,
+          "theta": -1.3276,
+          "gamma": 0.0,
+          "delta": -0.0037,
+          "iv": 46.39,
+          "pop": 0.44
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "strike_price": 20750.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63167",
+        "market_data": {
+          "ltp": 0.0,
+          "volume": 0,
+          "oi": 0.0,
+          "close_price": 2971.0,
+          "bid_price": 3226.45,
+          "bid_qty": 780,
+          "ask_price": 3645.5,
+          "ask_qty": 780,
+          "prev_oi": 0.0
+        },
+        "option_greeks": {
+          "vega": 0.0,
+          "theta": 0.0,
+          "gamma": 0.0,
+          "delta": 1.0,
+          "iv": 0.0,
+          "pop": 99.0
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63168",
+        "market_data": {
+          "ltp": 1.7,
+          "volume": 128570,
+          "oi": 22880.0,
+          "close_price": 3.65,
+          "bid_price": 1.7,
+          "bid_qty": 1625,
+          "ask_price": 1.8,
+          "ask_qty": 780,
+          "prev_oi": 16575.0
+        },
+        "option_greeks": {
+          "vega": 0.3583,
+          "theta": -1.36,
+          "gamma": 0.0,
+          "delta": -0.0039,
+          "iv": 45.9,
+          "pop": 0.46
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "strike_price": 20800.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63169",
+        "market_data": {
+          "ltp": 0.0,
+          "volume": 0,
+          "oi": 0.0,
+          "close_price": 2921.45,
+          "bid_price": 3184.6,
+          "bid_qty": 780,
+          "ask_price": 3498.95,
+          "ask_qty": 780,
+          "prev_oi": 0.0
+        },
+        "option_greeks": {
+          "vega": 0.0,
+          "theta": 0.0,
+          "gamma": 0.0,
+          "delta": 1.0,
+          "iv": 0.0,
+          "pop": 99.0
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63170",
+        "market_data": {
+          "ltp": 1.75,
+          "volume": 1643395,
+          "oi": 510770.0,
+          "close_price": 3.85,
+          "bid_price": 1.7,
+          "bid_qty": 50310,
+          "ask_price": 1.75,
+          "ask_qty": 22100,
+          "prev_oi": 245375.0
+        },
+        "option_greeks": {
+          "vega": 0.3711,
+          "theta": -1.3934,
+          "gamma": 0.0,
+          "delta": -0.004,
+          "iv": 45.41,
+          "pop": 0.47
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "strike_price": 20850.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63172",
+        "market_data": {
+          "ltp": 0.0,
+          "volume": 0,
+          "oi": 0.0,
+          "close_price": 2871.95,
+          "bid_price": 3223.6,
+          "bid_qty": 780,
+          "ask_price": 3500.3,
+          "ask_qty": 780,
+          "prev_oi": 0.0
+        },
+        "option_greeks": {
+          "vega": 0.0,
+          "theta": 0.0,
+          "gamma": 0.0,
+          "delta": 1.0,
+          "iv": 0.0,
+          "pop": 99.0
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63179",
+        "market_data": {
+          "ltp": 1.85,
+          "volume": 108355,
+          "oi": 15470.0,
+          "close_price": 3.8,
+          "bid_price": 1.85,
+          "bid_qty": 65,
+          "ask_price": 1.9,
+          "ask_qty": 195,
+          "prev_oi": 13910.0
+        },
+        "option_greeks": {
+          "vega": 0.3847,
+          "theta": -1.429,
+          "gamma": 0.0,
+          "delta": -0.0042,
+          "iv": 44.92,
+          "pop": 0.49
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "strike_price": 20900.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63180",
+        "market_data": {
+          "ltp": 0.0,
+          "volume": 0,
+          "oi": 0.0,
+          "close_price": 2822.45,
+          "bid_price": 3114.5,
+          "bid_qty": 780,
+          "ask_price": 3394.35,
+          "ask_qty": 780,
+          "prev_oi": 0.0
+        },
+        "option_greeks": {
+          "vega": 0.0,
+          "theta": 0.0,
+          "gamma": 0.0,
+          "delta": 1.0,
+          "iv": 0.0,
+          "pop": 99.0
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63181",
+        "market_data": {
+          "ltp": 1.95,
+          "volume": 1043510,
+          "oi": 231270.0,
+          "close_price": 4.1,
+          "bid_price": 1.9,
+          "bid_qty": 51805,
+          "ask_price": 1.95,
+          "ask_qty": 10400,
+          "prev_oi": 146250.0
+        },
+        "option_greeks": {
+          "vega": 0.3983,
+          "theta": -1.4636,
+          "gamma": 0.0,
+          "delta": -0.0043,
+          "iv": 44.43,
+          "pop": 0.51
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "strike_price": 20950.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63182",
+        "market_data": {
+          "ltp": 0.0,
+          "volume": 0,
+          "oi": 0.0,
+          "close_price": 2772.95,
+          "bid_price": 3232.3,
+          "bid_qty": 780,
+          "ask_price": 3345.9,
+          "ask_qty": 780,
+          "prev_oi": 0.0
+        },
+        "option_greeks": {
+          "vega": 0.0,
+          "theta": 0.0,
+          "gamma": 0.0,
+          "delta": 1.0,
+          "iv": 0.0,
+          "pop": 99.0
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63187",
+        "market_data": {
+          "ltp": 2.0,
+          "volume": 510055,
+          "oi": 24830.0,
+          "close_price": 4.1,
+          "bid_price": 1.95,
+          "bid_qty": 2340,
+          "ask_price": 2.0,
+          "ask_qty": 65,
+          "prev_oi": 14235.0
+        },
+        "option_greeks": {
+          "vega": 0.4132,
+          "theta": -1.5015,
+          "gamma": 0.0,
+          "delta": -0.0045,
+          "iv": 43.95,
+          "pop": 0.53
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 6518.8571,
+      "strike_price": 21000.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63188",
+        "market_data": {
+          "ltp": 2882.55,
+          "volume": 0,
+          "oi": 455.0,
+          "close_price": 2882.55,
+          "bid_price": 3190.1,
+          "bid_qty": 715,
+          "ask_price": 3248.65,
+          "ask_qty": 65,
+          "prev_oi": 520.0
+        },
+        "option_greeks": {
+          "vega": 0.0,
+          "theta": 0.0,
+          "gamma": 0.0,
+          "delta": 1.0,
+          "iv": 0.0,
+          "pop": 99.0
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63189",
+        "market_data": {
+          "ltp": 2.0,
+          "volume": 6559215,
+          "oi": 2966080.0,
+          "close_price": 4.3,
+          "bid_price": 2.0,
+          "bid_qty": 94965,
+          "ask_price": 2.05,
+          "ask_qty": 160160,
+          "prev_oi": 2738645.0
+        },
+        "option_greeks": {
+          "vega": 0.4282,
+          "theta": -1.5386,
+          "gamma": 0.0,
+          "delta": -0.0047,
+          "iv": 43.46,
+          "pop": 0.55
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "strike_price": 21050.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63195",
+        "market_data": {
+          "ltp": 0.0,
+          "volume": 0,
+          "oi": 0.0,
+          "close_price": 2674.1,
+          "bid_price": 2990.45,
+          "bid_qty": 780,
+          "ask_price": 3266.65,
+          "ask_qty": 780,
+          "prev_oi": 0.0
+        },
+        "option_greeks": {
+          "vega": 0.0,
+          "theta": 0.0,
+          "gamma": 0.0,
+          "delta": 1.0,
+          "iv": 0.0,
+          "pop": 99.0
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63196",
+        "market_data": {
+          "ltp": 2.05,
+          "volume": 227760,
+          "oi": 50765.0,
+          "close_price": 4.45,
+          "bid_price": 1.95,
+          "bid_qty": 3445,
+          "ask_price": 2.1,
+          "ask_qty": 65,
+          "prev_oi": 24505.0
+        },
+        "option_greeks": {
+          "vega": 0.4278,
+          "theta": -1.5114,
+          "gamma": 0.0,
+          "delta": -0.0047,
+          "iv": 42.72,
+          "pop": 0.55
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 1531.0,
+      "strike_price": 21100.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63201",
+        "market_data": {
+          "ltp": 2620.0,
+          "volume": 0,
+          "oi": 130.0,
+          "close_price": 2620.0,
+          "bid_price": 3101.85,
+          "bid_qty": 65,
+          "ask_price": 3157.4,
+          "ask_qty": 65,
+          "prev_oi": 130.0
+        },
+        "option_greeks": {
+          "vega": 0.0,
+          "theta": 0.0,
+          "gamma": 0.0,
+          "delta": 1.0,
+          "iv": 0.0,
+          "pop": 99.0
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63202",
+        "market_data": {
+          "ltp": 2.15,
+          "volume": 831870,
+          "oi": 199030.0,
+          "close_price": 4.55,
+          "bid_price": 2.1,
+          "bid_qty": 30030,
+          "ask_price": 2.15,
+          "ask_qty": 47515,
+          "prev_oi": 202280.0
+        },
+        "option_greeks": {
+          "vega": 0.4608,
+          "theta": -1.6187,
+          "gamma": 0.0,
+          "delta": -0.0051,
+          "iv": 42.48,
+          "pop": 0.6
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "strike_price": 21150.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63254",
+        "market_data": {
+          "ltp": 0.0,
+          "volume": 0,
+          "oi": 0.0,
+          "close_price": 2575.4,
+          "bid_price": 2891.3,
+          "bid_qty": 780,
+          "ask_price": 3165.5,
+          "ask_qty": 780,
+          "prev_oi": 0.0
+        },
+        "option_greeks": {
+          "vega": 0.0,
+          "theta": 0.0,
+          "gamma": 0.0,
+          "delta": 1.0,
+          "iv": 0.0,
+          "pop": 99.0
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63255",
+        "market_data": {
+          "ltp": 2.15,
+          "volume": 442715,
+          "oi": 62075.0,
+          "close_price": 4.8,
+          "bid_price": 2.15,
+          "bid_qty": 650,
+          "ask_price": 2.25,
+          "ask_qty": 65,
+          "prev_oi": 70980.0
+        },
+        "option_greeks": {
+          "vega": 0.4608,
+          "theta": -1.5906,
+          "gamma": 0.0,
+          "delta": -0.0051,
+          "iv": 41.75,
+          "pop": 0.59
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 10282.0,
+      "strike_price": 21200.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63256",
+        "market_data": {
+          "ltp": 2520.0,
+          "volume": 0,
+          "oi": 65.0,
+          "close_price": 2520.0,
+          "bid_price": 3000.55,
+          "bid_qty": 65,
+          "ask_price": 3059.85,
+          "ask_qty": 65,
+          "prev_oi": 65.0
+        },
+        "option_greeks": {
+          "vega": 0.0,
+          "theta": 0.0,
+          "gamma": 0.0,
+          "delta": 1.0,
+          "iv": 0.0,
+          "pop": 99.0
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63257",
+        "market_data": {
+          "ltp": 2.35,
+          "volume": 2271945,
+          "oi": 668330.0,
+          "close_price": 4.95,
+          "bid_price": 2.25,
+          "bid_qty": 84565,
+          "ask_price": 2.3,
+          "ask_qty": 25415,
+          "prev_oi": 472615.0
+        },
+        "option_greeks": {
+          "vega": 0.4967,
+          "theta": -1.7047,
+          "gamma": 0.0,
+          "delta": -0.0056,
+          "iv": 41.5,
+          "pop": 0.64
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "strike_price": 21250.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63269",
+        "market_data": {
+          "ltp": 0.0,
+          "volume": 0,
+          "oi": 0.0,
+          "close_price": 2476.9,
+          "bid_price": 2927.55,
+          "bid_qty": 780,
+          "ask_price": 3127.2,
+          "ask_qty": 780,
+          "prev_oi": 0.0
+        },
+        "option_greeks": {
+          "vega": 0.0,
+          "theta": 0.0,
+          "gamma": 0.0,
+          "delta": 1.0,
+          "iv": 0.0,
+          "pop": 99.0
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63272",
+        "market_data": {
+          "ltp": 2.3,
+          "volume": 354770,
+          "oi": 98995.0,
+          "close_price": 5.1,
+          "bid_price": 2.25,
+          "bid_qty": 17940,
+          "ask_price": 2.3,
+          "ask_qty": 16510,
+          "prev_oi": 50570.0
+        },
+        "option_greeks": {
+          "vega": 0.4974,
+          "theta": -1.6769,
+          "gamma": 0.0,
+          "delta": -0.0056,
+          "iv": 40.77,
+          "pop": 0.64
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "strike_price": 21300.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63275",
+        "market_data": {
+          "ltp": 0.0,
+          "volume": 0,
+          "oi": 0.0,
+          "close_price": 2427.75,
+          "bid_price": 2882.1,
+          "bid_qty": 780,
+          "ask_price": 3030.1,
+          "ask_qty": 780,
+          "prev_oi": 0.0
+        },
+        "option_greeks": {
+          "vega": 0.0,
+          "theta": 0.0,
+          "gamma": 0.0,
+          "delta": 1.0,
+          "iv": 0.0,
+          "pop": 99.0
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63276",
+        "market_data": {
+          "ltp": 2.5,
+          "volume": 1649830,
+          "oi": 403780.0,
+          "close_price": 5.3,
+          "bid_price": 2.45,
+          "bid_qty": 36855,
+          "ask_price": 2.5,
+          "ask_qty": 53170,
+          "prev_oi": 244920.0
+        },
+        "option_greeks": {
+          "vega": 0.5362,
+          "theta": -1.7969,
+          "gamma": 0.0,
+          "delta": -0.0061,
+          "iv": 40.53,
+          "pop": 0.7
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "strike_price": 21350.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63277",
+        "market_data": {
+          "ltp": 0.0,
+          "volume": 0,
+          "oi": 0.0,
+          "close_price": 2378.7,
+          "bid_price": 2722.75,
+          "bid_qty": 780,
+          "ask_price": 2965.15,
+          "ask_qty": 780,
+          "prev_oi": 0.0
+        },
+        "option_greeks": {
+          "vega": 0.0,
+          "theta": 0.0,
+          "gamma": 0.0,
+          "delta": 1.0,
+          "iv": 0.0,
+          "pop": 99.0
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63278",
+        "market_data": {
+          "ltp": 2.5,
+          "volume": 322920,
+          "oi": 57005.0,
+          "close_price": 5.45,
+          "bid_price": 2.4,
+          "bid_qty": 2015,
+          "ask_price": 2.5,
+          "ask_qty": 3640,
+          "prev_oi": 48230.0
+        },
+        "option_greeks": {
+          "vega": 0.537,
+          "theta": -1.767,
+          "gamma": 0.0,
+          "delta": -0.0061,
+          "iv": 39.79,
+          "pop": 0.7
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 9693.0,
+      "strike_price": 21400.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63280",
+        "market_data": {
+          "ltp": 2418.35,
+          "volume": 0,
+          "oi": 65.0,
+          "close_price": 2418.35,
+          "bid_price": 2803.85,
+          "bid_qty": 65,
+          "ask_price": 2875.05,
+          "ask_qty": 65,
+          "prev_oi": 65.0
+        },
+        "option_greeks": {
+          "vega": 0.0,
+          "theta": 0.0,
+          "gamma": 0.0,
+          "delta": 1.0,
+          "iv": 0.0,
+          "pop": 99.0
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63281",
+        "market_data": {
+          "ltp": 2.5,
+          "volume": 2837640,
+          "oi": 630045.0,
+          "close_price": 5.8,
+          "bid_price": 2.5,
+          "bid_qty": 64805,
+          "ask_price": 2.55,
+          "ask_qty": 20540,
+          "prev_oi": 354315.0
+        },
+        "option_greeks": {
+          "vega": 0.548,
+          "theta": -1.7756,
+          "gamma": 0.0,
+          "delta": -0.0062,
+          "iv": 39.18,
+          "pop": 0.71
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "strike_price": 21450.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63284",
+        "market_data": {
+          "ltp": 0.0,
+          "volume": 0,
+          "oi": 0.0,
+          "close_price": 2280.8,
+          "bid_price": 2618.55,
+          "bid_qty": 780,
+          "ask_price": 2860.7,
+          "ask_qty": 780,
+          "prev_oi": 0.0
+        },
+        "option_greeks": {
+          "vega": 0.0,
+          "theta": 0.0,
+          "gamma": 0.0,
+          "delta": 1.0,
+          "iv": 0.0,
+          "pop": 99.0
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63285",
+        "market_data": {
+          "ltp": 2.6,
+          "volume": 218985,
+          "oi": 35945.0,
+          "close_price": 6.0,
+          "bid_price": 2.5,
+          "bid_qty": 4095,
+          "ask_price": 2.6,
+          "ask_qty": 34320,
+          "prev_oi": 20865.0
+        },
+        "option_greeks": {
+          "vega": 0.5702,
+          "theta": -1.8245,
+          "gamma": 0.0,
+          "delta": -0.0065,
+          "iv": 38.7,
+          "pop": 0.74
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 2785.7368,
+      "strike_price": 21500.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63288",
+        "market_data": {
+          "ltp": 2710.0,
+          "volume": 260,
+          "oi": 1235.0,
+          "close_price": 2345.4,
+          "bid_price": 2725.85,
+          "bid_qty": 65,
+          "ask_price": 2769.65,
+          "ask_qty": 65,
+          "prev_oi": 1430.0
+        },
+        "option_greeks": {
+          "vega": 0.0,
+          "theta": 0.0,
+          "gamma": 0.0,
+          "delta": 1.0,
+          "iv": 0.0,
+          "pop": 99.0
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63289",
+        "market_data": {
+          "ltp": 2.7,
+          "volume": 12655825,
+          "oi": 3440385.0,
+          "close_price": 6.3,
+          "bid_price": 2.65,
+          "bid_qty": 251030,
+          "ask_price": 2.7,
+          "ask_qty": 434135,
+          "prev_oi": 1712555.0
+        },
+        "option_greeks": {
+          "vega": 0.5936,
+          "theta": -1.8754,
+          "gamma": 0.0,
+          "delta": -0.0068,
+          "iv": 38.21,
+          "pop": 0.78
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "strike_price": 21550.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63292",
+        "market_data": {
+          "ltp": 0.0,
+          "volume": 0,
+          "oi": 0.0,
+          "close_price": 2183.3,
+          "bid_price": 2517.25,
+          "bid_qty": 780,
+          "ask_price": 2733.95,
+          "ask_qty": 780,
+          "prev_oi": 0.0
+        },
+        "option_greeks": {
+          "vega": 0.0,
+          "theta": 0.0,
+          "gamma": 0.0,
+          "delta": 1.0,
+          "iv": 0.0,
+          "pop": 99.0
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63293",
+        "market_data": {
+          "ltp": 2.75,
+          "volume": 301535,
+          "oi": 40495.0,
+          "close_price": 6.6,
+          "bid_price": 2.65,
+          "bid_qty": 1820,
+          "ask_price": 2.75,
+          "ask_qty": 2600,
+          "prev_oi": 38090.0
+        },
+        "option_greeks": {
+          "vega": 0.607,
+          "theta": -1.8871,
+          "gamma": 0.0,
+          "delta": -0.007,
+          "iv": 37.6,
+          "pop": 0.79
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 6990.0,
+      "strike_price": 21600.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63294",
+        "market_data": {
+          "ltp": 1252.45,
+          "volume": 0,
+          "oi": 130.0,
+          "close_price": 1252.45,
+          "bid_price": 2629.15,
+          "bid_qty": 65,
+          "ask_price": 2660.4,
+          "ask_qty": 65,
+          "prev_oi": 130.0
+        },
+        "option_greeks": {
+          "vega": 0.0,
+          "theta": 0.0,
+          "gamma": 0.0,
+          "delta": 1.0,
+          "iv": 0.0,
+          "pop": 99.0
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63298",
+        "market_data": {
+          "ltp": 2.8,
+          "volume": 4516265,
+          "oi": 908700.0,
+          "close_price": 7.05,
+          "bid_price": 2.75,
+          "bid_qty": 197210,
+          "ask_price": 2.8,
+          "ask_qty": 86775,
+          "prev_oi": 298350.0
+        },
+        "option_greeks": {
+          "vega": 0.6325,
+          "theta": -1.9409,
+          "gamma": 0.0,
+          "delta": -0.0073,
+          "iv": 37.11,
+          "pop": 0.83
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 1058.0,
+      "strike_price": 21650.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63299",
+        "market_data": {
+          "ltp": 1256.5,
+          "volume": 0,
+          "oi": 65.0,
+          "close_price": 1256.5,
+          "bid_price": 2568.3,
+          "bid_qty": 65,
+          "ask_price": 2609.7,
+          "ask_qty": 65,
+          "prev_oi": 65.0
+        },
+        "option_greeks": {
+          "vega": 0.0,
+          "theta": 0.0,
+          "gamma": 0.0,
+          "delta": 1.0,
+          "iv": 0.0,
+          "pop": 99.0
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63302",
+        "market_data": {
+          "ltp": 2.8,
+          "volume": 1202110,
+          "oi": 68770.0,
+          "close_price": 7.65,
+          "bid_price": 2.8,
+          "bid_qty": 24765,
+          "ask_price": 2.85,
+          "ask_qty": 12610,
+          "prev_oi": 90675.0
+        },
+        "option_greeks": {
+          "vega": 0.6343,
+          "theta": -1.9081,
+          "gamma": 0.0,
+          "delta": -0.0073,
+          "iv": 36.38,
+          "pop": 0.83
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 3070.5,
+      "strike_price": 21700.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63303",
+        "market_data": {
+          "ltp": 2289.15,
+          "volume": 0,
+          "oi": 130.0,
+          "close_price": 2289.15,
+          "bid_price": 2523.2,
+          "bid_qty": 65,
+          "ask_price": 2560.45,
+          "ask_qty": 65,
+          "prev_oi": 130.0
+        },
+        "option_greeks": {
+          "vega": 0.0,
+          "theta": 0.0,
+          "gamma": 0.0,
+          "delta": 1.0,
+          "iv": 0.0,
+          "pop": 99.0
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63306",
+        "market_data": {
+          "ltp": 2.85,
+          "volume": 3723525,
+          "oi": 399165.0,
+          "close_price": 8.0,
+          "bid_price": 2.85,
+          "bid_qty": 91390,
+          "ask_price": 2.9,
+          "ask_qty": 96525,
+          "prev_oi": 359645.0
+        },
+        "option_greeks": {
+          "vega": 0.6612,
+          "theta": -1.9621,
+          "gamma": 0.0,
+          "delta": -0.0077,
+          "iv": 35.89,
+          "pop": 0.87
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 4004.0,
+      "strike_price": 21750.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63307",
+        "market_data": {
+          "ltp": 1192.7,
+          "volume": 0,
+          "oi": 65.0,
+          "close_price": 1192.7,
+          "bid_price": 2471.4,
+          "bid_qty": 65,
+          "ask_price": 2511.35,
+          "ask_qty": 65,
+          "prev_oi": 65.0
+        },
+        "option_greeks": {
+          "vega": 0.0,
+          "theta": 0.0,
+          "gamma": 0.0,
+          "delta": 1.0,
+          "iv": 0.0,
+          "pop": 99.0
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63308",
+        "market_data": {
+          "ltp": 3.0,
+          "volume": 2029820,
+          "oi": 260260.0,
+          "close_price": 8.6,
+          "bid_price": 3.0,
+          "bid_qty": 37830,
+          "ask_price": 3.05,
+          "ask_qty": 44330,
+          "prev_oi": 94770.0
+        },
+        "option_greeks": {
+          "vega": 0.6901,
+          "theta": -2.02,
+          "gamma": 0.0,
+          "delta": -0.0081,
+          "iv": 35.4,
+          "pop": 0.91
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 1656.2222,
+      "strike_price": 21800.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63309",
+        "market_data": {
+          "ltp": 2404.15,
+          "volume": 130,
+          "oi": 585.0,
+          "close_price": 2250.0,
+          "bid_price": 2394.1,
+          "bid_qty": 780,
+          "ask_price": 2471.6,
+          "ask_qty": 65,
+          "prev_oi": 650.0
+        },
+        "option_greeks": {
+          "vega": 0.0,
+          "theta": 0.0,
+          "gamma": 0.0,
+          "delta": 1.0,
+          "iv": 0.0,
+          "pop": 99.0
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63310",
+        "market_data": {
+          "ltp": 2.95,
+          "volume": 5665075,
+          "oi": 968890.0,
+          "close_price": 9.15,
+          "bid_price": 2.95,
+          "bid_qty": 153725,
+          "ask_price": 3.0,
+          "ask_qty": 211965,
+          "prev_oi": 956800.0
+        },
+        "option_greeks": {
+          "vega": 0.6927,
+          "theta": -1.9859,
+          "gamma": 0.0,
+          "delta": -0.0081,
+          "iv": 34.67,
+          "pop": 0.91
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 162.0909,
+      "strike_price": 21850.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63311",
+        "market_data": {
+          "ltp": 2379.65,
+          "volume": 325,
+          "oi": 715.0,
+          "close_price": 2105.1,
+          "bid_price": 2368.3,
+          "bid_qty": 65,
+          "ask_price": 2440.3,
+          "ask_qty": 65,
+          "prev_oi": 715.0
+        },
+        "option_greeks": {
+          "vega": 0.0,
+          "theta": 0.0,
+          "gamma": 0.0,
+          "delta": 1.0,
+          "iv": 0.0,
+          "pop": 99.0
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63315",
+        "market_data": {
+          "ltp": 3.1,
+          "volume": 1587820,
+          "oi": 115895.0,
+          "close_price": 10.05,
+          "bid_price": 3.05,
+          "bid_qty": 15015,
+          "ask_price": 3.1,
+          "ask_qty": 14625,
+          "prev_oi": 117585.0
+        },
+        "option_greeks": {
+          "vega": 0.7239,
+          "theta": -2.0459,
+          "gamma": 0.0,
+          "delta": -0.0085,
+          "iv": 34.18,
+          "pop": 0.95
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 1093.6667,
+      "strike_price": 21900.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63316",
+        "market_data": {
+          "ltp": 2313.5,
+          "volume": 195,
+          "oi": 585.0,
+          "close_price": 2132.8,
+          "bid_price": 2335.35,
+          "bid_qty": 65,
+          "ask_price": 2371.95,
+          "ask_qty": 65,
+          "prev_oi": 715.0
+        },
+        "option_greeks": {
+          "vega": 0.0,
+          "theta": 0.0,
+          "gamma": 0.0,
+          "delta": 1.0,
+          "iv": 0.0,
+          "pop": 99.0
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63317",
+        "market_data": {
+          "ltp": 3.1,
+          "volume": 5700630,
+          "oi": 639795.0,
+          "close_price": 10.55,
+          "bid_price": 3.1,
+          "bid_qty": 19890,
+          "ask_price": 3.15,
+          "ask_qty": 37440,
+          "prev_oi": 1141335.0
+        },
+        "option_greeks": {
+          "vega": 0.7419,
+          "theta": -2.0594,
+          "gamma": 0.0,
+          "delta": -0.0088,
+          "iv": 33.57,
+          "pop": 0.98
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 243.2143,
+      "strike_price": 21950.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63318",
+        "market_data": {
+          "ltp": 2029.0,
+          "volume": 0,
+          "oi": 910.0,
+          "close_price": 2029.0,
+          "bid_price": 2242.35,
+          "bid_qty": 780,
+          "ask_price": 2310.15,
+          "ask_qty": 65,
+          "prev_oi": 910.0
+        },
+        "option_greeks": {
+          "vega": 0.0,
+          "theta": 0.0,
+          "gamma": 0.0,
+          "delta": 1.0,
+          "iv": 0.0,
+          "pop": 99.0
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63319",
+        "market_data": {
+          "ltp": 3.2,
+          "volume": 1885910,
+          "oi": 221325.0,
+          "close_price": 11.4,
+          "bid_price": 3.2,
+          "bid_qty": 8190,
+          "ask_price": 3.25,
+          "ask_qty": 22295,
+          "prev_oi": 128050.0
+        },
+        "option_greeks": {
+          "vega": 0.7614,
+          "theta": -2.075,
+          "gamma": 0.0,
+          "delta": -0.009,
+          "iv": 32.96,
+          "pop": 1.0
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 17.4706,
+      "strike_price": 22000.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63320",
+        "market_data": {
+          "ltp": 2238.3,
+          "volume": 8450,
+          "oi": 225550.0,
+          "close_price": 1845.0,
+          "bid_price": 2237.65,
+          "bid_qty": 65,
+          "ask_price": 2244.9,
+          "ask_qty": 65,
+          "prev_oi": 228930.0
+        },
+        "option_greeks": {
+          "vega": 0.0,
+          "theta": 0.0,
+          "gamma": 0.0,
+          "delta": 1.0,
+          "iv": 0.0,
+          "pop": 99.0
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63321",
+        "market_data": {
+          "ltp": 3.3,
+          "volume": 15850640,
+          "oi": 3940495.0,
+          "close_price": 12.55,
+          "bid_price": 3.25,
+          "bid_qty": 54860,
+          "ask_price": 3.3,
+          "ask_qty": 24700,
+          "prev_oi": 3284840.0
+        },
+        "option_greeks": {
+          "vega": 0.7965,
+          "theta": -2.1386,
+          "gamma": 0.0,
+          "delta": -0.0095,
+          "iv": 32.47,
+          "pop": 1.05
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 242.8182,
+      "strike_price": 22050.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63322",
+        "market_data": {
+          "ltp": 2161.0,
+          "volume": 130,
+          "oi": 715.0,
+          "close_price": 1793.95,
+          "bid_price": 2183.4,
+          "bid_qty": 65,
+          "ask_price": 2203.05,
+          "ask_qty": 65,
+          "prev_oi": 780.0
+        },
+        "option_greeks": {
+          "vega": 0.0,
+          "theta": 0.0,
+          "gamma": 0.0,
+          "delta": 1.0,
+          "iv": 0.0,
+          "pop": 99.0
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63323",
+        "market_data": {
+          "ltp": 3.5,
+          "volume": 1657890,
+          "oi": 173615.0,
+          "close_price": 13.55,
+          "bid_price": 3.5,
+          "bid_qty": 12155,
+          "ask_price": 3.55,
+          "ask_qty": 11245,
+          "prev_oi": 140790.0
+        },
+        "option_greeks": {
+          "vega": 0.8515,
+          "theta": -2.2606,
+          "gamma": 0.0,
+          "delta": -0.0103,
+          "iv": 32.1,
+          "pop": 1.13
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 84.4182,
+      "strike_price": 22100.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63324",
+        "market_data": {
+          "ltp": 2115.15,
+          "volume": 650,
+          "oi": 7150.0,
+          "close_price": 1755.0,
+          "bid_price": 2133.55,
+          "bid_qty": 65,
+          "ask_price": 2155.75,
+          "ask_qty": 65,
+          "prev_oi": 7475.0
+        },
+        "option_greeks": {
+          "vega": 0.0,
+          "theta": 0.0,
+          "gamma": 0.0,
+          "delta": 1.0,
+          "iv": 0.0,
+          "pop": 99.0
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63327",
+        "market_data": {
+          "ltp": 3.65,
+          "volume": 3698825,
+          "oi": 603590.0,
+          "close_price": 14.95,
+          "bid_price": 3.6,
+          "bid_qty": 22880,
+          "ask_price": 3.65,
+          "ask_qty": 11050,
+          "prev_oi": 551395.0
+        },
+        "option_greeks": {
+          "vega": 0.8839,
+          "theta": -2.3063,
+          "gamma": 0.0,
+          "delta": -0.0107,
+          "iv": 31.56,
+          "pop": 1.18
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 291.9,
+      "strike_price": 22150.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63328",
+        "market_data": {
+          "ltp": 2062.6,
+          "volume": 325,
+          "oi": 650.0,
+          "close_price": 1880.0,
+          "bid_price": 2085.25,
+          "bid_qty": 65,
+          "ask_price": 2106.55,
+          "ask_qty": 65,
+          "prev_oi": 715.0
+        },
+        "option_greeks": {
+          "vega": 0.0,
+          "theta": 0.0,
+          "gamma": 0.0,
+          "delta": 1.0,
+          "iv": 0.0,
+          "pop": 99.0
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63329",
+        "market_data": {
+          "ltp": 3.9,
+          "volume": 1268540,
+          "oi": 189735.0,
+          "close_price": 16.25,
+          "bid_price": 3.85,
+          "bid_qty": 5915,
+          "ask_price": 3.9,
+          "ask_qty": 6760,
+          "prev_oi": 106600.0
+        },
+        "option_greeks": {
+          "vega": 0.9367,
+          "theta": -2.4111,
+          "gamma": 0.0,
+          "delta": -0.0115,
+          "iv": 31.13,
+          "pop": 1.26
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 90.8611,
+      "strike_price": 22200.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63330",
+        "market_data": {
+          "ltp": 2044.1,
+          "volume": 390,
+          "oi": 16380.0,
+          "close_price": 1645.0,
+          "bid_price": 2037.65,
+          "bid_qty": 65,
+          "ask_price": 2052.2,
+          "ask_qty": 65,
+          "prev_oi": 16640.0
+        },
+        "option_greeks": {
+          "vega": 0.0747,
+          "theta": -0.1326,
+          "gamma": 0.0,
+          "delta": 0.9993,
+          "iv": 21.48,
+          "pop": 49.44
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63331",
+        "market_data": {
+          "ltp": 4.0,
+          "volume": 6130215,
+          "oi": 1488305.0,
+          "close_price": 17.75,
+          "bid_price": 4.0,
+          "bid_qty": 10855,
+          "ask_price": 4.05,
+          "ask_qty": 37895,
+          "prev_oi": 1324635.0
+        },
+        "option_greeks": {
+          "vega": 0.9738,
+          "theta": -2.4624,
+          "gamma": 0.0,
+          "delta": -0.012,
+          "iv": 30.58,
+          "pop": 1.31
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 324.0909,
+      "strike_price": 22250.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63332",
+        "market_data": {
+          "ltp": 1667.15,
+          "volume": 0,
+          "oi": 715.0,
+          "close_price": 1667.15,
+          "bid_price": 1975.0,
+          "bid_qty": 780,
+          "ask_price": 2010.9,
+          "ask_qty": 65,
+          "prev_oi": 650.0
+        },
+        "option_greeks": {
+          "vega": 0.0,
+          "theta": 0.0,
+          "gamma": 0.0,
+          "delta": 1.0,
+          "iv": 0.0,
+          "pop": 99.0
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63333",
+        "market_data": {
+          "ltp": 4.35,
+          "volume": 1684345,
+          "oi": 231725.0,
+          "close_price": 18.9,
+          "bid_price": 4.25,
+          "bid_qty": 16575,
+          "ask_price": 4.35,
+          "ask_qty": 15080,
+          "prev_oi": 124215.0
+        },
+        "option_greeks": {
+          "vega": 1.0541,
+          "theta": -2.6389,
+          "gamma": 0.0,
+          "delta": -0.0131,
+          "iv": 30.27,
+          "pop": 1.43
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 53.0334,
+      "strike_price": 22300.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63334",
+        "market_data": {
+          "ltp": 1938.0,
+          "volume": 845,
+          "oi": 19435.0,
+          "close_price": 1566.45,
+          "bid_price": 1937.65,
+          "bid_qty": 65,
+          "ask_price": 1952.95,
+          "ask_qty": 65,
+          "prev_oi": 19630.0
+        },
+        "option_greeks": {
+          "vega": 0.0,
+          "theta": 0.0,
+          "gamma": 0.0,
+          "delta": 1.0,
+          "iv": 0.0,
+          "pop": 99.0
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63335",
+        "market_data": {
+          "ltp": 4.65,
+          "volume": 7017335,
+          "oi": 1030705.0,
+          "close_price": 21.2,
+          "bid_price": 4.6,
+          "bid_qty": 42640,
+          "ask_price": 4.65,
+          "ask_qty": 33475,
+          "prev_oi": 1481155.0
+        },
+        "option_greeks": {
+          "vega": 1.1085,
+          "theta": -2.7303,
+          "gamma": 0.0,
+          "delta": -0.0139,
+          "iv": 29.79,
+          "pop": 1.51
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 148.913,
+      "strike_price": 22350.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63336",
+        "market_data": {
+          "ltp": 1874.0,
+          "volume": 455,
+          "oi": 1495.0,
+          "close_price": 1463.45,
+          "bid_price": 1866.0,
+          "bid_qty": 65,
+          "ask_price": 1939.55,
+          "ask_qty": 65,
+          "prev_oi": 1560.0
+        },
+        "option_greeks": {
+          "vega": 0.0,
+          "theta": 0.0,
+          "gamma": 0.0,
+          "delta": 1.0,
+          "iv": 0.0,
+          "pop": 99.0
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63338",
+        "market_data": {
+          "ltp": 4.9,
+          "volume": 1610765,
+          "oi": 222625.0,
+          "close_price": 23.6,
+          "bid_price": 4.9,
+          "bid_qty": 16965,
+          "ask_price": 5.0,
+          "ask_qty": 11895,
+          "prev_oi": 157365.0
+        },
+        "option_greeks": {
+          "vega": 1.1894,
+          "theta": -2.8934,
+          "gamma": 0.0,
+          "delta": -0.0151,
+          "iv": 29.42,
+          "pop": 1.64
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 66.1264,
+      "strike_price": 22400.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63339",
+        "market_data": {
+          "ltp": 1791.25,
+          "volume": 3380,
+          "oi": 17485.0,
+          "close_price": 1468.65,
+          "bid_price": 1838.1,
+          "bid_qty": 325,
+          "ask_price": 1852.6,
+          "ask_qty": 130,
+          "prev_oi": 18005.0
+        },
+        "option_greeks": {
+          "vega": 0.0,
+          "theta": 0.0,
+          "gamma": 0.0,
+          "delta": 1.0,
+          "iv": 0.0,
+          "pop": 99.0
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63341",
+        "market_data": {
+          "ltp": 5.3,
+          "volume": 6269250,
+          "oi": 1156220.0,
+          "close_price": 25.35,
+          "bid_price": 5.3,
+          "bid_qty": 5590,
+          "ask_price": 5.35,
+          "ask_qty": 33670,
+          "prev_oi": 953810.0
+        },
+        "option_greeks": {
+          "vega": 1.2646,
+          "theta": -3.0318,
+          "gamma": 0.0,
+          "delta": -0.0162,
+          "iv": 28.99,
+          "pop": 1.75
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 217.5625,
+      "strike_price": 22450.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63342",
+        "market_data": {
+          "ltp": 1773.45,
+          "volume": 1040,
+          "oi": 1040.0,
+          "close_price": 1482.9,
+          "bid_price": 1787.6,
+          "bid_qty": 65,
+          "ask_price": 1822.9,
+          "ask_qty": 65,
+          "prev_oi": 1560.0
+        },
+        "option_greeks": {
+          "vega": 0.0,
+          "theta": 0.0,
+          "gamma": 0.0,
+          "delta": 1.0,
+          "iv": 0.0,
+          "pop": 99.0
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63343",
+        "market_data": {
+          "ltp": 5.65,
+          "volume": 1977300,
+          "oi": 226265.0,
+          "close_price": 28.8,
+          "bid_price": 5.65,
+          "bid_qty": 11635,
+          "ask_price": 5.7,
+          "ask_qty": 1950,
+          "prev_oi": 331955.0
+        },
+        "option_greeks": {
+          "vega": 1.3456,
+          "theta": -3.1783,
+          "gamma": 0.0,
+          "delta": -0.0175,
+          "iv": 28.56,
+          "pop": 1.88
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 30.0683,
+      "strike_price": 22500.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63344",
+        "market_data": {
+          "ltp": 1749.6,
+          "volume": 20280,
+          "oi": 121810.0,
+          "close_price": 1372.55,
+          "bid_price": 1743.45,
+          "bid_qty": 65,
+          "ask_price": 1749.9,
+          "ask_qty": 260,
+          "prev_oi": 136500.0
+        },
+        "option_greeks": {
+          "vega": 1.3672,
+          "theta": -3.1464,
+          "gamma": 0.0001,
+          "delta": 0.9822,
+          "iv": 27.83,
+          "pop": 49.03
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63345",
+        "market_data": {
+          "ltp": 6.2,
+          "volume": 17956705,
+          "oi": 3662620.0,
+          "close_price": 31.0,
+          "bid_price": 6.15,
+          "bid_qty": 29640,
+          "ask_price": 6.2,
+          "ask_qty": 27755,
+          "prev_oi": 2854995.0
+        },
+        "option_greeks": {
+          "vega": 1.4459,
+          "theta": -3.3716,
+          "gamma": 0.0001,
+          "delta": -0.019,
+          "iv": 28.2,
+          "pop": 2.04
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 409.9091,
+      "strike_price": 22550.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63346",
+        "market_data": {
+          "ltp": 1691.0,
+          "volume": 1105,
+          "oi": 715.0,
+          "close_price": 1325.45,
+          "bid_price": 1649.85,
+          "bid_qty": 65,
+          "ask_price": 1710.05,
+          "ask_qty": 65,
+          "prev_oi": 975.0
+        },
+        "option_greeks": {
+          "vega": 0.0,
+          "theta": 0.0,
+          "gamma": 0.0,
+          "delta": 1.0,
+          "iv": 0.0,
+          "pop": 99.0
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63352",
+        "market_data": {
+          "ltp": 6.65,
+          "volume": 1973400,
+          "oi": 293085.0,
+          "close_price": 33.75,
+          "bid_price": 6.65,
+          "bid_qty": 5395,
+          "ask_price": 6.7,
+          "ask_qty": 5200,
+          "prev_oi": 134615.0
+        },
+        "option_greeks": {
+          "vega": 1.5404,
+          "theta": -3.5375,
+          "gamma": 0.0001,
+          "delta": -0.0205,
+          "iv": 27.77,
+          "pop": 2.19
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 82.2245,
+      "strike_price": 22600.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63353",
+        "market_data": {
+          "ltp": 1615.3,
+          "volume": 1365,
+          "oi": 15925.0,
+          "close_price": 1281.1,
+          "bid_price": 1640.35,
+          "bid_qty": 130,
+          "ask_price": 1650.3,
+          "ask_qty": 65,
+          "prev_oi": 16315.0
+        },
+        "option_greeks": {
+          "vega": 0.0,
+          "theta": 0.0,
+          "gamma": 0.0,
+          "delta": 1.0,
+          "iv": 0.0,
+          "pop": 99.0
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63354",
+        "market_data": {
+          "ltp": 7.15,
+          "volume": 8258770,
+          "oi": 1309425.0,
+          "close_price": 36.75,
+          "bid_price": 7.1,
+          "bid_qty": 8515,
+          "ask_price": 7.15,
+          "ask_qty": 11310,
+          "prev_oi": 932880.0
+        },
+        "option_greeks": {
+          "vega": 1.6568,
+          "theta": -3.7546,
+          "gamma": 0.0001,
+          "delta": -0.0223,
+          "iv": 27.4,
+          "pop": 2.37
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 180.3704,
+      "strike_price": 22650.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63355",
+        "market_data": {
+          "ltp": 1191.9,
+          "volume": 0,
+          "oi": 1755.0,
+          "close_price": 1191.9,
+          "bid_price": 1584.35,
+          "bid_qty": 65,
+          "ask_price": 1613.4,
+          "ask_qty": 65,
+          "prev_oi": 1560.0
+        },
+        "option_greeks": {
+          "vega": 0.0,
+          "theta": 0.0,
+          "gamma": 0.0,
+          "delta": 1.0,
+          "iv": 0.0,
+          "pop": 99.0
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63356",
+        "market_data": {
+          "ltp": 7.7,
+          "volume": 1972490,
+          "oi": 316550.0,
+          "close_price": 39.8,
+          "bid_price": 7.7,
+          "bid_qty": 8775,
+          "ask_price": 7.75,
+          "ask_qty": 3055,
+          "prev_oi": 145600.0
+        },
+        "option_greeks": {
+          "vega": 1.7673,
+          "theta": -3.9424,
+          "gamma": 0.0001,
+          "delta": -0.0241,
+          "iv": 26.98,
+          "pop": 2.55
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 63.5921,
+      "strike_price": 22700.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63357",
+        "market_data": {
+          "ltp": 1547.95,
+          "volume": 8125,
+          "oi": 31395.0,
+          "close_price": 1191.05,
+          "bid_price": 1545.0,
+          "bid_qty": 65,
+          "ask_price": 1556.1,
+          "ask_qty": 130,
+          "prev_oi": 34970.0
+        },
+        "option_greeks": {
+          "vega": 1.1857,
+          "theta": -2.3278,
+          "gamma": 0.0001,
+          "delta": 0.9849,
+          "iv": 23.74,
+          "pop": 49.17
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63360",
+        "market_data": {
+          "ltp": 8.25,
+          "volume": 8132410,
+          "oi": 1996475.0,
+          "close_price": 43.75,
+          "bid_price": 8.25,
+          "bid_qty": 14820,
+          "ask_price": 8.3,
+          "ask_qty": 4810,
+          "prev_oi": 872885.0
+        },
+        "option_greeks": {
+          "vega": 1.8864,
+          "theta": -4.1415,
+          "gamma": 0.0001,
+          "delta": -0.026,
+          "iv": 26.55,
+          "pop": 2.75
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 68.1524,
+      "strike_price": 22750.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63361",
+        "market_data": {
+          "ltp": 1496.25,
+          "volume": 1365,
+          "oi": 6825.0,
+          "close_price": 1136.3,
+          "bid_price": 1494.75,
+          "bid_qty": 195,
+          "ask_price": 1512.2,
+          "ask_qty": 130,
+          "prev_oi": 6760.0
+        },
+        "option_greeks": {
+          "vega": 0.8305,
+          "theta": -1.4671,
+          "gamma": 0.0,
+          "delta": 0.99,
+          "iv": 21.36,
+          "pop": 49.31
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63363",
+        "market_data": {
+          "ltp": 9.1,
+          "volume": 2733575,
+          "oi": 465140.0,
+          "close_price": 49.15,
+          "bid_price": 9.1,
+          "bid_qty": 910,
+          "ask_price": 9.15,
+          "ask_qty": 7930,
+          "prev_oi": 188760.0
+        },
+        "option_greeks": {
+          "vega": 2.0401,
+          "theta": -4.4224,
+          "gamma": 0.0001,
+          "delta": -0.0286,
+          "iv": 26.21,
+          "pop": 3.01
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 66.7979,
+      "strike_price": 22800.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63364",
+        "market_data": {
+          "ltp": 1448.4,
+          "volume": 11570,
+          "oi": 43745.0,
+          "close_price": 1088.6,
+          "bid_price": 1446.05,
+          "bid_qty": 65,
+          "ask_price": 1456.0,
+          "ask_qty": 390,
+          "prev_oi": 50635.0
+        },
+        "option_greeks": {
+          "vega": 1.3273,
+          "theta": -2.492,
+          "gamma": 0.0001,
+          "delta": 0.9828,
+          "iv": 22.71,
+          "pop": 49.17
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63365",
+        "market_data": {
+          "ltp": 9.9,
+          "volume": 13269880,
+          "oi": 2922075.0,
+          "close_price": 54.0,
+          "bid_price": 9.85,
+          "bid_qty": 39520,
+          "ask_price": 9.95,
+          "ask_qty": 42705,
+          "prev_oi": 1916525.0
+        },
+        "option_greeks": {
+          "vega": 2.1888,
+          "theta": -4.6729,
+          "gamma": 0.0001,
+          "delta": -0.0311,
+          "iv": 25.82,
+          "pop": 3.26
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 85.6941,
+      "strike_price": 22850.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63366",
+        "market_data": {
+          "ltp": 1377.95,
+          "volume": 1495,
+          "oi": 5525.0,
+          "close_price": 1044.1,
+          "bid_price": 1397.4,
+          "bid_qty": 65,
+          "ask_price": 1408.5,
+          "ask_qty": 65,
+          "prev_oi": 5070.0
+        },
+        "option_greeks": {
+          "vega": 0.0,
+          "theta": 0.0,
+          "gamma": 0.0,
+          "delta": 1.0,
+          "iv": 0.0,
+          "pop": 99.0
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63369",
+        "market_data": {
+          "ltp": 10.95,
+          "volume": 2995460,
+          "oi": 473460.0,
+          "close_price": 58.15,
+          "bid_price": 10.95,
+          "bid_qty": 325,
+          "ask_price": 11.0,
+          "ask_qty": 2860,
+          "prev_oi": 216580.0
+        },
+        "option_greeks": {
+          "vega": 2.3771,
+          "theta": -5.015,
+          "gamma": 0.0001,
+          "delta": -0.0344,
+          "iv": 25.51,
+          "pop": 3.58
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 53.8414,
+      "strike_price": 22900.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63370",
+        "market_data": {
+          "ltp": 1332.8,
+          "volume": 4680,
+          "oi": 36075.0,
+          "close_price": 1002.2,
+          "bid_price": 1346.05,
+          "bid_qty": 585,
+          "ask_price": 1357.75,
+          "ask_qty": 260,
+          "prev_oi": 38545.0
+        },
+        "option_greeks": {
+          "vega": 0.0,
+          "theta": 0.0,
+          "gamma": 0.0,
+          "delta": 1.0,
+          "iv": 0.0,
+          "pop": 99.0
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63373",
+        "market_data": {
+          "ltp": 12.0,
+          "volume": 9255090,
+          "oi": 1942330.0,
+          "close_price": 62.65,
+          "bid_price": 11.95,
+          "bid_qty": 3900,
+          "ask_price": 12.0,
+          "ask_qty": 8775,
+          "prev_oi": 1034085.0
+        },
+        "option_greeks": {
+          "vega": 2.5614,
+          "theta": -5.3262,
+          "gamma": 0.0001,
+          "delta": -0.0377,
+          "iv": 25.15,
+          "pop": 3.9
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 62.4196,
+      "strike_price": 22950.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63374",
+        "market_data": {
+          "ltp": 1270.95,
+          "volume": 1430,
+          "oi": 7280.0,
+          "close_price": 951.6,
+          "bid_price": 1299.35,
+          "bid_qty": 65,
+          "ask_price": 1313.1,
+          "ask_qty": 65,
+          "prev_oi": 7605.0
+        },
+        "option_greeks": {
+          "vega": 0.0,
+          "theta": 0.0,
+          "gamma": 0.0,
+          "delta": 1.0,
+          "iv": 0.0,
+          "pop": 99.0
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63375",
+        "market_data": {
+          "ltp": 13.25,
+          "volume": 3491215,
+          "oi": 454415.0,
+          "close_price": 66.6,
+          "bid_price": 13.2,
+          "bid_qty": 1040,
+          "ask_price": 13.25,
+          "ask_qty": 1495,
+          "prev_oi": 259935.0
+        },
+        "option_greeks": {
+          "vega": 2.7705,
+          "theta": -5.6839,
+          "gamma": 0.0001,
+          "delta": -0.0415,
+          "iv": 24.81,
+          "pop": 4.27
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 13.6403,
+      "strike_price": 23000.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63376",
+        "market_data": {
+          "ltp": 1263.95,
+          "volume": 199485,
+          "oi": 498030.0,
+          "close_price": 914.3,
+          "bid_price": 1251.1,
+          "bid_qty": 195,
+          "ask_price": 1257.65,
+          "ask_qty": 65,
+          "prev_oi": 583960.0
+        },
+        "option_greeks": {
+          "vega": 3.5539,
+          "theta": -7.677,
+          "gamma": 0.0001,
+          "delta": 0.9433,
+          "iv": 26.12,
+          "pop": 48.35
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63377",
+        "market_data": {
+          "ltp": 14.5,
+          "volume": 34629400,
+          "oi": 6793280.0,
+          "close_price": 73.9,
+          "bid_price": 14.45,
+          "bid_qty": 7345,
+          "ask_price": 14.5,
+          "ask_qty": 18395,
+          "prev_oi": 4204915.0
+        },
+        "option_greeks": {
+          "vega": 2.9855,
+          "theta": -6.0348,
+          "gamma": 0.0001,
+          "delta": -0.0455,
+          "iv": 24.44,
+          "pop": 4.66
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 103.4149,
+      "strike_price": 23050.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63378",
+        "market_data": {
+          "ltp": 1168.65,
+          "volume": 4485,
+          "oi": 6110.0,
+          "close_price": 863.05,
+          "bid_price": 1203.15,
+          "bid_qty": 65,
+          "ask_price": 1218.9,
+          "ask_qty": 65,
+          "prev_oi": 7150.0
+        },
+        "option_greeks": {
+          "vega": 0.0,
+          "theta": 0.0,
+          "gamma": 0.0,
+          "delta": 1.0,
+          "iv": 0.0,
+          "pop": 99.0
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63379",
+        "market_data": {
+          "ltp": 15.95,
+          "volume": 5177705,
+          "oi": 631865.0,
+          "close_price": 79.75,
+          "bid_price": 15.95,
+          "bid_qty": 2015,
+          "ask_price": 16.0,
+          "ask_qty": 585,
+          "prev_oi": 226265.0
+        },
+        "option_greeks": {
+          "vega": 3.2281,
+          "theta": -6.4356,
+          "gamma": 0.0001,
+          "delta": -0.0502,
+          "iv": 24.11,
+          "pop": 5.11
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 27.0376,
+      "strike_price": 23100.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63380",
+        "market_data": {
+          "ltp": 1155.2,
+          "volume": 12285,
+          "oi": 55315.0,
+          "close_price": 828.5,
+          "bid_price": 1156.15,
+          "bid_qty": 65,
+          "ask_price": 1162.2,
+          "ask_qty": 585,
+          "prev_oi": 59280.0
+        },
+        "option_greeks": {
+          "vega": 2.7288,
+          "theta": -4.903,
+          "gamma": 0.0001,
+          "delta": 0.9593,
+          "iv": 21.73,
+          "pop": 48.78
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63381",
+        "market_data": {
+          "ltp": 17.65,
+          "volume": 11893635,
+          "oi": 1495585.0,
+          "close_price": 88.1,
+          "bid_price": 17.6,
+          "bid_qty": 325,
+          "ask_price": 17.65,
+          "ask_qty": 6240,
+          "prev_oi": 1357200.0
+        },
+        "option_greeks": {
+          "vega": 3.4781,
+          "theta": -6.8286,
+          "gamma": 0.0002,
+          "delta": -0.0551,
+          "iv": 23.74,
+          "pop": 5.58
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 71.2353,
+      "strike_price": 23150.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63382",
+        "market_data": {
+          "ltp": 1095.0,
+          "volume": 5135,
+          "oi": 8840.0,
+          "close_price": 776.1,
+          "bid_price": 1108.0,
+          "bid_qty": 65,
+          "ask_price": 1116.6,
+          "ask_qty": 65,
+          "prev_oi": 10140.0
+        },
+        "option_greeks": {
+          "vega": 0.6064,
+          "theta": -0.7346,
+          "gamma": 0.0,
+          "delta": 0.993,
+          "iv": 14.65,
+          "pop": 49.53
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63383",
+        "market_data": {
+          "ltp": 19.5,
+          "volume": 5002855,
+          "oi": 629720.0,
+          "close_price": 96.7,
+          "bid_price": 19.45,
+          "bid_qty": 1430,
+          "ask_price": 19.55,
+          "ask_qty": 4420,
+          "prev_oi": 183625.0
+        },
+        "option_greeks": {
+          "vega": 3.77,
+          "theta": -7.3064,
+          "gamma": 0.0002,
+          "delta": -0.0611,
+          "iv": 23.44,
+          "pop": 6.14
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 22.6664,
+      "strike_price": 23200.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63384",
+        "market_data": {
+          "ltp": 1052.85,
+          "volume": 47710,
+          "oi": 96850.0,
+          "close_price": 747.8,
+          "bid_price": 1059.3,
+          "bid_qty": 65,
+          "ask_price": 1066.6,
+          "ask_qty": 325,
+          "prev_oi": 106795.0
+        },
+        "option_greeks": {
+          "vega": 2.5161,
+          "theta": -4.0064,
+          "gamma": 0.0001,
+          "delta": 0.9631,
+          "iv": 19.26,
+          "pop": 48.91
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63385",
+        "market_data": {
+          "ltp": 21.55,
+          "volume": 15741570,
+          "oi": 2195245.0,
+          "close_price": 104.95,
+          "bid_price": 21.55,
+          "bid_qty": 6045,
+          "ask_price": 21.65,
+          "ask_qty": 7020,
+          "prev_oi": 1486030.0
+        },
+        "option_greeks": {
+          "vega": 4.0828,
+          "theta": -7.8097,
+          "gamma": 0.0002,
+          "delta": -0.0677,
+          "iv": 23.13,
+          "pop": 6.75
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 73.8383,
+      "strike_price": 23250.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63386",
+        "market_data": {
+          "ltp": 1024.0,
+          "volume": 18005,
+          "oi": 10855.0,
+          "close_price": 715.75,
+          "bid_price": 1011.35,
+          "bid_qty": 130,
+          "ask_price": 1017.75,
+          "ask_qty": 390,
+          "prev_oi": 11375.0
+        },
+        "option_greeks": {
+          "vega": 4.8953,
+          "theta": -9.7468,
+          "gamma": 0.0002,
+          "delta": 0.9141,
+          "iv": 24.08,
+          "pop": 47.79
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63387",
+        "market_data": {
+          "ltp": 24.1,
+          "volume": 5740865,
+          "oi": 801515.0,
+          "close_price": 113.95,
+          "bid_price": 24.0,
+          "bid_qty": 7085,
+          "ask_price": 24.1,
+          "ask_qty": 3575,
+          "prev_oi": 217945.0
+        },
+        "option_greeks": {
+          "vega": 4.4053,
+          "theta": -8.3044,
+          "gamma": 0.0002,
+          "delta": -0.0747,
+          "iv": 22.8,
+          "pop": 7.39
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 14.6129,
+      "strike_price": 23300.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63388",
+        "market_data": {
+          "ltp": 974.0,
+          "volume": 65390,
+          "oi": 132145.0,
+          "close_price": 669.3,
+          "bid_price": 966.3,
+          "bid_qty": 390,
+          "ask_price": 969.85,
+          "ask_qty": 390,
+          "prev_oi": 139035.0
+        },
+        "option_greeks": {
+          "vega": 5.019,
+          "theta": -9.6068,
+          "gamma": 0.0002,
+          "delta": 0.9112,
+          "iv": 23.15,
+          "pop": 47.75
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63389",
+        "market_data": {
+          "ltp": 26.9,
+          "volume": 13398385,
+          "oi": 1931020.0,
+          "close_price": 123.5,
+          "bid_price": 26.75,
+          "bid_qty": 4680,
+          "ask_price": 26.85,
+          "ask_qty": 5005,
+          "prev_oi": 1140945.0
+        },
+        "option_greeks": {
+          "vega": 4.768,
+          "theta": -8.8737,
+          "gamma": 0.0002,
+          "delta": -0.083,
+          "iv": 22.51,
+          "pop": 8.13
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 32.2965,
+      "strike_price": 23350.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63390",
+        "market_data": {
+          "ltp": 919.15,
+          "volume": 8190,
+          "oi": 22360.0,
+          "close_price": 628.4,
+          "bid_price": 919.65,
+          "bid_qty": 260,
+          "ask_price": 923.6,
+          "ask_qty": 390,
+          "prev_oi": 24115.0
+        },
+        "option_greeks": {
+          "vega": 4.7514,
+          "theta": -8.3451,
+          "gamma": 0.0002,
+          "delta": 0.9174,
+          "iv": 21.24,
+          "pop": 47.94
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63391",
+        "market_data": {
+          "ltp": 29.9,
+          "volume": 6015100,
+          "oi": 722150.0,
+          "close_price": 135.0,
+          "bid_price": 29.85,
+          "bid_qty": 2340,
+          "ask_price": 29.95,
+          "ask_qty": 4550,
+          "prev_oi": 185575.0
+        },
+        "option_greeks": {
+          "vega": 5.1409,
+          "theta": -9.4316,
+          "gamma": 0.0002,
+          "delta": -0.0918,
+          "iv": 22.19,
+          "pop": 8.91
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 16.9069,
+      "strike_price": 23400.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63392",
+        "market_data": {
+          "ltp": 878.25,
+          "volume": 79300,
+          "oi": 124995.0,
+          "close_price": 592.9,
+          "bid_price": 873.95,
+          "bid_qty": 195,
+          "ask_price": 876.85,
+          "ask_qty": 195,
+          "prev_oi": 139490.0
+        },
+        "option_greeks": {
+          "vega": 5.6094,
+          "theta": -10.2272,
+          "gamma": 0.0003,
+          "delta": 0.8966,
+          "iv": 22.05,
+          "pop": 47.45
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63393",
+        "market_data": {
+          "ltp": 33.25,
+          "volume": 14384955,
+          "oi": 2113280.0,
+          "close_price": 145.45,
+          "bid_price": 33.25,
+          "bid_qty": 6240,
+          "ask_price": 33.4,
+          "ask_qty": 5785,
+          "prev_oi": 793585.0
+        },
+        "option_greeks": {
+          "vega": 5.5424,
+          "theta": -10.0283,
+          "gamma": 0.0003,
+          "delta": -0.1017,
+          "iv": 21.88,
+          "pop": 9.77
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 18.5137,
+      "strike_price": 23450.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63394",
+        "market_data": {
+          "ltp": 828.95,
+          "volume": 22295,
+          "oi": 30745.0,
+          "close_price": 551.2,
+          "bid_price": 827.55,
+          "bid_qty": 325,
+          "ask_price": 830.9,
+          "ask_qty": 260,
+          "prev_oi": 34775.0
+        },
+        "option_greeks": {
+          "vega": 5.8123,
+          "theta": -10.1865,
+          "gamma": 0.0003,
+          "delta": 0.8914,
+          "iv": 21.19,
+          "pop": 47.35
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63395",
+        "market_data": {
+          "ltp": 37.35,
+          "volume": 7015580,
+          "oi": 569205.0,
+          "close_price": 158.95,
+          "bid_price": 37.25,
+          "bid_qty": 1950,
+          "ask_price": 37.4,
+          "ask_qty": 4745,
+          "prev_oi": 347555.0
+        },
+        "option_greeks": {
+          "vega": 5.972,
+          "theta": -10.6624,
+          "gamma": 0.0003,
+          "delta": -0.1127,
+          "iv": 21.59,
+          "pop": 10.72
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 7.4677,
+      "strike_price": 23500.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63396",
+        "market_data": {
+          "ltp": 783.85,
+          "volume": 744965,
+          "oi": 542620.0,
+          "close_price": 515.95,
+          "bid_price": 782.6,
+          "bid_qty": 455,
+          "ask_price": 784.95,
+          "ask_qty": 260,
+          "prev_oi": 578695.0
+        },
+        "option_greeks": {
+          "vega": 6.3083,
+          "theta": -10.9603,
+          "gamma": 0.0003,
+          "delta": 0.8782,
+          "iv": 21.01,
+          "pop": 47.04
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63397",
+        "market_data": {
+          "ltp": 41.75,
+          "volume": 31700435,
+          "oi": 4052100.0,
+          "close_price": 171.65,
+          "bid_price": 41.7,
+          "bid_qty": 1430,
+          "ask_price": 41.75,
+          "ask_qty": 65,
+          "prev_oi": 2514265.0
+        },
+        "option_greeks": {
+          "vega": 6.4166,
+          "theta": -11.2942,
+          "gamma": 0.0003,
+          "delta": -0.1248,
+          "iv": 21.29,
+          "pop": 11.73
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 8.4753,
+      "strike_price": 23550.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63398",
+        "market_data": {
+          "ltp": 745.0,
+          "volume": 106925,
+          "oi": 89570.0,
+          "close_price": 483.3,
+          "bid_price": 738.2,
+          "bid_qty": 130,
+          "ask_price": 741.2,
+          "ask_qty": 390,
+          "prev_oi": 91130.0
+        },
+        "option_greeks": {
+          "vega": 7.1226,
+          "theta": -12.7435,
+          "gamma": 0.0003,
+          "delta": 0.8547,
+          "iv": 21.64,
+          "pop": 46.44
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63399",
+        "market_data": {
+          "ltp": 46.8,
+          "volume": 9708010,
+          "oi": 759135.0,
+          "close_price": 186.15,
+          "bid_price": 46.75,
+          "bid_qty": 650,
+          "ask_price": 46.85,
+          "ask_qty": 3315,
+          "prev_oi": 294255.0
+        },
+        "option_greeks": {
+          "vega": 6.8923,
+          "theta": -11.9751,
+          "gamma": 0.0003,
+          "delta": -0.1384,
+          "iv": 21.01,
+          "pop": 12.85
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 9.6526,
+      "strike_price": 23600.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63400",
+        "market_data": {
+          "ltp": 698.35,
+          "volume": 881400,
+          "oi": 293605.0,
+          "close_price": 447.05,
+          "bid_price": 693.95,
+          "bid_qty": 130,
+          "ask_price": 696.45,
+          "ask_qty": 130,
+          "prev_oi": 620295.0
+        },
+        "option_greeks": {
+          "vega": 7.4829,
+          "theta": -13.001,
+          "gamma": 0.0004,
+          "delta": 0.8435,
+          "iv": 21.01,
+          "pop": 46.16
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63401",
+        "market_data": {
+          "ltp": 52.4,
+          "volume": 19785545,
+          "oi": 2834065.0,
+          "close_price": 202.05,
+          "bid_price": 52.25,
+          "bid_qty": 2470,
+          "ask_price": 52.4,
+          "ask_qty": 2860,
+          "prev_oi": 1336400.0
+        },
+        "option_greeks": {
+          "vega": 7.3791,
+          "theta": -12.6439,
+          "gamma": 0.0004,
+          "delta": -0.1532,
+          "iv": 20.72,
+          "pop": 14.03
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 7.3542,
+      "strike_price": 23650.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63402",
+        "market_data": {
+          "ltp": 656.5,
+          "volume": 260195,
+          "oi": 116545.0,
+          "close_price": 415.1,
+          "bid_price": 650.6,
+          "bid_qty": 130,
+          "ask_price": 652.95,
+          "ask_qty": 325,
+          "prev_oi": 176605.0
+        },
+        "option_greeks": {
+          "vega": 8.0531,
+          "theta": -13.9512,
+          "gamma": 0.0004,
+          "delta": 0.8247,
+          "iv": 20.95,
+          "pop": 45.66
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63403",
+        "market_data": {
+          "ltp": 58.6,
+          "volume": 8425365,
+          "oi": 857090.0,
+          "close_price": 217.15,
+          "bid_price": 58.6,
+          "bid_qty": 2080,
+          "ask_price": 58.8,
+          "ask_qty": 715,
+          "prev_oi": 342875.0
+        },
+        "option_greeks": {
+          "vega": 7.8955,
+          "theta": -13.3693,
+          "gamma": 0.0004,
+          "delta": -0.17,
+          "iv": 20.48,
+          "pop": 15.33
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 5.0966,
+      "strike_price": 23700.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63404",
+        "market_data": {
+          "ltp": 610.3,
+          "volume": 1460030,
+          "oi": 519350.0,
+          "close_price": 384.3,
+          "bid_price": 608.15,
+          "bid_qty": 455,
+          "ask_price": 609.65,
+          "ask_qty": 390,
+          "prev_oi": 810745.0
+        },
+        "option_greeks": {
+          "vega": 8.4291,
+          "theta": -14.124,
+          "gamma": 0.0004,
+          "delta": 0.8114,
+          "iv": 20.26,
+          "pop": 45.31
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63405",
+        "market_data": {
+          "ltp": 65.8,
+          "volume": 23004540,
+          "oi": 2646930.0,
+          "close_price": 235.95,
+          "bid_price": 65.8,
+          "bid_qty": 195,
+          "ask_price": 65.85,
+          "ask_qty": 1365,
+          "prev_oi": 1799070.0
+        },
+        "option_greeks": {
+          "vega": 8.4002,
+          "theta": -14.0119,
+          "gamma": 0.0004,
+          "delta": -0.1875,
+          "iv": 20.17,
+          "pop": 16.66
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 5.2077,
+      "strike_price": 23750.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63406",
+        "market_data": {
+          "ltp": 566.75,
+          "volume": 598650,
+          "oi": 176150.0,
+          "close_price": 355.45,
+          "bid_price": 565.55,
+          "bid_qty": 585,
+          "ask_price": 567.25,
+          "ask_qty": 260,
+          "prev_oi": 301405.0
+        },
+        "option_greeks": {
+          "vega": 8.9674,
+          "theta": -14.8789,
+          "gamma": 0.0005,
+          "delta": 0.791,
+          "iv": 20.07,
+          "pop": 44.74
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63407",
+        "market_data": {
+          "ltp": 73.85,
+          "volume": 12432355,
+          "oi": 917345.0,
+          "close_price": 253.9,
+          "bid_price": 73.65,
+          "bid_qty": 1235,
+          "ask_price": 73.85,
+          "ask_qty": 65,
+          "prev_oi": 400660.0
+        },
+        "option_greeks": {
+          "vega": 8.9325,
+          "theta": -14.7308,
+          "gamma": 0.0005,
+          "delta": -0.2076,
+          "iv": 19.94,
+          "pop": 18.13
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 3.4816,
+      "strike_price": 23800.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63408",
+        "market_data": {
+          "ltp": 525.9,
+          "volume": 2658045,
+          "oi": 1004900.0,
+          "close_price": 323.55,
+          "bid_price": 525.05,
+          "bid_qty": 390,
+          "ask_price": 526.55,
+          "ask_qty": 260,
+          "prev_oi": 1445340.0
+        },
+        "option_greeks": {
+          "vega": 9.4324,
+          "theta": -15.2933,
+          "gamma": 0.0005,
+          "delta": 0.7718,
+          "iv": 19.61,
+          "pop": 44.18
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63409",
+        "market_data": {
+          "ltp": 82.45,
+          "volume": 37554985,
+          "oi": 3498625.0,
+          "close_price": 274.9,
+          "bid_price": 82.5,
+          "bid_qty": 1885,
+          "ask_price": 82.75,
+          "ask_qty": 390,
+          "prev_oi": 2423460.0
+        },
+        "option_greeks": {
+          "vega": 9.4422,
+          "theta": -15.339,
+          "gamma": 0.0005,
+          "delta": -0.2286,
+          "iv": 19.65,
+          "pop": 19.62
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 3.1333,
+      "strike_price": 23850.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63410",
+        "market_data": {
+          "ltp": 486.25,
+          "volume": 1485250,
+          "oi": 449150.0,
+          "close_price": 297.0,
+          "bid_price": 484.65,
+          "bid_qty": 130,
+          "ask_price": 486.0,
+          "ask_qty": 65,
+          "prev_oi": 726635.0
+        },
+        "option_greeks": {
+          "vega": 9.954,
+          "theta": -15.9632,
+          "gamma": 0.0005,
+          "delta": 0.7482,
+          "iv": 19.39,
+          "pop": 43.46
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63411",
+        "market_data": {
+          "ltp": 92.7,
+          "volume": 17438265,
+          "oi": 1407315.0,
+          "close_price": 292.9,
+          "bid_price": 92.45,
+          "bid_qty": 975,
+          "ask_price": 92.7,
+          "ask_qty": 1235,
+          "prev_oi": 746655.0
+        },
+        "option_greeks": {
+          "vega": 9.9574,
+          "theta": -15.9811,
+          "gamma": 0.0005,
+          "delta": -0.252,
+          "iv": 19.41,
+          "pop": 21.22
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 2.5363,
+      "strike_price": 23900.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63412",
+        "market_data": {
+          "ltp": 447.15,
+          "volume": 3988335,
+          "oi": 1098045.0,
+          "close_price": 269.95,
+          "bid_price": 446.3,
+          "bid_qty": 520,
+          "ask_price": 447.3,
+          "ask_qty": 65,
+          "prev_oi": 1609075.0
+        },
+        "option_greeks": {
+          "vega": 10.4614,
+          "theta": -16.6317,
+          "gamma": 0.0006,
+          "delta": 0.7223,
+          "iv": 19.23,
+          "pop": 42.63
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63413",
+        "market_data": {
+          "ltp": 103.75,
+          "volume": 26466050,
+          "oi": 2784925.0,
+          "close_price": 316.65,
+          "bid_price": 103.55,
+          "bid_qty": 130,
+          "ask_price": 103.75,
+          "ask_qty": 650,
+          "prev_oi": 1480635.0
+        },
+        "option_greeks": {
+          "vega": 10.4489,
+          "theta": -16.5525,
+          "gamma": 0.0006,
+          "delta": -0.277,
+          "iv": 19.16,
+          "pop": 22.87
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 4.625,
+      "strike_price": 23950.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63414",
+        "market_data": {
+          "ltp": 410.05,
+          "volume": 1312025,
+          "oi": 185120.0,
+          "close_price": 244.15,
+          "bid_price": 408.6,
+          "bid_qty": 65,
+          "ask_price": 409.55,
+          "ask_qty": 325,
+          "prev_oi": 232505.0
+        },
+        "option_greeks": {
+          "vega": 10.9156,
+          "theta": -17.0921,
+          "gamma": 0.0006,
+          "delta": 0.6959,
+          "iv": 18.94,
+          "pop": 41.75
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63415",
+        "market_data": {
+          "ltp": 116.0,
+          "volume": 12916475,
+          "oi": 856180.0,
+          "close_price": 342.4,
+          "bid_price": 115.75,
+          "bid_qty": 65,
+          "ask_price": 116.0,
+          "ask_qty": 2145,
+          "prev_oi": 234780.0
+        },
+        "option_greeks": {
+          "vega": 10.9111,
+          "theta": -17.0576,
+          "gamma": 0.0006,
+          "delta": -0.3038,
+          "iv": 18.91,
+          "pop": 24.56
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 1.9868,
+      "strike_price": 24000.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63416",
+        "market_data": {
+          "ltp": 372.0,
+          "volume": 17925960,
+          "oi": 2265770.0,
+          "close_price": 217.8,
+          "bid_price": 372.0,
+          "bid_qty": 325,
+          "ask_price": 372.75,
+          "ask_qty": 325,
+          "prev_oi": 2553265.0
+        },
+        "option_greeks": {
+          "vega": 11.3377,
+          "theta": -17.5242,
+          "gamma": 0.0006,
+          "delta": 0.6673,
+          "iv": 18.69,
+          "pop": 40.76
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63417",
+        "market_data": {
+          "ltp": 129.75,
+          "volume": 62502765,
+          "oi": 4501575.0,
+          "close_price": 367.2,
+          "bid_price": 129.5,
+          "bid_qty": 975,
+          "ask_price": 129.75,
+          "ask_qty": 65,
+          "prev_oi": 1285700.0
+        },
+        "option_greeks": {
+          "vega": 11.3361,
+          "theta": -17.5074,
+          "gamma": 0.0006,
+          "delta": -0.3326,
+          "iv": 18.68,
+          "pop": 26.31
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 2.881,
+      "strike_price": 24050.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63420",
+        "market_data": {
+          "ltp": 337.25,
+          "volume": 4606095,
+          "oi": 351845.0,
+          "close_price": 195.1,
+          "bid_price": 337.45,
+          "bid_qty": 260,
+          "ask_price": 338.2,
+          "ask_qty": 260,
+          "prev_oi": 228215.0
+        },
+        "option_greeks": {
+          "vega": 11.7129,
+          "theta": -17.9268,
+          "gamma": 0.0006,
+          "delta": 0.6365,
+          "iv": 18.51,
+          "pop": 39.63
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63421",
+        "market_data": {
+          "ltp": 144.7,
+          "volume": 18396755,
+          "oi": 1013675.0,
+          "close_price": 395.3,
+          "bid_price": 144.6,
+          "bid_qty": 195,
+          "ask_price": 144.9,
+          "ask_qty": 585,
+          "prev_oi": 51480.0
+        },
+        "option_greeks": {
+          "vega": 11.7063,
+          "theta": -17.828,
+          "gamma": 0.0007,
+          "delta": -0.3629,
+          "iv": 18.42,
+          "pop": 28.06
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 1.6232,
+      "strike_price": 24100.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63422",
+        "market_data": {
+          "ltp": 305.0,
+          "volume": 25678575,
+          "oi": 1731535.0,
+          "close_price": 172.95,
+          "bid_price": 304.35,
+          "bid_qty": 325,
+          "ask_price": 305.1,
+          "ask_qty": 455,
+          "prev_oi": 793260.0
+        },
+        "option_greeks": {
+          "vega": 12.0186,
+          "theta": -18.1445,
+          "gamma": 0.0007,
+          "delta": 0.6046,
+          "iv": 18.26,
+          "pop": 38.4
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63423",
+        "market_data": {
+          "ltp": 161.25,
+          "volume": 45235385,
+          "oi": 2810665.0,
+          "close_price": 422.55,
+          "bid_price": 160.95,
+          "bid_qty": 260,
+          "ask_price": 161.25,
+          "ask_qty": 130,
+          "prev_oi": 199550.0
+        },
+        "option_greeks": {
+          "vega": 12.0151,
+          "theta": -18.0557,
+          "gamma": 0.0007,
+          "delta": -0.395,
+          "iv": 18.17,
+          "pop": 29.83
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 1.7177,
+      "strike_price": 24150.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63424",
+        "market_data": {
+          "ltp": 272.7,
+          "volume": 27863355,
+          "oi": 1253395.0,
+          "close_price": 153.4,
+          "bid_price": 272.55,
+          "bid_qty": 130,
+          "ask_price": 273.05,
+          "ask_qty": 65,
+          "prev_oi": 202150.0
+        },
+        "option_greeks": {
+          "vega": 12.2509,
+          "theta": -18.2555,
+          "gamma": 0.0007,
+          "delta": 0.571,
+          "iv": 18.02,
+          "pop": 37.05
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63425",
+        "market_data": {
+          "ltp": 179.15,
+          "volume": 45781255,
+          "oi": 2152930.0,
+          "close_price": 449.65,
+          "bid_price": 179.4,
+          "bid_qty": 130,
+          "ask_price": 179.6,
+          "ask_qty": 780,
+          "prev_oi": 38415.0
+        },
+        "option_greeks": {
+          "vega": 12.249,
+          "theta": -18.1522,
+          "gamma": 0.0007,
+          "delta": -0.4286,
+          "iv": 17.92,
+          "pop": 31.6
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 1.0335,
+      "strike_price": 24200.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63426",
+        "market_data": {
+          "ltp": 243.15,
+          "volume": 127692630,
+          "oi": 7344415.0,
+          "close_price": 134.8,
+          "bid_price": 242.45,
+          "bid_qty": 130,
+          "ask_price": 242.95,
+          "ask_qty": 845,
+          "prev_oi": 1265485.0
+        },
+        "option_greeks": {
+          "vega": 12.3976,
+          "theta": -18.2317,
+          "gamma": 0.0007,
+          "delta": 0.5361,
+          "iv": 17.78,
+          "pop": 35.56
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63427",
+        "market_data": {
+          "ltp": 199.5,
+          "volume": 131519700,
+          "oi": 7590570.0,
+          "close_price": 484.8,
+          "bid_price": 199.15,
+          "bid_qty": 130,
+          "ask_price": 199.45,
+          "ask_qty": 130,
+          "prev_oi": 189930.0
+        },
+        "option_greeks": {
+          "vega": 12.3973,
+          "theta": -18.1608,
+          "gamma": 0.0007,
+          "delta": -0.4638,
+          "iv": 17.72,
+          "pop": 33.35
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 0.5632,
+      "strike_price": 24250.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63428",
+        "market_data": {
+          "ltp": 214.55,
+          "volume": 80905695,
+          "oi": 4160260.0,
+          "close_price": 118.0,
+          "bid_price": 214.5,
+          "bid_qty": 195,
+          "ask_price": 214.85,
+          "ask_qty": 65,
+          "prev_oi": 268970.0
+        },
+        "option_greeks": {
+          "vega": 12.4487,
+          "theta": -18.0398,
+          "gamma": 0.0007,
+          "delta": 0.5001,
+          "iv": 17.52,
+          "pop": 33.94
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63429",
+        "market_data": {
+          "ltp": 221.1,
+          "volume": 54707900,
+          "oi": 2343120.0,
+          "close_price": 511.85,
+          "bid_price": 220.55,
+          "bid_qty": 325,
+          "ask_price": 221.0,
+          "ask_qty": 455,
+          "prev_oi": 66235.0
+        },
+        "option_greeks": {
+          "vega": 12.4487,
+          "theta": -17.9848,
+          "gamma": 0.0007,
+          "delta": -0.4999,
+          "iv": 17.47,
+          "pop": 35.05
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 0.4394,
+      "strike_price": 24300.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63430",
+        "market_data": {
+          "ltp": 187.8,
+          "volume": 79724775,
+          "oi": 5007470.0,
+          "close_price": 101.05,
+          "bid_price": 187.8,
+          "bid_qty": 65,
+          "ask_price": 188.15,
+          "ask_qty": 65,
+          "prev_oi": 1729910.0
+        },
+        "option_greeks": {
+          "vega": 12.3955,
+          "theta": -17.7438,
+          "gamma": 0.0007,
+          "delta": 0.4631,
+          "iv": 17.31,
+          "pop": 32.2
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63431",
+        "market_data": {
+          "ltp": 244.8,
+          "volume": 41308215,
+          "oi": 2200250.0,
+          "close_price": 554.0,
+          "bid_price": 244.4,
+          "bid_qty": 65,
+          "ask_price": 244.5,
+          "ask_qty": 130,
+          "prev_oi": 233025.0
+        },
+        "option_greeks": {
+          "vega": 12.3951,
+          "theta": -17.6806,
+          "gamma": 0.0007,
+          "delta": -0.537,
+          "iv": 17.25,
+          "pop": 36.7
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 0.2169,
+      "strike_price": 24350.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63434",
+        "market_data": {
+          "ltp": 163.75,
+          "volume": 25264330,
+          "oi": 1506765.0,
+          "close_price": 88.05,
+          "bid_price": 163.4,
+          "bid_qty": 390,
+          "ask_price": 163.7,
+          "ask_qty": 130,
+          "prev_oi": 256425.0
+        },
+        "option_greeks": {
+          "vega": 12.2319,
+          "theta": -17.2858,
+          "gamma": 0.0007,
+          "delta": 0.4257,
+          "iv": 17.09,
+          "pop": 30.32
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63435",
+        "market_data": {
+          "ltp": 270.0,
+          "volume": 6888440,
+          "oi": 326820.0,
+          "close_price": 581.45,
+          "bid_price": 269.8,
+          "bid_qty": 260,
+          "ask_price": 270.3,
+          "ask_qty": 390,
+          "prev_oi": 17745.0
+        },
+        "option_greeks": {
+          "vega": 12.2293,
+          "theta": -17.1895,
+          "gamma": 0.0007,
+          "delta": -0.5748,
+          "iv": 17.0,
+          "pop": 38.29
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 0.2486,
+      "strike_price": 24400.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63436",
+        "market_data": {
+          "ltp": 140.95,
+          "volume": 46222540,
+          "oi": 3200600.0,
+          "close_price": 74.6,
+          "bid_price": 141.0,
+          "bid_qty": 1430,
+          "ask_price": 141.3,
+          "ask_qty": 260,
+          "prev_oi": 1582490.0
+        },
+        "option_greeks": {
+          "vega": 11.9549,
+          "theta": -16.6831,
+          "gamma": 0.0007,
+          "delta": 0.388,
+          "iv": 16.88,
+          "pop": 28.33
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63437",
+        "market_data": {
+          "ltp": 298.0,
+          "volume": 9982960,
+          "oi": 795730.0,
+          "close_price": 622.1,
+          "bid_price": 297.5,
+          "bid_qty": 65,
+          "ask_price": 298.0,
+          "ask_qty": 520,
+          "prev_oi": 93275.0
+        },
+        "option_greeks": {
+          "vega": 11.953,
+          "theta": -16.6503,
+          "gamma": 0.0007,
+          "delta": -0.6122,
+          "iv": 16.85,
+          "pop": 39.78
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 0.1249,
+      "strike_price": 24450.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63444",
+        "market_data": {
+          "ltp": 121.0,
+          "volume": 18419700,
+          "oi": 1072760.0,
+          "close_price": 62.55,
+          "bid_price": 120.7,
+          "bid_qty": 650,
+          "ask_price": 120.95,
+          "ask_qty": 65,
+          "prev_oi": 306930.0
+        },
+        "option_greeks": {
+          "vega": 11.5627,
+          "theta": -15.9169,
+          "gamma": 0.0007,
+          "delta": 0.3504,
+          "iv": 16.65,
+          "pop": 26.23
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63445",
+        "market_data": {
+          "ltp": 326.75,
+          "volume": 1792895,
+          "oi": 134030.0,
+          "close_price": 664.25,
+          "bid_price": 326.45,
+          "bid_qty": 130,
+          "ask_price": 327.2,
+          "ask_qty": 65,
+          "prev_oi": 14690.0
+        },
+        "option_greeks": {
+          "vega": 11.5585,
+          "theta": -15.8748,
+          "gamma": 0.0007,
+          "delta": -0.65,
+          "iv": 16.61,
+          "pop": 41.19
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 0.1333,
+      "strike_price": 24500.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63447",
+        "market_data": {
+          "ltp": 102.4,
+          "volume": 72936630,
+          "oi": 6163300.0,
+          "close_price": 53.2,
+          "bid_price": 102.4,
+          "bid_qty": 975,
+          "ask_price": 102.65,
+          "ask_qty": 390,
+          "prev_oi": 3227250.0
+        },
+        "option_greeks": {
+          "vega": 11.0664,
+          "theta": -15.0662,
+          "gamma": 0.0007,
+          "delta": 0.3138,
+          "iv": 16.46,
+          "pop": 24.07
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63457",
+        "market_data": {
+          "ltp": 358.9,
+          "volume": 6930365,
+          "oi": 821730.0,
+          "close_price": 703.95,
+          "bid_price": 358.9,
+          "bid_qty": 65,
+          "ask_price": 359.55,
+          "ask_qty": 130,
+          "prev_oi": 343005.0
+        },
+        "option_greeks": {
+          "vega": 11.0537,
+          "theta": -14.9792,
+          "gamma": 0.0007,
+          "delta": -0.6871,
+          "iv": 16.39,
+          "pop": 42.49
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 0.0436,
+      "strike_price": 24550.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63458",
+        "market_data": {
+          "ltp": 86.25,
+          "volume": 24356280,
+          "oi": 1279070.0,
+          "close_price": 44.65,
+          "bid_price": 86.2,
+          "bid_qty": 1430,
+          "ask_price": 86.45,
+          "ask_qty": 1365,
+          "prev_oi": 347945.0
+        },
+        "option_greeks": {
+          "vega": 10.4731,
+          "theta": -14.1065,
+          "gamma": 0.0007,
+          "delta": 0.2783,
+          "iv": 16.29,
+          "pop": 21.87
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63463",
+        "market_data": {
+          "ltp": 391.95,
+          "volume": 438165,
+          "oi": 55770.0,
+          "close_price": 744.0,
+          "bid_price": 391.7,
+          "bid_qty": 65,
+          "ask_price": 392.8,
+          "ask_qty": 130,
+          "prev_oi": 3900.0
+        },
+        "option_greeks": {
+          "vega": 10.4608,
+          "theta": -14.0437,
+          "gamma": 0.0007,
+          "delta": -0.7224,
+          "iv": 16.24,
+          "pop": 43.67
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 0.0405,
+      "strike_price": 24600.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63464",
+        "market_data": {
+          "ltp": 71.8,
+          "volume": 34229520,
+          "oi": 3632980.0,
+          "close_price": 37.55,
+          "bid_price": 71.8,
+          "bid_qty": 780,
+          "ask_price": 71.85,
+          "ask_qty": 65,
+          "prev_oi": 1408095.0
+        },
+        "option_greeks": {
+          "vega": 9.8007,
+          "theta": -13.0772,
+          "gamma": 0.0006,
+          "delta": 0.2446,
+          "iv": 16.14,
+          "pop": 19.67
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63465",
+        "market_data": {
+          "ltp": 426.7,
+          "volume": 974090,
+          "oi": 147225.0,
+          "close_price": 792.85,
+          "bid_price": 427.25,
+          "bid_qty": 130,
+          "ask_price": 428.35,
+          "ask_qty": 260,
+          "prev_oi": 44720.0
+        },
+        "option_greeks": {
+          "vega": 9.7522,
+          "theta": -12.8832,
+          "gamma": 0.0006,
+          "delta": -0.7576,
+          "iv": 15.98,
+          "pop": 44.76
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 0.0193,
+      "strike_price": 24650.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63466",
+        "market_data": {
+          "ltp": 59.65,
+          "volume": 16019120,
+          "oi": 1235715.0,
+          "close_price": 31.6,
+          "bid_price": 59.5,
+          "bid_qty": 2665,
+          "ask_price": 59.65,
+          "ask_qty": 65,
+          "prev_oi": 385190.0
+        },
+        "option_greeks": {
+          "vega": 9.0605,
+          "theta": -11.9752,
+          "gamma": 0.0006,
+          "delta": 0.2127,
+          "iv": 15.98,
+          "pop": 17.49
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63467",
+        "market_data": {
+          "ltp": 463.4,
+          "volume": 147875,
+          "oi": 23855.0,
+          "close_price": 833.45,
+          "bid_price": 464.3,
+          "bid_qty": 65,
+          "ask_price": 465.75,
+          "ask_qty": 260,
+          "prev_oi": 585.0
+        },
+        "option_greeks": {
+          "vega": 9.0035,
+          "theta": -11.7863,
+          "gamma": 0.0006,
+          "delta": -0.7896,
+          "iv": 15.83,
+          "pop": 45.7
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 0.0235,
+      "strike_price": 24700.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63468",
+        "market_data": {
+          "ltp": 49.0,
+          "volume": 28532530,
+          "oi": 3418480.0,
+          "close_price": 25.85,
+          "bid_price": 48.85,
+          "bid_qty": 130,
+          "ask_price": 48.95,
+          "ask_qty": 1950,
+          "prev_oi": 1771900.0
+        },
+        "option_greeks": {
+          "vega": 8.2831,
+          "theta": -10.8642,
+          "gamma": 0.0005,
+          "delta": 0.1834,
+          "iv": 15.86,
+          "pop": 15.38
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63469",
+        "market_data": {
+          "ltp": 503.7,
+          "volume": 451035,
+          "oi": 80275.0,
+          "close_price": 865.65,
+          "bid_price": 504.05,
+          "bid_qty": 260,
+          "ask_price": 505.4,
+          "ask_qty": 325,
+          "prev_oi": 35425.0
+        },
+        "option_greeks": {
+          "vega": 8.2127,
+          "theta": -10.6629,
+          "gamma": 0.0005,
+          "delta": -0.8191,
+          "iv": 15.7,
+          "pop": 46.52
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 0.0201,
+      "strike_price": 24750.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63470",
+        "market_data": {
+          "ltp": 40.0,
+          "volume": 14165385,
+          "oi": 1268150.0,
+          "close_price": 21.15,
+          "bid_price": 39.85,
+          "bid_qty": 1040,
+          "ask_price": 39.95,
+          "ask_qty": 715,
+          "prev_oi": 371930.0
+        },
+        "option_greeks": {
+          "vega": 7.489,
+          "theta": -9.7612,
+          "gamma": 0.0005,
+          "delta": 0.1567,
+          "iv": 15.76,
+          "pop": 13.39
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63471",
+        "market_data": {
+          "ltp": 545.3,
+          "volume": 90545,
+          "oi": 25545.0,
+          "close_price": 914.8,
+          "bid_price": 544.55,
+          "bid_qty": 325,
+          "ask_price": 546.55,
+          "ask_qty": 130,
+          "prev_oi": 715.0
+        },
+        "option_greeks": {
+          "vega": 7.3978,
+          "theta": -9.5303,
+          "gamma": 0.0005,
+          "delta": -0.8462,
+          "iv": 15.58,
+          "pop": 47.23
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 0.0157,
+      "strike_price": 24800.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63472",
+        "market_data": {
+          "ltp": 32.25,
+          "volume": 29671135,
+          "oi": 3965325.0,
+          "close_price": 17.1,
+          "bid_price": 32.25,
+          "bid_qty": 4875,
+          "ask_price": 32.35,
+          "ask_qty": 130,
+          "prev_oi": 2381730.0
+        },
+        "option_greeks": {
+          "vega": 6.7,
+          "theta": -8.6906,
+          "gamma": 0.0004,
+          "delta": 0.1328,
+          "iv": 15.69,
+          "pop": 11.54
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63473",
+        "market_data": {
+          "ltp": 592.05,
+          "volume": 241735,
+          "oi": 62335.0,
+          "close_price": 958.25,
+          "bid_price": 586.65,
+          "bid_qty": 130,
+          "ask_price": 588.75,
+          "ask_qty": 260,
+          "prev_oi": 24895.0
+        },
+        "option_greeks": {
+          "vega": 6.9717,
+          "theta": -9.342,
+          "gamma": 0.0004,
+          "delta": -0.8592,
+          "iv": 16.2,
+          "pop": 47.58
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 0.0068,
+      "strike_price": 24850.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63474",
+        "market_data": {
+          "ltp": 26.2,
+          "volume": 12082850,
+          "oi": 1066650.0,
+          "close_price": 14.2,
+          "bid_price": 26.1,
+          "bid_qty": 4030,
+          "ask_price": 26.2,
+          "ask_qty": 4940,
+          "prev_oi": 328575.0
+        },
+        "option_greeks": {
+          "vega": 5.9313,
+          "theta": -7.6635,
+          "gamma": 0.0004,
+          "delta": 0.1117,
+          "iv": 15.63,
+          "pop": 9.85
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63475",
+        "market_data": {
+          "ltp": 634.65,
+          "volume": 17225,
+          "oi": 7215.0,
+          "close_price": 850.0,
+          "bid_price": 630.55,
+          "bid_qty": 65,
+          "ask_price": 633.2,
+          "ask_qty": 260,
+          "prev_oi": 195.0
+        },
+        "option_greeks": {
+          "vega": 6.154,
+          "theta": -8.1531,
+          "gamma": 0.0004,
+          "delta": -0.8824,
+          "iv": 16.02,
+          "pop": 48.13
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 0.0074,
+      "strike_price": 24900.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63476",
+        "market_data": {
+          "ltp": 21.0,
+          "volume": 19445140,
+          "oi": 2942615.0,
+          "close_price": 11.35,
+          "bid_price": 21.0,
+          "bid_qty": 11375,
+          "ask_price": 21.05,
+          "ask_qty": 2860,
+          "prev_oi": 1653340.0
+        },
+        "option_greeks": {
+          "vega": 5.2074,
+          "theta": -6.7151,
+          "gamma": 0.0003,
+          "delta": 0.0934,
+          "iv": 15.59,
+          "pop": 8.34
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63477",
+        "market_data": {
+          "ltp": 682.95,
+          "volume": 49660,
+          "oi": 21905.0,
+          "close_price": 1066.3,
+          "bid_price": 673.45,
+          "bid_qty": 260,
+          "ask_price": 677.45,
+          "ask_qty": 325,
+          "prev_oi": 14105.0
+        },
+        "option_greeks": {
+          "vega": 5.8118,
+          "theta": -8.0077,
+          "gamma": 0.0004,
+          "delta": -0.8915,
+          "iv": 16.66,
+          "pop": 48.36
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 0.0038,
+      "strike_price": 24950.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63478",
+        "market_data": {
+          "ltp": 16.85,
+          "volume": 8380645,
+          "oi": 936585.0,
+          "close_price": 9.55,
+          "bid_price": 16.85,
+          "bid_qty": 3900,
+          "ask_price": 16.9,
+          "ask_qty": 585,
+          "prev_oi": 233935.0
+        },
+        "option_greeks": {
+          "vega": 4.5319,
+          "theta": -5.8382,
+          "gamma": 0.0003,
+          "delta": 0.0776,
+          "iv": 15.58,
+          "pop": 7.01
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63479",
+        "market_data": {
+          "ltp": 722.2,
+          "volume": 11180,
+          "oi": 3575.0,
+          "close_price": 1089.0,
+          "bid_price": 720.55,
+          "bid_qty": 65,
+          "ask_price": 724.0,
+          "ask_qty": 260,
+          "prev_oi": 845.0
+        },
+        "option_greeks": {
+          "vega": 4.4313,
+          "theta": -5.6472,
+          "gamma": 0.0003,
+          "delta": -0.9247,
+          "iv": 15.41,
+          "pop": 49.06
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 0.0345,
+      "strike_price": 25000.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63480",
+        "market_data": {
+          "ltp": 13.55,
+          "volume": 41478645,
+          "oi": 8285225.0,
+          "close_price": 7.8,
+          "bid_price": 13.5,
+          "bid_qty": 8060,
+          "ask_price": 13.55,
+          "ask_qty": 11635,
+          "prev_oi": 4612010.0
+        },
+        "option_greeks": {
+          "vega": 3.9217,
+          "theta": -5.0571,
+          "gamma": 0.0003,
+          "delta": 0.0643,
+          "iv": 15.59,
+          "pop": 5.86
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63481",
+        "market_data": {
+          "ltp": 767.2,
+          "volume": 532610,
+          "oi": 286195.0,
+          "close_price": 1154.65,
+          "bid_price": 766.5,
+          "bid_qty": 65,
+          "ask_price": 769.55,
+          "ask_qty": 520,
+          "prev_oi": 248625.0
+        },
+        "option_greeks": {
+          "vega": 3.5397,
+          "theta": -4.377,
+          "gamma": 0.0002,
+          "delta": -0.9436,
+          "iv": 14.95,
+          "pop": 49.43
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 0.0004,
+      "strike_price": 25050.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63482",
+        "market_data": {
+          "ltp": 10.95,
+          "volume": 6754605,
+          "oi": 1024010.0,
+          "close_price": 6.4,
+          "bid_price": 10.9,
+          "bid_qty": 10855,
+          "ask_price": 11.0,
+          "ask_qty": 7345,
+          "prev_oi": 342485.0
+        },
+        "option_greeks": {
+          "vega": 3.3892,
+          "theta": -4.3875,
+          "gamma": 0.0002,
+          "delta": 0.0534,
+          "iv": 15.66,
+          "pop": 4.9
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63483",
+        "market_data": {
+          "ltp": 827.2,
+          "volume": 715,
+          "oi": 455.0,
+          "close_price": 1069.25,
+          "bid_price": 812.65,
+          "bid_qty": 260,
+          "ask_price": 817.85,
+          "ask_qty": 260,
+          "prev_oi": 65.0
+        },
+        "option_greeks": {
+          "vega": 4.7524,
+          "theta": -7.1357,
+          "gamma": 0.0003,
+          "delta": -0.9174,
+          "iv": 18.16,
+          "pop": 48.98
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 0.0019,
+      "strike_price": 25100.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63484",
+        "market_data": {
+          "ltp": 8.85,
+          "volume": 11710465,
+          "oi": 2048735.0,
+          "close_price": 5.3,
+          "bid_price": 8.85,
+          "bid_qty": 6890,
+          "ask_price": 8.9,
+          "ask_qty": 11830,
+          "prev_oi": 707135.0
+        },
+        "option_greeks": {
+          "vega": 2.9249,
+          "theta": -3.8086,
+          "gamma": 0.0002,
+          "delta": 0.0444,
+          "iv": 15.75,
+          "pop": 4.1
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63485",
+        "market_data": {
+          "ltp": 871.6,
+          "volume": 7800,
+          "oi": 3900.0,
+          "close_price": 1241.05,
+          "bid_price": 860.15,
+          "bid_qty": 325,
+          "ask_price": 867.75,
+          "ask_qty": 260,
+          "prev_oi": 2795.0
+        },
+        "option_greeks": {
+          "vega": 3.9545,
+          "theta": -5.7779,
+          "gamma": 0.0002,
+          "delta": -0.935,
+          "iv": 17.67,
+          "pop": 49.33
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 0.0007,
+      "strike_price": 25150.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63486",
+        "market_data": {
+          "ltp": 7.25,
+          "volume": 5485155,
+          "oi": 787995.0,
+          "close_price": 4.6,
+          "bid_price": 7.2,
+          "bid_qty": 4420,
+          "ask_price": 7.25,
+          "ask_qty": 11765,
+          "prev_oi": 203125.0
+        },
+        "option_greeks": {
+          "vega": 2.5255,
+          "theta": -3.314,
+          "gamma": 0.0002,
+          "delta": 0.037,
+          "iv": 15.87,
+          "pop": 3.43
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63489",
+        "market_data": {
+          "ltp": 921.8,
+          "volume": 845,
+          "oi": 520.0,
+          "close_price": 1105.2,
+          "bid_price": 908.05,
+          "bid_qty": 260,
+          "ask_price": 914.55,
+          "ask_qty": 260,
+          "prev_oi": 65.0
+        },
+        "option_greeks": {
+          "vega": 3.8798,
+          "theta": -5.943,
+          "gamma": 0.0002,
+          "delta": -0.9366,
+          "iv": 18.52,
+          "pop": 49.39
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 0.0043,
+      "strike_price": 25200.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63490",
+        "market_data": {
+          "ltp": 5.8,
+          "volume": 12744680,
+          "oi": 3034005.0,
+          "close_price": 3.8,
+          "bid_price": 5.8,
+          "bid_qty": 20930,
+          "ask_price": 5.85,
+          "ask_qty": 40105,
+          "prev_oi": 1359995.0
+        },
+        "option_greeks": {
+          "vega": 2.142,
+          "theta": -2.8216,
+          "gamma": 0.0001,
+          "delta": 0.0303,
+          "iv": 15.93,
+          "pop": 2.82
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63491",
+        "market_data": {
+          "ltp": 968.0,
+          "volume": 14105,
+          "oi": 12935.0,
+          "close_price": 1346.15,
+          "bid_price": 957.15,
+          "bid_qty": 260,
+          "ask_price": 962.15,
+          "ask_qty": 325,
+          "prev_oi": 12415.0
+        },
+        "option_greeks": {
+          "vega": 3.2566,
+          "theta": -4.9061,
+          "gamma": 0.0002,
+          "delta": -0.9493,
+          "iv": 18.22,
+          "pop": 49.63
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 0.001,
+      "strike_price": 25250.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63492",
+        "market_data": {
+          "ltp": 4.9,
+          "volume": 4252885,
+          "oi": 749775.0,
+          "close_price": 3.25,
+          "bid_price": 4.85,
+          "bid_qty": 28015,
+          "ask_price": 4.9,
+          "ask_qty": 12545,
+          "prev_oi": 246415.0
+        },
+        "option_greeks": {
+          "vega": 1.8727,
+          "theta": -2.5,
+          "gamma": 0.0001,
+          "delta": 0.0258,
+          "iv": 16.14,
+          "pop": 2.4
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63493",
+        "market_data": {
+          "ltp": 1425.0,
+          "volume": 0,
+          "oi": 780.0,
+          "close_price": 1425.0,
+          "bid_price": 990.7,
+          "bid_qty": 1300,
+          "ask_price": 1009.85,
+          "ask_qty": 325,
+          "prev_oi": 910.0
+        },
+        "option_greeks": {
+          "vega": 11.2819,
+          "theta": -60.6983,
+          "gamma": 0.0002,
+          "delta": -0.6714,
+          "iv": 65.06,
+          "pop": 43.4
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 0.0014,
+      "strike_price": 25300.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63494",
+        "market_data": {
+          "ltp": 4.15,
+          "volume": 12557350,
+          "oi": 2526550.0,
+          "close_price": 2.75,
+          "bid_price": 4.1,
+          "bid_qty": 30095,
+          "ask_price": 4.15,
+          "ask_qty": 43420,
+          "prev_oi": 1051570.0
+        },
+        "option_greeks": {
+          "vega": 1.6359,
+          "theta": -2.2127,
+          "gamma": 0.0001,
+          "delta": 0.022,
+          "iv": 16.36,
+          "pop": 2.05
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63495",
+        "market_data": {
+          "ltp": 1082.9,
+          "volume": 2470,
+          "oi": 3510.0,
+          "close_price": 1450.0,
+          "bid_price": 1052.8,
+          "bid_qty": 65,
+          "ask_price": 1059.9,
+          "ask_qty": 65,
+          "prev_oi": 2275.0
+        },
+        "option_greeks": {
+          "vega": 4.7074,
+          "theta": -9.147,
+          "gamma": 0.0002,
+          "delta": -0.9184,
+          "iv": 23.5,
+          "pop": 49.14
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 0.0007,
+      "strike_price": 25350.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63496",
+        "market_data": {
+          "ltp": 3.55,
+          "volume": 3761550,
+          "oi": 348205.0,
+          "close_price": 2.45,
+          "bid_price": 3.55,
+          "bid_qty": 5265,
+          "ask_price": 3.6,
+          "ask_qty": 23790,
+          "prev_oi": 131170.0
+        },
+        "option_greeks": {
+          "vega": 1.4396,
+          "theta": -1.9763,
+          "gamma": 0.0001,
+          "delta": 0.0189,
+          "iv": 16.6,
+          "pop": 1.76
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63497",
+        "market_data": {
+          "ltp": 1146.15,
+          "volume": 780,
+          "oi": 260.0,
+          "close_price": 1297.35,
+          "bid_price": 1102.4,
+          "bid_qty": 65,
+          "ask_price": 1115.35,
+          "ask_qty": 65,
+          "prev_oi": 65.0
+        },
+        "option_greeks": {
+          "vega": 5.5548,
+          "theta": -12.3636,
+          "gamma": 0.0002,
+          "delta": -0.898,
+          "iv": 26.92,
+          "pop": 48.79
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 0.0026,
+      "strike_price": 25400.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63498",
+        "market_data": {
+          "ltp": 3.15,
+          "volume": 9614085,
+          "oi": 1361295.0,
+          "close_price": 2.2,
+          "bid_price": 3.1,
+          "bid_qty": 23595,
+          "ask_price": 3.15,
+          "ask_qty": 29120,
+          "prev_oi": 580645.0
+        },
+        "option_greeks": {
+          "vega": 1.2887,
+          "theta": -1.8016,
+          "gamma": 0.0001,
+          "delta": 0.0166,
+          "iv": 16.91,
+          "pop": 1.55
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63503",
+        "market_data": {
+          "ltp": 1169.25,
+          "volume": 520,
+          "oi": 3510.0,
+          "close_price": 1550.15,
+          "bid_price": 1151.75,
+          "bid_qty": 65,
+          "ask_price": 1163.7,
+          "ask_qty": 65,
+          "prev_oi": 3640.0
+        },
+        "option_greeks": {
+          "vega": 3.1079,
+          "theta": -5.5371,
+          "gamma": 0.0001,
+          "delta": -0.9521,
+          "iv": 21.55,
+          "pop": 49.77
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 0.0002,
+      "strike_price": 25450.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63504",
+        "market_data": {
+          "ltp": 2.75,
+          "volume": 4724655,
+          "oi": 619710.0,
+          "close_price": 2.0,
+          "bid_price": 2.7,
+          "bid_qty": 90480,
+          "ask_price": 2.75,
+          "ask_qty": 170170,
+          "prev_oi": 181545.0
+        },
+        "option_greeks": {
+          "vega": 1.1555,
+          "theta": -1.6446,
+          "gamma": 0.0001,
+          "delta": 0.0146,
+          "iv": 17.21,
+          "pop": 1.36
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63505",
+        "market_data": {
+          "ltp": 1230.0,
+          "volume": 65,
+          "oi": 130.0,
+          "close_price": 1394.1,
+          "bid_price": 1201.15,
+          "bid_qty": 65,
+          "ask_price": 1214.2,
+          "ask_qty": 65,
+          "prev_oi": 130.0
+        },
+        "option_greeks": {
+          "vega": 4.1741,
+          "theta": -8.7112,
+          "gamma": 0.0002,
+          "delta": -0.9303,
+          "iv": 25.24,
+          "pop": 49.43
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 0.0259,
+      "strike_price": 25500.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63506",
+        "market_data": {
+          "ltp": 2.45,
+          "volume": 17734015,
+          "oi": 5110950.0,
+          "close_price": 1.8,
+          "bid_price": 2.4,
+          "bid_qty": 361465,
+          "ask_price": 2.45,
+          "ask_qty": 465660,
+          "prev_oi": 2726165.0
+        },
+        "option_greeks": {
+          "vega": 1.0379,
+          "theta": -1.5034,
+          "gamma": 0.0001,
+          "delta": 0.0129,
+          "iv": 17.52,
+          "pop": 1.2
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63511",
+        "market_data": {
+          "ltp": 1258.35,
+          "volume": 21385,
+          "oi": 132535.0,
+          "close_price": 1645.5,
+          "bid_price": 1252.55,
+          "bid_qty": 130,
+          "ask_price": 1257.1,
+          "ask_qty": 65,
+          "prev_oi": 138385.0
+        },
+        "option_greeks": {
+          "vega": 0.984,
+          "theta": -1.4105,
+          "gamma": 0.0001,
+          "delta": -0.9879,
+          "iv": 17.33,
+          "pop": 50.28
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 0.0009,
+      "strike_price": 25550.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63512",
+        "market_data": {
+          "ltp": 2.0,
+          "volume": 3745040,
+          "oi": 593385.0,
+          "close_price": 1.45,
+          "bid_price": 2.0,
+          "bid_qty": 154505,
+          "ask_price": 2.05,
+          "ask_qty": 83330,
+          "prev_oi": 379925.0
+        },
+        "option_greeks": {
+          "vega": 0.8844,
+          "theta": -1.2899,
+          "gamma": 0.0001,
+          "delta": 0.0107,
+          "iv": 17.64,
+          "pop": 1.0
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63513",
+        "market_data": {
+          "ltp": 1491.7,
+          "volume": 0,
+          "oi": 520.0,
+          "close_price": 1491.7,
+          "bid_price": 1282.8,
+          "bid_qty": 1755,
+          "ask_price": 1356.3,
+          "ask_qty": 2535,
+          "prev_oi": 585.0
+        },
+        "option_greeks": {
+          "vega": 9.139,
+          "theta": -37.6493,
+          "gamma": 0.0002,
+          "delta": -0.7841,
+          "iv": 49.82,
+          "pop": 46.5
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 0.0012,
+      "strike_price": 25600.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63514",
+        "market_data": {
+          "ltp": 1.7,
+          "volume": 7720505,
+          "oi": 2701725.0,
+          "close_price": 1.25,
+          "bid_price": 1.65,
+          "bid_qty": 310960,
+          "ask_price": 1.7,
+          "ask_qty": 305565,
+          "prev_oi": 1853605.0
+        },
+        "option_greeks": {
+          "vega": 0.7665,
+          "theta": -1.1296,
+          "gamma": 0.0,
+          "delta": 0.0091,
+          "iv": 17.82,
+          "pop": 0.85
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63519",
+        "market_data": {
+          "ltp": 1751.35,
+          "volume": 0,
+          "oi": 3185.0,
+          "close_price": 1744.05,
+          "bid_price": 1335.4,
+          "bid_qty": 65,
+          "ask_price": 1389.7,
+          "ask_qty": 65,
+          "prev_oi": 3315.0
+        },
+        "option_greeks": {
+          "vega": 10.7447,
+          "theta": -63.8071,
+          "gamma": 0.0002,
+          "delta": -0.7063,
+          "iv": 71.82,
+          "pop": 44.76
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 0.0016,
+      "strike_price": 25650.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63520",
+        "market_data": {
+          "ltp": 1.45,
+          "volume": 2413580,
+          "oi": 656175.0,
+          "close_price": 1.15,
+          "bid_price": 1.45,
+          "bid_qty": 133900,
+          "ask_price": 1.5,
+          "ask_qty": 113685,
+          "prev_oi": 269035.0
+        },
+        "option_greeks": {
+          "vega": 0.6775,
+          "theta": -1.0122,
+          "gamma": 0.0,
+          "delta": 0.0079,
+          "iv": 18.07,
+          "pop": 0.74
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63521",
+        "market_data": {
+          "ltp": 1590.6,
+          "volume": 0,
+          "oi": 1040.0,
+          "close_price": 1590.6,
+          "bid_price": 1362.55,
+          "bid_qty": 2535,
+          "ask_price": 1457.05,
+          "ask_qty": 2535,
+          "prev_oi": 1105.0
+        },
+        "option_greeks": {
+          "vega": 8.955,
+          "theta": -38.3827,
+          "gamma": 0.0002,
+          "delta": -0.7915,
+          "iv": 51.83,
+          "pop": 46.77
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 0.0002,
+      "strike_price": 25700.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63522",
+        "market_data": {
+          "ltp": 1.35,
+          "volume": 5235165,
+          "oi": 1575340.0,
+          "close_price": 1.05,
+          "bid_price": 1.3,
+          "bid_qty": 380835,
+          "ask_price": 1.35,
+          "ask_qty": 231660,
+          "prev_oi": 1028820.0
+        },
+        "option_greeks": {
+          "vega": 0.5996,
+          "theta": -0.9078,
+          "gamma": 0.0,
+          "delta": 0.0069,
+          "iv": 18.31,
+          "pop": 0.64
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63529",
+        "market_data": {
+          "ltp": 1455.95,
+          "volume": 130,
+          "oi": 325.0,
+          "close_price": 1834.9,
+          "bid_price": 1447.85,
+          "bid_qty": 65,
+          "ask_price": 1463.3,
+          "ask_qty": 65,
+          "prev_oi": 325.0
+        },
+        "option_greeks": {
+          "vega": 0.0,
+          "theta": 0.0,
+          "gamma": 0.0,
+          "delta": -1.0,
+          "iv": 0.0,
+          "pop": 99.0
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 0.0001,
+      "strike_price": 25750.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63530",
+        "market_data": {
+          "ltp": 1.3,
+          "volume": 1873495,
+          "oi": 474500.0,
+          "close_price": 1.15,
+          "bid_price": 1.3,
+          "bid_qty": 140010,
+          "ask_price": 1.35,
+          "ask_qty": 53105,
+          "prev_oi": 125775.0
+        },
+        "option_greeks": {
+          "vega": 0.6002,
+          "theta": -0.939,
+          "gamma": 0.0,
+          "delta": 0.0069,
+          "iv": 18.92,
+          "pop": 0.64
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63531",
+        "market_data": {
+          "ltp": 1689.75,
+          "volume": 0,
+          "oi": 65.0,
+          "close_price": 1689.75,
+          "bid_price": 1403.4,
+          "bid_qty": 780,
+          "ask_price": 1563.4,
+          "ask_qty": 780,
+          "prev_oi": 65.0
+        },
+        "option_greeks": {
+          "vega": 8.778,
+          "theta": -39.0525,
+          "gamma": 0.0002,
+          "delta": -0.7984,
+          "iv": 53.8,
+          "pop": 47.01
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 0.0013,
+      "strike_price": 25800.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63532",
+        "market_data": {
+          "ltp": 1.15,
+          "volume": 2646475,
+          "oi": 836550.0,
+          "close_price": 1.05,
+          "bid_price": 1.15,
+          "bid_qty": 164775,
+          "ask_price": 1.2,
+          "ask_qty": 171860,
+          "prev_oi": 578175.0
+        },
+        "option_greeks": {
+          "vega": 0.534,
+          "theta": -0.8463,
+          "gamma": 0.0,
+          "delta": 0.006,
+          "iv": 19.17,
+          "pop": 0.56
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63535",
+        "market_data": {
+          "ltp": 1937.55,
+          "volume": 0,
+          "oi": 1105.0,
+          "close_price": 1928.4,
+          "bid_price": 1534.35,
+          "bid_qty": 65,
+          "ask_price": 1582.0,
+          "ask_qty": 780,
+          "prev_oi": 1170.0
+        },
+        "option_greeks": {
+          "vega": 10.4392,
+          "theta": -65.0026,
+          "gamma": 0.0001,
+          "delta": -0.7235,
+          "iv": 75.3,
+          "pop": 45.41
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 0.0004,
+      "strike_price": 25850.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63536",
+        "market_data": {
+          "ltp": 1.15,
+          "volume": 1126710,
+          "oi": 147160.0,
+          "close_price": 1.0,
+          "bid_price": 1.15,
+          "bid_qty": 22815,
+          "ask_price": 1.2,
+          "ask_qty": 55575,
+          "prev_oi": 82940.0
+        },
+        "option_greeks": {
+          "vega": 0.5362,
+          "theta": -0.8767,
+          "gamma": 0.0,
+          "delta": 0.0061,
+          "iv": 19.78,
+          "pop": 0.56
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63537",
+        "market_data": {
+          "ltp": 1788.5,
+          "volume": 0,
+          "oi": 65.0,
+          "close_price": 1788.5,
+          "bid_price": 1515.1,
+          "bid_qty": 780,
+          "ask_price": 1664.45,
+          "ask_qty": 780,
+          "prev_oi": 65.0
+        },
+        "option_greeks": {
+          "vega": 8.6103,
+          "theta": -39.6752,
+          "gamma": 0.0002,
+          "delta": -0.8047,
+          "iv": 55.73,
+          "pop": 47.24
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 0.0006,
+      "strike_price": 25900.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63538",
+        "market_data": {
+          "ltp": 1.05,
+          "volume": 2330250,
+          "oi": 559715.0,
+          "close_price": 0.95,
+          "bid_price": 1.05,
+          "bid_qty": 138450,
+          "ask_price": 1.1,
+          "ask_qty": 135460,
+          "prev_oi": 401635.0
+        },
+        "option_greeks": {
+          "vega": 0.4803,
+          "theta": -0.795,
+          "gamma": 0.0,
+          "delta": 0.0054,
+          "iv": 20.02,
+          "pop": 0.5
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63539",
+        "market_data": {
+          "ltp": 2030.0,
+          "volume": 0,
+          "oi": 325.0,
+          "close_price": 2030.0,
+          "bid_price": 1525.15,
+          "bid_qty": 65,
+          "ask_price": 1682.5,
+          "ask_qty": 780,
+          "prev_oi": 390.0
+        },
+        "option_greeks": {
+          "vega": 10.2838,
+          "theta": -65.3913,
+          "gamma": 0.0001,
+          "delta": -0.7318,
+          "iv": 76.9,
+          "pop": 45.72
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 0.0003,
+      "strike_price": 25950.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63540",
+        "market_data": {
+          "ltp": 1.0,
+          "volume": 1390935,
+          "oi": 240565.0,
+          "close_price": 1.0,
+          "bid_price": 1.0,
+          "bid_qty": 80730,
+          "ask_price": 1.05,
+          "ask_qty": 55770,
+          "prev_oi": 105300.0
+        },
+        "option_greeks": {
+          "vega": 0.4661,
+          "theta": -0.7904,
+          "gamma": 0.0,
+          "delta": 0.0052,
+          "iv": 20.51,
+          "pop": 0.48
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63541",
+        "market_data": {
+          "ltp": 1887.2,
+          "volume": 0,
+          "oi": 65.0,
+          "close_price": 1887.2,
+          "bid_price": 1611.05,
+          "bid_qty": 780,
+          "ask_price": 1765.25,
+          "ask_qty": 780,
+          "prev_oi": 65.0
+        },
+        "option_greeks": {
+          "vega": 8.4545,
+          "theta": -40.2912,
+          "gamma": 0.0002,
+          "delta": -0.8105,
+          "iv": 57.63,
+          "pop": 47.45
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 0.0261,
+      "strike_price": 26000.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63542",
+        "market_data": {
+          "ltp": 0.95,
+          "volume": 9446125,
+          "oi": 3418155.0,
+          "close_price": 0.95,
+          "bid_price": 0.9,
+          "bid_qty": 846820,
+          "ask_price": 0.95,
+          "ask_qty": 1213680,
+          "prev_oi": 2817620.0
+        },
+        "option_greeks": {
+          "vega": 0.4186,
+          "theta": -0.7183,
+          "gamma": 0.0,
+          "delta": 0.0046,
+          "iv": 20.75,
+          "pop": 0.42
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63543",
+        "market_data": {
+          "ltp": 1758.9,
+          "volume": 11830,
+          "oi": 89375.0,
+          "close_price": 2132.75,
+          "bid_price": 1748.0,
+          "bid_qty": 260,
+          "ask_price": 1755.7,
+          "ask_qty": 65,
+          "prev_oi": 87035.0
+        },
+        "option_greeks": {
+          "vega": 0.9275,
+          "theta": -1.8162,
+          "gamma": 0.0,
+          "delta": -0.9887,
+          "iv": 23.68,
+          "pop": 50.45
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 0.0,
+      "strike_price": 26050.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63544",
+        "market_data": {
+          "ltp": 0.95,
+          "volume": 1056900,
+          "oi": 254280.0,
+          "close_price": 0.9,
+          "bid_price": 0.9,
+          "bid_qty": 71110,
+          "ask_price": 0.95,
+          "ask_qty": 94770,
+          "prev_oi": 94510.0
+        },
+        "option_greeks": {
+          "vega": 0.4081,
+          "theta": -0.7167,
+          "gamma": 0.0,
+          "delta": 0.0045,
+          "iv": 21.24,
+          "pop": 0.41
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63545",
+        "market_data": {
+          "ltp": 0.0,
+          "volume": 0,
+          "oi": 0.0,
+          "close_price": 2304.5,
+          "bid_price": 1693.2,
+          "bid_qty": 780,
+          "ask_price": 1852.8,
+          "ask_qty": 780,
+          "prev_oi": 0.0
+        },
+        "option_greeks": {
+          "vega": 0.0,
+          "theta": 0.0,
+          "gamma": 0.0,
+          "delta": -1.0,
+          "iv": 0.0,
+          "pop": 99.0
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 0.0011,
+      "strike_price": 26100.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63546",
+        "market_data": {
+          "ltp": 0.8,
+          "volume": 1494415,
+          "oi": 603395.0,
+          "close_price": 0.9,
+          "bid_price": 0.8,
+          "bid_qty": 233415,
+          "ask_price": 0.85,
+          "ask_qty": 205465,
+          "prev_oi": 528320.0
+        },
+        "option_greeks": {
+          "vega": 0.3674,
+          "theta": -0.6527,
+          "gamma": 0.0,
+          "delta": 0.004,
+          "iv": 21.48,
+          "pop": 0.36
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63547",
+        "market_data": {
+          "ltp": 1870.25,
+          "volume": 715,
+          "oi": 650.0,
+          "close_price": 2234.65,
+          "bid_price": 1845.05,
+          "bid_qty": 130,
+          "ask_price": 1855.4,
+          "ask_qty": 65,
+          "prev_oi": 195.0
+        },
+        "option_greeks": {
+          "vega": 2.4972,
+          "theta": -6.5286,
+          "gamma": 0.0001,
+          "delta": -0.9635,
+          "iv": 31.62,
+          "pop": 50.24
+        }
+      }
+    },
+    {
+      "expiry": "2026-04-21",
+      "pcr": 0.0,
+      "strike_price": 26150.0,
+      "underlying_key": "NSE_INDEX|Nifty 50",
+      "underlying_spot_price": 24230.2,
+      "call_options": {
+        "instrument_key": "NSE_FO|63548",
+        "market_data": {
+          "ltp": 0.85,
+          "volume": 1120405,
+          "oi": 276640.0,
+          "close_price": 0.95,
+          "bid_price": 0.8,
+          "bid_qty": 106860,
+          "ask_price": 0.85,
+          "ask_qty": 99515,
+          "prev_oi": 223925.0
+        },
+        "option_greeks": {
+          "vega": 0.3601,
+          "theta": -0.6543,
+          "gamma": 0.0,
+          "delta": 0.0039,
+          "iv": 21.97,
+          "pop": 0.36
+        }
+      },
+      "put_options": {
+        "instrument_key": "NSE_FO|63549",
+        "market_data": {
+          "ltp": 0.0,
+          "volume": 0,
+          "oi": 0.0,
+          "close_price": 2401.8,
+          "bid_price": 1846.55,
+          "bid_qty": 780,
+          "ask_price": 1975.45,
+          "ask_qty": 780,
+          "prev_oi": 0.0
+        },
+        "option_greeks": {
+          "vega": 0.0,
+          "theta": 0.0,
+          "gamma": 0.0,
+          "delta": -1.0,
+          "iv": 0.0,
+          "pop": 99.0
+        }
+      }
+    }
+  ]
+}

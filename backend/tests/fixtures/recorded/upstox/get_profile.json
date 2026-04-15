@@ -1,0 +1,37 @@
+{
+  "broker": "upstox",
+  "method": "get_profile",
+  "recorded_at": "2026-04-14T19:03:38.421462",
+  "market_open": false,
+  "metadata": {},
+  "response": {
+    "email": "abhayinfosys@gmail.com",
+    "exchanges": [
+      "BSE",
+      "CDS",
+      "NSE",
+      "NFO",
+      "BFO",
+      "BCD"
+    ],
+    "products": [
+      "OCO",
+      "D",
+      "CO",
+      "I"
+    ],
+    "broker": "UPSTOX",
+    "user_id": "198547",
+    "user_name": "ABHAY KUMAR",
+    "order_types": [
+      "MARKET",
+      "LIMIT",
+      "SL",
+      "SL-M"
+    ],
+    "user_type": "individual",
+    "poa": false,
+    "ddpi": false,
+    "is_active": true
+  }
+}

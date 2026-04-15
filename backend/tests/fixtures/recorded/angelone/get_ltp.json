@@ -1,0 +1,20 @@
+{
+  "broker": "angelone",
+  "method": "get_ltp",
+  "recorded_at": "2026-04-14T19:02:34.256156",
+  "market_open": false,
+  "metadata": {
+    "symbols": [
+      "NIFTY 50",
+      "NIFTY BANK"
+    ]
+  },
+  "response": {
+    "NIFTY 50": {
+      "__decimal__": "23842.65"
+    },
+    "NIFTY BANK": {
+      "__decimal__": "55605.05"
+    }
+  }
+}

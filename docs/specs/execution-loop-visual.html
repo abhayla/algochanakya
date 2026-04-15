@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Execution Loop — Visual Architecture</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0a0e17; color: #e0e6ed; overflow-x: hidden; }
+
+  .container { max-width: 1200px; margin: 0 auto; padding: 40px 24px; }
+
+  h1 { font-size: 2.2rem; text-align: center; margin-bottom: 8px; background: linear-gradient(135deg, #6ee7b7, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .subtitle { text-align: center; color: #64748b; font-size: 1.1rem; margin-bottom: 60px; }
+
+  h2 { font-size: 1.5rem; margin-bottom: 24px; color: #94a3b8; border-left: 4px solid #3b82f6; padding-left: 16px; }
+
+  .section { margin-bottom: 80px; }
+
+  /* ---- DIAGRAM 1: Before/After ---- */
+  .comparison { display: grid; grid-template-columns: 1fr 60px 1fr; gap: 0; align-items: center; }
+  .compare-box { background: #111827; border-radius: 16px; padding: 32px; border: 1px solid #1e293b; }
+  .compare-box.before { border-color: #ef4444; }
+  .compare-box.after { border-color: #10b981; }
+  .compare-arrow { text-align: center; font-size: 2rem; color: #64748b; }
+  .compare-label { font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 16px; }
+  .compare-label.red { color: #ef4444; }
+  .compare-label.green { color: #10b981; }
+
+  .flow-line { display: flex; align-items: center; gap: 8px; margin: 12px 0; font-size: 0.95rem; }
+  .flow-line .node { background: #1e293b; padding: 6px 14px; border-radius: 8px; white-space: nowrap; font-size: 0.85rem; }
+  .flow-line .arrow { color: #475569; font-size: 1.2rem; }
+  .flow-line .gap { color: #ef4444; font-weight: 700; font-size: 1.4rem; letter-spacing: 2px; }
+  .flow-line .node.active { background: #064e3b; border: 1px solid #10b981; }
+
+  /* ---- DIAGRAM 2: The Loop (SVG) ---- */
+  .loop-container { display: flex; justify-content: center; padding: 20px 0; }
+
+  svg text { font-family: 'Segoe UI', system-ui, sans-serif; }
+
+  .phase-card { fill: #111827; stroke: #1e293b; stroke-width: 1.5; rx: 12; }
+  .phase-card:hover { stroke: #3b82f6; stroke-width: 2; cursor: pointer; }
+  .phase-label { fill: #e0e6ed; font-size: 13px; font-weight: 600; }
+  .phase-sub { fill: #64748b; font-size: 11px; }
+  .phase-num { fill: #0a0e17; font-size: 12px; font-weight: 700; }
+  .phase-badge { rx: 10; }
+
+  .arrow-path { fill: none; stroke: #3b82f6; stroke-width: 2; marker-end: url(#arrowBlue); }
+  .arrow-path.push { stroke: #10b981; marker-end: url(#arrowGreen); }
+  .arrow-path.tick { stroke: #f59e0b; stroke-dasharray: 6 3; marker-end: url(#arrowYellow); }
+
+  /* ---- DIAGRAM 3: Timeline ---- */
+  .timeline-track { position: relative; height: 80px; background: #111827; border-radius: 12px; margin: 20px 0; overflow: hidden; border: 1px solid #1e293b; }
+  .timeline-fill { position: absolute; top: 0; height: 100%; border-radius: 12px; }
+  .timeline-fill.pre { left: 0; width: 14%; background: #1e293b; }
+  .timeline-fill.market { left: 14%; width: 52%; background: linear-gradient(90deg, #064e3b, #065f46, #064e3b); border: 1px solid #10b981; }
+  .timeline-fill.post { left: 66%; width: 34%; background: #1e293b; }
+  .timeline-label { position: absolute; top: 50%; transform: translateY(-50%); font-size: 0.8rem; font-weight: 600; padding: 0 12px; }
+  .timeline-label.pre-l { left: 1%; color: #64748b; }
+  .timeline-label.market-l { left: 30%; color: #6ee7b7; }
+  .timeline-label.post-l { left: 75%; color: #64748b; }
+  .timeline-markers { display: flex; justify-content: space-between; padding: 8px 12px; font-size: 0.75rem; color: #475569; }
+
+  /* ---- DIAGRAM 4: Rate Budget ---- */
+  .budget-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+  .budget-card { background: #111827; border-radius: 12px; padding: 24px; border: 1px solid #1e293b; }
+  .budget-card h3 { font-size: 1rem; margin-bottom: 16px; color: #f59e0b; }
+  .budget-bar { height: 8px; background: #1e293b; border-radius: 4px; margin: 8px 0; overflow: hidden; }
+  .budget-bar .fill { height: 100%; border-radius: 4px; transition: width 1s ease; }
+  .budget-bar .fill.low { background: #10b981; }
+  .budget-bar .fill.mid { background: #f59e0b; }
+  .budget-row { display: flex; justify-content: space-between; font-size: 0.85rem; margin: 4px 0; }
+  .budget-row .label { color: #94a3b8; }
+  .budget-row .val { color: #e0e6ed; font-weight: 600; }
+
+  /* ---- DIAGRAM 5: Integration ---- */
+  .integration-svg { width: 100%; }
+  .int-box { fill: #111827; stroke: #1e293b; stroke-width: 1.5; rx: 10; }
+  .int-box.new { stroke: #3b82f6; stroke-width: 2; stroke-dasharray: none; fill: #0c1a3a; }
+  .int-box.exists { stroke: #1e293b; }
+  .int-label { font-size: 12px; font-weight: 600; }
+  .int-label.new { fill: #60a5fa; }
+  .int-label.exists { fill: #94a3b8; }
+  .int-sub { font-size: 10px; fill: #64748b; }
+  .int-arrow { fill: none; stroke-width: 1.5; }
+
+  /* ---- Pulse animation ---- */
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+  .pulse { animation: pulse 2s ease-in-out infinite; }
+
+  /* ---- Legend ---- */
+  .legend { display: flex; gap: 24px; flex-wrap: wrap; margin: 16px 0; }
+  .legend-item { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: #94a3b8; }
+  .legend-dot { width: 12px; height: 12px; border-radius: 3px; }
+
+  /* ---- Cycle animation ---- */
+  .cycle-counter { text-align: center; margin: 20px 0; }
+  .cycle-display { font-size: 3rem; font-weight: 700; font-family: 'Courier New', monospace; background: linear-gradient(135deg, #6ee7b7, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .cycle-label { color: #64748b; font-size: 0.9rem; }
+
+  /* Phase detail panel */
+  .phase-details { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-top: 24px; }
+  .pd-card { background: #111827; border-radius: 12px; padding: 16px; border: 1px solid #1e293b; text-align: center; transition: all 0.3s; }
+  .pd-card.active { border-color: #3b82f6; background: #0c1a3a; transform: translateY(-4px); }
+  .pd-num { width: 28px; height: 28px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; margin-bottom: 8px; }
+  .pd-num.c1 { background: #3b82f6; color: #fff; }
+  .pd-num.c2 { background: #8b5cf6; color: #fff; }
+  .pd-num.c3 { background: #f59e0b; color: #000; }
+  .pd-num.c4 { background: #ef4444; color: #fff; }
+  .pd-num.c5 { background: #10b981; color: #fff; }
+  .pd-title { font-size: 0.85rem; font-weight: 600; color: #e0e6ed; margin-bottom: 4px; }
+  .pd-desc { font-size: 0.75rem; color: #64748b; line-height: 1.4; }
+  .pd-timing { font-size: 0.7rem; color: #475569; margin-top: 6px; font-family: monospace; }
+
+  @media (max-width: 768px) {
+    .comparison { grid-template-columns: 1fr; gap: 16px; }
+    .compare-arrow { transform: rotate(90deg); }
+    .phase-details { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <h1>The Live Execution Loop</h1>
+  <p class="subtitle">From open-loop dashboard to closed-loop autonomous trading agent</p>
+
+  <!-- ============ SECTION 1: Before / After ============ -->
+  <div class="section">
+    <h2>1. The Problem: Open Loop vs Closed Loop</h2>
+    <div class="comparison">
+      <div class="compare-box before">
+        <div class="compare-label red">TODAY — Open Loop</div>
+        <div class="flow-line">
+          <span class="node">Trader clicks Enter</span>
+          <span class="arrow">→</span>
+          <span class="node">Order placed</span>
+        </div>
+        <div class="flow-line">
+          <span class="arrow" style="visibility:hidden">→</span>
+          <span class="arrow" style="visibility:hidden">→</span>
+          <span class="gap">? ? ?</span>
+        </div>
+        <div class="flow-line">
+          <span class="node">Trader clicks Refresh</span>
+          <span class="arrow">→</span>
+          <span class="node">Maybe sees position</span>
+        </div>
+        <div style="margin-top:16px; padding:12px; background:#1c1017; border-radius:8px; border:1px solid #7f1d1d; font-size:0.85rem; color:#fca5a5;">
+          Risk engine blind between clicks. AutoPilot adjusts phantom positions. Kill switch can't fire.
+        </div>
+      </div>
+
+      <div class="compare-arrow">→</div>
+
+      <div class="compare-box after">
+        <div class="compare-label green">PROPOSED — Closed Loop</div>
+        <div class="flow-line">
+          <span class="node active">Tick arrives</span>
+          <span class="arrow">→</span>
+          <span class="node active">P&L recalculated</span>
+        </div>
+        <div class="flow-line">
+          <span class="node active">Risk evaluated</span>
+          <span class="arrow">→</span>
+          <span class="node active">Conditions checked</span>
+        </div>
+        <div class="flow-line">
+          <span class="node active">Adjustment fired</span>
+          <span class="arrow">→</span>
+          <span class="node active">Fill verified</span>
+        </div>
+        <div style="margin-top:16px; padding:12px; background:#0a2118; border-radius:8px; border:1px solid #065f46; font-size:0.85rem; color:#6ee7b7;">
+          Every 5 seconds: sync → verify → recalculate → evaluate → push. Autonomous.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ SECTION 2: The 5-Phase Cycle ============ -->
+  <div class="section">
+    <h2>2. The 5-Phase Cycle (every 5 seconds)</h2>
+
+    <div class="cycle-counter">
+      <div class="cycle-display" id="cycleTimer">00:05</div>
+      <div class="cycle-label">cycle interval</div>
+    </div>
+
+    <div class="loop-container">
+      <svg width="800" height="420" viewBox="0 0 800 420">
+        <defs>
+          <marker id="arrowBlue" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+            <polygon points="0 0, 8 3, 0 6" fill="#3b82f6"/>
+          </marker>
+          <marker id="arrowGreen" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+            <polygon points="0 0, 8 3, 0 6" fill="#10b981"/>
+          </marker>
+          <marker id="arrowYellow" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+            <polygon points="0 0, 8 3, 0 6" fill="#f59e0b"/>
+          </marker>
+        </defs>
+
+        <!-- Phase 1: Sync Positions -->
+        <rect class="phase-card" x="20" y="140" width="140" height="80"/>
+        <circle cx="42" cy="160" r="10" fill="#3b82f6"/>
+        <text class="phase-num" x="42" y="164" text-anchor="middle">1</text>
+        <text class="phase-label" x="58" y="164">Sync</text>
+        <text class="phase-sub" x="90" y="185">Poll broker</text>
+        <text class="phase-sub" x="90" y="200">Diff vs DB</text>
+
+        <!-- Phase 2: Verify Orders -->
+        <rect class="phase-card" x="190" y="140" width="140" height="80"/>
+        <circle cx="212" cy="160" r="10" fill="#8b5cf6"/>
+        <text class="phase-num" x="212" y="164" text-anchor="middle">2</text>
+        <text class="phase-label" x="228" y="164">Verify</text>
+        <text class="phase-sub" x="260" y="185">Pending orders</text>
+        <text class="phase-sub" x="260" y="200">Confirm fills</text>
+
+        <!-- Phase 3: Recalculate -->
+        <rect class="phase-card" x="360" y="140" width="140" height="80"/>
+        <circle cx="382" cy="160" r="10" fill="#f59e0b"/>
+        <text class="phase-num" x="382" y="164" text-anchor="middle">3</text>
+        <text class="phase-label" x="398" y="164">Recalculate</text>
+        <text class="phase-sub" x="430" y="185">Greeks refresh</text>
+        <text class="phase-sub" x="430" y="200">P&L update</text>
+
+        <!-- Phase 4: Evaluate Risk -->
+        <rect class="phase-card" x="530" y="140" width="140" height="80"/>
+        <circle cx="552" cy="160" r="10" fill="#ef4444"/>
+        <text class="phase-num" x="552" y="164" text-anchor="middle">4</text>
+        <text class="phase-label" x="568" y="164">Risk</text>
+        <text class="phase-sub" x="600" y="185">State engine</text>
+        <text class="phase-sub" x="600" y="200">Kill switch</text>
+
+        <!-- Phase 5: Conditions + Push -->
+        <rect class="phase-card" x="620" y="280" width="160" height="80"/>
+        <circle cx="642" cy="300" r="10" fill="#10b981"/>
+        <text class="phase-num" x="642" y="304" text-anchor="middle">5</text>
+        <text class="phase-label" x="658" y="304">Act + Push</text>
+        <text class="phase-sub" x="700" y="325">Evaluate conditions</text>
+        <text class="phase-sub" x="700" y="340">WebSocket broadcast</text>
+
+        <!-- Arrows between phases -->
+        <path class="arrow-path" d="M 160,180 L 185,180"/>
+        <path class="arrow-path" d="M 330,180 L 355,180"/>
+        <path class="arrow-path" d="M 500,180 L 525,180"/>
+        <path class="arrow-path" d="M 670,220 L 700,275"/>
+
+        <!-- Loop-back arrow -->
+        <path class="arrow-path push" d="M 620,320 C 400,380 200,380 90,225"/>
+        <text x="350" y="375" fill="#10b981" font-size="11" font-weight="600">next cycle (5s)</text>
+
+        <!-- Broker cloud -->
+        <rect x="60" y="20" width="120" height="50" rx="25" fill="none" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4 3"/>
+        <text x="120" y="42" fill="#f59e0b" font-size="12" font-weight="600" text-anchor="middle">Broker API</text>
+        <text x="120" y="57" fill="#64748b" font-size="10" text-anchor="middle">AngelOne / Upstox</text>
+        <path class="arrow-path tick" d="M 120,70 L 90,135"/>
+
+        <!-- Ticker cloud -->
+        <rect x="350" y="20" width="120" height="50" rx="25" fill="none" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4 3"/>
+        <text x="410" y="42" fill="#f59e0b" font-size="12" font-weight="600" text-anchor="middle">TickerPool</text>
+        <text x="410" y="57" fill="#64748b" font-size="10" text-anchor="middle">Live NormalizedTick</text>
+        <path class="arrow-path tick" d="M 410,70 L 430,135"/>
+
+        <!-- Frontend -->
+        <rect x="300" y="280" width="140" height="50" rx="10" fill="none" stroke="#10b981" stroke-width="1.5"/>
+        <text x="370" y="302" fill="#10b981" font-size="12" font-weight="600" text-anchor="middle">Frontend</text>
+        <text x="370" y="317" fill="#64748b" font-size="10" text-anchor="middle">/ws/autopilot</text>
+        <path class="arrow-path push" d="M 620,310 L 445,305"/>
+
+        <!-- Database -->
+        <rect x="180" y="280" width="90" height="50" rx="10" fill="none" stroke="#94a3b8" stroke-width="1"/>
+        <text x="225" y="302" fill="#94a3b8" font-size="12" font-weight="600" text-anchor="middle">DB</text>
+        <text x="225" y="317" fill="#64748b" font-size="10" text-anchor="middle">Positions</text>
+        <path class="int-arrow" d="M 90,220 L 210,278" stroke="#94a3b8" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#arrowBlue)"/>
+      </svg>
+    </div>
+
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#3b82f6"></div> Data flow</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#10b981"></div> Push to frontend</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div> External input</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div> Risk evaluation</div>
+    </div>
+
+    <!-- Phase detail cards -->
+    <div class="phase-details" id="phaseCards">
+      <div class="pd-card" id="pd1">
+        <div class="pd-num c1">1</div>
+        <div class="pd-title">Sync Positions</div>
+        <div class="pd-desc">Poll broker API for real positions. Diff against DB. Update mismatches.</div>
+        <div class="pd-timing">every 30s (rate limit)</div>
+      </div>
+      <div class="pd-card" id="pd2">
+        <div class="pd-num c2">2</div>
+        <div class="pd-title">Verify Orders</div>
+        <div class="pd-desc">Check PENDING orders. Confirm fill qty matches. Timeout after 30s → FAILED.</div>
+        <div class="pd-timing">every 2s for pending</div>
+      </div>
+      <div class="pd-card" id="pd3">
+        <div class="pd-num c3">3</div>
+        <div class="pd-title">Recalculate</div>
+        <div class="pd-desc">Fresh Greeks from live tick + actual position. Update P&L, delta, gamma, theta.</div>
+        <div class="pd-timing">every 60s (compute)</div>
+      </div>
+      <div class="pd-card" id="pd4">
+        <div class="pd-num c4">4</div>
+        <div class="pd-title">Evaluate Risk</div>
+        <div class="pd-desc">Feed P&L into RiskStateEngine. Transition NORMAL→DEGRADED→PAUSED. Fire kill switch.</div>
+        <div class="pd-timing">every 5s cycle</div>
+      </div>
+      <div class="pd-card" id="pd5">
+        <div class="pd-num c5">5</div>
+        <div class="pd-title">Act + Push</div>
+        <div class="pd-desc">Run ConditionEngine. Fire adjustments if needed. Broadcast state via WebSocket.</div>
+        <div class="pd-timing">every 5s cycle</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ SECTION 3: Market Hours Timeline ============ -->
+  <div class="section">
+    <h2>3. When It Runs (Market Hours IST)</h2>
+    <div class="timeline-track">
+      <div class="timeline-fill pre"></div>
+      <div class="timeline-fill market"></div>
+      <div class="timeline-fill post"></div>
+      <div class="timeline-label pre-l">SLEEPING</div>
+      <div class="timeline-label market-l">LOOP ACTIVE — 5s cycles</div>
+      <div class="timeline-label post-l">SLEEPING</div>
+    </div>
+    <div class="timeline-markers">
+      <span>00:00</span>
+      <span>06:00</span>
+      <span style="color:#6ee7b7;font-weight:600">09:15 Open</span>
+      <span style="color:#6ee7b7">12:00</span>
+      <span style="color:#6ee7b7;font-weight:600">15:30 Close</span>
+      <span>18:00</span>
+      <span>00:00</span>
+    </div>
+
+    <div style="margin-top:24px; display:grid; grid-template-columns: 1fr 1fr 1fr; gap:16px;">
+      <div style="background:#111827; border-radius:12px; padding:16px; border:1px solid #1e293b; text-align:center;">
+        <div style="font-size:2rem; font-weight:700; color:#6ee7b7;">~4,500</div>
+        <div style="font-size:0.85rem; color:#64748b;">cycles per trading day</div>
+        <div style="font-size:0.75rem; color:#475569; margin-top:4px;">6.25 hrs × 720 cycles/hr</div>
+      </div>
+      <div style="background:#111827; border-radius:12px; padding:16px; border:1px solid #1e293b; text-align:center;">
+        <div style="font-size:2rem; font-weight:700; color:#3b82f6;">5s</div>
+        <div style="font-size:0.85rem; color:#64748b;">cycle interval</div>
+        <div style="font-size:0.75rem; color:#475569; margin-top:4px;">matches StrategyMonitor</div>
+      </div>
+      <div style="background:#111827; border-radius:12px; padding:16px; border:1px solid #1e293b; text-align:center;">
+        <div style="font-size:2rem; font-weight:700; color:#f59e0b;">&lt;200ms</div>
+        <div style="font-size:0.85rem; color:#64748b;">target cycle time</div>
+        <div style="font-size:0.75rem; color:#475569; margin-top:4px;">4.8s idle between cycles</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ SECTION 4: Rate Limit Budget ============ -->
+  <div class="section">
+    <h2>4. Broker API Rate Budget</h2>
+    <div class="budget-grid">
+      <div class="budget-card">
+        <h3>AngelOne (SmartAPI) — 10 req/s</h3>
+        <div class="budget-row"><span class="label">Position fetch (1 call / 30s)</span><span class="val">0.03/s</span></div>
+        <div class="budget-bar"><div class="fill low" style="width:3%"></div></div>
+        <div class="budget-row"><span class="label">Order status (1 call / 2s per pending)</span><span class="val">0.5/s</span></div>
+        <div class="budget-bar"><div class="fill low" style="width:5%"></div></div>
+        <div class="budget-row"><span class="label">LTP from ticker (0 calls — WebSocket)</span><span class="val">0/s</span></div>
+        <div class="budget-bar"><div class="fill low" style="width:0%"></div></div>
+        <div style="margin-top:16px; padding:12px; background:#0a2118; border-radius:8px; border:1px solid #065f46;">
+          <div class="budget-row"><span class="label" style="color:#6ee7b7">Total budget used</span><span class="val" style="color:#6ee7b7">0.53 / 10 req/s (5%)</span></div>
+          <div class="budget-bar"><div class="fill low" style="width:5%"></div></div>
+        </div>
+      </div>
+      <div class="budget-card">
+        <h3>Upstox — 25 req/s</h3>
+        <div class="budget-row"><span class="label">Position fetch (1 call / 30s)</span><span class="val">0.03/s</span></div>
+        <div class="budget-bar"><div class="fill low" style="width:1%"></div></div>
+        <div class="budget-row"><span class="label">Order status (1 call / 2s per pending)</span><span class="val">0.5/s</span></div>
+        <div class="budget-bar"><div class="fill low" style="width:2%"></div></div>
+        <div class="budget-row"><span class="label">LTP from ticker (0 calls — WebSocket)</span><span class="val">0/s</span></div>
+        <div class="budget-bar"><div class="fill low" style="width:0%"></div></div>
+        <div style="margin-top:16px; padding:12px; background:#0a2118; border-radius:8px; border:1px solid #065f46;">
+          <div class="budget-row"><span class="label" style="color:#6ee7b7">Total budget used</span><span class="val" style="color:#6ee7b7">0.53 / 25 req/s (2%)</span></div>
+          <div class="budget-bar"><div class="fill low" style="width:2%"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ SECTION 5: Integration Map ============ -->
+  <div class="section">
+    <h2>5. How It Connects (Integration Map)</h2>
+    <div class="loop-container">
+      <svg width="860" height="500" viewBox="0 0 860 500" class="integration-svg">
+        <defs>
+          <marker id="intArrow" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+            <polygon points="0 0, 8 3, 0 6" fill="#475569"/>
+          </marker>
+          <marker id="intArrowBlue" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+            <polygon points="0 0, 8 3, 0 6" fill="#3b82f6"/>
+          </marker>
+        </defs>
+
+        <!-- NEW: Execution Loop (center) -->
+        <rect class="int-box new" x="300" y="190" width="260" height="110"/>
+        <text x="430" y="220" class="int-label new" text-anchor="middle" font-size="14">ExecutionLoop</text>
+        <text x="430" y="240" class="int-sub" text-anchor="middle">NEW — the spinal cord</text>
+        <text x="430" y="260" class="int-sub" text-anchor="middle">sync → verify → recalc → risk → act</text>
+        <text x="430" y="280" class="int-sub" text-anchor="middle">backend/app/services/autopilot/execution_loop.py</text>
+
+        <!-- Existing: TickerPool (top-left) -->
+        <rect class="int-box exists" x="30" y="30" width="180" height="60"/>
+        <text x="120" y="58" class="int-label exists" text-anchor="middle">TickerPool</text>
+        <text x="120" y="74" class="int-sub" text-anchor="middle">Live ticks via WebSocket</text>
+        <line x1="210" y1="60" x2="300" y2="210" class="int-arrow" stroke="#f59e0b" stroke-dasharray="4 3" marker-end="url(#intArrow)"/>
+        <text x="235" y="130" fill="#64748b" font-size="9" transform="rotate(32, 235, 130)">NormalizedTick</text>
+
+        <!-- Existing: Broker Adapters (top-right) -->
+        <rect class="int-box exists" x="620" y="30" width="200" height="60"/>
+        <text x="720" y="58" class="int-label exists" text-anchor="middle">Broker Adapters</text>
+        <text x="720" y="74" class="int-sub" text-anchor="middle">get_positions(), get_order_status()</text>
+        <line x1="620" y1="65" x2="560" y2="210" class="int-arrow" stroke="#f59e0b" stroke-dasharray="4 3" marker-end="url(#intArrow)"/>
+        <text x="600" y="130" fill="#64748b" font-size="9" transform="rotate(-30, 600, 130)">REST API calls</text>
+
+        <!-- Existing: RiskStateEngine (left) -->
+        <rect class="int-box exists" x="30" y="220" width="180" height="50"/>
+        <text x="120" y="244" class="int-label exists" text-anchor="middle">RiskStateEngine</text>
+        <text x="120" y="258" class="int-sub" text-anchor="middle">NORMAL → DEGRADED → PAUSED</text>
+        <line x1="300" y1="245" x2="215" y2="245" class="int-arrow" stroke="#ef4444" marker-end="url(#intArrow)"/>
+
+        <!-- Existing: ConditionEngine (bottom-left) -->
+        <rect class="int-box exists" x="30" y="340" width="180" height="50"/>
+        <text x="120" y="364" class="int-label exists" text-anchor="middle">ConditionEngine</text>
+        <text x="120" y="378" class="int-sub" text-anchor="middle">35+ variables, adjustments</text>
+        <line x1="350" y1="300" x2="180" y2="345" class="int-arrow" stroke="#3b82f6" marker-end="url(#intArrowBlue)"/>
+
+        <!-- Existing: GreeksCalculator (right) -->
+        <rect class="int-box exists" x="650" y="220" width="180" height="50"/>
+        <text x="740" y="244" class="int-label exists" text-anchor="middle">GreeksCalculator</text>
+        <text x="740" y="258" class="int-sub" text-anchor="middle">Black-Scholes, IV, P&L</text>
+        <line x1="560" y1="245" x2="645" y2="245" class="int-arrow" stroke="#f59e0b" marker-end="url(#intArrow)"/>
+
+        <!-- Existing: WebSocket /ws/autopilot (bottom-center) -->
+        <rect class="int-box exists" x="300" y="400" width="260" height="50"/>
+        <text x="430" y="424" class="int-label exists" text-anchor="middle">WSManager /ws/autopilot</text>
+        <text x="430" y="438" class="int-sub" text-anchor="middle">Push to frontend browsers</text>
+        <line x1="430" y1="300" x2="430" y2="395" class="int-arrow" stroke="#10b981" stroke-width="2" marker-end="url(#intArrow)"/>
+        <text x="440" y="355" fill="#10b981" font-size="9">broadcast</text>
+
+        <!-- Existing: Database (bottom-right) -->
+        <rect class="int-box exists" x="650" y="340" width="180" height="50"/>
+        <text x="740" y="364" class="int-label exists" text-anchor="middle">PostgreSQL</text>
+        <text x="740" y="378" class="int-sub" text-anchor="middle">AutoPilotStrategy, Orders, Legs</text>
+        <line x1="510" y1="300" x2="680" y2="345" class="int-arrow" stroke="#94a3b8" stroke-dasharray="4 3" marker-end="url(#intArrow)"/>
+
+        <!-- Existing: main.py lifespan (top-center) -->
+        <rect class="int-box exists" x="310" y="30" width="240" height="50"/>
+        <text x="430" y="54" class="int-label exists" text-anchor="middle">main.py lifespan()</text>
+        <text x="430" y="68" class="int-sub" text-anchor="middle">Stage 8: start ExecutionLoop</text>
+        <line x1="430" y1="80" x2="430" y2="185" class="int-arrow" stroke="#3b82f6" stroke-width="2" marker-end="url(#intArrowBlue)"/>
+        <text x="440" y="140" fill="#3b82f6" font-size="9">startup</text>
+
+        <!-- Legend -->
+        <rect x="30" y="460" width="12" height="12" rx="2" fill="#0c1a3a" stroke="#3b82f6" stroke-width="2"/>
+        <text x="48" y="471" fill="#94a3b8" font-size="11">NEW component</text>
+        <rect x="180" y="460" width="12" height="12" rx="2" fill="#111827" stroke="#1e293b" stroke-width="1.5"/>
+        <text x="198" y="471" fill="#94a3b8" font-size="11">EXISTS (reused as-is)</text>
+        <line x1="360" y1="466" x2="390" y2="466" stroke="#f59e0b" stroke-dasharray="4 3" stroke-width="1.5"/>
+        <text x="396" y="471" fill="#94a3b8" font-size="11">Input data</text>
+        <line x1="480" y1="466" x2="510" y2="466" stroke="#10b981" stroke-width="2"/>
+        <text x="516" y="471" fill="#94a3b8" font-size="11">Output push</text>
+      </svg>
+    </div>
+
+    <div style="margin-top:16px; padding:20px; background:#111827; border-radius:12px; border:1px solid #1e293b;">
+      <div style="font-weight:600; margin-bottom:12px; color:#60a5fa;">Key insight: only 1 new file needed</div>
+      <div style="font-size:0.9rem; color:#94a3b8; line-height:1.6;">
+        Every grey box already exists and is production-tested. The blue box (<code>ExecutionLoop</code>) is the only new code — it orchestrates existing services into a closed loop. No new database tables. No new WebSocket endpoints. No new broker API calls. Just the wiring.
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ SECTION 6: What Changes ============ -->
+  <div class="section">
+    <h2>6. What Each Phase Unlocks</h2>
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px;">
+      <div style="background:#111827; border-radius:12px; padding:20px; border-left:4px solid #ef4444;">
+        <div style="font-weight:600; color:#ef4444; margin-bottom:8px;">Without the loop</div>
+        <ul style="font-size:0.85rem; color:#94a3b8; line-height:1.8; padding-left:16px;">
+          <li>Kill switch fires on stale data (or not at all)</li>
+          <li>AutoPilot adjusts phantom positions</li>
+          <li>Order fails silently — trader doesn't know</li>
+          <li>Greeks show entry-time values, not live</li>
+          <li>Risk state never transitions automatically</li>
+          <li>Frontend shows last-refresh data</li>
+        </ul>
+      </div>
+      <div style="background:#111827; border-radius:12px; padding:20px; border-left:4px solid #10b981;">
+        <div style="font-weight:600; color:#10b981; margin-bottom:8px;">With the loop</div>
+        <ul style="font-size:0.85rem; color:#e0e6ed; line-height:1.8; padding-left:16px;">
+          <li>Kill switch fires within 5s of drawdown breach</li>
+          <li>Positions verified against broker every 30s</li>
+          <li>Failed orders detected in &lt;30s, flagged to user</li>
+          <li>Greeks refresh every 60s with live underlying</li>
+          <li>Risk auto-transitions: NORMAL → DEGRADED → PAUSED</li>
+          <li>Frontend updates every 5s via WebSocket push</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // Animate phase cards cycling
+  let activePhase = 0;
+  const cards = document.querySelectorAll('.pd-card');
+
+  function cyclePhase() {
+    cards.forEach(c => c.classList.remove('active'));
+    cards[activePhase].classList.add('active');
+    activePhase = (activePhase + 1) % cards.length;
+  }
+
+  cyclePhase();
+  setInterval(cyclePhase, 1500);
+
+  // Cycle timer countdown
+  let countdown = 5.0;
+  const timerEl = document.getElementById('cycleTimer');
+
+  setInterval(() => {
+    countdown -= 0.1;
+    if (countdown <= 0) countdown = 5.0;
+    const secs = Math.floor(countdown);
+    const tenths = Math.floor((countdown - secs) * 10);
+    timerEl.textContent = `00:0${secs}.${tenths}`;
+  }, 100);
+</script>
+</body>
+</html>

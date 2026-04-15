@@ -1,0 +1,20 @@
+{
+  "broker": "upstox",
+  "method": "get_ltp",
+  "recorded_at": "2026-04-14T19:03:17.060774",
+  "market_open": false,
+  "metadata": {
+    "symbols": [
+      "NIFTY 50",
+      "NIFTY BANK"
+    ]
+  },
+  "response": {
+    "NIFTY BANK": {
+      "__decimal__": "55605.05"
+    },
+    "NIFTY 50": {
+      "__decimal__": "23842.65"
+    }
+  }
+}

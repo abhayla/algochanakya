@@ -19,6 +19,7 @@ from app.services.brokers.market_data.ticker.adapters.smartapi import (
     SmartAPITickerAdapter,
 )
 from app.services.brokers.market_data.ticker.models import NormalizedTick
+from tests.fixtures.real_responses import SMARTAPI_WS_TICK_NIFTY
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -41,18 +42,12 @@ def adapter():
 
 @pytest.fixture
 def sample_tick_nifty():
-    """Sample SmartAPI tick for NIFTY 50 (prices in paise)."""
-    return {
-        "token": "99926000",
-        "last_traded_price": 2450050,      # ₹24500.50
-        "open_price_of_the_day": 2440000,  # ₹24400.00
-        "high_price_of_the_day": 2455025,  # ₹24550.25
-        "low_price_of_the_day": 2438000,   # ₹24380.00
-        "closed_price": 2445075,           # ₹24450.75 (prev close)
-        "volume_trade_for_the_day": 1234567,
-        "open_interest": 5678900,
-        "exchange_timestamp": 1708070400000,
-    }
+    """Real SmartAPI WebSocket tick for NIFTY 50 (prices in paise).
+
+    Recorded live from SmartWebSocketV2 during market hours 2026-04-15.
+    See tests/fixtures/real_responses.py for source.
+    """
+    return dict(SMARTAPI_WS_TICK_NIFTY)  # Copy to prevent mutation
 
 
 @pytest.fixture
@@ -202,11 +197,11 @@ class TestTickParsing:
     def test_prices_converted_to_decimal_rupees(self, adapter, sample_tick_nifty):
         tick = adapter._parse_tick(sample_tick_nifty)[0]
 
-        assert tick.ltp == Decimal("24500.50")
-        assert tick.open == Decimal("24400.00")
-        assert tick.high == Decimal("24550.25")
-        assert tick.low == Decimal("24380.00")
-        assert tick.close == Decimal("24450.75")
+        assert tick.ltp == Decimal("24215.95")
+        assert tick.open == Decimal("24163.80")
+        assert tick.high == Decimal("24280.90")
+        assert tick.low == Decimal("24145.80")
+        assert tick.close == Decimal("23842.65")
 
     def test_all_prices_are_decimal(self, adapter, sample_tick_nifty):
         tick = adapter._parse_tick(sample_tick_nifty)[0]
@@ -218,17 +213,18 @@ class TestTickParsing:
     def test_change_calculated_correctly(self, adapter, sample_tick_nifty):
         tick = adapter._parse_tick(sample_tick_nifty)[0]
 
-        expected_change = Decimal("24500.50") - Decimal("24450.75")
+        expected_change = Decimal("24215.95") - Decimal("23842.65")
         assert tick.change == expected_change
 
-        expected_pct = expected_change / Decimal("24450.75") * 100
+        expected_pct = expected_change / Decimal("23842.65") * 100
         assert tick.change_percent == expected_pct
 
     def test_volume_and_oi(self, adapter, sample_tick_nifty):
+        """Real index ticks have 0 volume/oi (indices are not traded directly)."""
         tick = adapter._parse_tick(sample_tick_nifty)[0]
 
-        assert tick.volume == 1234567
-        assert tick.oi == 5678900
+        assert tick.volume == 0
+        assert tick.oi == 0
 
     def test_timestamp_set(self, adapter, sample_tick_nifty):
         tick = adapter._parse_tick(sample_tick_nifty)[0]
@@ -476,10 +472,10 @@ class TestFullTickFlow:
         # Verify tick properties
         tick = ticks[0]
         assert tick.token == 256265
-        assert tick.ltp == Decimal("24500.50")
+        assert tick.ltp == Decimal("24215.95")
         assert tick.broker_type == "smartapi"
-        assert tick.volume == 1234567
-        assert tick.oi == 5678900
+        assert tick.volume == 0   # Index has no volume
+        assert tick.oi == 0       # Index has no OI
 
         loop.close()
 
