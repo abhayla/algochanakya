@@ -336,6 +336,65 @@ class InstrumentMasterService:
             ) from e
 
     @staticmethod
+    async def ensure_mappings_fresh(db: AsyncSession) -> bool:
+        """Check if broker_instrument_tokens has mappings for the current week's expiry.
+
+        If the current trading expiry is missing, re-runs populate_broker_token_mappings.
+        Caches freshness check result in Redis for 1 hour.
+
+        Returns True if mappings are fresh (or were refreshed), False on failure.
+        """
+        redis_key = "instrument_mappings:freshness_checked"
+        try:
+            redis = await get_redis()
+            cached = await redis.get(redis_key)
+            if cached:
+                return True
+        except Exception:
+            pass
+
+        try:
+            today = date.today()
+            # Find current week's Thursday (NSE weekly expiry day)
+            days_to_thursday = (3 - today.weekday()) % 7
+            if days_to_thursday == 0 and today.weekday() == 3:
+                current_expiry = today
+            else:
+                from datetime import timedelta
+                current_expiry = today + timedelta(days=days_to_thursday)
+
+            # Check if any mapping exists for the current expiry
+            result = await db.execute(
+                select(func.count()).select_from(BrokerInstrumentToken).where(
+                    and_(
+                        BrokerInstrumentToken.broker == "smartapi",
+                        BrokerInstrumentToken.expiry == current_expiry,
+                    )
+                )
+            )
+            count = result.scalar() or 0
+
+            if count == 0:
+                logger.info(
+                    "[InstrumentMaster] No mappings for expiry %s — repopulating",
+                    current_expiry,
+                )
+                stored = await InstrumentMasterService.populate_broker_token_mappings(db)
+                logger.info("[InstrumentMaster] Repopulated %d mappings", stored)
+
+            # Cache the check for 1 hour
+            try:
+                redis = await get_redis()
+                await redis.setex(redis_key, 3600, "1")
+            except Exception:
+                pass
+
+            return True
+        except Exception as e:
+            logger.error("[InstrumentMaster] ensure_mappings_fresh failed: %s", e)
+            return False
+
+    @staticmethod
     def _extract_underlying(symbol: str) -> Optional[str]:
         """Extract underlying name from a canonical symbol like NIFTY25APR25000CE."""
         if not symbol:

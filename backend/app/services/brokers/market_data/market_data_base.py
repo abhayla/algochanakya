@@ -15,6 +15,8 @@ All adapters must:
 """
 
 from abc import ABC, abstractmethod
+import asyncio
+import logging
 from dataclasses import dataclass, field
 from datetime import datetime, date
 from decimal import Decimal
@@ -24,6 +26,8 @@ from uuid import UUID
 
 # Import UnifiedQuote from the order execution broker base
 from app.services.brokers.base import UnifiedQuote
+
+logger = logging.getLogger(__name__)
 
 
 class MarketDataBrokerType(str, Enum):
@@ -182,12 +186,75 @@ class MarketDataBrokerAdapter(ABC):
         """
         self.credentials = credentials
         self._initialized = False
+        self._refresh_lock = asyncio.Lock()
 
     @property
     @abstractmethod
     def broker_type(self) -> MarketDataBrokerType:
         """Return the broker type identifier."""
         pass
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # TOKEN AUTO-REFRESH (reactive retry on 401)
+    # ═══════════════════════════════════════════════════════════════════════
+
+    def _can_auto_refresh(self) -> bool:
+        """Whether this adapter supports automatic token refresh.
+
+        Override in subclass and return True for refreshable brokers
+        (Upstox, SmartAPI). Non-refreshable brokers (Kite, Dhan, Fyers,
+        Paytm) keep the default False — 401 raises immediately.
+        """
+        return False
+
+    async def _try_refresh_token(self) -> bool:
+        """Attempt to refresh the broker token. Returns True on success.
+
+        Override in refreshable adapter subclasses. The base implementation
+        returns False (no refresh capability).
+        """
+        return False
+
+    async def _with_token_refresh(self, operation, *args, **kwargs):
+        """Execute an operation with automatic retry on AuthenticationError.
+
+        1. Execute operation normally
+        2. On AuthenticationError + _can_auto_refresh() → acquire lock → refresh → retry once
+        3. Non-refreshable brokers raise immediately (fail fast to failover)
+        4. If retry still fails → raise (no infinite loops)
+        """
+        from app.services.brokers.market_data.exceptions import AuthenticationError
+
+        try:
+            return await operation(*args, **kwargs)
+        except AuthenticationError as auth_err:
+            if not self._can_auto_refresh():
+                raise
+
+            broker = getattr(self, 'broker_type', 'unknown')
+            logger.info("[TokenRefresh] %s: 401 received, attempting refresh", broker)
+
+            async with self._refresh_lock:
+                refreshed = await self._try_refresh_token()
+
+            if not refreshed:
+                logger.warning("[TokenRefresh] %s: refresh failed, raising original error", broker)
+                raise
+
+            logger.info("[TokenRefresh] %s: refresh succeeded, retrying operation", broker)
+            return await operation(*args, **kwargs)
+
+    async def get_ltp_with_refresh(self, symbols: List[str]) -> Dict[str, Decimal]:
+        """get_ltp() with automatic token refresh on AuthenticationError."""
+        return await self._with_token_refresh(self.get_ltp, symbols)
+
+    async def get_quote_with_refresh(self, symbols: List[str]) -> Dict[str, 'UnifiedQuote']:
+        """get_quote() with automatic token refresh on AuthenticationError."""
+        return await self._with_token_refresh(self.get_quote, symbols)
+
+    async def get_best_price_with_refresh(self, symbols: List[str]) -> Dict[str, Decimal]:
+        """get_best_price() with automatic token refresh on AuthenticationError."""
+        return await self._with_token_refresh(self.get_best_price, symbols)
 
     # ═══════════════════════════════════════════════════════════════════════
     # LIVE QUOTES (REST API)

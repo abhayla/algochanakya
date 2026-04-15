@@ -264,6 +264,23 @@ class UpstoxMarketDataAdapter(MarketDataBrokerAdapter):
     def is_connected(self) -> bool:
         return self._initialized
 
+    def _can_auto_refresh(self) -> bool:
+        return True
+
+    async def _try_refresh_token(self) -> bool:
+        """Refresh Upstox platform token via HTTP TOTP login."""
+        from app.services.brokers.platform_token_refresh import refresh_broker_token
+        refreshed = await refresh_broker_token("upstox")
+        if refreshed:
+            # Update the in-memory auth header with the new token
+            from app.config import settings
+            new_token = getattr(settings, "UPSTOX_ACCESS_TOKEN", "")
+            if new_token:
+                self._headers["Authorization"] = f"Bearer {new_token}"
+                if hasattr(self, '_credentials'):
+                    self._credentials.access_token = new_token
+        return refreshed
+
     async def connect(self, **kwargs) -> bool:
         """
         Connect by verifying credentials against Upstox profile endpoint.

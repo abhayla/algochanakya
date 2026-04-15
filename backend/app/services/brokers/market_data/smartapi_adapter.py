@@ -98,6 +98,20 @@ class SmartAPIMarketDataAdapter(MarketDataBrokerAdapter):
         """Return broker type."""
         return MarketDataBrokerType.SMARTAPI
 
+    def _can_auto_refresh(self) -> bool:
+        return True
+
+    async def _try_refresh_token(self) -> bool:
+        """Refresh SmartAPI platform token via auto-TOTP."""
+        from app.services.brokers.platform_token_refresh import refresh_broker_token
+        refreshed = await refresh_broker_token("smartapi")
+        if refreshed:
+            from app.config import settings
+            new_jwt = getattr(settings, "ANGEL_JWT_TOKEN", "")
+            if new_jwt and hasattr(self, '_market_data'):
+                self._market_data._jwt_token = new_jwt
+        return refreshed
+
     # ═══════════════════════════════════════════════════════════════════════
     # LIVE QUOTES (REST API)
     # ═══════════════════════════════════════════════════════════════════════

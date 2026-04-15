@@ -7,6 +7,7 @@ from kiteconnect import KiteConnect
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
+import asyncio
 import hashlib
 import logging
 
@@ -18,6 +19,7 @@ from app.utils.jwt import create_access_token
 from app.utils.dependencies import get_current_user
 from app.utils.user_resolver import resolve_or_create_user
 from app.services.legacy.smartapi_auth import get_smartapi_auth, SmartAPIAuthError
+from app.services.brokers.data_source_warmup import warm_data_sources
 
 
 class AngelOneLoginRequest(BaseModel):
@@ -154,6 +156,9 @@ async def zerodha_callback(
             settings.JWT_EXPIRY_HOURS * 3600,  # Convert hours to seconds
             jwt_token
         )
+
+        # Fire-and-forget: warm platform data sources so prices are ready
+        asyncio.create_task(warm_data_sources())
 
         # Redirect to frontend with token
         return RedirectResponse(
@@ -485,6 +490,9 @@ async def angelone_login(
             logger.warning(f"[AngelOne] Redis session storage failed (continuing): {redis_error}")
 
         logger.info(f"[AngelOne] Login successful for {broker_user_id}")
+
+        # Fire-and-forget: warm platform data sources so prices are ready
+        asyncio.create_task(warm_data_sources())
 
         return {
             "success": True,

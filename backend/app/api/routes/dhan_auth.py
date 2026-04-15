@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from pydantic import BaseModel
 from datetime import datetime, timezone, timedelta
+import asyncio
 import httpx
 import logging
 
@@ -18,6 +19,7 @@ from app.config import settings
 from app.models import User, BrokerConnection
 from app.utils.jwt import create_access_token
 from app.utils.dependencies import get_current_user
+from app.services.brokers.data_source_warmup import warm_data_sources
 from app.utils.user_resolver import resolve_or_create_user
 
 logger = logging.getLogger(__name__)
@@ -172,6 +174,9 @@ async def dhan_callback(
             logger.warning(f"[Dhan] Redis session storage failed: {e}")
 
         logger.info(f"[Dhan] OAuth login successful for {broker_user_id}")
+
+        # Fire-and-forget: warm platform data sources so prices are ready
+        asyncio.create_task(warm_data_sources())
 
         return RedirectResponse(
             url=f"{settings.FRONTEND_URL}/auth/callback?token={jwt_token}",
