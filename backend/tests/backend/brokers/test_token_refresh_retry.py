@@ -28,9 +28,11 @@ class RefreshableAdapter(MarketDataBrokerAdapter):
 
     def __init__(self):
         creds = BrokerCredentials(broker_type="upstox", user_id=uuid4())
-        super().__init__(creds)
         self.refresh_called = 0
         self._get_ltp_impl = AsyncMock(return_value={"NIFTY": Decimal("24500")})
+        # _can_auto_refresh must return True BEFORE super().__init__
+        # because __init__ calls _wrap_with_token_refresh
+        super().__init__(creds)
 
     @property
     def broker_type(self) -> MarketDataBrokerType:
@@ -46,8 +48,13 @@ class RefreshableAdapter(MarketDataBrokerAdapter):
     async def get_quote(self, symbols):
         return {}
 
-    async def get_ltp(self, symbols):
+    async def _get_ltp_raw(self, symbols):
+        """Raw LTP implementation (before wrapping)."""
         return await self._get_ltp_impl(symbols)
+
+    # get_ltp is defined here but will be auto-wrapped by _wrap_with_token_refresh
+    async def get_ltp(self, symbols):
+        return await self._get_ltp_raw(symbols)
 
     async def subscribe(self, tokens, mode="quote"):
         pass
@@ -144,14 +151,13 @@ class NonRefreshableAdapter(MarketDataBrokerAdapter):
 # ---------------------------------------------------------------------------
 
 @pytest.mark.unit
-class TestWithTokenRefresh:
-    """REQ-M001: Adapter retries on 401 after refreshing token."""
+class TestTransparentTokenRefresh:
+    """REQ-M001: get_ltp()/get_quote() automatically retry on 401 for refreshable adapters."""
 
     @pytest.mark.asyncio
-    async def test_retries_on_auth_error_after_refresh(self):
-        """401 → refresh → retry → success."""
+    async def test_get_ltp_retries_on_auth_error_after_refresh(self):
+        """401 → refresh → retry → success — all transparent to caller."""
         adapter = RefreshableAdapter()
-        # First call raises AuthenticationError, second succeeds
         adapter._get_ltp_impl = AsyncMock(
             side_effect=[
                 AuthenticationError("upstox", "Token expired"),
@@ -159,7 +165,8 @@ class TestWithTokenRefresh:
             ]
         )
 
-        result = await adapter.get_ltp_with_refresh(["NIFTY"])
+        # Caller just uses get_ltp() normally — retry is transparent
+        result = await adapter.get_ltp(["NIFTY"])
 
         assert result == {"NIFTY": Decimal("24500")}
         assert adapter.refresh_called == 1
@@ -174,7 +181,7 @@ class TestWithTokenRefresh:
         )
 
         with pytest.raises(ValueError, match="some other error"):
-            await adapter.get_ltp_with_refresh(["NIFTY"])
+            await adapter.get_ltp(["NIFTY"])
 
         assert adapter.refresh_called == 0
 
@@ -187,7 +194,7 @@ class TestWithTokenRefresh:
         )
 
         with pytest.raises(AuthenticationError):
-            await adapter.get_ltp_with_refresh(["NIFTY"])
+            await adapter.get_ltp(["NIFTY"])
 
         # Should only refresh once, then raise
         assert adapter.refresh_called == 1
@@ -207,7 +214,7 @@ class TestWithTokenRefresh:
         adapter._try_refresh_token = failing_refresh
 
         with pytest.raises(AuthenticationError, match="Token expired"):
-            await adapter.get_ltp_with_refresh(["NIFTY"])
+            await adapter.get_ltp(["NIFTY"])
 
         assert adapter.refresh_called == 1
         # Should NOT retry after failed refresh
@@ -216,7 +223,7 @@ class TestWithTokenRefresh:
 
 @pytest.mark.unit
 class TestNonRefreshableFailFast:
-    """REQ-M005: Non-refreshable brokers fail fast."""
+    """REQ-M005: Non-refreshable brokers fail fast — no wrapping applied."""
 
     @pytest.mark.asyncio
     async def test_non_refreshable_raises_immediately(self):
@@ -224,7 +231,7 @@ class TestNonRefreshableFailFast:
         adapter = NonRefreshableAdapter()
 
         with pytest.raises(AuthenticationError, match="Token expired"):
-            await adapter.get_ltp_with_refresh(["NIFTY"])
+            await adapter.get_ltp(["NIFTY"])
 
 
 @pytest.mark.unit
@@ -259,8 +266,8 @@ class TestConcurrentRefreshLock:
         adapter._try_refresh_token = tracked_refresh
 
         results = await asyncio.gather(
-            adapter.get_ltp_with_refresh(["NIFTY"]),
-            adapter.get_ltp_with_refresh(["NIFTY"]),
+            adapter.get_ltp(["NIFTY"]),
+            adapter.get_ltp(["NIFTY"]),
         )
 
         # Both should succeed
@@ -283,3 +290,9 @@ class TestCanAutoRefresh:
     def test_refreshable_adapter_returns_true(self):
         adapter = RefreshableAdapter()
         assert adapter._can_auto_refresh() is True
+
+    def test_wrapping_only_applied_to_refreshable(self):
+        """Non-refreshable adapters keep their original methods unwrapped."""
+        adapter = NonRefreshableAdapter()
+        # get_ltp on non-refreshable is the original method, not wrapped
+        assert not hasattr(adapter.get_ltp, '__wrapped__')

@@ -12,6 +12,14 @@ from datetime import date, timedelta
 class TestEnsureMappingsFresh:
     """REQ-M004: ensure_mappings_fresh triggers repopulate when expiry missing."""
 
+    @pytest.fixture(autouse=True)
+    def reset_freshness_cache(self):
+        """Reset the in-memory freshness timestamp between tests."""
+        from app.services.instrument_master import InstrumentMasterService
+        InstrumentMasterService._last_freshness_check = 0.0
+        yield
+        InstrumentMasterService._last_freshness_check = 0.0
+
     @pytest.mark.asyncio
     async def test_repopulates_when_current_expiry_missing(self):
         """Missing current week's expiry → re-runs populate_broker_token_mappings."""

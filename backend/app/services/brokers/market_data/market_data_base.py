@@ -187,6 +187,10 @@ class MarketDataBrokerAdapter(ABC):
         self.credentials = credentials
         self._initialized = False
         self._refresh_lock = asyncio.Lock()
+        # Auto-wrap data methods with token refresh for refreshable adapters.
+        # This makes retry transparent — callers use get_ltp()/get_quote() normally.
+        if self._can_auto_refresh():
+            self._wrap_with_token_refresh()
 
     @property
     @abstractmethod
@@ -244,17 +248,24 @@ class MarketDataBrokerAdapter(ABC):
             logger.info("[TokenRefresh] %s: refresh succeeded, retrying operation", broker)
             return await operation(*args, **kwargs)
 
-    async def get_ltp_with_refresh(self, symbols: List[str]) -> Dict[str, Decimal]:
-        """get_ltp() with automatic token refresh on AuthenticationError."""
-        return await self._with_token_refresh(self.get_ltp, symbols)
+    def _wrap_with_token_refresh(self):
+        """Dynamically wrap get_ltp/get_quote so 401s trigger auto-refresh transparently.
 
-    async def get_quote_with_refresh(self, symbols: List[str]) -> Dict[str, 'UnifiedQuote']:
-        """get_quote() with automatic token refresh on AuthenticationError."""
-        return await self._with_token_refresh(self.get_quote, symbols)
+        Called once during __init__ for refreshable adapters. After this,
+        every call to adapter.get_ltp() or adapter.get_quote() automatically
+        retries once after a successful token refresh on AuthenticationError.
+        get_best_price() benefits implicitly since it delegates to get_ltp/get_quote.
+        """
+        import functools
 
-    async def get_best_price_with_refresh(self, symbols: List[str]) -> Dict[str, Decimal]:
-        """get_best_price() with automatic token refresh on AuthenticationError."""
-        return await self._with_token_refresh(self.get_best_price, symbols)
+        for method_name in ("get_ltp", "get_quote"):
+            original = getattr(self, method_name)
+
+            @functools.wraps(original)
+            async def _wrapped(*args, _orig=original, **kwargs):
+                return await self._with_token_refresh(_orig, *args, **kwargs)
+
+            setattr(self, method_name, _wrapped)
 
     # ═══════════════════════════════════════════════════════════════════════
     # LIVE QUOTES (REST API)

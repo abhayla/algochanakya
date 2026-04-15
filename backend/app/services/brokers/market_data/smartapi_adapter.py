@@ -108,8 +108,16 @@ class SmartAPIMarketDataAdapter(MarketDataBrokerAdapter):
         if refreshed:
             from app.config import settings
             new_jwt = getattr(settings, "ANGEL_JWT_TOKEN", "")
-            if new_jwt and hasattr(self, '_market_data'):
-                self._market_data._jwt_token = new_jwt
+            new_feed = getattr(settings, "ANGEL_FEED_TOKEN", "")
+            if new_jwt:
+                if hasattr(self, '_market_data'):
+                    self._market_data._jwt_token = new_jwt
+                if hasattr(self, '_historical'):
+                    self._historical._jwt_token = new_jwt
+                if hasattr(self, '_credentials'):
+                    self._credentials.jwt_token = new_jwt
+                    if new_feed:
+                        self._credentials.feed_token = new_feed
         return refreshed
 
     # ═══════════════════════════════════════════════════════════════════════

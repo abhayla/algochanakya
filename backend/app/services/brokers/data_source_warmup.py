@@ -6,6 +6,7 @@ Called as a fire-and-forget background task after every user login.
 
 By the time the frontend loads (~2-3s), data sources should be ready.
 """
+import asyncio
 import logging
 import os
 from typing import Dict
@@ -15,6 +16,14 @@ from app.constants.brokers import ORG_ACTIVE_BROKERS
 from app.services.brokers.market_data.exceptions import AuthenticationError
 
 logger = logging.getLogger(__name__)
+
+
+def schedule_warmup():
+    """Fire-and-forget warmup. Safe to call during shutdown (no-ops gracefully)."""
+    try:
+        asyncio.create_task(warm_data_sources())
+    except RuntimeError:
+        logger.debug("[Warmup] Skipped — no running event loop")
 
 
 async def warm_data_sources() -> Dict[str, str]:

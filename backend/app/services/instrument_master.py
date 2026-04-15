@@ -335,20 +335,30 @@ class InstrumentMasterService:
                 f"populate_broker_token_mappings failed: {e}"
             ) from e
 
+    # In-memory fallback when Redis is unavailable
+    _last_freshness_check: float = 0.0
+
     @staticmethod
     async def ensure_mappings_fresh(db: AsyncSession) -> bool:
         """Check if broker_instrument_tokens has mappings for the current week's expiry.
 
         If the current trading expiry is missing, re-runs populate_broker_token_mappings.
-        Caches freshness check result in Redis for 1 hour.
+        Caches freshness check result in Redis for 1 hour, with in-memory fallback.
 
         Returns True if mappings are fresh (or were refreshed), False on failure.
         """
+        import time
+        # In-memory guard: skip if checked within last hour (Redis-down fallback)
+        now = time.monotonic()
+        if now - InstrumentMasterService._last_freshness_check < 3600:
+            return True
+
         redis_key = "instrument_mappings:freshness_checked"
         try:
             redis = await get_redis()
             cached = await redis.get(redis_key)
             if cached:
+                InstrumentMasterService._last_freshness_check = now
                 return True
         except Exception:
             pass
@@ -383,6 +393,7 @@ class InstrumentMasterService:
                 logger.info("[InstrumentMaster] Repopulated %d mappings", stored)
 
             # Cache the check for 1 hour
+            InstrumentMasterService._last_freshness_check = now
             try:
                 redis = await get_redis()
                 await redis.setex(redis_key, 3600, "1")
