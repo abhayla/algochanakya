@@ -148,7 +148,9 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
-import api from '@/services/api'
+import { useAIAnalyticsStore } from '@/stores/aiAnalytics'
+
+const aiAnalytics = useAIAnalyticsStore()
 
 const props = defineProps({
   refreshInterval: {
@@ -271,29 +273,26 @@ const fetchRiskData = async () => {
   loading.value = true
   error.value = null
 
-  try {
-    const params = props.currentSpot ? { current_spot: props.currentSpot } : {}
-    const response = await api.get('/api/v1/ai/capital-risk/current', { params })
-    riskData.value = response.data
+  const params = props.currentSpot ? { current_spot: props.currentSpot } : {}
+  const result = await aiAnalytics.fetchCapitalRisk(params)
+  loading.value = false
 
-    // Emit events
-    emit('loaded', riskData.value)
-
-    // Emit alert if critical
-    if (riskData.value.alert_level === 'CRITICAL') {
-      emit('alert', {
-        level: 'CRITICAL',
-        message: 'Capital at risk exceeds critical threshold',
-        data: riskData.value
-      })
-    }
-
-  } catch (e) {
-    console.error('[CapitalRiskMeter] Error fetching risk data:', e)
-    error.value = e.response?.data?.detail || 'Failed to load risk data'
+  if (!result.success) {
+    console.error('[CapitalRiskMeter] Error fetching risk data:', result.error)
+    error.value = result.error || 'Failed to load risk data'
     emit('error', error.value)
-  } finally {
-    loading.value = false
+    return
+  }
+
+  riskData.value = result.data
+  emit('loaded', riskData.value)
+
+  if (riskData.value.alert_level === 'CRITICAL') {
+    emit('alert', {
+      level: 'CRITICAL',
+      message: 'Capital at risk exceeds critical threshold',
+      data: riskData.value,
+    })
   }
 }
 

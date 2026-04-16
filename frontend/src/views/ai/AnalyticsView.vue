@@ -252,9 +252,10 @@ import CapitalRiskMeter from '@/components/ai/CapitalRiskMeter.vue'
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import Chart from 'chart.js/auto'
 import { useToast } from '@/composables/useToast'
-import api from '@/services/api'
+import { useAIAnalyticsStore } from '@/stores/aiAnalytics'
 
 const { showToast } = useToast()
+const aiAnalytics = useAIAnalyticsStore()
 
 // State
 const loading = ref(false)
@@ -360,37 +361,36 @@ const selectDateRange = (days) => {
 const refreshData = async () => {
   loading.value = true
 
-  try {
-    // Calculate date range
-    const endDate = new Date().toISOString().split('T')[0]
-    const startDate = new Date(Date.now() - dateRange.value * 24 * 60 * 60 * 1000)
-      .toISOString().split('T')[0]
+  const endDate = new Date().toISOString().split('T')[0]
+  const startDate = new Date(Date.now() - dateRange.value * 24 * 60 * 60 * 1000)
+    .toISOString().split('T')[0]
 
-    // Fetch all analytics data in parallel
-    const [metrics, regimes, strategies, quality, learning] = await Promise.all([
-      api.get(`/api/v1/ai/analytics/performance?start_date=${startDate}&end_date=${endDate}`),
-      api.get(`/api/v1/ai/analytics/by-regime?start_date=${startDate}&end_date=${endDate}`),
-      api.get(`/api/v1/ai/analytics/by-strategy?start_date=${startDate}&end_date=${endDate}`),
-      api.get(`/api/v1/ai/analytics/decisions?start_date=${startDate}&end_date=${endDate}`),
-      api.get('/api/v1/ai/analytics/learning')
-    ])
+  const [metrics, regimes, strategies, quality, learning] = await Promise.all([
+    aiAnalytics.fetchAIPerformance(startDate, endDate),
+    aiAnalytics.fetchByRegime(startDate, endDate),
+    aiAnalytics.fetchByStrategy(startDate, endDate),
+    aiAnalytics.fetchDecisions(startDate, endDate),
+    aiAnalytics.fetchLearningProgress(),
+  ])
 
-    performanceMetrics.value = metrics.data
-    regimePerformance.value = regimes.data
-    strategyPerformance.value = strategies.data
-    decisionQuality.value = quality.data
-    learningProgress.value = learning.data
+  loading.value = false
 
-    // Update chart
-    await nextTick()
-    updateQualityChart()
-
-  } catch (error) {
-    console.error('Error fetching analytics:', error)
+  // If any parallel call failed, surface a toast but still apply what succeeded
+  const anyFailed = !metrics.success || !regimes.success || !strategies.success || !quality.success || !learning.success
+  if (anyFailed) {
+    const errs = [metrics, regimes, strategies, quality, learning].filter(r => !r.success).map(r => r.error)
+    console.error('Error fetching analytics:', errs)
     showToast('Failed to load analytics data', 'error')
-  } finally {
-    loading.value = false
   }
+
+  if (metrics.success) performanceMetrics.value = metrics.data
+  if (regimes.success) regimePerformance.value = regimes.data
+  if (strategies.success) strategyPerformance.value = strategies.data
+  if (quality.success) decisionQuality.value = quality.data
+  if (learning.success) learningProgress.value = learning.data
+
+  await nextTick()
+  updateQualityChart()
 }
 
 const updateQualityChart = () => {

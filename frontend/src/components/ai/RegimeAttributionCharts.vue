@@ -113,7 +113,9 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import Chart from 'chart.js/auto'
-import api from '@/services/api'
+import { useAIAnalyticsStore } from '@/stores/aiAnalytics'
+
+const aiAnalytics = useAIAnalyticsStore()
 
 const props = defineProps({
   dateRange: {
@@ -174,26 +176,23 @@ const fetchData = async () => {
   loading.value = true
   error.value = null
 
-  try {
-    // Fetch regime strengths which includes all regime data
-    const response = await api.get('/api/v1/ai/regime-quality/regime-strengths', {
-      params: { lookback_days: props.dateRange }
-    })
+  const result = await aiAnalytics.fetchRegimeStrengths({ lookback_days: props.dateRange })
+  loading.value = false
 
-    regimeData.value = response.data.all_regimes || []
-    insights.value = response.data.insights || []
-
-    await nextTick()
-    renderCharts()
-
-    emit('loaded', regimeData.value)
-  } catch (e) {
-    console.error('[RegimeCharts] Error fetching data:', e)
-    error.value = e.response?.data?.detail || 'Failed to load regime data'
+  if (!result.success) {
+    console.error('[RegimeCharts] Error fetching data:', result.error)
+    error.value = result.error || 'Failed to load regime data'
     emit('error', error.value)
-  } finally {
-    loading.value = false
+    return
   }
+
+  regimeData.value = result.data?.all_regimes || []
+  insights.value = result.data?.insights || []
+
+  await nextTick()
+  renderCharts()
+
+  emit('loaded', regimeData.value)
 }
 
 const formatRegimeName = (regimeType) => {

@@ -254,11 +254,12 @@ import PositionSyncStatus from '@/components/ai/PositionSyncStatus.vue'
 import AIActivityFeed from '@/components/ai/AIActivityFeed.vue'
 import { useToast } from '@/composables/useToast'
 import { useAIConfigStore } from '@/stores/aiConfig'
-import api from '@/services/api'
+import { useAIAnalyticsStore } from '@/stores/aiAnalytics'
 
 const router = useRouter()
 const { showToast } = useToast()
 const aiConfigStore = useAIConfigStore()
+const aiAnalytics = useAIAnalyticsStore()
 
 // State
 const currentRegime = ref(null)
@@ -444,93 +445,88 @@ const viewAllDecisions = () => {
 
 const triggerDeploy = async () => {
   deploying.value = true
-  try {
-    const response = await api.post('/api/v1/ai/deploy/trigger', {
-      underlying: 'NIFTY',
-      force: true  // Use test mode with mock data
+  const result = await aiAnalytics.triggerAIDeploy({
+    underlying: 'NIFTY',
+    force: true,
+  })
+  deploying.value = false
+
+  if (!result.success) {
+    console.error('Error triggering deployment:', result.error)
+    showToast(result.error || 'Failed to trigger deployment', 'error')
+    return
+  }
+
+  const data = result.data
+  if (data.success) {
+    showToast(
+      `Deployed ${data.strategy_name} with ${data.position_size_lots} lots`,
+      'success'
+    )
+
+    addActivity({
+      id: Date.now(),
+      type: 'deployment',
+      message: `AI deployed ${data.strategy_name} in ${data.regime} regime`,
+      timestamp: new Date().toISOString(),
+      metadata: {
+        strategy: data.strategy_name,
+        lots: data.position_size_lots,
+        confidence: data.confidence,
+      },
     })
 
-    if (response.data.success) {
-      showToast(`Deployed ${response.data.strategy_name} with ${response.data.position_size_lots} lots`, 'success')
-
-      addActivity({
-        id: Date.now(),
-        type: 'deployment',
-        message: `AI deployed ${response.data.strategy_name} in ${response.data.regime} regime`,
-        timestamp: new Date().toISOString(),
-        metadata: {
-          strategy: response.data.strategy_name,
-          lots: response.data.position_size_lots,
-          confidence: response.data.confidence
-        }
-      })
-
-      // Refresh paper trades and graduation data
-      await Promise.all([
-        fetchPaperTrades(),
-        fetchGraduationData()
-      ])
-    } else {
-      showToast(response.data.error || 'Deployment failed', 'error')
-    }
-  } catch (error) {
-    console.error('Error triggering deployment:', error)
-    showToast(error.response?.data?.detail || 'Failed to trigger deployment', 'error')
-  } finally {
-    deploying.value = false
+    await Promise.all([fetchPaperTrades(), fetchGraduationData()])
+  } else {
+    showToast(data.error || 'Deployment failed', 'error')
   }
 }
 
 const exitTrade = async (tradeId) => {
-  try {
-    const confirmed = confirm('Are you sure you want to exit this paper trade?')
-    if (!confirmed) return
+  const confirmed = confirm('Are you sure you want to exit this paper trade?')
+  if (!confirmed) return
 
-    const response = await api.post('/api/v1/ai/deploy/paper-trade/exit', {
-      paper_trade_id: tradeId,
-      exit_reason: 'manual'
+  const result = await aiAnalytics.exitPaperTrade({
+    paper_trade_id: tradeId,
+    exit_reason: 'manual',
+  })
+
+  if (!result.success) {
+    console.error('Error exiting trade:', result.error)
+    showToast(result.error || 'Failed to exit trade', 'error')
+    return
+  }
+
+  const data = result.data
+  if (data.success) {
+    const pnl = data.realized_pnl || 0
+    const pnlText = pnl >= 0 ? `profit of ₹${pnl.toFixed(2)}` : `loss of ₹${Math.abs(pnl).toFixed(2)}`
+    showToast(`Trade exited with ${pnlText}`, pnl >= 0 ? 'success' : 'warning')
+
+    addActivity({
+      id: Date.now(),
+      type: 'exit',
+      message: `Paper trade exited: ${pnlText}`,
+      timestamp: new Date().toISOString(),
+      metadata: { pnl, hold_time: data.hold_time_minutes },
     })
 
-    if (response.data.success) {
-      const pnl = response.data.realized_pnl || 0
-      const pnlText = pnl >= 0 ? `profit of ₹${pnl.toFixed(2)}` : `loss of ₹${Math.abs(pnl).toFixed(2)}`
-      showToast(`Trade exited with ${pnlText}`, pnl >= 0 ? 'success' : 'warning')
-
-      addActivity({
-        id: Date.now(),
-        type: 'exit',
-        message: `Paper trade exited: ${pnlText}`,
-        timestamp: new Date().toISOString(),
-        metadata: {
-          pnl: pnl,
-          hold_time: response.data.hold_time_minutes
-        }
-      })
-
-      // Refresh paper trades and graduation data
-      await Promise.all([
-        fetchPaperTrades(),
-        fetchGraduationData()
-      ])
-    } else {
-      showToast(response.data.error || 'Exit failed', 'error')
-    }
-  } catch (error) {
-    console.error('Error exiting trade:', error)
-    showToast(error.response?.data?.detail || 'Failed to exit trade', 'error')
+    await Promise.all([fetchPaperTrades(), fetchGraduationData()])
+  } else {
+    showToast(data.error || 'Exit failed', 'error')
   }
 }
 
 const fetchPaperTrades = async () => {
   loadingTrades.value = true
-  try {
-    const response = await api.get('/api/v1/ai/deploy/paper-trade/list')
-    paperTrades.value = response.data
-  } catch (error) {
-    console.error('Error fetching paper trades:', error)
+  const result = await aiAnalytics.fetchPaperTrades()
+  loadingTrades.value = false
+
+  if (result.success) {
+    paperTrades.value = result.data
+  } else {
+    console.error('Error fetching paper trades:', result.error)
     showToast('Failed to fetch paper trades', 'error')
-  } finally {
-    loadingTrades.value = false
   }
 }
 

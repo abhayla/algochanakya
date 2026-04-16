@@ -163,7 +163,9 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import api from '@/services/api'
+import { useAIAnalyticsStore } from '@/stores/aiAnalytics'
+
+const aiAnalytics = useAIAnalyticsStore()
 
 const props = defineProps({
   showStats: {
@@ -202,41 +204,40 @@ const fetchAutonomyStatus = async () => {
   loading.value = true
   error.value = null
 
-  try {
-    const [statusRes, levelsRes] = await Promise.all([
-      api.get('/api/v1/ai/autonomy/status'),
-      api.get('/api/v1/ai/autonomy/levels')
-    ])
+  const [statusResult, levelsResult] = await Promise.all([
+    aiAnalytics.fetchAutonomyStatus(),
+    aiAnalytics.fetchAutonomyLevels(),
+  ])
+  loading.value = false
 
-    const statusData = statusRes.data
-    const levelsData = levelsRes.data
-
-    currentLevel.value = statusData.current_level
-    levelIndex.value = statusData.level_index
-    progress.value = statusData.progress
-    unlockCriteria.value = statusData.unlock_criteria
-    warnings.value = statusData.warnings
-    isPaused.value = statusData.is_paused
-    pauseReason.value = statusData.pause_reason
-    stats.value = statusData.stats
-    aiEnabled.value = statusData.ai_enabled
-
-    // Reverse levels so highest is at top
-    levels.value = levelsData.levels.slice().reverse()
-
-    emit('loaded', statusData)
-
-    console.log('[Autonomy] Status loaded:', {
-      level: currentLevel.value,
-      progress: progress.value?.overall_percent,
-      isPaused: isPaused.value
-    })
-  } catch (e) {
-    console.error('[Autonomy] Error loading status:', e)
-    error.value = e.response?.data?.detail || 'Failed to load autonomy status'
-  } finally {
-    loading.value = false
+  if (!statusResult.success || !levelsResult.success) {
+    console.error('[Autonomy] Error loading status:', statusResult.error || levelsResult.error)
+    error.value = statusResult.error || levelsResult.error || 'Failed to load autonomy status'
+    return
   }
+
+  const statusData = statusResult.data
+  const levelsData = levelsResult.data
+
+  currentLevel.value = statusData.current_level
+  levelIndex.value = statusData.level_index
+  progress.value = statusData.progress
+  unlockCriteria.value = statusData.unlock_criteria
+  warnings.value = statusData.warnings
+  isPaused.value = statusData.is_paused
+  pauseReason.value = statusData.pause_reason
+  stats.value = statusData.stats
+  aiEnabled.value = statusData.ai_enabled
+
+  levels.value = levelsData.levels.slice().reverse()
+
+  emit('loaded', statusData)
+
+  console.log('[Autonomy] Status loaded:', {
+    level: currentLevel.value,
+    progress: progress.value?.overall_percent,
+    isPaused: isPaused.value,
+  })
 }
 
 const formatPnl = (pnl) => {
