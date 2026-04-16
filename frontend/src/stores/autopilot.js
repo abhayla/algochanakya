@@ -1826,6 +1826,138 @@ export const useAutopilotStore = defineStore('autopilot', {
       }
     },
 
+    async fetchStrikesInRange(ul, expiry, params) {
+      try {
+        const response = await api.get(
+          `/api/v1/autopilot/option-chain/strikes-in-range/${ul}/${expiry}`,
+          { params }
+        )
+        return { success: true, data: response.data }
+      } catch (error) {
+        return {
+          success: false,
+          error: error.response?.data?.detail || error.message,
+          data: null,
+        }
+      }
+    },
+
+    async fetchStrikeBySD(ul, expiry, params) {
+      try {
+        const response = await api.get(
+          `/api/v1/autopilot/option-chain/strike-by-sd/${ul}/${expiry}`,
+          { params }
+        )
+        return { success: true, data: response.data }
+      } catch (error) {
+        return {
+          success: false,
+          error: error.response?.data?.detail || error.message,
+          data: null,
+        }
+      }
+    },
+
+    async fetchStrikeByExpectedMove(ul, expiry, params) {
+      try {
+        const response = await api.get(
+          `/api/v1/autopilot/option-chain/strike-by-expected-move/${ul}/${expiry}`,
+          { params }
+        )
+        return { success: true, data: response.data }
+      } catch (error) {
+        return {
+          success: false,
+          error: error.response?.data?.detail || error.message,
+          data: null,
+        }
+      }
+    },
+
+    // ========================================================================
+    // LEG-LEVEL ADJUSTMENT MUTATIONS (shift, break/simulate, convert/preview+execute)
+    // ========================================================================
+
+    async shiftLeg(strategyId, legId, payload) {
+      try {
+        const response = await api.post(
+          `/api/v1/autopilot/strategies/${strategyId}/legs/${legId}/shift`,
+          payload
+        )
+        return { success: true, data: response.data }
+      } catch (error) {
+        return {
+          success: false,
+          error: error.response?.data?.detail || error.message,
+          data: null,
+        }
+      }
+    },
+
+    async simulateBreakLeg(strategyId, legId, params) {
+      try {
+        const response = await api.post(
+          `/api/v1/autopilot/strategies/${strategyId}/legs/${legId}/break/simulate`,
+          params
+        )
+        return { success: true, data: response.data }
+      } catch (error) {
+        return {
+          success: false,
+          error: error.response?.data?.detail || error.message,
+          data: null,
+        }
+      }
+    },
+
+    async executeBreakLeg(strategyId, legId, params) {
+      try {
+        const response = await api.post(
+          `/api/v1/autopilot/strategies/${strategyId}/legs/${legId}/break`,
+          params
+        )
+        return { success: true, data: response.data }
+      } catch (error) {
+        return {
+          success: false,
+          error: error.response?.data?.detail || error.message,
+          data: null,
+        }
+      }
+    },
+
+    async previewConversion(strategyId, payload) {
+      try {
+        const response = await api.post(
+          `/api/v1/autopilot/strategies/${strategyId}/convert/preview`,
+          payload
+        )
+        return { success: true, data: response.data }
+      } catch (error) {
+        return {
+          success: false,
+          error: error.response?.data?.detail || error.message,
+          data: null,
+        }
+      }
+    },
+
+    async executeConversion(strategyId, payload) {
+      try {
+        const response = await api.post(
+          `/api/v1/autopilot/strategies/${strategyId}/convert/execute`,
+          payload
+        )
+        return { success: true, data: response.data }
+      } catch (error) {
+        return {
+          success: false,
+          error: error.response?.data?.detail || error.message,
+          data: null,
+        }
+      }
+    },
+
     // ========================================================================
     // MONITORING / ANALYTICS / SUGGESTIONS — added during data-flow migration
     // ========================================================================

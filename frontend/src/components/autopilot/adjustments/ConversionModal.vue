@@ -481,7 +481,9 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
-import api from '@/services/api'
+import { useAutopilotStore } from '@/stores/autopilot'
+
+const autopilotStore = useAutopilotStore()
 
 const props = defineProps({
   strategyId: {
@@ -565,21 +567,16 @@ async function loadPreview() {
   previewLoading.value = true
   previewError.value = null
 
-  try {
-    const response = await api.post(
-      `/api/v1/autopilot/strategies/${props.strategyId}/convert/preview`,
-      {
-        target_type: selectedType.value,
-        ...conversionParams.value
-      }
-    )
-
-    preview.value = response.data
-  } catch (error) {
-    console.error('Preview error:', error)
-    previewError.value = error.response?.data?.detail || 'Failed to load preview'
-  } finally {
-    previewLoading.value = false
+  const result = await autopilotStore.previewConversion(props.strategyId, {
+    target_type: selectedType.value,
+    ...conversionParams.value,
+  })
+  previewLoading.value = false
+  if (result.success) {
+    preview.value = result.data
+  } else {
+    console.error('Preview error:', result.error)
+    previewError.value = result.error || 'Failed to load preview'
   }
 }
 
@@ -588,36 +585,31 @@ async function executeConversion() {
   executionError.value = null
   executionProgress.value = 0
 
-  try {
-    // Simulate progress
-    const progressInterval = setInterval(() => {
-      if (executionProgress.value < 90) {
-        executionProgress.value += 10
-      }
-    }, 500)
+  // UI progress (local, not store-owned)
+  const progressInterval = setInterval(() => {
+    if (executionProgress.value < 90) {
+      executionProgress.value += 10
+    }
+  }, 500)
 
-    const response = await api.post(
-      `/api/v1/autopilot/strategies/${props.strategyId}/convert/execute`,
-      {
-        target_type: selectedType.value,
-        execution_mode: 'market',
-        ...conversionParams.value
-      }
-    )
+  const result = await autopilotStore.executeConversion(props.strategyId, {
+    target_type: selectedType.value,
+    execution_mode: 'market',
+    ...conversionParams.value,
+  })
 
-    clearInterval(progressInterval)
+  clearInterval(progressInterval)
+  executing.value = false
+
+  if (result.success) {
     executionProgress.value = 100
-
-    executionResult.value = response.data
-
+    executionResult.value = result.data
     setTimeout(() => {
       currentStep.value = 5
     }, 500)
-  } catch (error) {
-    console.error('Execution error:', error)
-    executionError.value = error.response?.data?.detail || 'Conversion failed'
-  } finally {
-    executing.value = false
+  } else {
+    console.error('Execution error:', result.error)
+    executionError.value = result.error || 'Conversion failed'
   }
 }
 

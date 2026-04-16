@@ -5,7 +5,6 @@
  */
 import { computed, ref, watch } from 'vue'
 import { useAutopilotStore } from '@/stores/autopilot'
-import api from '@/services/api'
 import StrikeSelector from './StrikeSelector.vue'
 
 const props = defineProps({
@@ -190,42 +189,35 @@ const findStrikeByDelta = async () => {
       return
     }
 
-    // Use the strikes-in-range endpoint
-    const response = await api.get(`/api/v1/autopilot/option-chain/strikes-in-range/${underlying}/${expiry}`, {
-      params: {
-        option_type: props.leg.contract_type,
-        min_value: minDelta,
-        max_value: maxDelta,
-        range_type: 'delta'
-      }
+    const result = await store.fetchStrikesInRange(underlying, expiry, {
+      option_type: props.leg.contract_type,
+      min_value: minDelta,
+      max_value: maxDelta,
+      range_type: 'delta',
     })
 
-    if (response.data.strikes && response.data.strikes.length > 0) {
-      let strikes = response.data.strikes
-
-      // Apply round strike preference if enabled
+    if (!result.success) {
+      console.error('Error finding strike by delta:', result.error)
+      strikeSearchError.value = result.error || 'Error finding strike'
+    } else if (result.data?.strikes && result.data.strikes.length > 0) {
+      let strikes = result.data.strikes
       if (props.leg.prefer_round_strike) {
         const roundStrikes = strikes.filter(s => s.strike % 100 === 0)
         if (roundStrikes.length > 0) {
           strikes = roundStrikes
         }
       }
-
-      // Select the first (closest) strike - extract strike number from object
       const selected = strikes[0]
       emit('update', props.index, {
         strike_price: selected.strike,
         entry_price: selected.ltp,
         instrument_token: selected.instrument_token,
-        tradingsymbol: selected.tradingsymbol
+        tradingsymbol: selected.tradingsymbol,
       })
       strikeSearchError.value = ''
     } else {
       strikeSearchError.value = 'No strike found in this delta range'
     }
-  } catch (error) {
-    console.error('Error finding strike by delta:', error)
-    strikeSearchError.value = error.response?.data?.detail || 'Error finding strike'
   } finally {
     isSearchingStrike.value = false
   }
@@ -264,41 +256,35 @@ const findStrikeByPremium = async () => {
       return
     }
 
-    const response = await api.get(`/api/v1/autopilot/option-chain/strikes-in-range/${underlying}/${expiry}`, {
-      params: {
-        option_type: props.leg.contract_type,
-        min_value: minPremium,
-        max_value: maxPremium,
-        range_type: 'premium'
-      }
+    const result = await store.fetchStrikesInRange(underlying, expiry, {
+      option_type: props.leg.contract_type,
+      min_value: minPremium,
+      max_value: maxPremium,
+      range_type: 'premium',
     })
 
-    if (response.data.strikes && response.data.strikes.length > 0) {
-      let strikes = response.data.strikes
-
-      // Apply round strike preference if enabled
+    if (!result.success) {
+      console.error('Error finding strike by premium:', result.error)
+      strikeSearchError.value = result.error || 'Error finding strike'
+    } else if (result.data?.strikes && result.data.strikes.length > 0) {
+      let strikes = result.data.strikes
       if (props.leg.prefer_round_strike) {
         const roundStrikes = strikes.filter(s => s.strike % 100 === 0)
         if (roundStrikes.length > 0) {
           strikes = roundStrikes
         }
       }
-
-      // Select the first (closest) strike - extract strike number from object
       const selected = strikes[0]
       emit('update', props.index, {
         strike_price: selected.strike,
         entry_price: selected.ltp,
         instrument_token: selected.instrument_token,
-        tradingsymbol: selected.tradingsymbol
+        tradingsymbol: selected.tradingsymbol,
       })
       strikeSearchError.value = ''
     } else {
       strikeSearchError.value = 'No strike found in this premium range'
     }
-  } catch (error) {
-    console.error('Error finding strike by premium:', error)
-    strikeSearchError.value = error.response?.data?.detail || 'Error finding strike'
   } finally {
     isSearchingStrike.value = false
   }
@@ -324,27 +310,25 @@ const findStrikeBySD = async () => {
     const underlying = store.builder.strategy.underlying || 'NIFTY'
     const expiry = props.leg.expiry_date
 
-    const response = await api.get(`/api/v1/autopilot/option-chain/strike-by-sd/${underlying}/${expiry}`, {
-      params: {
-        option_type: props.leg.contract_type,
-        sd_multiplier: sdMultiplier
-      }
+    const result = await store.fetchStrikeBySD(underlying, expiry, {
+      option_type: props.leg.contract_type,
+      sd_multiplier: sdMultiplier,
     })
 
-    if (response.data.strike) {
+    if (!result.success) {
+      console.error('Error finding strike by SD:', result.error)
+      strikeSearchError.value = result.error || 'Error finding strike'
+    } else if (result.data?.strike) {
       emit('update', props.index, {
-        strike_price: response.data.strike,
-        entry_price: response.data.ltp,
-        instrument_token: response.data.instrument_token,
-        tradingsymbol: response.data.tradingsymbol
+        strike_price: result.data.strike,
+        entry_price: result.data.ltp,
+        instrument_token: result.data.instrument_token,
+        tradingsymbol: result.data.tradingsymbol,
       })
       strikeSearchError.value = ''
     } else {
       strikeSearchError.value = 'No strike found for this SD'
     }
-  } catch (error) {
-    console.error('Error finding strike by SD:', error)
-    strikeSearchError.value = error.response?.data?.detail || 'Error finding strike'
   } finally {
     isSearchingStrike.value = false
   }
@@ -370,27 +354,25 @@ const findStrikeByEM = async () => {
     const underlying = store.builder.strategy.underlying || 'NIFTY'
     const expiry = props.leg.expiry_date
 
-    const response = await api.get(`/api/v1/autopilot/option-chain/strike-by-expected-move/${underlying}/${expiry}`, {
-      params: {
-        option_type: props.leg.contract_type,
-        position: emPosition  // 'above' or 'below'
-      }
+    const result = await store.fetchStrikeByExpectedMove(underlying, expiry, {
+      option_type: props.leg.contract_type,
+      position: emPosition,
     })
 
-    if (response.data.strike) {
+    if (!result.success) {
+      console.error('Error finding strike by EM:', result.error)
+      strikeSearchError.value = result.error || 'Error finding strike'
+    } else if (result.data?.strike) {
       emit('update', props.index, {
-        strike_price: response.data.strike,
-        entry_price: response.data.ltp,
-        instrument_token: response.data.instrument_token,
-        tradingsymbol: response.data.tradingsymbol
+        strike_price: result.data.strike,
+        entry_price: result.data.ltp,
+        instrument_token: result.data.instrument_token,
+        tradingsymbol: result.data.tradingsymbol,
       })
       strikeSearchError.value = ''
     } else {
       strikeSearchError.value = 'No strike found outside expected move'
     }
-  } catch (error) {
-    console.error('Error finding strike by EM:', error)
-    strikeSearchError.value = error.response?.data?.detail || 'Error finding strike'
   } finally {
     isSearchingStrike.value = false
   }

@@ -488,7 +488,9 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import api from '@/services/api'
+import { useAutopilotStore } from '@/stores/autopilot'
+
+const autopilotStore = useAutopilotStore()
 
 const props = defineProps({
   strategyId: {
@@ -549,21 +551,21 @@ async function loadSimulation() {
   simulationLoading.value = true
   simulationError.value = null
 
-  try {
-    const response = await api.post(
-      `/api/v1/autopilot/strategies/${props.strategyId}/legs/${selectedLeg.value.leg_id}/break/simulate`,
-      {
-        premium_split: 'equal',
-        prefer_round_strikes: true,
-        max_delta: 0.30
-      }
-    )
-    simulation.value = response.data
-  } catch (error) {
-    simulationError.value = error.response?.data?.detail || 'Failed to load simulation'
-    console.error('Simulation error:', error)
-  } finally {
-    simulationLoading.value = false
+  const result = await autopilotStore.simulateBreakLeg(
+    props.strategyId,
+    selectedLeg.value.leg_id,
+    {
+      premium_split: 'equal',
+      prefer_round_strikes: true,
+      max_delta: 0.30,
+    }
+  )
+  simulationLoading.value = false
+  if (result.success) {
+    simulation.value = result.data
+  } else {
+    simulationError.value = result.error || 'Failed to load simulation'
+    console.error('Simulation error:', result.error)
   }
 }
 
@@ -572,34 +574,34 @@ async function executeBreakTrade() {
   executionError.value = null
   executionProgress.value = 0
 
-  try {
-    // Simulate progress
-    setTimeout(() => { executionProgress.value = 1 }, 500)
-    setTimeout(() => { executionProgress.value = 2 }, 1500)
-    setTimeout(() => { executionProgress.value = 3 }, 2500)
+  // UI progress timers (local, not store-owned)
+  setTimeout(() => { executionProgress.value = 1 }, 500)
+  setTimeout(() => { executionProgress.value = 2 }, 1500)
+  setTimeout(() => { executionProgress.value = 3 }, 2500)
 
-    const response = await api.post(
-      `/api/v1/autopilot/strategies/${props.strategyId}/legs/${selectedLeg.value.leg_id}/break`,
-      {
-        execution_mode: 'market',
-        new_positions: 'auto',
-        new_put_strike: useCustomStrikes.value ? customPutStrike.value : null,
-        new_call_strike: useCustomStrikes.value ? customCallStrike.value : null,
-        premium_split: 'equal',
-        prefer_round_strikes: !useCustomStrikes.value,
-        max_delta: 0.30
-      }
-    )
+  const result = await autopilotStore.executeBreakLeg(
+    props.strategyId,
+    selectedLeg.value.leg_id,
+    {
+      execution_mode: 'market',
+      new_positions: 'auto',
+      new_put_strike: useCustomStrikes.value ? customPutStrike.value : null,
+      new_call_strike: useCustomStrikes.value ? customCallStrike.value : null,
+      premium_split: 'equal',
+      prefer_round_strikes: !useCustomStrikes.value,
+      max_delta: 0.30,
+    }
+  )
 
+  executing.value = false
+  if (result.success) {
     executionProgress.value = 4
-    executionResult.value = response.data
+    executionResult.value = result.data
     currentStep.value = 5
-  } catch (error) {
-    executionError.value = error.response?.data?.detail || 'Failed to execute break trade'
-    console.error('Execution error:', error)
+  } else {
+    executionError.value = result.error || 'Failed to execute break trade'
+    console.error('Execution error:', result.error)
     currentStep.value = 5
-  } finally {
-    executing.value = false
   }
 }
 

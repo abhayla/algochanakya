@@ -348,7 +348,9 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import api from '@/services/api'
+import { useAutopilotStore } from '@/stores/autopilot'
+
+const autopilotStore = useAutopilotStore()
 
 const props = defineProps({
   strategyId: {
@@ -461,16 +463,18 @@ async function executeShift() {
       payload.shift_amount = shiftAmount.value
     }
 
-    const response = await api.post(
-      `/api/v1/autopilot/strategies/${props.strategyId}/legs/${props.leg.leg_id}/shift`,
+    const result = await autopilotStore.shiftLeg(
+      props.strategyId,
+      props.leg.leg_id,
       payload
     )
-
-    emit('success', response.data)
-    emit('close')
-  } catch (err) {
-    error.value = err.response?.data?.detail || 'Failed to execute shift'
-    console.error('Shift error:', err)
+    if (result.success) {
+      emit('success', result.data)
+      emit('close')
+    } else {
+      error.value = result.error || 'Failed to execute shift'
+      console.error('Shift error:', result.error)
+    }
   } finally {
     shifting.value = false
   }
