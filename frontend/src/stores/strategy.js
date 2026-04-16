@@ -112,6 +112,19 @@ export const useStrategyStore = defineStore('strategy', () => {
     }
   }
 
+  async function fetchExpiriesFor(ul) {
+    try {
+      const response = await api.get(`/api/options/expiries?underlying=${ul}`)
+      return { success: true, expiries: response.data.expiries || [] }
+    } catch (err) {
+      return {
+        success: false,
+        error: err.response?.data?.detail || 'Failed to fetch expiries',
+        expiries: [],
+      }
+    }
+  }
+
   async function fetchStrikes(expiry) {
     try {
       const response = await api.get(`/api/options/strikes?underlying=${underlying.value}&expiry=${expiry}`)
@@ -903,6 +916,7 @@ export const useStrategyStore = defineStore('strategy', () => {
     // Actions
     setUnderlying,
     fetchExpiries,
+    fetchExpiriesFor,
     fetchStrikes,
     fetchSpotPrice,
     findNearestStrike,

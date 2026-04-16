@@ -195,7 +195,9 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import api from '@/services/api'
+import { useAutopilotStore } from '@/stores/autopilot'
+
+const autopilotStore = useAutopilotStore()
 
 const props = defineProps({
   strategyId: {
@@ -220,23 +222,22 @@ const dismissDialog = ref({
 
 const fetchSuggestions = async () => {
   loading.value = true
-  try {
-    const response = await api.get(`/api/v1/autopilot/suggestions/strategies/${props.strategyId}`)
-    suggestions.value = response.data.data || []
-  } catch (error) {
-    console.error('Failed to fetch suggestions:', error)
+  const result = await autopilotStore.fetchSuggestionsForStrategy(props.strategyId)
+  loading.value = false
+  if (result.success) {
+    suggestions.value = result.data?.data || []
+  } else {
+    console.error('Failed to fetch suggestions:', result.error)
     suggestions.value = []
-  } finally {
-    loading.value = false
   }
 }
 
 const refreshSuggestions = async () => {
-  try {
-    const response = await api.post(`/api/v1/autopilot/suggestions/strategies/${props.strategyId}/suggestions/refresh`)
-    suggestions.value = response.data.data || []
-  } catch (error) {
-    console.error('Failed to refresh suggestions:', error)
+  const result = await autopilotStore.refreshSuggestions(props.strategyId)
+  if (result.success) {
+    suggestions.value = result.data?.data || []
+  } else {
+    console.error('Failed to refresh suggestions:', result.error)
   }
 }
 
@@ -256,17 +257,17 @@ const closeExecuteModal = () => {
 
 const executeSuggestion = async () => {
   executing.value = true
-  try {
-    await api.post(
-      `/api/v1/autopilot/suggestions/strategies/${props.strategyId}/suggestions/${executeModal.value.suggestion.id}/execute`
-    )
+  const result = await autopilotStore.executeSuggestion(
+    props.strategyId,
+    executeModal.value.suggestion.id
+  )
+  executing.value = false
+  if (result.success) {
     closeExecuteModal()
-    await fetchSuggestions() // Refresh list
-  } catch (error) {
-    console.error('Failed to execute suggestion:', error)
+    await fetchSuggestions()
+  } else {
+    console.error('Failed to execute suggestion:', result.error)
     alert('Failed to execute suggestion')
-  } finally {
-    executing.value = false
   }
 }
 
@@ -285,14 +286,15 @@ const closeDismissDialog = () => {
 }
 
 const dismissSuggestion = async () => {
-  try {
-    await api.post(
-      `/api/v1/autopilot/suggestions/strategies/${props.strategyId}/suggestions/${dismissDialog.value.suggestionId}/dismiss`
-    )
+  const result = await autopilotStore.dismissSuggestionScoped(
+    props.strategyId,
+    dismissDialog.value.suggestionId
+  )
+  if (result.success) {
     closeDismissDialog()
-    await fetchSuggestions() // Refresh list
-  } catch (error) {
-    console.error('Failed to dismiss suggestion:', error)
+    await fetchSuggestions()
+  } else {
+    console.error('Failed to dismiss suggestion:', result.error)
   }
 }
 

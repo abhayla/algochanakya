@@ -22,7 +22,9 @@ import {
   Legend,
   Filler
 } from 'chart.js'
-import api from '@/services/api'
+import { useAutopilotStore } from '@/stores/autopilot'
+
+const autopilotStore = useAutopilotStore()
 
 ChartJS.register(
   CategoryScale,
@@ -148,56 +150,45 @@ const chartOptions = computed(() => ({
 // Fetch premium history
 const fetchPremiumHistory = async () => {
   loading.value = true
+  const result = await autopilotStore.fetchPremiumHistory(props.strategyId, {
+    interval: '1m',
+    lookback_hours: 6,
+  })
+  loading.value = false
 
-  try {
-    const response = await api.get(`/api/v1/autopilot/strategies/${props.strategyId}/premium/history`, {
-      params: {
-        interval: '1m',
-        lookback_hours: 6
-      }
-    })
-
-    if (response.data && response.data.data) {
-      const data = response.data.data
-      updateChartData(data.snapshots)
-      cachedChartData.value = chartData.value
-      lastFetchTime.value = Date.now()
-      error.value = null // Clear error on success
-    }
-  } catch (err) {
-    console.error('Error fetching premium history:', err)
-
-    // If we have cached data, show it with stale warning
+  if (result.success && result.data && result.data.data) {
+    const data = result.data.data
+    updateChartData(data.snapshots)
+    cachedChartData.value = chartData.value
+    lastFetchTime.value = Date.now()
+    error.value = null
+  } else {
+    console.error('Error fetching premium history:', result.error)
     if (cachedChartData.value) {
       chartData.value = cachedChartData.value
       error.value = 'Unable to fetch live premium data'
     } else {
-      // No cached data, show error
       error.value = 'Failed to load premium data'
     }
-  } finally {
-    loading.value = false
   }
 }
 
 // Fetch decay curve for entry/target/SL data
 const fetchDecayCurve = async () => {
-  try {
-    const response = await api.get(`/api/v1/autopilot/strategies/${props.strategyId}/premium/decay-curve`)
+  const result = await autopilotStore.fetchPremiumDecayCurve(props.strategyId)
 
-    if (response.data && response.data.data) {
-      const data = response.data.data
-      entryPremium.value = parseFloat(data.entry_premium)
-      currentPremium.value = parseFloat(data.current_premium)
-      premiumCapturedPct.value = parseFloat(data.premium_captured_pct)
+  if (result.success && result.data && result.data.data) {
+    const data = result.data.data
+    entryPremium.value = parseFloat(data.entry_premium)
+    currentPremium.value = parseFloat(data.current_premium)
+    premiumCapturedPct.value = parseFloat(data.premium_captured_pct)
 
-      // Calculate target (50% of entry) and stop-loss (150% of entry) as examples
-      // TODO: Get actual targets from strategy config
-      targetPremium.value = entryPremium.value * 0.5
-      stopLossPremium.value = entryPremium.value * 1.5
-    }
-  } catch (err) {
-    console.error('Error fetching decay curve:', err)
+    // Calculate target (50% of entry) and stop-loss (150% of entry) as examples
+    // TODO: Get actual targets from strategy config
+    targetPremium.value = entryPremium.value * 0.5
+    stopLossPremium.value = entryPremium.value * 1.5
+  } else if (result.error) {
+    console.error('Error fetching decay curve:', result.error)
   }
 }
 

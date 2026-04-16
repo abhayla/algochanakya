@@ -1720,6 +1720,125 @@ export const useAutopilotStore = defineStore('autopilot', {
     },
 
     // ========================================================================
+    // MONITORING / ANALYTICS / SUGGESTIONS — added during data-flow migration
+    // ========================================================================
+
+    async fetchPremiumHistory(strategyId, params = {}) {
+      try {
+        const response = await api.get(
+          `/api/v1/autopilot/strategies/${strategyId}/premium/history`,
+          { params }
+        )
+        return { success: true, data: response.data }
+      } catch (error) {
+        return {
+          success: false,
+          error: error.response?.data?.detail || error.message,
+        }
+      }
+    },
+
+    async fetchPremiumDecayCurve(strategyId) {
+      try {
+        const response = await api.get(
+          `/api/v1/autopilot/strategies/${strategyId}/premium/decay-curve`
+        )
+        return { success: true, data: response.data }
+      } catch (error) {
+        return {
+          success: false,
+          error: error.response?.data?.detail || error.message,
+        }
+      }
+    },
+
+    async fetchAdjustmentCosts(strategyId) {
+      try {
+        const response = await api.get(
+          `/api/v1/autopilot/analytics/${strategyId}/adjustment-costs`
+        )
+        return { success: true, data: response.data }
+      } catch (error) {
+        return {
+          success: false,
+          error: error.response?.data?.detail || error.message,
+        }
+      }
+    },
+
+    async fetchStrategyPayoff(strategyId, params = {}) {
+      try {
+        const merged = { mode: 'current', ...params }
+        const response = await api.get(
+          `/api/v1/autopilot/analytics/${strategyId}/payoff`,
+          { params: merged }
+        )
+        return { success: true, data: response.data }
+      } catch (error) {
+        return {
+          success: false,
+          error: error.response?.data?.detail || error.message,
+        }
+      }
+    },
+
+    async fetchSuggestionsForStrategy(strategyId) {
+      try {
+        const response = await api.get(
+          `/api/v1/autopilot/suggestions/strategies/${strategyId}`
+        )
+        return { success: true, data: response.data }
+      } catch (error) {
+        return {
+          success: false,
+          error: error.response?.data?.detail || error.message,
+        }
+      }
+    },
+
+    async refreshSuggestions(strategyId) {
+      try {
+        const response = await api.post(
+          `/api/v1/autopilot/suggestions/strategies/${strategyId}/suggestions/refresh`
+        )
+        return { success: true, data: response.data }
+      } catch (error) {
+        return {
+          success: false,
+          error: error.response?.data?.detail || error.message,
+        }
+      }
+    },
+
+    async executeSuggestion(strategyId, suggestionId) {
+      try {
+        const response = await api.post(
+          `/api/v1/autopilot/suggestions/strategies/${strategyId}/suggestions/${suggestionId}/execute`
+        )
+        return { success: true, data: response.data }
+      } catch (error) {
+        return {
+          success: false,
+          error: error.response?.data?.detail || error.message,
+        }
+      }
+    },
+
+    async dismissSuggestionScoped(strategyId, suggestionId) {
+      try {
+        await api.post(
+          `/api/v1/autopilot/suggestions/strategies/${strategyId}/suggestions/${suggestionId}/dismiss`
+        )
+        return { success: true }
+      } catch (error) {
+        return {
+          success: false,
+          error: error.response?.data?.detail || error.message,
+        }
+      }
+    },
+
+    // ========================================================================
     // PHASE 5: PAYOFF CHART
     // ========================================================================
 

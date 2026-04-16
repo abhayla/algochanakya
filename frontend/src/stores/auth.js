@@ -222,6 +222,20 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  async function savePaytmPublicToken(publicToken) {
+    try {
+      await api.post('/api/auth/paytm/public-token', {
+        public_access_token: publicToken,
+      })
+      return { success: true }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.detail || 'Failed to save public token',
+      }
+    }
+  }
+
   return {
     user,
     isAuthenticated,
@@ -244,5 +258,6 @@ export const useAuthStore = defineStore('auth', () => {
     fetchUser,
     logout,
     checkAuth,
+    savePaytmPublicToken,
   }
 })

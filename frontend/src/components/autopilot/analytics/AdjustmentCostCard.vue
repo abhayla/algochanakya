@@ -131,10 +131,13 @@
 </template>
 
 <script>
-import api from '@/services/api'
+import { useAutopilotStore } from '@/stores/autopilot'
 
 export default {
   name: 'AdjustmentCostCard',
+  setup() {
+    return { autopilotStore: useAutopilotStore() }
+  },
   props: {
     strategyId: {
       type: Number,
@@ -171,15 +174,13 @@ export default {
     async fetchAdjustmentCosts() {
       this.loading = true
       this.error = null
-
-      try {
-        const response = await api.get(`/api/v1/autopilot/analytics/${this.strategyId}/adjustment-costs`)
-        this.summary = response.data
-      } catch (err) {
-        this.error = err.response?.data?.detail || err.message || 'Failed to load adjustment costs'
-        console.error('Error fetching adjustment costs:', err)
-      } finally {
-        this.loading = false
+      const result = await this.autopilotStore.fetchAdjustmentCosts(this.strategyId)
+      this.loading = false
+      if (result.success) {
+        this.summary = result.data
+      } else {
+        this.error = result.error || 'Failed to load adjustment costs'
+        console.error('Error fetching adjustment costs:', this.error)
       }
     },
 

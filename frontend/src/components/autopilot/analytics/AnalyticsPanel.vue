@@ -124,7 +124,9 @@
 
 <script setup>
 import { ref, onMounted, watch, nextTick } from 'vue'
-import api from '@/services/api'
+import { useAutopilotStore } from '@/stores/autopilot'
+
+const autopilotStore = useAutopilotStore()
 
 const props = defineProps({
   strategyId: {
@@ -158,34 +160,32 @@ const tooltip = ref({
 let chartInstance = null
 
 const fetchPayoffData = async () => {
-  try {
-    const response = await api.get(`/api/v1/autopilot/analytics/${props.strategyId}/payoff`, {
-      params: {
-        mode: payoffMode.value,
-        spot_range_pct: 10,
-        num_points: 100
-      }
-    })
+  const result = await autopilotStore.fetchStrategyPayoff(props.strategyId, {
+    mode: payoffMode.value,
+    spot_range_pct: 10,
+    num_points: 100,
+  })
 
-    payoffData.value = response.data.data
-    breakevens.value = payoffData.value.breakeven_points || []
-
-    // Update risk metrics
-    riskMetrics.value = {
-      maxProfit: payoffData.value.max_profit,
-      maxLoss: payoffData.value.max_loss,
-      maxProfitAt: payoffData.value.max_profit_at,
-      maxLossAt: payoffData.value.max_loss_at,
-      riskRewardRatio: payoffData.value.risk_reward_ratio,
-      netCredit: payoffData.value.net_credit,
-      probabilityOfProfit: payoffData.value.probability_of_profit
-    }
-
-    await nextTick()
-    renderChart()
-  } catch (error) {
-    console.error('Failed to fetch payoff data:', error)
+  if (!result.success) {
+    console.error('Failed to fetch payoff data:', result.error)
+    return
   }
+
+  payoffData.value = result.data.data
+  breakevens.value = payoffData.value.breakeven_points || []
+
+  riskMetrics.value = {
+    maxProfit: payoffData.value.max_profit,
+    maxLoss: payoffData.value.max_loss,
+    maxProfitAt: payoffData.value.max_profit_at,
+    maxLossAt: payoffData.value.max_loss_at,
+    riskRewardRatio: payoffData.value.risk_reward_ratio,
+    netCredit: payoffData.value.net_credit,
+    probabilityOfProfit: payoffData.value.probability_of_profit,
+  }
+
+  await nextTick()
+  renderChart()
 }
 
 const renderChart = () => {

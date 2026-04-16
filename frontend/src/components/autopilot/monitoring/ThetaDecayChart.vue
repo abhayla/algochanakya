@@ -20,7 +20,9 @@ import {
   Tooltip,
   Legend
 } from 'chart.js'
-import api from '@/services/api'
+import { useAutopilotStore } from '@/stores/autopilot'
+
+const autopilotStore = useAutopilotStore()
 
 ChartJS.register(
   CategoryScale,
@@ -169,34 +171,25 @@ const chartOptions = computed(() => ({
 // Fetch decay curve data
 const fetchDecayCurve = async () => {
   loading.value = true
+  const result = await autopilotStore.fetchPremiumDecayCurve(props.strategyId)
+  loading.value = false
 
-  try {
-    const response = await api.get(`/api/v1/autopilot/strategies/${props.strategyId}/premium/decay-curve`)
-
-    if (response.data && response.data.data) {
-      decayCurveData.value = response.data.data
-      updateChartData(response.data.data)
-
-      // Cache successful data
-      cachedChartData.value = chartData.value
-      cachedDecayCurveData.value = decayCurveData.value
-      lastFetchTime.value = Date.now()
-      error.value = null // Clear error on success
-    }
-  } catch (err) {
-    console.error('Error fetching decay curve:', err)
-
-    // If we have cached data, show it with stale warning
+  if (result.success && result.data && result.data.data) {
+    decayCurveData.value = result.data.data
+    updateChartData(result.data.data)
+    cachedChartData.value = chartData.value
+    cachedDecayCurveData.value = decayCurveData.value
+    lastFetchTime.value = Date.now()
+    error.value = null
+  } else {
+    console.error('Error fetching decay curve:', result.error)
     if (cachedChartData.value && cachedDecayCurveData.value) {
       chartData.value = cachedChartData.value
       decayCurveData.value = cachedDecayCurveData.value
       error.value = 'Unable to fetch live decay data'
     } else {
-      // No cached data, show error
       error.value = 'Failed to load decay curve data'
     }
-  } finally {
-    loading.value = false
   }
 }
 

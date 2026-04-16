@@ -160,10 +160,11 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useStrategyLibraryStore } from '@/stores/strategyLibrary'
-import api from '@/services/api'
+import { useStrategyStore } from '@/stores/strategy'
 
 const router = useRouter()
 const store = useStrategyLibraryStore()
+const strategyStore = useStrategyStore()
 
 const template = computed(() => store.selectedTemplate)
 
@@ -197,18 +198,17 @@ const canDeploy = computed(() => {
 
 async function fetchExpiries() {
   loadingExpiries.value = true
-  try {
-    const response = await api.get(`/api/options/expiries?underlying=${deployConfig.value.underlying}`)
-    expiries.value = response.data.expiries || []
+  const result = await strategyStore.fetchExpiriesFor(deployConfig.value.underlying)
+  loadingExpiries.value = false
+  if (result.success) {
+    expiries.value = result.expiries
     // Auto-select first expiry
     if (expiries.value.length > 0 && !deployConfig.value.expiry) {
       deployConfig.value.expiry = expiries.value[0]
     }
-  } catch (err) {
-    console.error('Failed to fetch expiries:', err)
+  } else {
+    console.error('Failed to fetch expiries:', result.error)
     expiries.value = []
-  } finally {
-    loadingExpiries.value = false
   }
 }
 
