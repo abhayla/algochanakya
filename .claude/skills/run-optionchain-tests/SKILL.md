@@ -6,9 +6,10 @@ description: >
   regardless of market state), dev stack health checks, fix-loop escalation, regression
   detection, and summary report. Includes Phase 1-3 performance optimization tests
   (cache, vectorized IV/Greeks, live engine) and live engine performance verification.
+  Supports `--phase live-engine` for a standalone Step 3.5 probe (market hours only).
 allowed-tools: "Bash Read Grep Glob Write Edit Skill Agent"
-argument-hint: "[--phase backend|frontend|e2e|all] [--include-live] [--max-fix-attempts 3]"
-version: "2.0.0"
+argument-hint: "[--phase backend|frontend|e2e|live-engine|all] [--include-live] [--max-fix-attempts 3]"
+version: "2.1.0"
 type: workflow
 triggers:
   - /run-optionchain-tests
@@ -16,6 +17,7 @@ triggers:
   - "test option chain screen end to end"
   - "verify option chain completely"
   - "option chain full test suite"
+  - "probe live engine fast path"
 ---
 
 # Run Option Chain Tests — Full Sequential Suite
@@ -32,9 +34,27 @@ with escalation to `/systematic-debugging` when needed.
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| `--phase` | `all` | Which phase(s) to run: `backend`, `frontend`, `e2e`, or `all` |
+| `--phase` | `all` | Which phase(s) to run: `backend`, `frontend`, `e2e`, `live-engine`, or `all` |
 | `--include-live` | false | Include `tests/live/test_live_option_chain.py` (hits real broker APIs) |
 | `--max-fix-attempts` | 3 | Max `/fix-loop` cycles per failing test before escalating to `/systematic-debugging` |
+
+### `--phase live-engine` — standalone Step 3.5 probe
+
+Runs **only** STEP 3.5 (Live Engine Performance Verification) and skips every other phase. Use this when:
+- The dev stack is already running
+- You want to quickly verify the fast-path `LIVE ENGINE HIT` is active
+- You do NOT want to re-run the full 39-test suite
+
+**Market-hours gate.** This phase is only meaningful during market OPEN (Mon–Fri 9:15–15:30 IST, not an NSE holiday). If invoked after hours, the skill logs `[SKIP] Market closed — live engine cannot be measured` and exits with a minimal summary.
+
+**Prerequisite check.** Delegate to `smartapi-session-manager` agent to confirm backend health + valid JWT + SmartAPI session + data flowing. Proceed only on a `READY` verdict. On `BLOCKED`, exit with the reason in the summary. On `DEGRADED`, proceed but note the degradation in the live-engine metrics table.
+
+**Flow (when market OPEN):**
+1. Invoke `smartapi-session-manager` — require READY
+2. Execute STEP 3.5 verbatim (lines below — `3.5a` through `3.5d`)
+3. Emit only the **Live Engine Performance** table from STEP 4 (not the full suite summary)
+
+Skip STEP 0d (manual Zerodha login) entirely if `tests/config/.auth-token` exists and `GET /api/auth/me` returns 200 — the session manager agent already performs this check.
 
 ---
 
@@ -42,6 +62,17 @@ with escalation to `/systematic-debugging` when needed.
 
 Verify prerequisites before running any tests. Skipping this causes cascading failures
 that waste fix-loop cycles on non-code issues.
+
+### 0 Routing (if `--phase live-engine`)
+
+When invoked with `--phase live-engine`, branch before running the rest of STEP 0:
+
+1. Detect market status (0a below). If CLOSED, emit a one-line SKIP summary and exit — there is nothing to measure.
+2. Delegate to the `smartapi-session-manager` agent for readiness. Abort with its reason on `BLOCKED`.
+3. On `READY` or `DEGRADED`, skip directly to **STEP 3.5** — do NOT run STEPs 1, 2, 3, or 4's full report.
+4. After STEP 3.5, emit only the "Live Engine Performance" subsection from STEP 4.
+
+For every other `--phase` value (backend, frontend, e2e, all), continue with 0a below as normal.
 
 ### 0a. Detect Market Status (IST)
 
@@ -551,6 +582,37 @@ Log the following in the summary report:
 ---
 
 ## STEP 4: Generate Summary Report
+
+### Live-engine-only mode (`--phase live-engine`)
+
+When the skill was invoked with `--phase live-engine`, emit ONLY the reduced report below (skip all Phase 1/2/3 tables):
+
+```
+## Option Chain Live Engine Probe
+
+**Run Date:** {date} IST
+**Market Status:** OPEN
+**Session Verdict:** {READY | DEGRADED(reason)}
+
+### Live Engine Performance
+| Metric | Value |
+|---|---|
+| Engine Initialized | Yes/No |
+| Fast Path Triggered | Yes/No |
+| Tick Count (at measurement) | {N} |
+| Snapshot Age | {X}s |
+| API Response Time (fast path) | {X}ms |
+| API Response Time (normal path) | {X}ms |
+| Speedup Factor | {X}x |
+| Notes | {observations} |
+```
+
+If market was CLOSED at invocation, emit a single line instead:
+```
+[SKIP] Market closed — live engine cannot be measured. Re-run during market hours (Mon-Fri 9:15-15:30 IST).
+```
+
+### Full-suite mode (all other `--phase` values)
 
 After all tests complete (or all phases requested are done), produce:
 
