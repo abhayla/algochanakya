@@ -1,13 +1,14 @@
 """
 Option Chain Cache Service.
 
-Redis response cache (after-hours only) + request coalescing + platform adapter singleton.
+Redis response cache + request coalescing + platform adapter singleton.
 Cache key: optionchain:{underlying}:{expiry}
-TTL: seconds until next market open (None during live market = no caching).
+TTL: 3s during market hours (short-lived dedup), seconds until next market open after hours.
 """
 import asyncio
 import json
 import logging
+import random
 import time
 from typing import Any, Callable, Optional
 
@@ -19,19 +20,26 @@ logger = logging.getLogger(__name__)
 
 CACHE_KEY_PREFIX = "optionchain"
 
+# NSE refreshes OI every ~3 minutes; 3s staleness is safe for display (not order execution).
+# Request coalescing handles thundering herd within this window.
+LIVE_MARKET_CACHE_TTL = 3
+
 
 # ---------------------------------------------------------------------------
 # TTL
 # ---------------------------------------------------------------------------
 
-def get_cache_ttl_seconds() -> Optional[int]:
-    """Seconds until next market open, or None if market is currently open."""
+def get_cache_ttl_seconds() -> int:
+    """Cache TTL: 3s during market hours, seconds-until-open after hours."""
     if is_market_open():
-        return None
+        return LIVE_MARKET_CACHE_TTL
     now = _ist_now()
     next_open = get_next_market_open(now)
     ttl = int((next_open - now).total_seconds())
-    return max(ttl, 60)  # Floor at 60s to avoid degenerate TTLs near open
+    ttl = max(ttl, 60)  # Floor at 60s to avoid degenerate TTLs near open
+    # ±10% jitter to prevent cache stampede at market open
+    ttl = int(ttl * (0.9 + 0.2 * random.random()))
+    return max(ttl, 60)
 
 
 def _cache_key(underlying: str, expiry: str) -> str:
@@ -58,10 +66,8 @@ async def get_cached_response(underlying: str, expiry: str) -> Optional[dict]:
 
 
 async def store_cached_response(underlying: str, expiry: str, result: dict) -> None:
-    """Store computed response in Redis. No-op if market is open or Redis is down."""
+    """Store computed response in Redis with appropriate TTL. No-op if Redis is down."""
     ttl = get_cache_ttl_seconds()
-    if ttl is None:
-        return
     try:
         redis = await get_redis()
         if redis is None:

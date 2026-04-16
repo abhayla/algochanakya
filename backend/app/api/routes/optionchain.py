@@ -12,6 +12,7 @@ from decimal import Decimal
 import asyncio
 import math
 import logging
+import numpy as np
 
 from app.database import get_db
 from app.models import User
@@ -30,6 +31,7 @@ from app.schemas.autopilot import (
     StrikeFindResponse
 )
 from app.constants import LOT_SIZES
+from app.services.options.vectorized_greeks import calculate_iv_and_greeks_batch
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +39,8 @@ router = APIRouter()
 
 # Constants
 RISK_FREE_RATE = 0.07  # 7% for India
+# Skip IV/Greeks for strikes >10% OTM — Newton-Raphson diverges and IV is meaningless
+FAR_OTM_MONEYNESS_THRESHOLD = 0.10
 
 
 def _should_use_eod_snapshot(all_quotes: dict) -> bool:
@@ -321,28 +325,32 @@ async def _compute_option_chain(
         except Exception as eod_err:
             logger.warning(f"[OptionChain] EOD snapshot spot price failed: {eod_err}")
 
-    # If no EOD spot, try broker adapters
+    # If no EOD spot, try broker adapters in parallel for speed
     if not spot_price:
+        spot_tasks = {}
         if adapter:
-            try:
-                price_map = await adapter.get_best_price([underlying])
-                spot_price = float(price_map.get(underlying, 0))
-            except Exception as e:
-                logger.warning(
-                    f"[OptionChain] Adapter get_best_price failed ({e}), "
-                    "trying platform adapter"
-                )
+            spot_tasks["user"] = adapter.get_best_price([underlying])
+        try:
+            platform_adapter = await get_cached_platform_adapter(db)
+            if platform_adapter and platform_adapter is not adapter:
+                spot_tasks["platform"] = platform_adapter.get_best_price([underlying])
+        except Exception:
+            pass
 
-        if not spot_price:
-            try:
-                platform_adapter = await get_platform_market_data_adapter(db)
-                price_map = await platform_adapter.get_best_price([underlying])
-                spot_price = float(price_map.get(underlying, 0))
-                if spot_price:
-                    adapter = platform_adapter
-                    logger.info(f"[OptionChain] Using platform adapter for {underlying}")
-            except Exception as platform_err:
-                logger.warning(f"[OptionChain] Platform adapter failed: {platform_err}")
+        if spot_tasks:
+            labels = list(spot_tasks.keys())
+            results = await asyncio.gather(*spot_tasks.values(), return_exceptions=True)
+            for label, result in zip(labels, results):
+                if isinstance(result, Exception):
+                    logger.warning(f"[OptionChain] {label} adapter get_best_price failed: {result}")
+                    continue
+                price = float(result.get(underlying, 0))
+                if price > 0:
+                    spot_price = price
+                    if label == "platform":
+                        adapter = platform_adapter
+                    logger.info(f"[OptionChain] Got spot from {label} adapter: {spot_price}")
+                    break
 
     # Last resort: fetch from NSE directly if no cached snapshot exists
     if not spot_price and not is_market_open():
@@ -558,6 +566,41 @@ async def _compute_option_chain(
     sorted_strikes = sorted(strikes_data.keys())
     atm_strike = min(sorted_strikes, key=lambda x: abs(x - spot_price)) if sorted_strikes else spot_price
 
+    # --- Vectorized IV+Greeks pre-compute for strikes needing local calculation ---
+    # Collect all options that need local IV (not Upstox-provided, not far-OTM)
+    _vec_entries = []  # (strike, side, ltp) for vectorized batch
+    for _s in sorted_strikes:
+        _d = strikes_data[_s]
+        for _side, _is_call in [("ce", True), ("pe", False)]:
+            if _d[_side]:
+                _sym = f"NFO:{_d[_side]['tradingsymbol']}"
+                _q = all_quotes.get(_sym, {})
+                _ltp = _q.get("last_price", 0) or _q.get("ohlc", {}).get("close", 0)
+                _upstox_g = _q.get("greeks")
+                # Skip if Upstox provides Greeks, or far OTM, or zero LTP
+                if _upstox_g and _upstox_g.get("iv"):
+                    continue
+                if spot_price and abs(spot_price - _s) / spot_price > FAR_OTM_MONEYNESS_THRESHOLD:
+                    continue
+                if _ltp > 0:
+                    _vec_entries.append((_s, _side, _ltp, _is_call))
+
+    _vec_results = {}  # key: (strike, side) -> {"iv": float, "delta": ..., ...}
+    if _vec_entries and days_to_expiry > 0:
+        _prices = np.array([e[2] for e in _vec_entries])
+        _strikes_arr = np.array([e[0] for e in _vec_entries], dtype=float)
+        _is_call_arr = np.array([e[3] for e in _vec_entries])
+        _batch = calculate_iv_and_greeks_batch(_prices, spot_price, _strikes_arr, days_to_expiry, _is_call_arr)
+        for i, (_s, _side, _ltp, _is_call) in enumerate(_vec_entries):
+            _vec_results[(_s, _side)] = {
+                "iv": float(_batch["iv"][i]),
+                "delta": float(_batch["delta"][i]),
+                "gamma": float(_batch["gamma"][i]),
+                "theta": float(_batch["theta"][i]),
+                "vega": float(_batch["vega"][i]),
+            }
+    # --- End vectorized pre-compute ---
+
     for strike in sorted_strikes:
         data = strikes_data[strike]
         row = {
@@ -597,6 +640,13 @@ async def _compute_option_chain(
                     "theta": round(ce_upstox_greeks.get("theta", 0), 2),
                     "vega": round(ce_upstox_greeks.get("vega", 0), 2),
                 }
+            elif spot_price and abs(spot_price - strike) / spot_price > FAR_OTM_MONEYNESS_THRESHOLD:
+                ce_iv = 0.0
+                ce_greeks = {"delta": 0, "gamma": 0, "theta": 0, "vega": 0}
+            elif (strike, "ce") in _vec_results:
+                _vr = _vec_results[(strike, "ce")]
+                ce_iv = _vr["iv"]
+                ce_greeks = {"delta": _vr["delta"], "gamma": _vr["gamma"], "theta": _vr["theta"], "vega": _vr["vega"]}
             else:
                 ce_iv = calculate_iv(ce_ltp, spot_price, strike, days_to_expiry, True)
                 ce_greeks = calculate_greeks(spot_price, strike, days_to_expiry, ce_iv, True)
@@ -644,6 +694,13 @@ async def _compute_option_chain(
                     "theta": round(pe_upstox_greeks.get("theta", 0), 2),
                     "vega": round(pe_upstox_greeks.get("vega", 0), 2),
                 }
+            elif spot_price and abs(spot_price - strike) / spot_price > FAR_OTM_MONEYNESS_THRESHOLD:
+                pe_iv = 0.0
+                pe_greeks = {"delta": 0, "gamma": 0, "theta": 0, "vega": 0}
+            elif (strike, "pe") in _vec_results:
+                _vr = _vec_results[(strike, "pe")]
+                pe_iv = _vr["iv"]
+                pe_greeks = {"delta": _vr["delta"], "gamma": _vr["gamma"], "theta": _vr["theta"], "vega": _vr["vega"]}
             else:
                 pe_iv = calculate_iv(pe_ltp, spot_price, strike, days_to_expiry, False)
                 pe_greeks = calculate_greeks(spot_price, strike, days_to_expiry, pe_iv, False)

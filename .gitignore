@@ -115,6 +115,7 @@ deploy.sh
 
 # Temporary images/screenshots
 images/
+screenshots/
 screenshots/verification/
 
 # Root logo files (copies in frontend/src/assets/)

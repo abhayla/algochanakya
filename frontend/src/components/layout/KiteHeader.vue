@@ -195,7 +195,7 @@ const marketStatus = computed(() => {
   if (timeInMinutes >= 540 && timeInMinutes < 555) return { label: 'Pre-Market', color: '#f59e0b', isOpen: false };
 
   // Market open: 9:15 - 15:30
-  if (timeInMinutes >= 555 && timeInMinutes <= 930) return { label: 'Market Open', color: '#22c55e', isOpen: true };
+  if (timeInMinutes >= 555 && timeInMinutes <= 930) return { label: 'Market Open', color: '#15803d', isOpen: true };
 
   // Post-market: 15:30 - 16:00
   if (timeInMinutes > 930 && timeInMinutes <= 960) return { label: 'Post-Market', color: '#f59e0b', isOpen: false };

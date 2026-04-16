@@ -259,6 +259,125 @@ describe('optionchain store — fetchOptionChain', () => {
 })
 
 
+describe('optionchain store — stale-while-revalidate (P1-4)', () => {
+  let store
+
+  beforeEach(async () => {
+    setActivePinia(createPinia())
+    vi.clearAllMocks()
+    const { useOptionChainStore } = await import('@/stores/optionchain')
+    store = useOptionChainStore()
+  })
+
+  it('exposes isRefreshing ref', () => {
+    expect(store.isRefreshing).toBe(false)
+  })
+
+  it('clears chain on first fetch (no stale data)', async () => {
+    store.expiry = '2026-03-27'
+    store.chain = MOCK_CHAIN  // pre-populate
+
+    let chainDuringFetch = null
+    api.get.mockImplementation(() => {
+      chainDuringFetch = [...store.chain]
+      return Promise.resolve(MOCK_CHAIN_RESPONSE)
+    })
+
+    await store.fetchOptionChain()
+
+    // First fetch for this key — chain should have been cleared
+    expect(chainDuringFetch).toEqual([])
+  })
+
+  it('keeps stale data during refresh of same underlying+expiry', async () => {
+    store.expiry = '2026-03-27'
+    api.get.mockResolvedValue(MOCK_CHAIN_RESPONSE)
+
+    // First fetch — populates chain
+    await store.fetchOptionChain()
+    expect(store.chain).toHaveLength(5)
+
+    let chainDuringRefresh = null
+    let refreshingDuringFetch = false
+    let loadingDuringFetch = false
+    api.get.mockImplementation(() => {
+      chainDuringRefresh = [...store.chain]
+      refreshingDuringFetch = store.isRefreshing
+      loadingDuringFetch = store.isLoading
+      return Promise.resolve(MOCK_CHAIN_RESPONSE)
+    })
+
+    // Second fetch — same underlying+expiry, should keep stale data
+    await store.fetchOptionChain()
+
+    expect(chainDuringRefresh).toHaveLength(5)  // stale data preserved
+    expect(refreshingDuringFetch).toBe(true)     // isRefreshing set
+    expect(loadingDuringFetch).toBe(false)       // isLoading NOT set
+    expect(store.isRefreshing).toBe(false)       // cleared after
+  })
+
+  it('clears chain when switching to different underlying', async () => {
+    store.expiry = '2026-03-27'
+    api.get.mockResolvedValue(MOCK_CHAIN_RESPONSE)
+
+    // First fetch for NIFTY
+    await store.fetchOptionChain()
+    expect(store.chain).toHaveLength(5)
+
+    // Switch to BANKNIFTY
+    store.underlying = 'BANKNIFTY'
+
+    let chainDuringFetch = null
+    api.get.mockImplementation(() => {
+      chainDuringFetch = [...store.chain]
+      return Promise.resolve(MOCK_CHAIN_RESPONSE)
+    })
+
+    await store.fetchOptionChain()
+
+    // Different key — chain should have been cleared
+    expect(chainDuringFetch).toEqual([])
+  })
+
+  it('clears chain when switching to different expiry', async () => {
+    store.expiry = '2026-03-27'
+    api.get.mockResolvedValue(MOCK_CHAIN_RESPONSE)
+
+    // First fetch
+    await store.fetchOptionChain()
+
+    // Switch expiry
+    store.expiry = '2026-04-03'
+
+    let chainDuringFetch = null
+    api.get.mockImplementation(() => {
+      chainDuringFetch = [...store.chain]
+      return Promise.resolve(MOCK_CHAIN_RESPONSE)
+    })
+
+    await store.fetchOptionChain()
+
+    // Different key — chain should have been cleared
+    expect(chainDuringFetch).toEqual([])
+  })
+
+  it('resets isRefreshing on error during refresh', async () => {
+    store.expiry = '2026-03-27'
+    api.get.mockResolvedValue(MOCK_CHAIN_RESPONSE)
+
+    // First fetch to populate data
+    await store.fetchOptionChain()
+
+    // Second fetch fails
+    api.get.mockRejectedValue({ response: { data: { detail: 'Timeout' } } })
+    await store.fetchOptionChain()
+
+    expect(store.isRefreshing).toBe(false)
+    expect(store.isLoading).toBe(false)
+  })
+})
+
+
 describe('optionchain store — strike selection', () => {
   let store
 
@@ -540,11 +659,10 @@ describe('optionchain store — setUnderlying', () => {
     expect(store.error).toBeNull()
   })
 
-  it('fetches expiries for new underlying', async () => {
+  it('does not fetch expiries inline (extracted to fetchExpiries)', async () => {
     await store.setUnderlying('FINNIFTY')
-    expect(api.get).toHaveBeenCalledWith('/api/options/expiries', {
-      params: { underlying: 'FINNIFTY' }
-    })
+    expect(api.get).not.toHaveBeenCalled()
+    expect(store.underlying).toBe('FINNIFTY')
   })
 })
 

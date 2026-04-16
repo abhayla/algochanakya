@@ -20,7 +20,7 @@ class TestOptionChainService:
     @pytest.mark.asyncio
     async def test_fetch_option_chain_from_api(self):
         """Test fetching option chain from API (no cache)."""
-        service = OptionChainService(kite=MagicMock(), db=MagicMock())
+        service = OptionChainService(MagicMock(), db=MagicMock())
         expiry = date.today() + timedelta(days=7)
 
         mock_instruments = [
@@ -32,7 +32,7 @@ class TestOptionChainService:
 
         with patch.object(service, '_fetch_instruments', new_callable=AsyncMock) as mock_fetch, \
              patch.object(service, '_get_spot_price', new_callable=AsyncMock) as mock_spot, \
-             patch.object(service.market_data, 'get_ltp', new_callable=AsyncMock) as mock_ltp, \
+             patch.object(service.adapter, 'get_ltp', new_callable=AsyncMock) as mock_ltp, \
              patch.object(service, '_get_quotes', new_callable=AsyncMock) as mock_quotes, \
              patch.object(service, '_save_to_cache', new_callable=AsyncMock):
 
@@ -54,7 +54,7 @@ class TestOptionChainService:
     @pytest.mark.asyncio
     async def test_fetch_option_chain_uses_cache(self):
         """Test option chain uses cache when valid."""
-        service = OptionChainService(kite=MagicMock(), db=MagicMock())
+        service = OptionChainService(MagicMock(), db=MagicMock())
         expiry = date.today() + timedelta(days=7)
 
         cached_result = {
@@ -77,13 +77,13 @@ class TestOptionChainService:
     @pytest.mark.asyncio
     async def test_fetch_option_chain_refreshes_expired_cache(self):
         """Test option chain fetches fresh data when cache miss."""
-        service = OptionChainService(kite=MagicMock(), db=MagicMock())
+        service = OptionChainService(MagicMock(), db=MagicMock())
         expiry = date.today() + timedelta(days=7)
 
         with patch.object(service, '_get_from_cache', new_callable=AsyncMock) as mock_cache, \
              patch.object(service, '_fetch_instruments', new_callable=AsyncMock) as mock_fetch, \
              patch.object(service, '_get_spot_price', new_callable=AsyncMock) as mock_spot, \
-             patch.object(service.market_data, 'get_ltp', new_callable=AsyncMock) as mock_ltp, \
+             patch.object(service.adapter, 'get_ltp', new_callable=AsyncMock) as mock_ltp, \
              patch.object(service, '_get_quotes', new_callable=AsyncMock) as mock_quotes, \
              patch.object(service, '_save_to_cache', new_callable=AsyncMock):
 
@@ -101,12 +101,12 @@ class TestOptionChainService:
     @pytest.mark.asyncio
     async def test_fetch_option_chain_returns_options_key(self):
         """Test option chain result contains 'options' key."""
-        service = OptionChainService(kite=MagicMock(), db=MagicMock())
+        service = OptionChainService(MagicMock(), db=MagicMock())
         expiry = date.today() + timedelta(days=7)
 
         with patch.object(service, '_fetch_instruments', new_callable=AsyncMock) as mock_fetch, \
              patch.object(service, '_get_spot_price', new_callable=AsyncMock) as mock_spot, \
-             patch.object(service.market_data, 'get_ltp', new_callable=AsyncMock) as mock_ltp, \
+             patch.object(service.adapter, 'get_ltp', new_callable=AsyncMock) as mock_ltp, \
              patch.object(service, '_get_quotes', new_callable=AsyncMock) as mock_quotes, \
              patch.object(service, '_save_to_cache', new_callable=AsyncMock):
 
@@ -123,7 +123,7 @@ class TestOptionChainService:
     @pytest.mark.asyncio
     async def test_fetch_option_chain_no_instruments(self):
         """Test option chain returns empty when no instruments found."""
-        service = OptionChainService(kite=MagicMock(), db=MagicMock())
+        service = OptionChainService(MagicMock(), db=MagicMock())
         expiry = date.today() + timedelta(days=7)
 
         with patch.object(service, '_get_from_cache', new_callable=AsyncMock) as mock_cache, \
@@ -141,7 +141,7 @@ class TestOptionChainService:
     @pytest.mark.asyncio
     async def test_calculate_greeks_called_when_ltp_available(self):
         """Test Greeks calculation is invoked when LTP is available."""
-        service = OptionChainService(kite=MagicMock(), db=MagicMock())
+        service = OptionChainService(MagicMock(), db=MagicMock())
         expiry = date.today() + timedelta(days=7)
 
         mock_instruments = [
@@ -151,15 +151,15 @@ class TestOptionChainService:
 
         with patch.object(service, '_fetch_instruments', new_callable=AsyncMock) as mock_fetch, \
              patch.object(service, '_get_spot_price', new_callable=AsyncMock) as mock_spot, \
-             patch.object(service.market_data, 'get_ltp', new_callable=AsyncMock) as mock_ltp, \
              patch.object(service, '_get_quotes', new_callable=AsyncMock) as mock_quotes, \
              patch.object(service, '_calculate_greeks', new_callable=AsyncMock) as mock_greeks, \
              patch.object(service, '_save_to_cache', new_callable=AsyncMock):
 
             mock_fetch.return_value = mock_instruments
             mock_spot.return_value = Decimal('25250')
-            mock_ltp.return_value = {'NFO:NIFTY24D2625000CE': Decimal('150')}
-            mock_quotes.return_value = {}
+            mock_quotes.return_value = {
+                'NFO:NIFTY24D2625000CE': {'last_price': 150.0}
+            }
             mock_greeks.return_value = {'delta': Decimal('0.15'), 'iv': Decimal('0.17')}
 
             await service.get_option_chain("NIFTY", expiry, use_cache=False)
@@ -169,7 +169,7 @@ class TestOptionChainService:
     @pytest.mark.asyncio
     async def test_get_strikes_list(self):
         """Test getting list of available strikes."""
-        service = OptionChainService(kite=MagicMock(), db=MagicMock())
+        service = OptionChainService(MagicMock(), db=MagicMock())
         expiry = date.today() + timedelta(days=7)
 
         mock_instruments = [
@@ -191,7 +191,7 @@ class TestOptionChainService:
     @pytest.mark.asyncio
     async def test_error_handling_api_failure(self):
         """Test error handling when API fails."""
-        service = OptionChainService(kite=MagicMock(), db=MagicMock())
+        service = OptionChainService(MagicMock(), db=MagicMock())
         expiry = date.today() + timedelta(days=7)
 
         with patch.object(service, '_get_from_cache', new_callable=AsyncMock) as mock_cache, \
@@ -208,7 +208,7 @@ class TestOptionChainService:
     @pytest.mark.asyncio
     async def test_cache_save_called_after_fetch(self):
         """Test cache is saved after fresh fetch when instruments exist."""
-        service = OptionChainService(kite=MagicMock(), db=MagicMock())
+        service = OptionChainService(MagicMock(), db=MagicMock())
         expiry = date.today() + timedelta(days=7)
 
         mock_instruments = [
@@ -219,7 +219,7 @@ class TestOptionChainService:
         with patch.object(service, '_get_from_cache', new_callable=AsyncMock) as mock_get, \
              patch.object(service, '_fetch_instruments', new_callable=AsyncMock) as mock_fetch, \
              patch.object(service, '_get_spot_price', new_callable=AsyncMock) as mock_spot, \
-             patch.object(service.market_data, 'get_ltp', new_callable=AsyncMock) as mock_ltp, \
+             patch.object(service.adapter, 'get_ltp', new_callable=AsyncMock) as mock_ltp, \
              patch.object(service, '_get_quotes', new_callable=AsyncMock) as mock_quotes, \
              patch.object(service, '_save_to_cache', new_callable=AsyncMock) as mock_save:
 
@@ -236,13 +236,13 @@ class TestOptionChainService:
     @pytest.mark.asyncio
     async def test_fetch_option_chain_returns_correct_structure(self):
         """Test option chain response has required keys."""
-        service = OptionChainService(kite=MagicMock(), db=MagicMock())
+        service = OptionChainService(MagicMock(), db=MagicMock())
         expiry = date.today() + timedelta(days=7)
 
         with patch.object(service, '_get_from_cache', new_callable=AsyncMock) as mock_cache, \
              patch.object(service, '_fetch_instruments', new_callable=AsyncMock) as mock_fetch, \
              patch.object(service, '_get_spot_price', new_callable=AsyncMock) as mock_spot, \
-             patch.object(service.market_data, 'get_ltp', new_callable=AsyncMock) as mock_ltp, \
+             patch.object(service.adapter, 'get_ltp', new_callable=AsyncMock) as mock_ltp, \
              patch.object(service, '_get_quotes', new_callable=AsyncMock) as mock_quotes, \
              patch.object(service, '_save_to_cache', new_callable=AsyncMock):
 

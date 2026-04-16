@@ -175,8 +175,8 @@ test.describe('Option Chain - WebSocket @websocket', () => {
         return;
       }
 
-      // LTP cells must exist and contain numeric values (may be 0.00 for OTM options)
-      const allLtpCells = optionChainPage.table.locator('[data-testid="optionchain-ltp-cell"]');
+      // LTP cells use data-testid pattern: optionchain-ce-ltp-{strike} / optionchain-pe-ltp-{strike}
+      const allLtpCells = optionChainPage.table.locator('[data-testid^="optionchain-ce-ltp-"], [data-testid^="optionchain-pe-ltp-"]');
       const ltpCount = await allLtpCells.count();
       expect(ltpCount, 'LTP cells must be present in the table').toBeGreaterThan(0);
 

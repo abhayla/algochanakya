@@ -71,7 +71,7 @@
 
           <!-- Refresh -->
           <button @click="store.fetchOptionChain()" class="refresh-btn" :disabled="store.isLoading" data-testid="optionchain-refresh-button">
-            {{ store.isLoading ? 'Loading...' : 'Refresh' }}
+            {{ store.isLoading ? 'Loading...' : store.isRefreshing ? 'Refreshing...' : 'Refresh' }}
           </button>
         </div>
       </div>

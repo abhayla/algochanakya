@@ -34,8 +34,11 @@ export const useOptionChainStore = defineStore('optionchain', () => {
   })
 
   const isLoading = ref(false)
+  const isRefreshing = ref(false)
   const error = ref(null)
 
+  // Track last-fetched key to enable stale-while-revalidate on same underlying+expiry
+  const _lastFetchKey = ref('')
   const _expiryCache = {}
 
   // Live prices from WebSocket (token -> tick data)
@@ -244,10 +247,19 @@ export const useOptionChainStore = defineStore('optionchain', () => {
       return { success: false, error: 'No expiry selected' }
     }
 
-    isLoading.value = true
+    const fetchKey = `${underlying.value}:${expiry.value}`
+    const hasStaleData = chain.value.length > 0 && _lastFetchKey.value === fetchKey
+
+    if (hasStaleData) {
+      // Stale-while-revalidate: keep showing old data, refresh in background
+      isRefreshing.value = true
+    } else {
+      // New underlying/expiry: show loading state
+      isLoading.value = true
+      chain.value = []
+      summary.value = { total_ce_oi: 0, total_pe_oi: 0, pcr: 0, max_pain: 0, atm_strike: 0 }
+    }
     error.value = null
-    chain.value = []
-    summary.value = { total_ce_oi: 0, total_pe_oi: 0, pcr: 0, max_pain: 0, atm_strike: 0 }
 
     try {
       const response = await api.get('/api/optionchain/chain', {
@@ -263,6 +275,7 @@ export const useOptionChainStore = defineStore('optionchain', () => {
       chain.value = response.data.chain
       summary.value = response.data.summary
       dataFreshness.value = response.data.data_freshness || 'LIVE'
+      _lastFetchKey.value = fetchKey
 
       return { success: true }
     } catch (err) {
@@ -271,6 +284,7 @@ export const useOptionChainStore = defineStore('optionchain', () => {
       return { success: false, error: error.value }
     } finally {
       isLoading.value = false
+      isRefreshing.value = false
     }
   }
 
@@ -483,6 +497,7 @@ export const useOptionChainStore = defineStore('optionchain', () => {
     dataFreshness,
     summary,
     isLoading,
+    isRefreshing,
     error,
     showGreeks,
     showVolume,

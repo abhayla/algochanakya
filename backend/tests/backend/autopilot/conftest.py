@@ -12,6 +12,7 @@ Provides fixtures for:
 - Async HTTP client with dependency overrides
 """
 
+import json
 import pytest
 import pytest_asyncio
 import asyncio
@@ -60,6 +61,26 @@ def compile_uuid_sqlite(element, compiler, **kw):
 @compiles(PgEnum, 'sqlite')
 def compile_pgenum_sqlite(element, compiler, **kw):
     return "VARCHAR(50)"
+
+
+# SQLite cannot bind Python list objects — serialize to JSON strings
+@event.listens_for(Engine, "before_cursor_execute", retval=True)
+def _serialize_lists_for_sqlite(conn, cursor, statement, parameters, context, executemany):
+    if conn.dialect.name != "sqlite" or parameters is None:
+        return statement, parameters
+    if isinstance(parameters, dict):
+        for key, val in parameters.items():
+            if isinstance(val, list):
+                parameters[key] = json.dumps(val)
+    elif isinstance(parameters, (list, tuple)):
+        new_params = []
+        for val in parameters:
+            if isinstance(val, list):
+                new_params.append(json.dumps(val))
+            else:
+                new_params.append(val)
+        parameters = tuple(new_params) if isinstance(parameters, tuple) else new_params
+    return statement, parameters
 
 
 # Import app components
@@ -3042,15 +3063,14 @@ async def test_position_leg(db_session: AsyncSession, test_strategy_active: Auto
     """Create a single position leg for testing."""
     leg = AutoPilotPositionLeg(
         strategy_id=test_strategy_active.id,
-        leg_id="leg_2",  # Referring to SELL PE leg
-        underlying="NIFTY",
+        leg_id="leg_2",
         expiry=date.today() + timedelta(days=7),
         strike=25000,
-        option_type="PE",
-        transaction_type="SELL",
-        quantity=25,
+        contract_type="PE",
+        action="SELL",
+        lots=1,
         entry_price=Decimal("185.50"),
-        status=PositionLegStatus.OPEN,
+        status="open",
         entry_time=datetime.utcnow(),
         delta=Decimal("-0.15"),
         gamma=Decimal("0.002"),
@@ -3074,14 +3094,13 @@ async def test_position_legs_multiple(db_session: AsyncSession, test_strategy_ac
         AutoPilotPositionLeg(
             strategy_id=test_strategy_active.id,
             leg_id="leg_pe_sell",
-            underlying="NIFTY",
             expiry=expiry,
             strike=25000,
-            option_type="PE",
-            transaction_type="SELL",
-            quantity=25,
+            contract_type="PE",
+            action="SELL",
+            lots=1,
             entry_price=Decimal("185.00"),
-            status=PositionLegStatus.OPEN,
+            status="open",
             entry_time=datetime.utcnow(),
             delta=Decimal("-0.15"),
             gamma=Decimal("0.002"),
@@ -3093,14 +3112,13 @@ async def test_position_legs_multiple(db_session: AsyncSession, test_strategy_ac
         AutoPilotPositionLeg(
             strategy_id=test_strategy_active.id,
             leg_id="leg_ce_sell",
-            underlying="NIFTY",
             expiry=expiry,
             strike=25500,
-            option_type="CE",
-            transaction_type="SELL",
-            quantity=25,
+            contract_type="CE",
+            action="SELL",
+            lots=1,
             entry_price=Decimal("180.00"),
-            status=PositionLegStatus.OPEN,
+            status="open",
             entry_time=datetime.utcnow(),
             delta=Decimal("0.15"),
             gamma=Decimal("0.002"),
