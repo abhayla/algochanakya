@@ -93,15 +93,17 @@ class TestCacheTTL:
     """Test get_cache_ttl_seconds() behavior."""
 
     @patch("app.services.options.option_chain_cache.is_market_open", return_value=True)
-    def test_returns_none_during_market_hours(self, mock_open):
-        from app.services.options.option_chain_cache import get_cache_ttl_seconds
-        assert get_cache_ttl_seconds() is None
+    def test_returns_live_ttl_during_market_hours(self, mock_open):
+        from app.services.options.option_chain_cache import get_cache_ttl_seconds, LIVE_MARKET_CACHE_TTL
+        assert get_cache_ttl_seconds() == LIVE_MARKET_CACHE_TTL
 
+    @patch("app.services.options.option_chain_cache.random")
     @patch("app.services.options.option_chain_cache.is_market_open", return_value=False)
     @patch("app.services.options.option_chain_cache._ist_now")
     @patch("app.services.options.option_chain_cache.get_next_market_open")
-    def test_returns_seconds_until_next_open(self, mock_next_open, mock_now, mock_open):
+    def test_returns_seconds_until_next_open(self, mock_next_open, mock_now, mock_open, mock_random):
         from app.services.options.option_chain_cache import get_cache_ttl_seconds
+        mock_random.random.return_value = 0.5  # jitter factor: 0.9 + 0.2*0.5 = 1.0 (no jitter)
         now = datetime(2026, 4, 17, 18, 0, tzinfo=IST)
         next_open = datetime(2026, 4, 20, 9, 15, tzinfo=IST)
         mock_now.return_value = now
@@ -111,18 +113,20 @@ class TestCacheTTL:
         expected = int((next_open - now).total_seconds())
         assert ttl == expected
 
+    @patch("app.services.options.option_chain_cache.random")
     @patch("app.services.options.option_chain_cache.is_market_open", return_value=False)
     @patch("app.services.options.option_chain_cache._ist_now")
     @patch("app.services.options.option_chain_cache.get_next_market_open")
-    def test_minimum_ttl_60_seconds(self, mock_next_open, mock_now, mock_open):
+    def test_minimum_ttl_60_seconds(self, mock_next_open, mock_now, mock_open, mock_random):
         from app.services.options.option_chain_cache import get_cache_ttl_seconds
+        mock_random.random.return_value = 0.0  # jitter factor: 0.9 + 0.0 = 0.9
         now = datetime(2026, 4, 20, 9, 14, 50, tzinfo=IST)
         next_open = datetime(2026, 4, 20, 9, 15, tzinfo=IST)
         mock_now.return_value = now
         mock_next_open.return_value = next_open
 
         ttl = get_cache_ttl_seconds()
-        assert ttl == 60  # Floor at 60s
+        assert ttl == 60  # Floor at 60s even after jitter
 
 
 # ---------------------------------------------------------------------------
@@ -316,18 +320,24 @@ class TestRedisCache:
             assert result is None
 
     @pytest.mark.asyncio
-    async def test_store_skipped_during_market_hours(self):
-        from app.services.options.option_chain_cache import store_cached_response
+    async def test_store_uses_live_ttl_during_market_hours(self):
+        from app.services.options.option_chain_cache import store_cached_response, LIVE_MARKET_CACHE_TTL
+
+        mock_redis = AsyncMock()
+        mock_redis.setex = AsyncMock()
 
         with patch(
             "app.services.options.option_chain_cache.get_cache_ttl_seconds",
-            return_value=None,
+            return_value=LIVE_MARKET_CACHE_TTL,
         ), patch(
             "app.services.options.option_chain_cache.get_redis",
             new_callable=AsyncMock,
-        ) as mock_get_redis:
+            return_value=mock_redis,
+        ):
             await store_cached_response("NIFTY", "2026-04-30", {"data": True})
-            mock_get_redis.assert_not_called()
+            mock_redis.setex.assert_called_once()
+            call_args = mock_redis.setex.call_args
+            assert call_args[0][1] == LIVE_MARKET_CACHE_TTL
 
     @pytest.mark.asyncio
     async def test_store_writes_with_ttl(self):
