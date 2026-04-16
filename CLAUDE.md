@@ -3,7 +3,7 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 **AlgoChanakya:** Multi-broker options trading platform (Indian markets)
-**Working Directory:** Use the current working directory (varies per machine)
+**Stack:** Vue 3 + Vite (frontend) · FastAPI + Python 3.13 (backend) · PostgreSQL + Redis
 
 ## Quick Reference
 
@@ -43,8 +43,6 @@ npm run test:specs:optionchain                     # Single screen
 npm run test:happy                                 # All happy paths
 ```
 
-**After code changes:** invoke `auto-verify` skill. To fix failures: `test-fixer` skill.
-
 ## CRITICAL: Never Touch Production
 
 - **Dev:** Current working directory (backend port 8001, frontend port 5173)
@@ -71,6 +69,7 @@ Multi-broker platform where all 6 brokers (Zerodha, AngelOne, Dhan, Fyers, Paytm
 
 **Key pitfalls:**
 - Backend port is **8001** in dev (not 8000 — that's production)
+- `frontend/.env.local` must point to `http://localhost:8001` (not 8000 or 8005)
 - New models need imports in both `backend/app/models/__init__.py` AND `backend/alembic/env.py`
 - DB stores `'zerodha'`/`'angelone'` but `BrokerType` enum uses `'kite'`/`'angel'` — use `BROKER_NAME_MAP`
 - AngelOne has 3 API keys: `ANGEL_API_KEY` (live data), `ANGEL_HIST_API_KEY` (history), `ANGEL_TRADE_API_KEY` (orders)
@@ -80,14 +79,11 @@ Multi-broker platform where all 6 brokers (Zerodha, AngelOne, Dhan, Fyers, Paytm
 
 **Commit convention:** `type(scope): description` — types: `feat`, `fix`, `refactor`, `docs`, `chore`, `test`
 
-## Rules
+## Rules & Workflow
 
-All architectural constraints in `.claude/rules/` (auto-loaded per file type). SSOT: each fact in one file only.
-
-## Rules for Claude
-
-1. **Bug Fixing**: Use `/fix-loop` or `/fix-issue`. Start by writing a test that reproduces the bug, then fix and prove with a passing test.
-2. All architectural constraints auto-load from `.claude/rules/` based on file context — no need to read them manually.
+- Architectural constraints auto-load from `.claude/rules/` based on file context — no need to read them manually. SSOT: each fact in one file only.
+- For bug fixing: use `/fix-loop` or `/fix-issue`. Start by writing a test that reproduces the bug, then fix and prove with a passing test.
+- After code changes: invoke `auto-verify` skill. To fix failures: `test-fixer` skill.
 
 <!-- hub:best-practices:start -->
 
