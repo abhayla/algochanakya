@@ -68,6 +68,11 @@
           },
           {
             "type": "command",
+            "command": "python \"$(git rev-parse --show-toplevel)/.claude/hooks/guard_testid_pattern.py\"",
+            "timeout": 5
+          },
+          {
+            "type": "command",
             "command": "python \"$(git rev-parse --show-toplevel)/.claude/hooks/validate_workflow_step.py\"",
             "timeout": 10
           }
@@ -89,6 +94,11 @@
           {
             "type": "command",
             "command": "python \"$(git rev-parse --show-toplevel)/.claude/hooks/guard_cross_feature_imports.py\"",
+            "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "python \"$(git rev-parse --show-toplevel)/.claude/hooks/guard_testid_pattern.py\"",
             "timeout": 5
           },
           {
