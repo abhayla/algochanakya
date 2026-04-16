@@ -1,13 +1,12 @@
 import { test, expect } from '../../fixtures/auth.fixture.js';
 import { OptionChainPage } from '../../pages/OptionChainPage.js';
-import { getDataExpectation } from '../../helpers/market-status.helper.js';
 
 /**
  * Option Chain Screen - UI Visual Detail Tests
  * Tests OI bar widths, ATM row styling, refresh button disabled state, and error dismiss.
  *
- * Data-dependent tests (OI bars, ATM styling) are gated on getDataExpectation() because
- * OI bar widths and ATM detection require a loaded chain with real strike data.
+ * These tests run identically regardless of market state — the backend always serves
+ * data via broker close prices or EOD snapshot fallback.
  */
 test.describe('Option Chain - UI Details @uidetails', () => {
   test.describe.configure({ timeout: 120000 });
@@ -33,14 +32,6 @@ test.describe('Option Chain - UI Details @uidetails', () => {
   // ============ OI Bar Tests ============
 
   test('should render CE OI bars with non-zero widths', async ({ authenticatedPage }) => {
-    const expectation = getDataExpectation();
-    if (expectation !== 'LIVE' && expectation !== 'LAST_KNOWN') {
-      // No chain data available — assert empty state is shown instead
-      const isEmpty = await optionChainPage.emptyState.isVisible().catch(() => false);
-      expect(isEmpty).toBe(true);
-      return;
-    }
-
     if (!(await hasChainData(authenticatedPage))) {
       console.log('Chain loaded but has no data rows (broker error) — skipping OI bar assertions');
       await optionChainPage.assertPageVisible();
@@ -71,13 +62,6 @@ test.describe('Option Chain - UI Details @uidetails', () => {
   });
 
   test('should render PE OI bars with non-zero widths', async ({ authenticatedPage }) => {
-    const expectation = getDataExpectation();
-    if (expectation !== 'LIVE' && expectation !== 'LAST_KNOWN') {
-      const isEmpty = await optionChainPage.emptyState.isVisible().catch(() => false);
-      expect(isEmpty).toBe(true);
-      return;
-    }
-
     if (!(await hasChainData(authenticatedPage))) {
       console.log('Chain loaded but has no data rows (broker error) — skipping OI bar assertions');
       await optionChainPage.assertPageVisible();
@@ -112,13 +96,6 @@ test.describe('Option Chain - UI Details @uidetails', () => {
   });
 
   test('should have largest OI bar at 50px (maximum)', async ({ authenticatedPage }) => {
-    const expectation = getDataExpectation();
-    if (expectation !== 'LIVE' && expectation !== 'LAST_KNOWN') {
-      const isEmpty = await optionChainPage.emptyState.isVisible().catch(() => false);
-      expect(isEmpty).toBe(true);
-      return;
-    }
-
     if (!(await hasChainData(authenticatedPage))) {
       console.log('Chain loaded but has no data rows (broker error) — skipping OI bar assertions');
       await optionChainPage.assertPageVisible();
@@ -153,13 +130,6 @@ test.describe('Option Chain - UI Details @uidetails', () => {
   });
 
   test('should use correct colors for OI bars', async ({ authenticatedPage }) => {
-    const expectation = getDataExpectation();
-    if (expectation !== 'LIVE' && expectation !== 'LAST_KNOWN') {
-      const isEmpty = await optionChainPage.emptyState.isVisible().catch(() => false);
-      expect(isEmpty).toBe(true);
-      return;
-    }
-
     if (!(await hasChainData(authenticatedPage))) {
       console.log('Chain loaded but has no data rows (broker error) — skipping OI bar assertions');
       await optionChainPage.assertPageVisible();
@@ -211,13 +181,6 @@ test.describe('Option Chain - UI Details @uidetails', () => {
   // ============ ATM Row Tests ============
 
   test('should highlight ATM row with distinct background', async ({ authenticatedPage }) => {
-    const expectation = getDataExpectation();
-    if (expectation !== 'LIVE' && expectation !== 'LAST_KNOWN') {
-      const isEmpty = await optionChainPage.emptyState.isVisible().catch(() => false);
-      expect(isEmpty).toBe(true);
-      return;
-    }
-
     if (!(await hasChainData(authenticatedPage))) {
       console.log('Chain loaded but has no data rows (broker error) — skipping ATM assertions');
       await optionChainPage.assertPageVisible();
@@ -245,13 +208,6 @@ test.describe('Option Chain - UI Details @uidetails', () => {
   });
 
   test('should display ATM badge', async ({ authenticatedPage }) => {
-    const expectation = getDataExpectation();
-    if (expectation !== 'LIVE' && expectation !== 'LAST_KNOWN') {
-      const isEmpty = await optionChainPage.emptyState.isVisible().catch(() => false);
-      expect(isEmpty).toBe(true);
-      return;
-    }
-
     if (!(await hasChainData(authenticatedPage))) {
       console.log('Chain loaded but has no data rows (broker error) — skipping ATM assertions');
       await optionChainPage.assertPageVisible();
@@ -266,13 +222,6 @@ test.describe('Option Chain - UI Details @uidetails', () => {
   });
 
   test('should style ATM strike column with distinct background', async ({ authenticatedPage }) => {
-    const expectation = getDataExpectation();
-    if (expectation !== 'LIVE' && expectation !== 'LAST_KNOWN') {
-      const isEmpty = await optionChainPage.emptyState.isVisible().catch(() => false);
-      expect(isEmpty).toBe(true);
-      return;
-    }
-
     if (!(await hasChainData(authenticatedPage))) {
       console.log('Chain loaded but has no data rows (broker error) — skipping ATM assertions');
       await optionChainPage.assertPageVisible();

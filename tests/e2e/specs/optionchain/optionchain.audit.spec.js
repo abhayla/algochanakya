@@ -8,7 +8,7 @@
 import { test, expect } from '../../fixtures/auth.fixture.js';
 import { OptionChainPage } from '../../pages/OptionChainPage.js';
 import { StyleAudit, DESIGN_TOKENS } from '../../helpers/style-audit.helper.js';
-import { getDataExpectation, assertDataOrEmptyState } from '../../helpers/market-status.helper.js';
+import { isLiveTicking } from '../../helpers/market-status.helper.js';
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 
@@ -81,13 +81,35 @@ test.describe('Option Chain - Style & Accessibility Audit @audit', () => {
     const ceCount = await ceItmRows.count();
     const peCount = await peItmRows.count();
 
-    const expectation = getDataExpectation();
-    if (expectation === 'LIVE' || expectation === 'LAST_KNOWN') {
-      // During live/last-known hours, ITM rows must exist (chain has data)
-      expect(ceCount + peCount).toBeGreaterThan(0);
+    // Backend always serves data — ITM rows must exist regardless of market state
+    expect(ceCount + peCount).toBeGreaterThan(0);
+  });
+
+  test('market status banner renders correctly @audit', async ({ authenticatedPage }) => {
+    const optionChainBannerPage = new OptionChainPage(authenticatedPage);
+    await optionChainBannerPage.waitForChainLoad();
+
+    if (isLiveTicking()) {
+      // During market hours, no market-closed banners should appear
+      await expect(optionChainBannerPage.marketClosedBanner).toBeHidden();
+      await expect(optionChainBannerPage.eodSnapshotBanner).toBeHidden();
     } else {
-      // Outside market hours: chain may be empty — asserting counts are non-negative is enough
-      await assertDataOrEmptyState(authenticatedPage, 'optionchain-table', 'optionchain-empty-state', expect);
+      // After hours, one of the two banners must be visible with correct content
+      const hasClosedBanner = await optionChainBannerPage.marketClosedBanner.isVisible().catch(() => false);
+      const hasEodBanner = await optionChainBannerPage.eodSnapshotBanner.isVisible().catch(() => false);
+      expect(hasClosedBanner || hasEodBanner,
+        'Expected market-closed or EOD snapshot banner when market is closed'
+      ).toBe(true);
+
+      // Verify banner has readable text content
+      if (hasClosedBanner) {
+        const text = await optionChainBannerPage.marketClosedBanner.textContent();
+        expect(text.toLowerCase()).toContain('market closed');
+      }
+      if (hasEodBanner) {
+        const text = await optionChainBannerPage.eodSnapshotBanner.textContent();
+        expect(text.toLowerCase()).toContain('end-of-day');
+      }
     }
   });
 

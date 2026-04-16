@@ -1,6 +1,6 @@
 import { test, expect } from '../../fixtures/auth.fixture.js';
 import { OptionChainPage } from '../../pages/OptionChainPage.js';
-import { getDataExpectation, assertDataOrEmptyState } from '../../helpers/market-status.helper.js';
+import { isLiveTicking } from '../../helpers/market-status.helper.js';
 
 /**
  * Option Chain Screen - Happy Path Tests
@@ -59,13 +59,25 @@ test.describe('Option Chain - Happy Path @happy', () => {
     await expect(optionChainPage.summaryBar).toBeVisible();
   });
 
-  test('should display option chain table or empty state', async ({ page }) => {
+  test('should display option chain table with data', async () => {
     await optionChainPage.waitForChainLoad();
-    const expectation = getDataExpectation();
-    if (expectation === 'LIVE' || expectation === 'LAST_KNOWN') {
-      await expect(optionChainPage.table).toBeVisible();
+    // Backend always serves data (broker close prices + EOD snapshot) regardless of market state
+    await expect(optionChainPage.table).toBeVisible();
+  });
+
+  test('should show market-closed banner when market is closed', async () => {
+    await optionChainPage.waitForChainLoad();
+    if (isLiveTicking()) {
+      // During market hours, no market-closed banner should appear
+      await expect(optionChainPage.marketClosedBanner).toBeHidden();
+      await expect(optionChainPage.eodSnapshotBanner).toBeHidden();
     } else {
-      await assertDataOrEmptyState(page, 'optionchain-table', 'optionchain-empty-state', expect);
+      // After hours, one of the two banners must be visible
+      const hasClosedBanner = await optionChainPage.marketClosedBanner.isVisible().catch(() => false);
+      const hasEodBanner = await optionChainPage.eodSnapshotBanner.isVisible().catch(() => false);
+      expect(hasClosedBanner || hasEodBanner,
+        'Expected market-closed or EOD snapshot banner when market is closed'
+      ).toBe(true);
     }
   });
 

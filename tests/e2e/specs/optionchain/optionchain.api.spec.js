@@ -1,6 +1,5 @@
 import { test, expect } from '../../fixtures/auth.fixture.js';
 import { OptionChainPage } from '../../pages/OptionChainPage.js';
-import { getDataExpectation, assertDataOrEmptyState } from '../../helpers/market-status.helper.js';
 import { waitForApiResponse } from '../../helpers/wait-helpers.js';
 
 /**
@@ -75,10 +74,8 @@ test.describe('Option Chain - API @api', () => {
     const expirySelect = optionChainPage.expirySelect;
     const options = await expirySelect.locator('option').all();
 
-    const expectation = getDataExpectation();
-    if (expectation === 'LIVE' || expectation === 'LAST_KNOWN') {
-      expect(options.length).toBeGreaterThan(1);
-    }
+    // Backend always provides expiries regardless of market state
+    expect(options.length).toBeGreaterThan(1);
 
     if (options.length > 1) {
       const chainResponsePromise = waitForApiResponse(
@@ -126,18 +123,13 @@ test.describe('Option Chain - API @api', () => {
     await optionChainPage.navigate();
     await optionChainPage.waitForChainLoad();
 
-    const expectation = getDataExpectation();
-    if (expectation === 'LIVE' || expectation === 'LAST_KNOWN') {
-      // Table must be visible and summary bar must have real values
-      await expect(optionChainPage.table).toBeVisible();
-      await expect(optionChainPage.summaryBar).toBeVisible();
+    // Backend always serves data — table and summary bar must be visible regardless of market state
+    await expect(optionChainPage.table).toBeVisible();
+    await expect(optionChainPage.summaryBar).toBeVisible();
 
-      // PCR value must be non-empty
-      const pcrText = await optionChainPage.pcrValue.textContent();
-      expect(pcrText.trim().length).toBeGreaterThan(0);
-      expect(pcrText.trim()).not.toBe('-');
-    } else {
-      await assertDataOrEmptyState(authenticatedPage, 'optionchain-table', 'optionchain-empty-state', expect);
-    }
+    // PCR value must be non-empty (populated from broker data or EOD snapshot)
+    const pcrText = await optionChainPage.pcrValue.textContent();
+    expect(pcrText.trim().length).toBeGreaterThan(0);
+    expect(pcrText.trim()).not.toBe('-');
   });
 });

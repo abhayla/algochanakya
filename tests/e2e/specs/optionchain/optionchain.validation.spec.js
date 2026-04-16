@@ -1,5 +1,4 @@
 import { test, expect } from '../../fixtures/auth.fixture.js';
-import { isMarketOpen, getDataExpectation } from '../../helpers/market-status.helper.js';
 import fs from 'fs';
 import path from 'path';
 
@@ -82,8 +81,6 @@ test.describe('Option Chain - Data Validation @validation', () => {
 
   for (const underlying of UNDERLYINGS) {
     test(`${underlying}: all non-zero fields pass data quality checks`, async ({ authenticatedPage }) => {
-      const expectation = getDataExpectation();
-
       const token = getStoredAuthToken();
       if (!token) test.skip('No auth token');
 
@@ -147,10 +144,10 @@ test.describe('Option Chain - Data Validation @validation', () => {
         }
       }
 
-      // ── 4. PCR range check (LIVE market only) ───────────────────────────────
-      // When market is closed, OI data is sparse (few strikes have non-zero OI)
-      // causing PCR to be unreliable. Only validate PCR during live market hours.
-      if (expectation === 'LIVE' && summary?.pcr && summary.pcr !== 0) {
+      // ── 4. PCR range check ──────────────────────────────────────────────────
+      // Backend always serves OI data (from broker during market hours, from EOD
+      // snapshot after hours). PCR should be valid regardless of market state.
+      if (summary?.pcr && summary.pcr !== 0) {
         expect(summary.pcr, `PCR ${summary.pcr} out of valid range [0.3–3.0]`).toBeGreaterThan(0.3);
         expect(summary.pcr, `PCR ${summary.pcr} out of valid range [0.3–3.0]`).toBeLessThan(3.0);
       }
@@ -212,14 +209,12 @@ test.describe('Option Chain - Data Validation @validation', () => {
       }
 
       // ── 6. Summary: at least some non-zero OI in both CE and PE ─────────
-      // Only assert non-zero OI during LIVE market hours — outside hours, OI may be
-      // 0 if the broker token mapping is stale (pre-existing known issue).
-      if (expectation === 'LIVE') {
-        const totalCeOI = rows.reduce((sum, r) => sum + (r.ce?.oi || 0), 0);
-        const totalPeOI = rows.reduce((sum, r) => sum + (r.pe?.oi || 0), 0);
-        if (totalCeOI === 0 || totalPeOI === 0) {
-          console.log(`${underlying} OI warning: CE OI=${totalCeOI}, PE OI=${totalPeOI} — broker may not be providing OI data`);
-        }
+      // Backend serves OI data from broker (market hours) or EOD snapshot (after hours).
+      // OI should be available regardless of market state.
+      const totalCeOI = rows.reduce((sum, r) => sum + (r.ce?.oi || 0), 0);
+      const totalPeOI = rows.reduce((sum, r) => sum + (r.pe?.oi || 0), 0);
+      if (totalCeOI === 0 || totalPeOI === 0) {
+        console.log(`${underlying} OI warning: CE OI=${totalCeOI}, PE OI=${totalPeOI} — broker/EOD may not be providing OI data`);
       }
 
       // Report all violations
@@ -280,9 +275,10 @@ test.describe('Option Chain - Data Validation @validation', () => {
 
       if (!chain) test.skip('No chain data');
 
-      // data_freshness must be present and one of the two valid values
+      // data_freshness must be present and one of the valid values
       expect(chain.data_freshness, 'data_freshness field must be present in chain response').toBeDefined();
-      expect(['LIVE', 'LAST_KNOWN'], `data_freshness must be 'LIVE' or 'LAST_KNOWN', got '${chain.data_freshness}'`)
+      const validFreshness = ['LIVE', 'LIVE_ENGINE', 'LAST_KNOWN', 'EOD_SNAPSHOT'];
+      expect(validFreshness, `data_freshness must be one of ${validFreshness.join('/')}, got '${chain.data_freshness}'`)
         .toContain(chain.data_freshness);
 
       console.log(`${underlying} data_freshness: ${chain.data_freshness}`);

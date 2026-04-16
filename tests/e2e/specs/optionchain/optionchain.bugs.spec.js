@@ -1,6 +1,5 @@
 import { test, expect } from '../../fixtures/auth.fixture.js';
 import { OptionChainPage } from '../../pages/OptionChainPage.js';
-import { getDataExpectation } from '../../helpers/market-status.helper.js';
 
 /**
  * Option Chain - Bug Reproduction Tests
@@ -229,13 +228,6 @@ test.describe('Option Chain - Bug Reproduction @bugs', () => {
 
   // ─── Bug 7: ATM row and nearby strikes should load data ─────────────────────
   test('BUG-7: ATM strike and adjacent strikes should have non-zero LTP data', async ({ page }) => {
-    // Non-zero LTP at ATM requires a live market session — LTPs are 0 when market is closed
-    const expectation = getDataExpectation();
-    if (expectation !== 'LIVE') {
-      test.skip('BUG-7 requires live market data (non-zero ATM LTP) — market is currently closed');
-      return;
-    }
-
     await expect(optionChainPage.table).toBeVisible();
 
     // Find the ATM row

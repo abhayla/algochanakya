@@ -2,13 +2,13 @@
 name: run-optionchain-tests
 description: >
   Runs all 39 Option Chain tests across 3 phases (backend pytest, frontend Vitest,
-  E2E Playwright headed) sequentially one-by-one with market-hours awareness,
-  dev stack health checks, fix-loop escalation, regression detection, and summary report.
-  Includes Phase 1-3 performance optimization tests (cache, vectorized IV/Greeks, live engine)
-  and live engine performance verification during market hours.
+  E2E Playwright headed) sequentially one-by-one with after-hours parity (same assertions
+  regardless of market state), dev stack health checks, fix-loop escalation, regression
+  detection, and summary report. Includes Phase 1-3 performance optimization tests
+  (cache, vectorized IV/Greeks, live engine) and live engine performance verification.
 allowed-tools: "Bash Read Grep Glob Write Edit Skill Agent"
 argument-hint: "[--phase backend|frontend|e2e|all] [--include-live] [--max-fix-attempts 3]"
-version: "1.9.0"
+version: "2.0.0"
 type: workflow
 triggers:
   - /run-optionchain-tests
@@ -45,19 +45,24 @@ that waste fix-loop cycles on non-code issues.
 
 ### 0a. Detect Market Status (IST)
 
-Determine current NSE market status using IST (UTC+5:30). This affects what "passing" means
-for E2E tests — 16 of 18 specs use `getDataExpectation()` from `market-status.helper.js`.
+Determine current NSE market status using IST (UTC+5:30). The backend ALWAYS serves option
+chain data regardless of market state — from live broker during market hours, or from broker
+close prices / EOD snapshot after hours. E2E tests run the SAME assertions in all market states.
+
+The only two genuinely market-dependent behaviors are:
+1. **WebSocket live ticking** — no ticks flow when market is closed (`isLiveTicking()` gate)
+2. **Value-changed-on-refresh** — data is static after hours, so "price changed" assertions are skipped
 
 ```
-Market Open:   Mon-Fri 9:15-15:30 IST, not an NSE holiday → expect live data
-Market Closed: Outside hours, weekends, holidays → expect empty states or cached data
+Market Open:   Mon-Fri 9:15-15:30 IST, not an NSE holiday → live ticks flow via WebSocket
+Market Closed: Outside hours, weekends, holidays → data present but static (no ticks)
 ```
 
 Log the detected status at the start:
 
 ```
 [MARKET STATUS] {OPEN|CLOSED} — {Day} {Date} {Time} IST
-  Implication: E2E tests will {expect live data | accept empty states}
+  Implication: All tests run identical assertions. WebSocket tick tests {will|will not} expect live updates.
 ```
 
 ### 0b. Check Credentials
@@ -173,26 +178,29 @@ This ensures:
 - **Market data:** AngelOne/SmartAPI (auto-TOTP, no manual intervention)
 - **Instruments:** Pre-loaded before tests start
 
-### 0e. SmartAPI Zero-Data Detection
+### 0e. Data Availability Verification
 
-**Known issue (observed 2026-04-16):** SmartAPI sometimes returns 0.00 LTP and 0 OI for ALL
-option strikes even during market hours. This is a **broker data quality issue**, not a code bug.
-
-**Detection:** After pre-warming the instrument cache (Step 0d), make a quick validation call:
+After pre-warming the instrument cache (Step 0d), verify the backend is serving data:
 ```
 GET /api/optionchain/chain?underlying=NIFTY&expiry={nearest_expiry}
 ```
-Check if ALL `ce.ltp` and `pe.ltp` values in the response are 0.00. If so:
 
+**Expected:** The response MUST contain:
+- `chain` array with strike rows (non-empty)
+- `spot_price` > 0
+- `data_freshness` is one of: `LIVE`, `LIVE_ENGINE`, `LAST_KNOWN`, `EOD_SNAPSHOT`
+
+The backend always provides data via a 3-tier fallback:
+1. **Live Engine** (market hours + WebSocket active) → `data_freshness: "LIVE_ENGINE"`
+2. **Broker adapter** (returns close prices after hours) → `data_freshness: "LAST_KNOWN"`
+3. **EOD Snapshot** (when ≥90% broker OI is zero) → `data_freshness: "EOD_SNAPSHOT"`
+
+**SmartAPI zero-data edge case:** SmartAPI sometimes returns 0.00 LTP and 0 OI for ALL
+strikes even during market hours. When detected:
 1. Log: `[SMARTAPI WARNING] Zero LTP for all strikes — broker may not be providing live data`
-2. **Do NOT fix-loop** data-dependent E2E tests that fail due to zero data
-3. Tests that fail solely because SmartAPI returns zeros should be logged as **BLOCKED (broker data)**,
-   not as code failures requiring fix-loop
-4. Affected specs: `crossverify.api`, `validation` (OI assertions), `uidetails` (OI bars),
-   `bugs` (ATM LTP), `websocket` (live tick updates)
-
-This check saves significant time — without it, 5+ specs trigger fix-loops that cannot
-succeed because the root cause is outside the application.
+2. The EOD snapshot fallback should activate (≥90% zero OI triggers snapshot)
+3. If chain is STILL empty after fallback, log as **BLOCKED (broker + EOD fallback failed)**
+4. Do NOT fix-loop data-dependent tests that fail due to broker zero-data
 
 ### 0f. Phase Continuation Policy
 
@@ -363,12 +371,18 @@ LTP cells in the option chain table use per-strike testids, NOT a generic class:
 
 Do NOT use `optionchain-ltp-cell` — this testid does not exist in the Vue component.
 
-### WebSocket Spec Market-Hours Warning
+### WebSocket Spec: Tick-Dependent vs Data-Display Tests
 
-`optionchain.websocket.spec.js` has a 600s (10 min) timeout block for live price update tests.
-During **market closed hours**, these tests may timeout waiting for ticks that never arrive.
-- If market is CLOSED and websocket tests timeout → log as SKIP (expected), not FAIL
-- Do NOT attempt to fix websocket timeout during market closed hours
+`optionchain.websocket.spec.js` contains two types of tests:
+
+1. **Data-display tests** (spot price, PCR, max pain, table structure, ATM row, LTP values) —
+   these run unconditionally. The backend always serves data regardless of market state.
+2. **Tick-dependent tests** (WebSocket subscription logging, live dot visibility) —
+   these use `isLiveTicking()` to gate tick-specific assertions. After hours, the tests
+   still run but accept that no WebSocket ticks flow.
+
+The 600s timeout `Live Price Updates` describe block tests data display, NOT live ticking.
+These tests should pass after hours because the backend provides data via close prices / EOD snapshot.
 
 ### Per-Test Process (Phase 3)
 
@@ -699,16 +713,18 @@ Tests should NOT assert `toBeDisabled()` during SWR refresh — instead assert t
 await expect(refreshButton).toContainText(/Loading|Refreshing/);
 ```
 
-### Visual Regression During Market Hours
+### Visual Regression: Market Hours vs After Hours
 
-Visual tests (`optionchain.visual.spec.js`) are inherently unstable during market hours even with
-masks for dynamic data. The 66%+ pixel diff occurs because:
-- Live spot prices change the ATM position, shifting which row gets the ATM badge/highlight
-- OI bar widths change with live data, affecting masked area boundaries
-- WebSocket ticks update between baseline capture and verification (even seconds apart)
+Visual tests (`optionchain.visual.spec.js`) are **more stable after market hours** because:
+- Data is static (no live ticks changing prices between baseline capture and verification)
+- ATM position is fixed (spot price doesn't change, so ATM row doesn't shift)
+- OI bar widths are constant (no real-time OI changes)
 
-Visual regression tests should ideally run during market CLOSED hours for stable baselines.
-During market OPEN, log visual failures as BLOCKED (market hours) rather than fix-looping.
+During market OPEN hours, visual tests are inherently unstable — live data changes between
+baseline capture and verification cause 60%+ pixel diffs even with masks.
+
+- **After hours:** Visual tests should produce stable, reliable results. Failures indicate real UI bugs.
+- **During market hours:** Log visual failures as BLOCKED (market hours) rather than fix-looping.
 
 ### CE OI Bar Soft-Pass Pattern
 
@@ -736,7 +752,7 @@ Only change if the value is explicitly a non-SmartAPI broker (e.g., `upstox`).
 - Always check for existing valid Zerodha token FIRST before opening the browser — Why: avoids unnecessary manual login when a valid session already exists
 - If no valid token exists, open browser UI to `/login` and click Zerodha button for manual login — Why: Zerodha is the login/order broker; user must enter credentials manually
 - Always verify SmartAPI is set as market data source after login — if not, navigate to Settings UI and change it. Why: option chain tests depend on SmartAPI for live prices; wrong data source (e.g., Upstox) means no data or wrong data
-- Always detect market status before E2E tests — Why: 16 of 18 E2E specs adapt behavior based on market hours; misinterpreting empty states as failures triggers unnecessary fix-loops
+- Always detect market status before E2E tests — Why: Step 3.5 (live engine verification) only runs during market hours; banner tests and WebSocket subscription tests adapt behavior via `isLiveTicking()`
 - Always use `--headed` mode and fullscreen for E2E tests — Why: user requires visual verification and leaves browser open for inspection
 - Always run tests one-by-one, never in batch — Why: batch runs hide which test caused a failure and make fix-loop targeting impossible
 - Always re-run previously passing tests after a fix — Why: fixes can introduce regressions; catching them immediately is cheaper than discovering them at the end
@@ -745,7 +761,8 @@ Only change if the value is explicitly a non-SmartAPI broker (e.g., `upstox`).
 - Always pre-warm SmartAPI instrument cache after authentication — Why: first option chain API call downloads 185k instruments (20-30s); without pre-warm, tests timeout
 - Always continue to the next phase even if previous phase has BLOCKED tests — Why: phases are independent; backend failures don't predict E2E failures
 - Always leave browser open after E2E testing — Why: user needs to inspect final state
-- Always run SmartAPI zero-data detection (Step 0e) before E2E Phase 3 — Why: prevents wasting 5+ fix-loop cycles on broker data quality issues that cannot be fixed in app code
+- Always run data availability verification (Step 0e) before E2E Phase 3 — Why: confirms backend 3-tier fallback is working and data is present regardless of market state
+- Always expect E2E tests to run identical assertions after hours as during market hours — Why: backend always serves data via broker close prices or EOD snapshot; only `isLiveTicking()` gates tick-dependent behavior (WebSocket subscription, live dot)
 - Always re-run happy path spec once before fix-looping if it fails on first run — Why: SmartAPI cold-start latency causes transient first-run failures that resolve on immediate retry
 - Always check user preferences API before debugging tests that assume specific defaults — Why: user prefs override store defaults (e.g., 100pt interval vs 50pt assumed in tests)
 - Always use `[data-testid^="optionchain-ce-ltp-"]` prefix selector for LTP cells, never `optionchain-ltp-cell` — Why: the Vue component uses per-strike testids, not a generic one
@@ -777,10 +794,12 @@ Only change if the value is explicitly a non-SmartAPI broker (e.g., `upstox`).
 - MUST NOT continue E2E Phase 3 if both core tier tests (happy + edge) fail — STOP and report. Why: specialized tests depend on core flows; running them wastes time
 - MUST NOT run more than `{max-fix-attempts}` fix-loop cycles without escalating to `/systematic-debugging` — switch strategy instead. Why: repeating the same approach indicates unclear root cause
 - MUST NOT fix-loop each individual failure in `optionchain.validation.spec.js` independently — fix the FIRST failure only, then re-run the whole file. Why: serial mode means failures cascade; fixing downstream symptoms wastes cycles
-- MUST NOT treat websocket test timeouts during market closed hours as code failures — log as SKIP. Why: no ticks flow when market is closed; 600s timeout is expected behavior
+- MUST NOT treat tick-dependent test behavior differences during market closed hours as code failures — WebSocket subscription and live dot tests use `isLiveTicking()` gate. Why: no ticks flow when market is closed, but data-display tests (spot price, PCR, ATM row) still run full assertions
 - MUST NOT auto-update visual baselines without asking the user — ask if diff is a bug or intentional change. Why: silently updating baselines masks real visual regressions
 - MUST NOT save screenshots to random locations (temp dirs, desktop, nested test folders) — use `screenshots/` at project root only. Why: scattered screenshots are impossible to review and clutter the repo
 - MUST NOT fix-loop tests that fail solely due to SmartAPI zero-data — log as BLOCKED (broker data) instead. Why: fix-loop cannot resolve broker data quality issues; it wastes all attempts and produces no useful fix
+- MUST NOT use `getDataExpectation()` or `assertDataOrEmptyState()` in E2E specs to gate assertions — these have been removed. Why: they weakened assertions after hours, letting bugs in the EOD/close-price pipeline go undetected. Use `isLiveTicking()` ONLY for genuinely tick-dependent behavior (WebSocket subscription, live dot visibility)
+- MUST NOT treat "market closed" as "expect empty states" — the backend ALWAYS serves data. Why: 3-tier fallback (live engine → broker close prices → EOD snapshot) ensures data is always present; tests must assert data presence unconditionally
 - MUST NOT assume `optionchain-ltp-cell` exists as a testid — use `optionchain-ce-ltp-{strike}` / `optionchain-pe-ltp-{strike}` prefix selectors. Why: the Vue component uses per-strike testids; using the wrong one causes silent "0 elements found" failures
 - MUST NOT hardcode default values (interval, strike range) in test assertions — verify behavior, not specific values. Why: user preferences override store defaults; tests break when run against a different user profile
 - MUST NOT fix-loop when ALL tests in a spec timeout in beforeEach — log as BLOCKED (SmartAPI slow) and move on. Why: this indicates SmartAPI responsiveness issues, not test code bugs; fix-loop will exhaust all attempts on the same timeout

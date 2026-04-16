@@ -1,6 +1,5 @@
 import { test, expect } from '../../fixtures/auth.fixture.js';
 import { OptionChainPage } from '../../pages/OptionChainPage.js';
-import { getDataExpectation } from '../../helpers/market-status.helper.js';
 
 /**
  * Option Chain Screen - Keyboard Shortcut Tests
@@ -71,8 +70,6 @@ test.describe('Option Chain - Keyboard Shortcuts @edge', () => {
   // ─── Greeks toggle shortcuts ───────────────────────────────────────────────
 
   test('should toggle Greeks with g key', async ({ authenticatedPage }) => {
-    const expectation = getDataExpectation();
-
     // Capture pre-toggle Greeks visibility
     const greekCell = authenticatedPage.locator('[data-testid^="optionchain-ce-delta-"]').first();
     const visibleBefore = await greekCell.isVisible().catch(() => false);
@@ -82,27 +79,16 @@ test.describe('Option Chain - Keyboard Shortcuts @edge', () => {
     // After toggle, visibility must have flipped
     const visibleAfter = await greekCell.isVisible().catch(() => false);
 
-    if (expectation === 'LIVE' || expectation === 'LAST_KNOWN') {
-      if (!(await hasChainData(authenticatedPage))) {
-        console.log('Chain loaded but has no data rows (broker error) — skipping data assertions');
-        await optionChainPage.assertPageVisible();
-        return;
-      }
-      // Data is present — Greek cells exist, so we can assert the actual flip
-      expect(visibleAfter).toBe(!visibleBefore);
-    } else {
-      // Market closed / no data — Greek cells may not be rendered at all.
-      // Assert that the toggle button itself is present and clickable (the
-      // shortcut did not crash the page).
-      await expect(
-        authenticatedPage.locator('[data-testid="optionchain-greeks-toggle"]')
-      ).toBeVisible();
+    if (!(await hasChainData(authenticatedPage))) {
+      console.log('Chain loaded but has no data rows (broker error) — skipping data assertions');
+      await optionChainPage.assertPageVisible();
+      return;
     }
+    // Data is present — Greek cells exist, so we can assert the actual flip
+    expect(visibleAfter).toBe(!visibleBefore);
   });
 
   test('should handle uppercase G key for Greeks toggle', async ({ authenticatedPage }) => {
-    const expectation = getDataExpectation();
-
     const greekCell = authenticatedPage.locator('[data-testid^="optionchain-ce-delta-"]').first();
     const visibleBefore = await greekCell.isVisible().catch(() => false);
 
@@ -110,18 +96,12 @@ test.describe('Option Chain - Keyboard Shortcuts @edge', () => {
 
     const visibleAfter = await greekCell.isVisible().catch(() => false);
 
-    if (expectation === 'LIVE' || expectation === 'LAST_KNOWN') {
-      if (!(await hasChainData(authenticatedPage))) {
-        console.log('Chain loaded but has no data rows (broker error) — skipping data assertions');
-        await optionChainPage.assertPageVisible();
-        return;
-      }
-      expect(visibleAfter).toBe(!visibleBefore);
-    } else {
-      await expect(
-        authenticatedPage.locator('[data-testid="optionchain-greeks-toggle"]')
-      ).toBeVisible();
+    if (!(await hasChainData(authenticatedPage))) {
+      console.log('Chain loaded but has no data rows (broker error) — skipping data assertions');
+      await optionChainPage.assertPageVisible();
+      return;
     }
+    expect(visibleAfter).toBe(!visibleBefore);
   });
 
   // ─── Input suppression ────────────────────────────────────────────────────

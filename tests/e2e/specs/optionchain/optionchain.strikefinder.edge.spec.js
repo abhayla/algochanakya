@@ -1,6 +1,5 @@
 import { test, expect } from '../../fixtures/auth.fixture.js';
 import { OptionChainPage } from '../../pages/OptionChainPage.js';
-import { getDataExpectation } from '../../helpers/market-status.helper.js';
 import { waitForApiResponse } from '../../helpers/wait-helpers.js';
 
 /**
@@ -92,12 +91,6 @@ test.describe('Option Chain - Strike Finder Edge Cases @edge', () => {
   });
 
   test('should clear previous result when searching again', async ({ page }) => {
-    const expectation = getDataExpectation();
-    if (expectation === 'PRE_OPEN' || expectation === 'CLOSED') {
-      test.skip('Strike Finder requires live market data to verify result change');
-      return;
-    }
-
     // First live search with delta 0.30
     await optionChainPage.setStrikeFinderMode('delta');
     await optionChainPage.setStrikeFinderType('CE');

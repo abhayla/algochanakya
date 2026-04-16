@@ -1,6 +1,5 @@
 import { test, expect } from '../../fixtures/auth.fixture.js';
 import { OptionChainPage } from '../../pages/OptionChainPage.js';
-import { getDataExpectation, getISTTimeString } from '../../helpers/market-status.helper.js';
 
 /**
  * Option Chain - Greeks Column Visibility Tests
@@ -9,9 +8,8 @@ import { getDataExpectation, getISTTimeString } from '../../helpers/market-statu
  * Greeks default to ON (showGreeks: true in store). The toggle hides/shows all four
  * Greek columns on both CE and PE sides simultaneously.
  *
- * Data sensitivity: Greek cell values are only populated when the broker returns valid
- * option data. Tests that inspect cell content gate on getDataExpectation() to avoid
- * false failures during market close or when instrument data is unavailable.
+ * Greeks are computed from LTP + spot price, which the backend always provides
+ * (from broker close prices or EOD snapshot). Tests run identically regardless of market state.
  */
 test.describe('Option Chain - Greeks Visibility @edge', () => {
   test.describe.configure({ timeout: 180000 });
@@ -42,14 +40,6 @@ test.describe('Option Chain - Greeks Visibility @edge', () => {
 
     if (chainState === 'error') {
       test.skip('Option chain returned an error — cannot assert Greek column visibility');
-      return;
-    }
-
-    const expectation = getDataExpectation();
-    if (expectation === 'CLOSED') {
-      // Under CLOSED state the chain may show empty state — still assert toggle visible
-      await expect(authenticatedPage.locator('[data-testid="optionchain-greeks-toggle"]')).toBeVisible();
-      console.log(`[Greeks] Market CLOSED (${getISTTimeString()}) — asserting toggle only`);
       return;
     }
 
@@ -88,15 +78,6 @@ test.describe('Option Chain - Greeks Visibility @edge', () => {
 
     if (chainState === 'error') {
       test.skip('Option chain returned an error — cannot assert Greek column visibility');
-      return;
-    }
-
-    const expectation = getDataExpectation();
-    if (expectation === 'CLOSED') {
-      console.log(`[Greeks] Market CLOSED (${getISTTimeString()}) — skipping cell-level assertion`);
-      // Still verify toggle interaction does not crash the page
-      await optionChainPage.toggleGreeks();
-      await expect(authenticatedPage.locator('[data-testid="optionchain-greeks-toggle"]')).toBeVisible();
       return;
     }
 
@@ -142,15 +123,6 @@ test.describe('Option Chain - Greeks Visibility @edge', () => {
       return;
     }
 
-    const expectation = getDataExpectation();
-    if (expectation === 'CLOSED') {
-      console.log(`[Greeks] Market CLOSED (${getISTTimeString()}) — skipping cell-level assertion`);
-      await optionChainPage.toggleGreeks();
-      await optionChainPage.toggleGreeks();
-      await expect(authenticatedPage.locator('[data-testid="optionchain-greeks-toggle"]')).toBeVisible();
-      return;
-    }
-
     await expect(optionChainPage.table).toBeVisible();
 
     if (!(await hasChainData(authenticatedPage))) {
@@ -190,15 +162,6 @@ test.describe('Option Chain - Greeks Visibility @edge', () => {
 
     if (chainState === 'error') {
       test.skip('Option chain returned an error — cannot assert delta values');
-      return;
-    }
-
-    const expectation = getDataExpectation();
-
-    // Delta values are only meaningful with live or last-known market data
-    if (expectation !== 'LIVE' && expectation !== 'LAST_KNOWN') {
-      console.log(`[Greeks] Market ${expectation} (${getISTTimeString()}) — skipping delta value assertions`);
-      await expect(authenticatedPage.locator('[data-testid="optionchain-greeks-toggle"]')).toBeVisible();
       return;
     }
 
@@ -263,8 +226,6 @@ test.describe('Option Chain - Greeks Visibility @edge', () => {
       return;
     }
 
-    const expectation = getDataExpectation();
-
     // Turn Greeks off before switching underlying
     await optionChainPage.toggleGreeks();
 
@@ -275,12 +236,6 @@ test.describe('Option Chain - Greeks Visibility @edge', () => {
     if (bnfState === 'error') {
       // BANKNIFTY chain failed to load — still verify page is stable
       await optionChainPage.assertPageVisible();
-      await expect(authenticatedPage.locator('[data-testid="optionchain-greeks-toggle"]')).toBeVisible();
-      return;
-    }
-
-    if (expectation === 'CLOSED') {
-      console.log(`[Greeks] Market CLOSED (${getISTTimeString()}) — asserting toggle visible after switch`);
       await expect(authenticatedPage.locator('[data-testid="optionchain-greeks-toggle"]')).toBeVisible();
       return;
     }
@@ -311,13 +266,6 @@ test.describe('Option Chain - Greeks Visibility @edge', () => {
 
     if (chainState === 'error') {
       test.skip('Option chain returned an error — cannot assert all Greek types');
-      return;
-    }
-
-    const expectation = getDataExpectation();
-    if (expectation === 'CLOSED') {
-      console.log(`[Greeks] Market CLOSED (${getISTTimeString()}) — asserting toggle only`);
-      await expect(authenticatedPage.locator('[data-testid="optionchain-greeks-toggle"]')).toBeVisible();
       return;
     }
 

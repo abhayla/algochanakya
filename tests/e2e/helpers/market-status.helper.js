@@ -150,6 +150,32 @@ export function getDataExpectation() {
 }
 
 /**
+ * Returns true only when WebSocket ticks are actively flowing (market open).
+ * Use this as the SOLE gate for genuinely market-dependent behavior:
+ *   - WebSocket live tick updates (ticks don't flow when market closed)
+ *   - Assertions that values change on refresh (after hours, data is static)
+ *
+ * All other assertions (table visible, OI bars, ATM styling, Greeks, PCR,
+ * strike selection, etc.) should run identically regardless of market state
+ * because the backend always serves data (broker close prices + EOD snapshot).
+ */
+export function isLiveTicking() {
+  return isMarketOpen();
+}
+
+/**
+ * Returns the expected data_freshness values from the API based on market state.
+ * The backend always returns one of: LIVE, LIVE_ENGINE, LAST_KNOWN, EOD_SNAPSHOT.
+ *
+ * @returns {string[]} Array of acceptable data_freshness values
+ */
+export function getExpectedFreshness() {
+  if (isMarketOpen()) return ['LIVE', 'LIVE_ENGINE'];
+  if (isPreOpen()) return ['PRE_OPEN', 'LAST_KNOWN'];
+  return ['LAST_KNOWN', 'EOD_SNAPSHOT'];
+}
+
+/**
  * Returns true if today is a weekend or NSE trading holiday.
  * Use in WebSocket tests that need to know whether live ticker connections
  * are expected (weekday after-hours may still have active connections;

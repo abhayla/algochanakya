@@ -41,6 +41,10 @@ export class OptionChainPage extends BasePage {
   get lotSize() { return this.getByTestId('optionchain-lot-size'); }
   get strikesRange() { return this.getByTestId('optionchain-strikes-range'); }
 
+  // Market status banners
+  get marketClosedBanner() { return this.getByTestId('optionchain-market-closed-banner'); }
+  get eodSnapshotBanner() { return this.getByTestId('optionchain-eod-snapshot-banner'); }
+
   // States
   get errorAlert() { return this.getByTestId('optionchain-error'); }
   get loadingState() { return this.getByTestId('optionchain-loading'); }

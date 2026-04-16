@@ -1,6 +1,5 @@
 import { test, expect } from '../../fixtures/auth.fixture.js';
 import { OptionChainPage } from '../../pages/OptionChainPage.js';
-import { getDataExpectation } from '../../helpers/market-status.helper.js';
 import { waitForApiResponse } from '../../helpers/wait-helpers.js';
 
 /**
@@ -72,8 +71,7 @@ test.describe('Option Chain - Strike Finder Happy Path @happy', () => {
   });
 
   test('should search strike by delta', async ({ authenticatedPage }) => {
-    const expectation = getDataExpectation();
-    if (expectation === 'PRE_OPEN' || expectation === 'CLOSED' || !chainLoadedSuccessfully) {
+    if (!chainLoadedSuccessfully) {
       test.skip('Strike Finder requires a successfully loaded option chain');
       return;
     }
@@ -104,8 +102,7 @@ test.describe('Option Chain - Strike Finder Happy Path @happy', () => {
   });
 
   test('should search strike by premium', async ({ authenticatedPage }) => {
-    const expectation = getDataExpectation();
-    if (expectation === 'PRE_OPEN' || expectation === 'CLOSED' || !chainLoadedSuccessfully) {
+    if (!chainLoadedSuccessfully) {
       test.skip('Strike Finder requires a successfully loaded option chain');
       return;
     }
@@ -136,8 +133,7 @@ test.describe('Option Chain - Strike Finder Happy Path @happy', () => {
   });
 
   test('should display strike result with all details', async ({ authenticatedPage }) => {
-    const expectation = getDataExpectation();
-    if (expectation === 'PRE_OPEN' || expectation === 'CLOSED' || !chainLoadedSuccessfully) {
+    if (!chainLoadedSuccessfully) {
       test.skip('Strike Finder requires a successfully loaded option chain');
       return;
     }

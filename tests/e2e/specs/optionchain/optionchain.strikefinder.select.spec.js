@@ -1,6 +1,5 @@
 import { test, expect } from '../../fixtures/auth.fixture.js';
 import { OptionChainPage } from '../../pages/OptionChainPage.js';
-import { getDataExpectation, getISTTimeString } from '../../helpers/market-status.helper.js';
 import { waitForApiResponse } from '../../helpers/wait-helpers.js';
 
 /**
@@ -35,9 +34,8 @@ test.describe('Option Chain - Strike Finder Select Flow @happy', () => {
   // ---------------------------------------------------------------------------
 
   test('should close strike finder after selecting a strike', async ({ authenticatedPage }) => {
-    const expectation = getDataExpectation();
-    if (expectation === 'PRE_OPEN' || expectation === 'CLOSED' || !chainLoadedSuccessfully) {
-      test.skip(`Strike Finder select requires a loaded chain — market state: ${expectation} (${getISTTimeString()})`);
+    if (!chainLoadedSuccessfully) {
+      test.skip('Strike Finder select requires a loaded chain');
       return;
     }
 
@@ -73,9 +71,8 @@ test.describe('Option Chain - Strike Finder Select Flow @happy', () => {
   // ---------------------------------------------------------------------------
 
   test('should scroll to selected strike row', async ({ authenticatedPage }) => {
-    const expectation = getDataExpectation();
-    if (expectation === 'PRE_OPEN' || expectation === 'CLOSED' || !chainLoadedSuccessfully) {
-      test.skip(`Strike scroll requires a loaded chain — market state: ${expectation} (${getISTTimeString()})`);
+    if (!chainLoadedSuccessfully) {
+      test.skip('Strike scroll requires a loaded chain');
       return;
     }
 
@@ -128,9 +125,8 @@ test.describe('Option Chain - Strike Finder Select Flow @happy', () => {
   // ---------------------------------------------------------------------------
 
   test('should select strike from premium mode', async ({ authenticatedPage }) => {
-    const expectation = getDataExpectation();
-    if (expectation === 'PRE_OPEN' || expectation === 'CLOSED' || !chainLoadedSuccessfully) {
-      test.skip(`Premium mode select requires a loaded chain — market state: ${expectation} (${getISTTimeString()})`);
+    if (!chainLoadedSuccessfully) {
+      test.skip('Premium mode select requires a loaded chain');
       return;
     }
 
@@ -165,9 +161,8 @@ test.describe('Option Chain - Strike Finder Select Flow @happy', () => {
   // ---------------------------------------------------------------------------
 
   test('should select PE strike and close finder', async ({ authenticatedPage }) => {
-    const expectation = getDataExpectation();
-    if (expectation === 'PRE_OPEN' || expectation === 'CLOSED' || !chainLoadedSuccessfully) {
-      test.skip(`PE select requires a loaded chain — market state: ${expectation} (${getISTTimeString()})`);
+    if (!chainLoadedSuccessfully) {
+      test.skip('PE select requires a loaded chain');
       return;
     }
 
@@ -202,9 +197,8 @@ test.describe('Option Chain - Strike Finder Select Flow @happy', () => {
   // ---------------------------------------------------------------------------
 
   test('should show result with strike, LTP and delta values before selecting', async ({ authenticatedPage }) => {
-    const expectation = getDataExpectation();
-    if (expectation === 'PRE_OPEN' || expectation === 'CLOSED' || !chainLoadedSuccessfully) {
-      test.skip(`Result detail check requires a loaded chain — market state: ${expectation} (${getISTTimeString()})`);
+    if (!chainLoadedSuccessfully) {
+      test.skip('Result detail check requires a loaded chain');
       return;
     }
 
@@ -253,9 +247,8 @@ test.describe('Option Chain - Strike Finder Select Flow @happy', () => {
   // ---------------------------------------------------------------------------
 
   test('should find matching data-strike row in chain after selecting', async ({ authenticatedPage }) => {
-    const expectation = getDataExpectation();
-    if (expectation === 'PRE_OPEN' || expectation === 'CLOSED' || !chainLoadedSuccessfully) {
-      test.skip(`data-strike row check requires a loaded chain — market state: ${expectation} (${getISTTimeString()})`);
+    if (!chainLoadedSuccessfully) {
+      test.skip('data-strike row check requires a loaded chain');
       return;
     }
 
