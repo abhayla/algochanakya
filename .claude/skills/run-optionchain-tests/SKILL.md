@@ -181,57 +181,22 @@ If login fails (timeout after 120s, user closes browser, redirect never happens)
 - Do NOT attempt to run any E2E tests without a valid session
 - Suggest: "Please re-run the skill and complete the Zerodha login within 120 seconds"
 
-**Step 4 — Verify and set SmartAPI as market data source via Settings UI:**
+**Step 4 — Delegate SmartAPI setup to `smartapi-session-manager` agent:**
 
-After login, ensure the market data source is SmartAPI (AngelOne). Check via API first,
-then use the Settings UI if it needs changing.
+After Zerodha login is confirmed, dispatch the `smartapi-session-manager` agent to own the rest of the market-data setup as a single concern. The agent performs:
 
-1. Call `GET /api/preferences/` with auth token to check current `market_data_source`
-2. If already `smartapi` → log `[DATA SOURCE] SmartAPI already active — skipping settings change` and skip to Step 5
-3. If NOT `smartapi` (e.g., `upstox`, `platform`, or any other value):
-   a. Navigate to `http://localhost:5173/settings` in the browser
-   b. Wait for settings page to load (`domcontentloaded`)
-   c. Click the SmartAPI source card (`[data-testid="settings-source-card-smartapi"]`)
-   d. Click the Save button (`[data-testid="settings-broker-save-btn"]`)
-   e. Wait for save success message (`[data-testid="settings-broker-save-success"]`) to appear
-   f. Log: `[DATA SOURCE] Changed market data source to SmartAPI via Settings UI`
-4. Verify SmartAPI credentials are active: `GET /api/smartapi/credentials` → `has_credentials: true, is_active: true`
-5. If SmartAPI session is not active, call `POST /api/smartapi/authenticate` (uses auto-TOTP from `.env`)
+1. Session validity check (`GET /api/smartapi/credentials`)
+2. Auto-TOTP re-authentication if needed (`POST /api/smartapi/authenticate`)
+3. Data-source preference verification via `GET /api/user/preferences/` — if not `smartapi` / `platform` / `NOT_SET`, switches via the Settings UI card + save button
+4. Instrument cache pre-warm via `GET /api/options/expiries?underlying=NIFTY`
+5. Data-availability probe via `GET /api/optionchain/chain?underlying=NIFTY&expiry={nearest}` with zero-LTP classification
 
-**Pre-warm SmartAPI instrument cache:**
-After SmartAPI is authenticated, pre-warm the instrument cache to avoid cold-start timeouts:
-1. Call `GET /api/options/expiries?underlying=NIFTY` with the auth token
-2. This triggers SmartAPI to download ~185k instruments (takes 20-30s)
-3. Without this, the first option chain test will timeout waiting for instrument data
+The agent returns a structured verdict:
+- `READY` → proceed to STEP 1 (or later phase)
+- `DEGRADED(reason)` → proceed but downgrade data assertions (accept `EOD_SNAPSHOT` as valid, expect static values)
+- `BLOCKED(reason)` → STOP; log the reason; do NOT fix-loop data-dependent tests (broker-side failure, not code)
 
-This ensures:
-- **Login/orders:** Zerodha/Kite (OAuth with manual TOTP)
-- **Market data:** AngelOne/SmartAPI (auto-TOTP, no manual intervention)
-- **Instruments:** Pre-loaded before tests start
-
-### 0e. Data Availability Verification
-
-After pre-warming the instrument cache (Step 0d), verify the backend is serving data:
-```
-GET /api/optionchain/chain?underlying=NIFTY&expiry={nearest_expiry}
-```
-
-**Expected:** The response MUST contain:
-- `chain` array with strike rows (non-empty)
-- `spot_price` > 0
-- `data_freshness` is one of: `LIVE`, `LIVE_ENGINE`, `LAST_KNOWN`, `EOD_SNAPSHOT`
-
-The backend always provides data via a 3-tier fallback:
-1. **Live Engine** (market hours + WebSocket active) → `data_freshness: "LIVE_ENGINE"`
-2. **Broker adapter** (returns close prices after hours) → `data_freshness: "LAST_KNOWN"`
-3. **EOD Snapshot** (when ≥90% broker OI is zero) → `data_freshness: "EOD_SNAPSHOT"`
-
-**SmartAPI zero-data edge case:** SmartAPI sometimes returns 0.00 LTP and 0 OI for ALL
-strikes even during market hours. When detected:
-1. Log: `[SMARTAPI WARNING] Zero LTP for all strikes — broker may not be providing live data`
-2. The EOD snapshot fallback should activate (≥90% zero OI triggers snapshot)
-3. If chain is STILL empty after fallback, log as **BLOCKED (broker + EOD fallback failed)**
-4. Do NOT fix-loop data-dependent tests that fail due to broker zero-data
+See `.claude/agents/smartapi-session-manager.md` for the full checklist, endpoint reference, and zero-LTP classification rules. This consolidates what used to live as ~50 lines of inline prose across Step 0d Step 4, pre-warm, and Step 0e.
 
 ### 0f. Phase Continuation Policy
 

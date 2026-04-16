@@ -88,6 +88,14 @@ past (e.g., committed before the hook existed).
 - Prefer `<script setup>` over Options API
 - Use `computed()` for derived state, not methods
 - Clean up side effects in `onUnmounted()` (timers, WebSocket subscriptions)
+- Prefer `defineProps<{...}>()` TypeScript generic form over the object form (`defineProps({...})`). WARN, not FAIL — legacy components may continue using the object form until intentionally refactored.
+
+### 5. Unique testid in loops
+
+Elements inside `v-for` MUST use a dynamic `:data-testid` that interpolates a unique key (the loop item's `id`, index, or a composite key). Static `data-testid="activity-item"` inside `v-for="item in items"` produces N duplicates at runtime, making E2E selectors ambiguous.
+
+- FAIL if static `data-testid` appears on an element inside `v-for`
+- PASS if `:data-testid="`<prefix>-${item.id}`"` or similar is used
 
 ## Output format
 
