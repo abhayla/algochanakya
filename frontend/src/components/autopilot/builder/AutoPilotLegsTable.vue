@@ -7,7 +7,6 @@
 import { computed, ref, onMounted, watch } from 'vue'
 import { useAutopilotStore } from '@/stores/autopilot'
 import { useWatchlistStore } from '@/stores/watchlist'
-import api from '@/services/api'
 import AutoPilotLegRow from './AutoPilotLegRow.vue'
 import StrikeLadder from './StrikeLadder.vue'
 import '@/assets/styles/strategy-table.css'
@@ -46,24 +45,22 @@ const openStrikeLadder = async (legIndex) => {
   currentLegIndex.value = legIndex
   loadingSpotPrice.value = true
 
-  // Fetch current spot price from API
-  try {
-    const underlying = store.builder.strategy.underlying || 'NIFTY'
-    const response = await api.get(`/api/v1/autopilot/spot-price/${underlying}`)
-    currentSpotPrice.value = response.data.data.ltp
-  } catch (error) {
-    console.error('Error fetching spot price:', error)
-    // Fallback to approximate values
+  // Fetch current spot price via store
+  const underlying = store.builder.strategy.underlying || 'NIFTY'
+  const result = await store.fetchAutopilotSpotPrice(underlying)
+  if (result.success) {
+    currentSpotPrice.value = result.data?.data?.ltp
+  } else {
+    console.error('Error fetching spot price:', result.error)
     const fallbackPrices = {
-      'NIFTY': 24200,
-      'BANKNIFTY': 52000,
-      'FINNIFTY': 21000,
-      'SENSEX': 80000
+      NIFTY: 24200,
+      BANKNIFTY: 52000,
+      FINNIFTY: 21000,
+      SENSEX: 80000,
     }
-    currentSpotPrice.value = fallbackPrices[store.builder.strategy.underlying] || 24200
-  } finally {
-    loadingSpotPrice.value = false
+    currentSpotPrice.value = fallbackPrices[underlying] || 24200
   }
+  loadingSpotPrice.value = false
 
   showStrikeLadder.value = true
 }
@@ -122,17 +119,14 @@ watch(
     const expiry = store.getExpiryFromType(expiryType) || store.builder.expiry
 
     if (underlying && expiry) {
-      try {
-        const response = await api.get(
-          `/api/v1/autopilot/option-chain/expected-move-range/${underlying}/${expiry}`
-        )
+      const result = await store.fetchExpectedMoveRange(underlying, expiry)
+      if (result.success && result.data) {
         expectedMoveData.value = {
-          lower_bound: response.data.lower_bound,
-          upper_bound: response.data.upper_bound
+          lower_bound: result.data.lower_bound,
+          upper_bound: result.data.upper_bound,
         }
-      } catch (error) {
-        console.error('Error fetching expected move:', error)
-        // Reset on error
+      } else {
+        console.error('Error fetching expected move:', result.error)
         expectedMoveData.value = { lower_bound: 0, upper_bound: 0 }
       }
     }

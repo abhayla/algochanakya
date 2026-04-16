@@ -178,10 +178,13 @@
 </template>
 
 <script>
-import api from '@/services/api'
+import { useAutopilotStore } from '@/stores/autopilot'
 
 export default {
   name: 'StrikeLadder',
+  setup() {
+    return { autopilotStore: useAutopilotStore() }
+  },
   props: {
     underlying: {
       type: String,
@@ -258,23 +261,22 @@ export default {
       this.loading = true
       this.error = null
 
-      try {
-        // Fetch real option chain data from API
-        const response = await api.get(`/api/v1/autopilot/option-chain/${this.underlying}/${this.expiry}`)
-
-        // Process the API response
-        this.strikes = this.processOptionChain(response.data)
+      const result = await this.autopilotStore.fetchAutopilotOptionChainRaw(
+        this.underlying,
+        this.expiry
+      )
+      if (result.success) {
+        this.strikes = this.processOptionChain(result.data)
         this.calculateATM()
         this.calculateExpectedMove()
         this.applyFilters()
-      } catch (error) {
-        console.error('Error fetching option chain:', error)
+      } else {
+        console.error('Error fetching option chain:', result.error)
         this.error = 'Failed to load option chain. Please try again.'
         this.strikes = []
         this.filteredStrikes = []
-      } finally {
-        this.loading = false
       }
+      this.loading = false
     },
     processOptionChain(apiResponse) {
       // Transform API response to component format

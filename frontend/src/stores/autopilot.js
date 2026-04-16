@@ -1770,6 +1770,62 @@ export const useAutopilotStore = defineStore('autopilot', {
       }
     },
 
+    async fetchAutopilotSpotPrice(ul) {
+      try {
+        const response = await api.get(`/api/v1/autopilot/spot-price/${ul}`)
+        return { success: true, data: response.data }
+      } catch (error) {
+        return {
+          success: false,
+          error: error.response?.data?.detail || error.message,
+          data: null,
+        }
+      }
+    },
+
+    async fetchExpectedMoveRange(ul, expiry) {
+      try {
+        const response = await api.get(
+          `/api/v1/autopilot/option-chain/expected-move-range/${ul}/${expiry}`
+        )
+        return { success: true, data: response.data }
+      } catch (error) {
+        return {
+          success: false,
+          error: error.response?.data?.detail || error.message,
+          data: null,
+        }
+      }
+    },
+
+    async previewStrikes(params) {
+      try {
+        const response = await api.get('/api/v1/autopilot/strikes/preview', { params })
+        return { success: true, data: response.data }
+      } catch (error) {
+        return {
+          success: false,
+          error: error.response?.data?.detail || error.message,
+          data: null,
+        }
+      }
+    },
+
+    async fetchAutopilotOptionChainRaw(ul, expiry) {
+      try {
+        const response = await api.get(
+          `/api/v1/autopilot/option-chain/${ul}/${expiry}`
+        )
+        return { success: true, data: response.data }
+      } catch (error) {
+        return {
+          success: false,
+          error: error.response?.data?.detail || error.message,
+          data: null,
+        }
+      }
+    },
+
     // ========================================================================
     // MONITORING / ANALYTICS / SUGGESTIONS — added during data-flow migration
     // ========================================================================
