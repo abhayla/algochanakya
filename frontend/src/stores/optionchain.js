@@ -36,6 +36,8 @@ export const useOptionChainStore = defineStore('optionchain', () => {
   const isLoading = ref(false)
   const error = ref(null)
 
+  const _expiryCache = {}
+
   // Live prices from WebSocket (token -> tick data)
   const livePrices = ref({})
   const isLiveUpdatesEnabled = ref(true)
@@ -205,17 +207,26 @@ export const useOptionChainStore = defineStore('optionchain', () => {
       max_pain: 0,
       atm_strike: 0
     }
-    await fetchExpiries()
   }
 
-  async function fetchExpiries() {
+  async function fetchExpiries(ul) {
+    const key = ul || underlying.value
+    if (_expiryCache[key]) {
+      expiries.value = _expiryCache[key]
+      if (expiries.value.length > 0 && !expiry.value) {
+        expiry.value = expiries.value[0]
+      }
+      return { success: true }
+    }
+
     try {
       const response = await api.get('/api/options/expiries', {
-        params: { underlying: underlying.value }
+        params: { underlying: key }
       })
-      expiries.value = response.data.expiries || []
+      const data = response.data.expiries || []
+      _expiryCache[key] = data
+      expiries.value = data
 
-      // Auto-select first expiry if available
       if (expiries.value.length > 0 && !expiry.value) {
         expiry.value = expiries.value[0]
       }

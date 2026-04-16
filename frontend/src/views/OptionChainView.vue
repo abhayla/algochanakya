@@ -414,7 +414,15 @@ const getChangeClass = (value) => {
 // Actions
 const handleUnderlyingChange = async (ul) => {
   await store.setUnderlying(ul)
-  if (store.expiry) {
+
+  // Fire expiries + chain fetch in parallel for faster tab switch
+  await Promise.all([
+    store.fetchExpiries(ul),
+    store.expiry ? store.fetchOptionChain() : Promise.resolve()
+  ])
+
+  // If expiry was auto-selected by fetchExpiries but chain wasn't loaded yet
+  if (!store.chain.length && store.expiry) {
     await store.fetchOptionChain()
   }
 }
@@ -527,8 +535,12 @@ onMounted(async () => {
     watchlistStore.connectWebSocket()
   }
 
-  await store.fetchExpiries()
-  if (store.expiry) {
+  await Promise.all([
+    store.fetchExpiries(),
+    store.expiry ? store.fetchOptionChain() : Promise.resolve()
+  ])
+
+  if (!store.chain.length && store.expiry) {
     await store.fetchOptionChain()
   }
 })

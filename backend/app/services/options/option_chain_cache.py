@@ -1,0 +1,139 @@
+"""
+Option Chain Cache Service.
+
+Redis response cache (after-hours only) + request coalescing + platform adapter singleton.
+Cache key: optionchain:{underlying}:{expiry}
+TTL: seconds until next market open (None during live market = no caching).
+"""
+import asyncio
+import json
+import logging
+import time
+from typing import Any, Callable, Optional
+
+from app.database import get_redis
+from app.utils.market_hours import is_market_open, get_next_market_open, _ist_now
+from app.services.brokers.market_data.factory import get_platform_market_data_adapter
+
+logger = logging.getLogger(__name__)
+
+CACHE_KEY_PREFIX = "optionchain"
+
+
+# ---------------------------------------------------------------------------
+# TTL
+# ---------------------------------------------------------------------------
+
+def get_cache_ttl_seconds() -> Optional[int]:
+    """Seconds until next market open, or None if market is currently open."""
+    if is_market_open():
+        return None
+    now = _ist_now()
+    next_open = get_next_market_open(now)
+    ttl = int((next_open - now).total_seconds())
+    return max(ttl, 60)  # Floor at 60s to avoid degenerate TTLs near open
+
+
+def _cache_key(underlying: str, expiry: str) -> str:
+    return f"{CACHE_KEY_PREFIX}:{underlying}:{expiry}"
+
+
+# ---------------------------------------------------------------------------
+# Redis read / write (fault-tolerant — never raises on Redis failure)
+# ---------------------------------------------------------------------------
+
+async def get_cached_response(underlying: str, expiry: str) -> Optional[dict]:
+    """Check Redis for a cached option chain response. Returns None on miss or failure."""
+    try:
+        redis = await get_redis()
+        if redis is None:
+            return None
+        cached = await redis.get(_cache_key(underlying, expiry))
+        if cached:
+            logger.debug("[Cache] HIT %s:%s", underlying, expiry)
+            return json.loads(cached)
+    except Exception as e:
+        logger.warning("[Cache] Redis read failed: %s", e)
+    return None
+
+
+async def store_cached_response(underlying: str, expiry: str, result: dict) -> None:
+    """Store computed response in Redis. No-op if market is open or Redis is down."""
+    ttl = get_cache_ttl_seconds()
+    if ttl is None:
+        return
+    try:
+        redis = await get_redis()
+        if redis is None:
+            return
+        payload = json.dumps(result, default=str)
+        await redis.setex(_cache_key(underlying, expiry), ttl, payload)
+        logger.info("[Cache] Stored %s:%s TTL=%ds (%dKB)", underlying, expiry, ttl, len(payload) // 1024)
+    except Exception as e:
+        logger.warning("[Cache] Redis write failed: %s", e)
+
+
+# ---------------------------------------------------------------------------
+# Request coalescing — prevents thundering herd on cache miss
+# ---------------------------------------------------------------------------
+
+_inflight: dict[str, asyncio.Future] = {}
+
+
+async def get_or_compute(
+    underlying: str,
+    expiry: str,
+    compute_fn: Callable[[], Any],
+) -> dict:
+    """
+    Cache-first with request coalescing.
+
+    1. Redis hit → return immediately
+    2. Another request already computing this key → await its result
+    3. First request → call compute_fn(), cache result, return
+    """
+    # 1. Redis hit
+    cached = await get_cached_response(underlying, expiry)
+    if cached is not None:
+        return cached
+
+    # 2. Coalesce: if another coroutine is already computing, await it
+    key = _cache_key(underlying, expiry)
+    if key in _inflight:
+        return await _inflight[key]
+
+    # 3. I'm the first — compute, cache, serve
+    loop = asyncio.get_running_loop()
+    future = loop.create_future()
+    _inflight[key] = future
+    try:
+        result = await compute_fn()
+        await store_cached_response(underlying, expiry, result)
+        future.set_result(result)
+        return result
+    except Exception as e:
+        future.set_exception(e)
+        raise
+    finally:
+        _inflight.pop(key, None)
+
+
+# ---------------------------------------------------------------------------
+# Platform adapter singleton — avoids per-request adapter creation
+# ---------------------------------------------------------------------------
+
+_cached_adapter: Optional[tuple] = None  # (adapter, created_at_timestamp)
+_ADAPTER_TTL = 3600  # 1 hour
+
+
+async def get_cached_platform_adapter(db):
+    """Return a cached platform-level market data adapter, refreshing if stale."""
+    global _cached_adapter
+    now = time.time()
+    if _cached_adapter is not None:
+        adapter, created_at = _cached_adapter
+        if now - created_at < _ADAPTER_TTL and adapter.is_connected:
+            return adapter
+    adapter = await get_platform_market_data_adapter(db)
+    _cached_adapter = (adapter, now)
+    return adapter

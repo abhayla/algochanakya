@@ -91,6 +91,43 @@ def get_last_trading_close(now: datetime = None) -> datetime:
     )
 
 
+def get_next_market_open(now: datetime = None) -> datetime:
+    """
+    Returns the next market open datetime (9:15 IST).
+    Skips weekends and NSE holidays.
+
+    Examples:
+        - Friday 18:00 → Monday 9:15
+        - Saturday 10:00 → Monday 9:15
+        - Monday 08:00 → Monday 9:15 (same day, before open)
+        - Wednesday 12:00 → Thursday 9:15
+        - Day before holiday → day after holiday 9:15
+    """
+    if now is None:
+        now = _ist_now()
+
+    candidate = now.date()
+    now_minutes = now.hour * 60 + now.minute
+    open_minutes = _MARKET_OPEN[0] * 60 + _MARKET_OPEN[1]  # 555
+
+    # If today is a trading day and market hasn't opened yet, today qualifies
+    if _is_trading_day(candidate) and now_minutes < open_minutes:
+        return datetime(
+            candidate.year, candidate.month, candidate.day,
+            _MARKET_OPEN[0], _MARKET_OPEN[1], tzinfo=IST,
+        )
+
+    # Otherwise, find the next trading day
+    candidate += timedelta(days=1)
+    while not _is_trading_day(candidate):
+        candidate += timedelta(days=1)
+
+    return datetime(
+        candidate.year, candidate.month, candidate.day,
+        _MARKET_OPEN[0], _MARKET_OPEN[1], tzinfo=IST,
+    )
+
+
 def get_data_freshness() -> str:
     """
     Returns 'LIVE' when market is open, 'LAST_KNOWN' otherwise.
