@@ -4,10 +4,11 @@ description: >
   Runs all 39 Option Chain tests across 3 phases (backend pytest, frontend Vitest,
   E2E Playwright headed) sequentially one-by-one with market-hours awareness,
   dev stack health checks, fix-loop escalation, regression detection, and summary report.
-  Includes Phase 1-3 performance optimization tests (cache, vectorized IV/Greeks, live engine).
+  Includes Phase 1-3 performance optimization tests (cache, vectorized IV/Greeks, live engine)
+  and live engine performance verification during market hours.
 allowed-tools: "Bash Read Grep Glob Write Edit Skill Agent"
 argument-hint: "[--phase backend|frontend|e2e|all] [--include-live] [--max-fix-attempts 3]"
-version: "1.8.0"
+version: "1.9.0"
 type: workflow
 triggers:
   - /run-optionchain-tests
@@ -419,6 +420,122 @@ Create this directory if it does not exist at the start of Phase 3. Clear any pr
 
 ---
 
+## STEP 3.5: Live Engine Performance Verification (Market Hours Only)
+
+**Gate:** SKIP this step entirely if market is CLOSED. The live engine only works when
+WebSocket ticks are flowing (requires active market + connected WebSocket client).
+
+This step validates that the Phase 3 `OptionChainLiveEngine` integration is actually
+delivering sub-second option chain API responses. The engine was wired into the tick
+pipeline in `main.py` and integrated into the route in `optionchain.py`.
+
+### Prerequisites
+
+- Backend running on port 8001
+- Frontend running on port 5173
+- User logged in with valid Zerodha session
+- SmartAPI authenticated and providing live data
+- Market OPEN (Mon-Fri 9:15-15:30 IST, not an NSE holiday)
+
+### 3.5a. Verify Live Engine Wiring
+
+Check backend logs for the engine initialization message:
+
+```
+[SUCCESS] Option Chain Live Engine: Wired into tick pipeline
+```
+
+If missing, the engine failed to initialize — check backend startup logs for errors.
+
+### 3.5b. Prime the Engine (First Request)
+
+The live engine only has data after two things happen:
+1. A REST API request registers the chain tokens (cache miss path)
+2. WebSocket ticks flow for those tokens (requires active WS subscription)
+
+**Step 1 — Open Option Chain page in browser:**
+Navigate to `http://localhost:5173/optionchain` in the headed browser. This:
+- Triggers a REST API call → registers tokens with engine
+- Opens a WebSocket connection → ticks start flowing to engine
+
+**Step 2 — Wait for ticks to arrive:**
+Wait 10-15 seconds for the WebSocket to establish and ticks to populate the engine.
+
+### 3.5c. Measure Fast-Path Response Time
+
+**Step 1 — Make a timed API request:**
+```bash
+# Get expiry from the option chain page (or use nearest expiry)
+EXPIRY=$(curl -s -H "Authorization: Bearer $(cat tests/config/.auth-token)" \
+  http://localhost:8001/api/options/expiries?underlying=NIFTY | \
+  python -c "import sys,json; print(json.load(sys.stdin)['expiries'][0])")
+
+# Timed request — measure total response time
+START=$(date +%s%N)
+curl -s -o /dev/null -w "%{time_total}" \
+  -H "Authorization: Bearer $(cat tests/config/.auth-token)" \
+  "http://localhost:8001/api/optionchain/chain?underlying=NIFTY&expiry=$EXPIRY"
+```
+
+**Step 2 — Check backend logs for `LIVE ENGINE HIT`:**
+```bash
+# Look for the fast-path log line in backend output
+# Pattern: [OptionChain] LIVE ENGINE HIT — NIFTY:2026-xx-xx (N ticks, Xs old)
+```
+
+**Step 3 — Evaluate results:**
+
+| Observation | Verdict | Action |
+|---|---|---|
+| `LIVE ENGINE HIT` in logs + response < 500ms | **PASS** — fast path active | Record timing |
+| `LIVE ENGINE HIT` in logs + response 500ms-2s | **WARN** — spot price fetch may be slow | Log as partial win |
+| No `LIVE ENGINE HIT` in logs | **INFO** — engine not triggered | Check: (a) ticks flowing? (b) snapshot registered? (c) snapshot fresh? |
+| Response still 2-7s | **INFO** — normal path used | Engine may not have fresh ticks yet |
+
+**IMPORTANT:** The live engine is an **optimization**, not a requirement. If it doesn't trigger
+(e.g., no WebSocket subscription active, ticks not flowing), the normal broker API path is used.
+This step is informational — do NOT fail the test suite based on engine performance.
+
+### 3.5d. Record Performance Metrics
+
+Log the following in the summary report:
+
+```
+### Live Engine Performance (Market Hours)
+| Metric | Value |
+|---|---|
+| Engine Initialized | Yes/No |
+| Fast Path Triggered | Yes/No |
+| Tick Count (at measurement) | {N} |
+| Snapshot Age | {X}s |
+| API Response Time (fast path) | {X}ms |
+| API Response Time (normal path) | {X}ms |
+| Speedup Factor | {X}x |
+```
+
+### What This Step Does NOT Verify
+
+- Does NOT verify the "<10ms" marketing claim — that was an estimate, not a benchmark
+- Does NOT verify the engine under load or with multiple concurrent users
+- Does NOT verify the engine handles ticker disconnection gracefully
+- Does NOT verify `_build_chain_from_live_snapshot()` produces byte-identical output to normal path
+  (change/change_pct and bid/ask are always 0 in live engine path since ticks don't carry close/depth)
+
+### Known Limitations of Live Engine Fast Path
+
+1. **No change/change_pct:** Ticker ticks don't include previous close, so `change` and `change_pct`
+   are always 0 in the fast path. The normal path gets these from broker quote APIs.
+2. **No bid/ask depth:** Ticks carry LTP but not order book depth. `bid` and `ask` are always 0.
+3. **Spot price still requires an API call:** The engine tracks option tokens only. Spot price is
+   fetched from the platform adapter, adding 50-200ms to the fast path.
+4. **Stale after WebSocket disconnect:** If the WebSocket disconnects (page close, network issue),
+   the engine stops receiving ticks. After 10s, `get_fresh_snapshot()` returns None and the route
+   falls back to normal path automatically.
+5. **data_freshness = "LIVE_ENGINE":** The fast path returns `data_freshness: "LIVE_ENGINE"` instead
+   of `"LIVE"`. Frontend should treat both as live data (currently it does — no special handling needed).
+
+---
+
 ## STEP 4: Generate Summary Report
 
 After all tests complete (or all phases requested are done), produce:
@@ -458,6 +575,18 @@ After all tests complete (or all phases requested are done), produce:
 | Test | Broken By Fix To | Resolution |
 |------|-----------------|------------|
 ...
+
+### Live Engine Performance (Market Hours Only)
+| Metric | Value |
+|---|---|
+| Engine Initialized | Yes/No |
+| Fast Path Triggered | Yes/No |
+| Tick Count (at measurement) | {N} or N/A (market closed) |
+| Snapshot Age | {X}s or N/A |
+| API Response Time (fast path) | {X}ms or N/A |
+| API Response Time (normal path) | {X}ms |
+| Speedup Factor | {X}x or N/A |
+| Notes | {any observations — e.g., "spot price fetch dominates fast path"} |
 
 ### Overall
 - Total tests: {N}
@@ -627,6 +756,11 @@ Only change if the value is explicitly a non-SmartAPI broker (e.g., `upstox`).
 - Always add soft-pass fallback for OI-dependent assertions (both CE and PE) — Why: SmartAPI zero-data issue returns 0 OI for all strikes; tests that hard-assert non-zero OI will fail due to broker, not code
 - Always log visual regression failures as BLOCKED during market OPEN hours — Why: live data changes between baseline capture and verification, causing 60%+ pixel diffs even with masks
 - Always accept `market_data_source: NOT_SET` as valid (defaults to SmartAPI platform adapter) — Why: navigating to Settings to "fix" NOT_SET is unnecessary and wastes time
+- Always run Step 3.5 (Live Engine verification) during market hours — Why: this is the only time the engine can be validated; skipping it means performance claims go unverified
+- Always open the Option Chain page in a browser before measuring engine performance — Why: the WebSocket connection from the page is what feeds ticks to the engine; without it, no ticks flow
+- Always wait 10-15 seconds after page load before measuring engine response time — Why: WebSocket needs time to establish and for ticks to populate the engine snapshot
+- Always check backend logs for `LIVE ENGINE HIT` to confirm fast path was used — Why: response time alone doesn't distinguish fast path from a fast normal path; the log line is the authoritative signal
+- Always record live engine metrics in the summary report (Step 4) — Why: creates a baseline for future performance tracking and catches regressions
 
 ## MUST NOT
 
@@ -659,3 +793,7 @@ Only change if the value is explicitly a non-SmartAPI broker (e.g., `upstox`).
 - MUST NOT assume `store_cached_response()` skips Redis during market hours — it always stores with TTL. Why: cache refactor always writes to Redis; the "skip" behavior was removed in favor of short 3s TTL
 - MUST NOT fix-loop visual regression failures during market OPEN hours — log as BLOCKED (market hours). Why: live data changes between baseline capture and verification; even freshly updated baselines fail seconds later
 - MUST NOT navigate to Settings to change `market_data_source` when value is `NOT_SET` — this is valid and defaults to SmartAPI platform adapter. Why: unnecessary navigation wastes time; `NOT_SET` is the expected default state
+- MUST NOT fail the test suite based on live engine performance results — Step 3.5 is informational only. Why: the engine is an optimization; if it doesn't trigger (no WebSocket, no ticks), the normal broker API path is the correct fallback
+- MUST NOT skip Step 3.5 during market hours — this is the only verification window. Why: the engine requires live ticks from WebSocket; there's no way to simulate this outside market hours
+- MUST NOT claim sub-10ms response times without measuring — record actual timing from backend logs. Why: spot price fetch adds 50-200ms; vectorized IV/Greeks adds 5-20ms; the real fast-path time is ~100-300ms, not <10ms
+- MUST NOT measure engine performance without an active WebSocket connection — open the Option Chain page first. Why: the engine piggybacks on WebSocket subscriptions; without them, no ticks flow and the engine snapshot stays empty

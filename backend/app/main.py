@@ -190,6 +190,28 @@ async def lifespan(app: FastAPI):
         # Start health monitoring
         await ticker_health.start()
 
+        # Wire Option Chain Live Engine into tick pipeline
+        try:
+            from app.services.options.option_chain_live_engine import OptionChainLiveEngine
+
+            ocl_engine = OptionChainLiveEngine.get_instance()
+            app.state.option_chain_live_engine = ocl_engine
+
+            # Composite callback: engine.on_tick (sync, fast) then router.dispatch (async)
+            original_dispatch = router.dispatch
+
+            async def _composite_tick_dispatch(ticks):
+                ocl_engine.on_tick(ticks)  # sync hot path — updates in-memory snapshots
+                await original_dispatch(ticks)  # async fan-out to WebSocket clients
+
+            # Re-wire pool to use composite callback
+            pool._on_tick = _composite_tick_dispatch
+
+            print("[SUCCESS] Option Chain Live Engine: Wired into tick pipeline")
+        except Exception as e:
+            print(f"[WARNING] Option Chain Live Engine failed to initialize: {e}")
+            logger.error("OCL Engine init failed: %s", e, exc_info=True)
+
         print("[SUCCESS] Ticker system initialized with health monitoring + failover")
     except Exception as e:
         print(f"[WARNING] Ticker system failed to initialize: {e}")

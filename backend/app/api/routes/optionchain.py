@@ -32,6 +32,7 @@ from app.schemas.autopilot import (
 )
 from app.constants import LOT_SIZES
 from app.services.options.vectorized_greeks import calculate_iv_and_greeks_batch
+from app.services.options.option_chain_live_engine import OptionChainLiveEngine
 
 logger = logging.getLogger(__name__)
 
@@ -272,6 +273,142 @@ def calculate_max_pain(oi_data: dict, spot: float) -> float:
     return max_pain_strike
 
 
+def _build_chain_from_live_snapshot(
+    snap: dict,
+    underlying: str,
+    expiry: str,
+    expiry_date: date,
+    spot_price: float,
+) -> dict:
+    """Build an option chain response from a live engine snapshot.
+
+    Skips all broker API calls — uses in-memory LTP/OI/volume from ticker feed.
+    Still computes IV/Greeks via vectorized batch (fast, ~1-5ms for 50 strikes).
+    """
+    today = date.today()
+    days_to_expiry = (expiry_date - today).days
+
+    # Group snapshot tokens by strike
+    strikes_data: dict[float, dict] = {}
+    for _tok, entry in snap["tokens"].items():
+        strike = float(entry["strike"])
+        if strike not in strikes_data:
+            strikes_data[strike] = {"strike": strike, "ce": None, "pe": None}
+
+        side = entry["side"].lower()
+        ltp = float(entry["ltp"]) if entry["ltp"] else 0
+        strikes_data[strike][side] = {
+            "instrument_token": _tok,
+            "tradingsymbol": entry["tradingsymbol"],
+            "ltp": ltp,
+            "oi": entry["oi"],
+            "volume": entry["volume"],
+        }
+
+    sorted_strikes = sorted(strikes_data.keys())
+    atm_strike = min(sorted_strikes, key=lambda x: abs(x - spot_price)) if sorted_strikes else spot_price
+
+    # Vectorized IV/Greeks
+    _vec_entries = []
+    for _s in sorted_strikes:
+        _d = strikes_data[_s]
+        for _side, _is_call in [("ce", True), ("pe", False)]:
+            if _d[_side] and _d[_side]["ltp"] > 0:
+                if spot_price and abs(spot_price - _s) / spot_price > FAR_OTM_MONEYNESS_THRESHOLD:
+                    continue
+                _vec_entries.append((_s, _side, _d[_side]["ltp"], _is_call))
+
+    _vec_results = {}
+    if _vec_entries and days_to_expiry > 0:
+        _prices = np.array([e[2] for e in _vec_entries])
+        _strikes_arr = np.array([e[0] for e in _vec_entries], dtype=float)
+        _is_call_arr = np.array([e[3] for e in _vec_entries])
+        _batch = calculate_iv_and_greeks_batch(_prices, spot_price, _strikes_arr, days_to_expiry, _is_call_arr)
+        for i, (_s, _side, _ltp, _is_call) in enumerate(_vec_entries):
+            _vec_results[(_s, _side)] = {
+                "iv": float(_batch["iv"][i]),
+                "delta": float(_batch["delta"][i]),
+                "gamma": float(_batch["gamma"][i]),
+                "theta": float(_batch["theta"][i]),
+                "vega": float(_batch["vega"][i]),
+            }
+
+    # Build response rows
+    option_chain = []
+    total_ce_oi = 0
+    total_pe_oi = 0
+    max_pain_data = {}
+
+    for strike in sorted_strikes:
+        data = strikes_data[strike]
+        row = {
+            "strike": strike,
+            "is_atm": strike == atm_strike,
+            "is_itm_ce": strike < spot_price,
+            "is_itm_pe": strike > spot_price,
+            "ce": None,
+            "pe": None,
+        }
+
+        for side, is_call, field in [("ce", True, "ce"), ("pe", False, "pe")]:
+            sd = data[side]
+            if not sd:
+                continue
+            ltp = sd["ltp"]
+            oi = sd["oi"]
+            volume = sd["volume"]
+
+            vr = _vec_results.get((strike, side))
+            if vr:
+                greeks = {"iv": vr["iv"], "delta": vr["delta"], "gamma": vr["gamma"], "theta": vr["theta"], "vega": vr["vega"]}
+            else:
+                greeks = {"iv": 0.0, "delta": 0, "gamma": 0, "theta": 0, "vega": 0}
+
+            row[field] = {
+                "instrument_token": sd["instrument_token"],
+                "tradingsymbol": sd["tradingsymbol"],
+                "ltp": ltp,
+                "change": 0,
+                "change_pct": 0,
+                "bid": 0,
+                "ask": 0,
+                "oi": oi,
+                "volume": volume,
+                **greeks,
+            }
+
+            if side == "ce":
+                total_ce_oi += oi
+            else:
+                total_pe_oi += oi
+
+        max_pain_data[strike] = {
+            "ce_oi": row["ce"]["oi"] if row["ce"] else 0,
+            "pe_oi": row["pe"]["oi"] if row["pe"] else 0,
+        }
+        option_chain.append(row)
+
+    max_pain = calculate_max_pain(max_pain_data, spot_price)
+    pcr = round(total_pe_oi / total_ce_oi, 2) if total_ce_oi > 0 else 0
+
+    return {
+        "underlying": underlying,
+        "expiry": expiry,
+        "spot_price": spot_price,
+        "days_to_expiry": days_to_expiry,
+        "lot_size": LOT_SIZES.get(underlying, 75),
+        "data_freshness": "LIVE_ENGINE",
+        "chain": option_chain,
+        "summary": {
+            "total_ce_oi": total_ce_oi,
+            "total_pe_oi": total_pe_oi,
+            "pcr": pcr,
+            "max_pain": max_pain,
+            "atm_strike": atm_strike,
+        },
+    }
+
+
 async def _compute_option_chain(
     underlying: str,
     expiry: str,
@@ -284,6 +421,36 @@ async def _compute_option_chain(
     Called directly by the route handler (with user) and by the background
     prefetch service (user=None, uses platform adapter only).
     """
+    # ── FAST PATH: Live Engine snapshot (market hours only) ───────────────
+    # If WebSocket ticks are flowing and the engine has a fresh snapshot,
+    # skip all broker API calls and serve from memory.
+    if is_market_open():
+        try:
+            engine = OptionChainLiveEngine.get_instance()
+            live_snap = engine.get_fresh_snapshot(underlying, expiry)
+            if live_snap:
+                # Still need spot price — try quick platform adapter call
+                spot = 0.0
+                try:
+                    pa = await get_cached_platform_adapter(db)
+                    if pa:
+                        prices = await pa.get_best_price([underlying])
+                        spot = float(prices.get(underlying, 0))
+                except Exception:
+                    pass
+                if spot > 0:
+                    logger.info(
+                        "[OptionChain] LIVE ENGINE HIT — %s:%s (%d ticks, %.1fs old)",
+                        underlying, expiry, live_snap["tick_count"],
+                        __import__("time").monotonic() - live_snap["last_tick_at"],
+                    )
+                    return _build_chain_from_live_snapshot(
+                        live_snap, underlying, expiry, expiry_date, spot,
+                    )
+        except Exception as e:
+            logger.debug("[OptionChain] Live engine check failed: %s", e)
+
+    # ── STANDARD PATH: Broker API calls ──────────────────────────────────
     # Get market data adapter
     adapter = None
     if not is_market_open():
@@ -729,6 +896,26 @@ async def _compute_option_chain(
 
     max_pain = calculate_max_pain(max_pain_data, spot_price)
     pcr = round(total_pe_oi / total_ce_oi, 2) if total_ce_oi > 0 else 0
+
+    # ── Register with Live Engine for future fast-path hits ──────────────
+    if is_market_open() and instruments_for_quotes:
+        try:
+            engine = OptionChainLiveEngine.get_instance()
+            engine_tokens = [
+                {
+                    "token": int(inst.instrument_token),
+                    "strike": float(inst.strike),
+                    "side": inst.option_type,
+                    "tradingsymbol": inst.canonical_symbol,
+                }
+                for inst in instruments_for_quotes
+                if inst.instrument_token
+            ]
+            if engine_tokens:
+                engine.register_chain(underlying, expiry, engine_tokens)
+                engine.cleanup_idle()
+        except Exception as e:
+            logger.debug("[OptionChain] Live engine registration failed: %s", e)
 
     return {
         "underlying": underlying,
