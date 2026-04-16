@@ -1,5 +1,5 @@
 <template>
-  <div class="shift-leg-modal-overlay" @click.self="handleClose">
+  <div class="shift-leg-modal-overlay" @click.self="handleClose" data-testid="autopilot-shift-modal-overlay">
     <div class="modal-container">
       <!-- Header -->
       <div class="modal-header">
@@ -7,7 +7,7 @@
           <i class="fas fa-arrows-left-right"></i>
           Shift Leg Position
         </h3>
-        <button class="close-btn" @click="handleClose" aria-label="Close modal">
+        <button class="close-btn" @click="handleClose" aria-label="Close modal" data-testid="autopilot-shift-close-btn">
           <i class="fas fa-times"></i>
         </button>
       </div>
@@ -59,6 +59,7 @@
             class="mode-tab"
             :class="{ active: selectedMode === mode.id }"
             @click="selectMode(mode.id)"
+            :data-testid="`autopilot-shift-mode-${mode.id}-btn`"
           >
             <i :class="mode.icon"></i>
             <span>{{ mode.label }}</span>
@@ -84,6 +85,7 @@
               :step="strikeStep"
               placeholder="Enter strike price"
               class="strike-input"
+              data-testid="autopilot-shift-target-strike-input"
             />
           </div>
 
@@ -126,6 +128,7 @@
               max="1"
               placeholder="e.g., 0.30"
               class="delta-input"
+              data-testid="autopilot-shift-target-delta-input"
             />
             <span class="input-hint">
               Delta range: -1.00 (deep ITM PUT) to 1.00 (deep ITM CALL)
@@ -140,6 +143,7 @@
               class="preset-btn"
               @click="targetDelta = preset.value"
               :class="{ active: targetDelta === preset.value }"
+              :data-testid="`autopilot-shift-delta-preset-${preset.label.replace('.', '')}`"
             >
               {{ preset.label }}
             </button>
@@ -189,6 +193,7 @@
                   class="direction-btn"
                   :class="{ active: shiftDirection === 'closer' }"
                   @click="shiftDirection = 'closer'"
+                  data-testid="autopilot-shift-direction-closer-btn"
                 >
                   <i class="fas fa-compress-arrows-alt"></i>
                   <span>Closer to Spot</span>
@@ -198,6 +203,7 @@
                   class="direction-btn"
                   :class="{ active: shiftDirection === 'farther' }"
                   @click="shiftDirection = 'farther'"
+                  data-testid="autopilot-shift-direction-farther-btn"
                 >
                   <i class="fas fa-expand-arrows-alt"></i>
                   <span>Farther from Spot</span>
@@ -216,6 +222,7 @@
                 min="0"
                 placeholder="Enter points to shift"
                 class="amount-input"
+                data-testid="autopilot-shift-amount-input"
               />
               <span class="input-hint">
                 How many points to move from current strike
@@ -230,6 +237,7 @@
                 class="preset-btn"
                 @click="shiftAmount = preset"
                 :class="{ active: shiftAmount === preset }"
+                :data-testid="`autopilot-shift-amount-preset-${preset}`"
               >
                 {{ preset }}
               </button>
@@ -270,6 +278,7 @@
               type="radio"
               value="market"
               v-model="executionMode"
+              data-testid="autopilot-shift-exec-market-radio"
             />
             <div class="radio-content">
               <span class="radio-title">Market Order</span>
@@ -281,6 +290,7 @@
               type="radio"
               value="limit"
               v-model="executionMode"
+              data-testid="autopilot-shift-exec-limit-radio"
             />
             <div class="radio-content">
               <span class="radio-title">Limit Order</span>
@@ -298,6 +308,7 @@
             step="0.1"
             placeholder="e.g., 2.0"
             class="offset-input"
+            data-testid="autopilot-shift-limit-offset-input"
           />
           <span class="input-hint">
             Percentage offset from LTP for limit price (positive = higher price)
@@ -319,7 +330,7 @@
 
       <!-- Footer Actions -->
       <div class="modal-footer">
-        <button @click="handleClose" class="btn-secondary" :disabled="shifting">
+        <button @click="handleClose" class="btn-secondary" :disabled="shifting" data-testid="autopilot-shift-cancel-btn">
           <i class="fas fa-times"></i>
           Cancel
         </button>
@@ -327,6 +338,7 @@
           @click="executeShift"
           class="btn-primary"
           :disabled="!canShift || shifting"
+          data-testid="autopilot-shift-execute-btn"
         >
           <i v-if="!shifting" class="fas fa-arrows-left-right"></i>
           <i v-else class="fas fa-spinner fa-spin"></i>
@@ -338,7 +350,7 @@
       <div v-if="error" class="error-banner">
         <i class="fas fa-exclamation-circle"></i>
         <span>{{ error }}</span>
-        <button @click="error = null" class="error-close">
+        <button @click="error = null" class="error-close" data-testid="autopilot-shift-error-close-btn">
           <i class="fas fa-times"></i>
         </button>
       </div>

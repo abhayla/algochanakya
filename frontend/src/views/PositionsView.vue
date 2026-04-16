@@ -50,7 +50,7 @@
 
           <!-- Auto Refresh (#4: tooltip) -->
           <label class="auto-refresh-toggle" title="Automatically refresh positions every 5 seconds">
-            <input type="checkbox" v-model="autoRefresh" @change="toggleAutoRefresh" />
+            <input type="checkbox" v-model="autoRefresh" @change="toggleAutoRefresh" data-testid="positions-auto-refresh-checkbox" />
             <span>Auto Refresh</span>
           </label>
 
@@ -71,6 +71,7 @@
             class="exit-all-btn"
             :disabled="store.positions.length === 0"
             :title="store.positions.length === 0 ? 'No open positions to exit' : 'Close all open positions with market orders'"
+            data-testid="positions-exit-all-btn"
           >
             Exit All
           </button>
@@ -277,12 +278,14 @@
                 <button
                   :class="['toggle-btn', { active: store.exitModal.orderType === 'MARKET' }]"
                   @click="store.exitModal.orderType = 'MARKET'"
+                  data-testid="positions-exit-order-market-btn"
                 >
                   Market
                 </button>
                 <button
                   :class="['toggle-btn', { active: store.exitModal.orderType === 'LIMIT' }]"
                   @click="store.exitModal.orderType = 'LIMIT'"
+                  data-testid="positions-exit-order-limit-btn"
                 >
                   Limit
                 </button>
@@ -298,6 +301,7 @@
                 min="0.05"
                 class="form-input"
                 placeholder="Enter limit price"
+                data-testid="positions-exit-price-input"
               />
             </div>
 
@@ -308,13 +312,14 @@
                 v-model.number="store.exitModal.quantity"
                 :max="Math.abs(store.exitModal.position?.quantity)"
                 class="form-input"
+                data-testid="positions-exit-qty-input"
               />
             </div>
           </div>
 
           <div class="modal-footer">
-            <button @click="store.closeExitModal()" class="btn-secondary">Cancel</button>
-            <button @click="executeExit()" class="btn-danger" :disabled="isExiting">
+            <button @click="store.closeExitModal()" class="btn-secondary" data-testid="positions-exit-cancel-btn">Cancel</button>
+            <button @click="executeExit()" class="btn-danger" :disabled="isExiting" data-testid="positions-exit-confirm-btn">
               {{ isExiting ? 'Exiting...' : 'Exit Position' }}
             </button>
           </div>
@@ -341,12 +346,14 @@
                 <button
                   :class="['toggle-btn buy', { active: store.addModal.transactionType === 'BUY' }]"
                   @click="store.addModal.transactionType = 'BUY'"
+                  data-testid="positions-add-type-buy-btn"
                 >
                   BUY
                 </button>
                 <button
                   :class="['toggle-btn sell', { active: store.addModal.transactionType === 'SELL' }]"
                   @click="store.addModal.transactionType = 'SELL'"
+                  data-testid="positions-add-type-sell-btn"
                 >
                   SELL
                 </button>
@@ -360,6 +367,7 @@
                 v-model.number="store.addModal.price"
                 step="0.05"
                 class="form-input"
+                data-testid="positions-add-price-input"
               />
             </div>
 
@@ -369,16 +377,18 @@
                 type="number"
                 v-model.number="store.addModal.quantity"
                 class="form-input"
+                data-testid="positions-add-qty-input"
               />
             </div>
           </div>
 
           <div class="modal-footer">
-            <button @click="store.closeAddModal()" class="btn-secondary">Cancel</button>
+            <button @click="store.closeAddModal()" class="btn-secondary" data-testid="positions-add-cancel-btn">Cancel</button>
             <button
               @click="executeAdd()"
               :class="['btn-action', store.addModal.transactionType === 'BUY' ? 'btn-buy' : 'btn-sell']"
               :disabled="isAdding"
+              data-testid="positions-add-confirm-btn"
             >
               {{ isAdding ? 'Placing...' : store.addModal.transactionType }}
             </button>
@@ -387,7 +397,7 @@
       </div>
 
       <!-- Exit All Confirmation -->
-      <div v-if="confirmExitAll" class="modal-overlay" @click.self="confirmExitAll = false">
+      <div v-if="confirmExitAll" class="modal-overlay" @click.self="confirmExitAll = false" data-testid="positions-exit-all-modal-overlay">
         <div class="modal modal-sm">
           <div class="modal-header">
             <h3>Confirm Exit All</h3>
@@ -397,8 +407,8 @@
             <p class="text-red warning-text">This will place MARKET orders to close all positions.</p>
           </div>
           <div class="modal-footer">
-            <button @click="confirmExitAll = false" class="btn-secondary">Cancel</button>
-            <button @click="executeExitAll()" class="btn-danger" :disabled="isExitingAll">
+            <button @click="confirmExitAll = false" class="btn-secondary" data-testid="positions-exit-all-cancel-btn">Cancel</button>
+            <button @click="executeExitAll()" class="btn-danger" :disabled="isExitingAll" data-testid="positions-exit-all-confirm-btn">
               {{ isExitingAll ? 'Exiting...' : 'Yes, Exit All' }}
             </button>
           </div>

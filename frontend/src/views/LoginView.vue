@@ -107,7 +107,7 @@ const scrollToLogin = () => {
 
       <!-- Right: Login Button only (no nav links on login page) -->
       <div class="header-right">
-        <button @click="scrollToLogin" class="login-btn">Login</button>
+        <button @click="scrollToLogin" class="login-btn" data-testid="login-header-scroll-btn">Login</button>
       </div>
     </header>
 

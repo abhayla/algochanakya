@@ -46,6 +46,7 @@
               class="strategy-card"
               :class="{ selected: selectedType === 'iron_condor', disabled: currentType === 'iron_condor' }"
               @click="selectStrategyType('iron_condor')"
+              data-testid="autopilot-conversion-type-ironcondor"
             >
               <div class="card-header">
                 <i class="fas fa-layer-group"></i>
@@ -175,6 +176,7 @@
                   max="500"
                   step="50"
                   class="flex-1"
+                  data-testid="autopilot-conversion-wing-width-slider"
                 />
                 <span class="text-lg font-semibold w-20 text-center">
                   {{ conversionParams.wing_width }}
@@ -187,6 +189,7 @@
                   :key="width"
                   @click="conversionParams.wing_width = width"
                   :class="getPresetClass(conversionParams.wing_width, width)"
+                  :data-testid="`autopilot-conversion-wing-width-${width}`"
                 >
                   {{ width }}
                 </button>
@@ -211,6 +214,7 @@
                   :key="ratio"
                   @click="conversionParams.ratio = ratio"
                   :class="getRatioClass(ratio)"
+                  :data-testid="`autopilot-conversion-ratio-${ratio}`"
                 >
                   {{ ratio }}:1
                 </button>
@@ -247,7 +251,7 @@
           <div v-else-if="previewError" class="error-state">
             <i class="fas fa-exclamation-triangle"></i>
             <p>{{ previewError }}</p>
-            <button @click="loadPreview" class="retry-btn">
+            <button @click="loadPreview" class="retry-btn" data-testid="autopilot-conversion-retry-btn">
               <i class="fas fa-redo"></i> Retry
             </button>
           </div>
@@ -364,10 +368,10 @@
             <h3>Conversion Failed</h3>
             <p class="error-message">{{ executionError }}</p>
             <div class="error-actions">
-              <button @click="retryExecution" class="btn-retry">
+              <button @click="retryExecution" class="btn-retry" data-testid="autopilot-conversion-retry-exec-btn">
                 <i class="fas fa-redo"></i> Retry
               </button>
-              <button @click="handleCancel" class="btn-cancel">
+              <button @click="handleCancel" class="btn-cancel" data-testid="autopilot-conversion-exec-close-btn">
                 <i class="fas fa-times"></i> Close
               </button>
             </div>
@@ -408,7 +412,7 @@
               </div>
             </div>
 
-            <button @click="handleSuccess" class="btn-primary btn-full">
+            <button @click="handleSuccess" class="btn-primary btn-full" data-testid="autopilot-conversion-done-btn">
               <i class="fas fa-check"></i> Done
             </button>
           </div>
@@ -449,6 +453,7 @@
           @click="previousStep"
           class="btn-secondary"
           :disabled="previewLoading || executing"
+          data-testid="autopilot-conversion-back-btn"
         >
           <i class="fas fa-arrow-left"></i>
           Back
@@ -459,6 +464,7 @@
           @click="nextStep"
           class="btn-primary"
           :disabled="!canProceed || previewLoading"
+          data-testid="autopilot-conversion-next-btn"
         >
           Next
           <i class="fas fa-arrow-right"></i>

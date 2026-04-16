@@ -64,7 +64,7 @@
                   v-model="selectedStrategyId"
                   @change="handleStrategyChange"
                   class="strategy-select"
-                  data-testid="strategy-select"
+                  data-testid="strategy-selector-saved-select"
                   aria-labelledby="strategy-label"
                 >
                   <option value="">New Strategy</option>
@@ -140,7 +140,7 @@
             <div class="selector-right">
               <div class="form-group compact">
                 <label class="form-label-sm" id="filter-expiry-label">Expiry:</label>
-                <select v-model="filters.expiry" class="strategy-select compact" aria-labelledby="filter-expiry-label">
+                <select v-model="filters.expiry" class="strategy-select compact" aria-labelledby="filter-expiry-label" data-testid="strategy-filter-expiry-select">
                   <option value="">All</option>
                   <option v-for="exp in strategyStore.expiries" :key="exp" :value="exp">
                     {{ formatDate(exp) }}
@@ -149,7 +149,7 @@
               </div>
               <div class="form-group compact">
                 <label class="form-label-sm" id="filter-contract-label">Contract:</label>
-                <select v-model="filters.contractType" class="strategy-select compact" aria-labelledby="filter-contract-label">
+                <select v-model="filters.contractType" class="strategy-select compact" aria-labelledby="filter-contract-label" data-testid="strategy-filter-contract-select">
                   <option value="">All</option>
                   <option value="CE">CE</option>
                   <option value="PE">PE</option>
@@ -157,7 +157,7 @@
               </div>
               <div class="form-group compact">
                 <label class="form-label-sm" id="filter-status-label">Status:</label>
-                <select v-model="filters.status" class="strategy-select compact" aria-labelledby="filter-status-label">
+                <select v-model="filters.status" class="strategy-select compact" aria-labelledby="filter-status-label" data-testid="strategy-filter-status-select">
                   <option value="">All</option>
                   <option value="open">Open</option>
                   <option value="closed">Closed</option>
@@ -175,7 +175,7 @@
         <!-- Error Alert -->
         <div v-if="strategyStore.error" class="error-alert" data-testid="strategy-error">
           {{ strategyStore.error }}
-          <button @click="strategyStore.error = null" class="error-close">&times;</button>
+          <button @click="strategyStore.error = null" class="error-close" data-testid="strategy-error-close-btn">&times;</button>
         </div>
 
         <!-- Strategy Table -->
@@ -192,6 +192,7 @@
                     :checked="allLegsSelected"
                     @change="toggleSelectAll"
                     aria-label="Select all legs"
+                    data-testid="strategy-select-all-checkbox"
                   />
                 </th>
                 <th>Expiry</th>
@@ -228,6 +229,7 @@
                     :checked="strategyStore.selectedLegIndices.includes(index)"
                     @change="strategyStore.toggleLegSelection(index)"
                     :aria-label="`Select leg ${index + 1}`"
+                    :data-testid="`strategy-leg-select-${index}`"
                   />
                 </td>
                 <td>
@@ -236,6 +238,7 @@
                     @change="handleLegUpdate(index, 'expiry_date', $event.target.value)"
                     class="strategy-select compact"
                     :aria-label="`Leg ${index + 1} expiry`"
+                    :data-testid="`strategy-leg-expiry-${index}`"
                   >
                     <option value="">Select</option>
                     <option v-for="exp in strategyStore.expiries" :key="exp" :value="exp">
@@ -249,6 +252,7 @@
                     @change="handleLegUpdate(index, 'contract_type', $event.target.value)"
                     :class="['tag-select', leg.contract_type === 'CE' ? 'tag-ce' : 'tag-pe']"
                     :aria-label="`Leg ${index + 1} contract type`"
+                    :data-testid="`strategy-leg-type-${index}`"
                   >
                     <option value="CE">CE</option>
                     <option value="PE">PE</option>
@@ -260,6 +264,7 @@
                     @change="handleLegUpdate(index, 'transaction_type', $event.target.value)"
                     :class="['tag-select', leg.transaction_type === 'BUY' ? 'tag-buy' : 'tag-sell']"
                     :aria-label="`Leg ${index + 1} transaction type`"
+                    :data-testid="`strategy-leg-buysell-${index}`"
                   >
                     <option value="BUY">BUY</option>
                     <option value="SELL">SELL</option>
@@ -271,6 +276,7 @@
                     @change="handleLegUpdate(index, 'strike_price', $event.target.value)"
                     class="strategy-select compact"
                     :aria-label="`Leg ${index + 1} strike price`"
+                    :data-testid="`strategy-leg-strike-${index}`"
                   >
                     <option value="">Select</option>
                     <option v-for="s in getStrikesForExpiry(leg.expiry_date)" :key="s" :value="s">
@@ -287,6 +293,7 @@
                     class="strategy-input compact text-center"
                     style="width: 60px;"
                     :aria-label="`Leg ${index + 1} lots`"
+                    :data-testid="`strategy-leg-lots-${index}`"
                   />
                 </td>
                 <td class="relative">
@@ -300,6 +307,7 @@
                     class="strategy-input compact text-right"
                     style="width: 80px;"
                     :aria-label="`Leg ${index + 1} entry price`"
+                    :data-testid="`strategy-leg-entry-${index}`"
                   />
                   <!-- CMP indicator - shows when using CMP as entry price for calculation -->
                   <span

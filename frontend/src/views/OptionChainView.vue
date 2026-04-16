@@ -47,13 +47,13 @@
 
           <!-- Greeks Toggle -->
           <label class="toggle-label" data-testid="optionchain-greeks-toggle">
-            <input type="checkbox" v-model="store.showGreeks" />
+            <input type="checkbox" v-model="store.showGreeks" data-testid="optionchain-greeks-toggle-checkbox" />
             <span>Greeks</span>
           </label>
 
           <!-- Live Toggle -->
           <label class="live-toggle" data-testid="optionchain-live-toggle">
-            <input type="checkbox" v-model="store.isLiveUpdatesEnabled" />
+            <input type="checkbox" v-model="store.isLiveUpdatesEnabled" data-testid="optionchain-live-toggle-checkbox" />
             <span class="live-label">
               <span v-if="watchlistStore.isConnected && store.isLiveUpdatesEnabled" class="live-dot"></span>
               Live
@@ -146,7 +146,7 @@
       <!-- Error Alert -->
       <div v-if="store.error" class="error-alert" data-testid="optionchain-error">
         <span>{{ store.error }}</span>
-        <button @click="store.error = null" class="close-btn">&times;</button>
+        <button @click="store.error = null" class="close-btn" data-testid="optionchain-error-close-btn">&times;</button>
       </div>
 
       <!-- Loading State -->
@@ -301,7 +301,7 @@
             :data-testid="'optionchain-selected-chip-' + s.strike + '-' + s.type"
           >
             {{ s.type }} {{ s.strike }} @ {{ s.ltp?.toFixed(2) }}
-            <button @click="store.toggleStrikeSelection(s.strike, s.type)" class="chip-remove">&times;</button>
+            <button @click="store.toggleStrikeSelection(s.strike, s.type)" class="chip-remove" :data-testid="`optionchain-chip-remove-${s.strike}-${s.type.toLowerCase()}`">&times;</button>
           </span>
         </div>
         <div class="selected-actions">

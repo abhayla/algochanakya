@@ -163,6 +163,7 @@
                 ? 'bg-blue-100 text-blue-700 font-semibold'
                 : 'text-gray-500 hover:bg-gray-100'
             ]"
+            :data-testid="`watchlist-pagination-btn-${idx + 1}`"
           >
             {{ idx + 1 }}
           </button>

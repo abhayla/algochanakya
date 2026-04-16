@@ -1,5 +1,5 @@
 <template>
-  <div class="break-trade-wizard-overlay" @click.self="handleCancel">
+  <div class="break-trade-wizard-overlay" @click.self="handleCancel" data-testid="autopilot-break-trade-overlay">
     <div class="wizard-container">
       <!-- Header -->
       <div class="wizard-header">
@@ -7,7 +7,7 @@
           <i class="fas fa-arrows-split-up-and-left"></i>
           Break/Split Trade Recovery
         </h2>
-        <button class="close-btn" @click="handleCancel" aria-label="Close wizard">
+        <button class="close-btn" @click="handleCancel" aria-label="Close wizard" data-testid="autopilot-break-trade-close-btn">
           <i class="fas fa-times"></i>
         </button>
       </div>
@@ -53,6 +53,7 @@
               class="leg-card"
               :class="{ selected: selectedLeg?.leg_id === leg.leg_id }"
               @click="selectLeg(leg)"
+              :data-testid="`autopilot-break-leg-card-${leg.leg_id}`"
             >
               <div class="leg-header">
                 <div class="leg-title">
@@ -103,7 +104,7 @@
           <div v-else-if="simulationError" class="error-state">
             <i class="fas fa-exclamation-triangle"></i>
             <p>{{ simulationError }}</p>
-            <button @click="loadSimulation" class="retry-btn">
+            <button @click="loadSimulation" class="retry-btn" data-testid="autopilot-break-trade-retry-btn">
               <i class="fas fa-redo"></i> Retry
             </button>
           </div>
@@ -179,6 +180,7 @@
                       name="put-strike"
                       :value="false"
                       v-model="useCustomStrikes"
+                      data-testid="autopilot-break-put-suggested-radio"
                     />
                     <div class="strike-details">
                       <div class="strike-header">
@@ -200,6 +202,7 @@
                       name="put-strike"
                       :value="true"
                       v-model="useCustomStrikes"
+                      data-testid="autopilot-break-put-custom-radio"
                     />
                     <div class="strike-details">
                       <span class="strike-label">Custom Strike</span>
@@ -210,6 +213,7 @@
                         class="strike-input"
                         :step="strikeStep"
                         placeholder="Enter strike"
+                        data-testid="autopilot-break-put-strike-input"
                       />
                     </div>
                   </label>
@@ -231,6 +235,7 @@
                       name="call-strike"
                       :value="false"
                       v-model="useCustomStrikes"
+                      data-testid="autopilot-break-call-suggested-radio"
                     />
                     <div class="strike-details">
                       <div class="strike-header">
@@ -252,6 +257,7 @@
                       name="call-strike"
                       :value="true"
                       v-model="useCustomStrikes"
+                      data-testid="autopilot-break-call-custom-radio"
                     />
                     <div class="strike-details">
                       <span class="strike-label">Custom Strike</span>
@@ -262,6 +268,7 @@
                         class="strike-input"
                         :step="strikeStep"
                         placeholder="Enter strike"
+                        data-testid="autopilot-break-call-strike-input"
                       />
                     </div>
                   </label>
@@ -398,10 +405,10 @@
             <h3>Execution Failed</h3>
             <p class="error-message">{{ executionError }}</p>
             <div class="error-actions">
-              <button @click="retryExecution" class="btn-retry">
+              <button @click="retryExecution" class="btn-retry" data-testid="autopilot-break-retry-exec-btn">
                 <i class="fas fa-redo"></i> Retry
               </button>
-              <button @click="handleCancel" class="btn-cancel">
+              <button @click="handleCancel" class="btn-cancel" data-testid="autopilot-break-exec-close-btn">
                 <i class="fas fa-times"></i> Close
               </button>
             </div>
@@ -443,7 +450,7 @@
               </div>
             </div>
 
-            <button @click="handleSuccess" class="btn-primary btn-full">
+            <button @click="handleSuccess" class="btn-primary btn-full" data-testid="autopilot-break-done-btn">
               <i class="fas fa-check"></i> Done
             </button>
           </div>
@@ -457,6 +464,7 @@
           @click="previousStep"
           class="btn-secondary"
           :disabled="simulationLoading || executing"
+          data-testid="autopilot-break-back-btn"
         >
           <i class="fas fa-arrow-left"></i>
           Back
@@ -467,6 +475,7 @@
           @click="nextStep"
           class="btn-primary"
           :disabled="!canProceed || simulationLoading"
+          data-testid="autopilot-break-next-btn"
         >
           Next
           <i class="fas fa-arrow-right"></i>
@@ -477,6 +486,7 @@
           @click="executeBreakTrade"
           class="btn-execute"
           :disabled="executing"
+          data-testid="autopilot-break-execute-btn"
         >
           <i class="fas fa-bolt"></i>
           Execute Break Trade

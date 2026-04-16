@@ -2,7 +2,7 @@
   <div class="ai-activity-feed" data-testid="ai-activity-feed">
     <div class="feed-header">
       <h3 class="feed-title">AI Activity</h3>
-      <button v-if="activities.length > 0" class="btn-clear" @click="$emit('clear')" data-testid="btn-clear">
+      <button v-if="activities.length > 0" class="btn-clear" @click="$emit('clear')" data-testid="ai-activity-feed-clear-btn">
         <i class="fas fa-trash-alt"></i>
       </button>
     </div>
@@ -45,7 +45,7 @@
     </div>
 
     <div v-if="activities.length > maxVisible" class="feed-footer">
-      <button class="btn-show-more" @click="showAll = !showAll" data-testid="btn-show-more">
+      <button class="btn-show-more" @click="showAll = !showAll" data-testid="ai-activity-feed-show-more-btn">
         {{ showAll ? 'Show Less' : `Show ${activities.length - maxVisible} More` }}
       </button>
     </div>

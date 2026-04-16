@@ -84,7 +84,7 @@ onBeforeRouteLeave(() => {
             <button
               @click="router.back()"
               class="back-btn"
-              data-testid="settings-back"
+              data-testid="settings-header-back-btn"
               title="Go back to previous page"
             >
               &larr;
@@ -98,7 +98,7 @@ onBeforeRouteLeave(() => {
           <button
             v-if="hasChanges"
             @click="handleReset"
-            data-testid="settings-reset"
+            data-testid="settings-header-reset-btn"
             class="strategy-btn strategy-btn-outline"
           >
             Reset
@@ -106,7 +106,7 @@ onBeforeRouteLeave(() => {
           <button
             @click="handleSave"
             :disabled="!hasChanges || store.saving"
-            data-testid="settings-save"
+            data-testid="settings-header-save-btn"
             class="strategy-btn strategy-btn-primary"
             :title="!hasChanges ? 'No changes to save' : 'Save your preference changes'"
           >
@@ -154,7 +154,7 @@ onBeforeRouteLeave(() => {
                       :value="50"
                       v-model="localPreferences.pnl_grid_interval"
                       @change="handleChange"
-                      data-testid="interval-50"
+                      data-testid="settings-interval-50-radio"
                     />
                     <span>50 points (More granular)</span>
                   </label>
@@ -165,7 +165,7 @@ onBeforeRouteLeave(() => {
                       :value="100"
                       v-model="localPreferences.pnl_grid_interval"
                       @change="handleChange"
-                      data-testid="interval-100"
+                      data-testid="settings-interval-100-radio"
                     />
                     <span>100 points (Less cluttered)</span>
                   </label>
@@ -258,8 +258,8 @@ onBeforeRouteLeave(() => {
         <div v-if="hasChanges" class="sticky-save-bar" data-testid="settings-sticky-save">
           <span class="unsaved-label">You have unsaved changes</span>
           <div class="sticky-actions">
-            <button @click="handleReset" class="strategy-btn strategy-btn-outline">Reset</button>
-            <button @click="handleSave" :disabled="store.saving" class="strategy-btn strategy-btn-primary">
+            <button @click="handleReset" class="strategy-btn strategy-btn-outline" data-testid="settings-sticky-reset-btn">Reset</button>
+            <button @click="handleSave" :disabled="store.saving" class="strategy-btn strategy-btn-primary" data-testid="settings-sticky-save-btn">
               {{ store.saving ? 'Saving...' : 'Save Changes' }}
             </button>
           </div>
