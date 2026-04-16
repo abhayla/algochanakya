@@ -1720,6 +1720,57 @@ export const useAutopilotStore = defineStore('autopilot', {
     },
 
     // ========================================================================
+    // PARAMETERIZED HELPERS — return data without mutating store state
+    // (use these from components that need per-call params, e.g. modals)
+    // ========================================================================
+
+    async fetchExpiriesFor(ul) {
+      try {
+        const response = await api.get('/api/options/expiries', {
+          params: { underlying: ul },
+        })
+        // Endpoint returns either {expiries: [...]} or a raw array
+        const data = response.data?.expiries ?? response.data ?? []
+        return { success: true, expiries: data }
+      } catch (error) {
+        return {
+          success: false,
+          error: error.response?.data?.detail || error.message,
+          expiries: [],
+        }
+      }
+    },
+
+    async fetchStrikesFor(ul, expiry) {
+      try {
+        const response = await api.get('/api/options/strikes', {
+          params: { underlying: ul, expiry },
+        })
+        const data = response.data?.strikes ?? response.data ?? []
+        return { success: true, strikes: data }
+      } catch (error) {
+        return {
+          success: false,
+          error: error.response?.data?.detail || error.message,
+          strikes: [],
+        }
+      }
+    },
+
+    async fetchOrderLTP(params) {
+      try {
+        const response = await api.get('/api/orders/ltp', { params })
+        return { success: true, data: response.data }
+      } catch (error) {
+        return {
+          success: false,
+          error: error.response?.data?.detail || error.message,
+          data: null,
+        }
+      }
+    },
+
+    // ========================================================================
     // MONITORING / ANALYTICS / SUGGESTIONS — added during data-flow migration
     // ========================================================================
 

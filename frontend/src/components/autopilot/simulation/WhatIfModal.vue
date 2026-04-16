@@ -280,7 +280,9 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import api from '@/services/api'
+import { useAutopilotStore } from '@/stores/autopilot'
+
+const autopilotStore = useAutopilotStore()
 
 const props = defineProps({
   visible: {
@@ -333,29 +335,32 @@ const runSimulation = async () => {
   loading.value = true
   results.value = null
 
-  try {
-    let response
-    if (scenarioType.value === 'shift') {
-      response = await api.post(`/api/v1/autopilot/simulate/${props.strategyId}/shift`, {
-        leg_id: shiftConfig.value.legId,
-        target_strike: shiftConfig.value.targetStrike,
-        target_delta: shiftConfig.value.targetDelta
-      })
-    } else if (scenarioType.value === 'break') {
-      response = await api.post(`/api/v1/autopilot/simulate/${props.strategyId}/break`, {
-        leg_id: breakConfig.value.legId,
-        premium_split: breakConfig.value.splitMode
-      })
-    } else if (scenarioType.value === 'exit') {
-      response = await api.post(`/api/v1/autopilot/simulate/${props.strategyId}/exit`, {
-        exit_type: 'full'
-      })
+  let params
+  if (scenarioType.value === 'shift') {
+    params = {
+      leg_id: shiftConfig.value.legId,
+      target_strike: shiftConfig.value.targetStrike,
+      target_delta: shiftConfig.value.targetDelta,
     }
+  } else if (scenarioType.value === 'break') {
+    params = {
+      leg_id: breakConfig.value.legId,
+      premium_split: breakConfig.value.splitMode,
+    }
+  } else if (scenarioType.value === 'exit') {
+    params = { exit_type: 'full' }
+  }
 
-    results.value = response.data.data || {
+  try {
+    const data = await autopilotStore.simulateAdjustment(
+      props.strategyId,
+      scenarioType.value,
+      params
+    )
+    results.value = data || {
       current: { net_delta: 0.15, net_theta: -45, margin: 45000, max_risk: -15000 },
       after: { net_delta: 0.05, net_theta: -38, margin: 42000, max_risk: -12000 },
-      comparison: { delta_change: -0.10, theta_change: 7, estimated_cost: 850, risk_reduction: 20 }
+      comparison: { delta_change: -0.10, theta_change: 7, estimated_cost: 850, risk_reduction: 20 },
     }
   } catch (error) {
     console.error('Simulation failed:', error)

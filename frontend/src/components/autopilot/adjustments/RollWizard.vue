@@ -10,7 +10,9 @@
  * Phase 3: Re-Entry & Advanced Adjustments
  */
 import { ref, computed, watch, onMounted } from 'vue'
-import api from '@/services/api'
+import { useAutopilotStore } from '@/stores/autopilot'
+
+const autopilotStore = useAutopilotStore()
 
 const props = defineProps({
   show: {
@@ -110,119 +112,94 @@ const creditDebitClass = computed(() => {
 
 // Fetch expiries
 const fetchExpiries = async () => {
-  try {
-    const response = await api.get('/api/options/expiries', {
-      params: { underlying: props.underlying }
-    })
-    availableExpiries.value = response.data || []
-
-    // Find next expiry after current
-    const currentDate = new Date(props.currentExpiry)
-    const nextExpiryOption = availableExpiries.value.find(exp => {
-      const expDate = new Date(exp)
-      return expDate > currentDate
-    })
-    nextExpiry.value = nextExpiryOption || availableExpiries.value[0]
-  } catch (err) {
-    console.error('Error fetching expiries:', err)
+  const result = await autopilotStore.fetchExpiriesFor(props.underlying)
+  if (!result.success) {
+    console.error('Error fetching expiries:', result.error)
     error.value = 'Failed to load expiries'
+    return
   }
+  availableExpiries.value = result.expiries
+
+  const currentDate = new Date(props.currentExpiry)
+  const nextExpiryOption = availableExpiries.value.find(exp => {
+    const expDate = new Date(exp)
+    return expDate > currentDate
+  })
+  nextExpiry.value = nextExpiryOption || availableExpiries.value[0]
 }
 
 // Fetch strikes for an expiry
 const fetchStrikes = async (expiry) => {
-  try {
-    const response = await api.get('/api/options/strikes', {
-      params: {
-        underlying: props.underlying,
-        expiry: expiry
-      }
-    })
-    availableStrikes.value = response.data || []
-
-    // Auto-select ATM strikes if current positions exist
-    if (currentCEPosition.value && !newCEStrike.value) {
-      newCEStrike.value = currentCEPosition.value.strike
-    }
-    if (currentPEPosition.value && !newPEStrike.value) {
-      newPEStrike.value = currentPEPosition.value.strike
-    }
-  } catch (err) {
-    console.error('Error fetching strikes:', err)
+  const result = await autopilotStore.fetchStrikesFor(props.underlying, expiry)
+  if (!result.success) {
+    console.error('Error fetching strikes:', result.error)
     error.value = 'Failed to load strikes'
+    return
+  }
+  availableStrikes.value = result.strikes
+
+  if (currentCEPosition.value && !newCEStrike.value) {
+    newCEStrike.value = currentCEPosition.value.strike
+  }
+  if (currentPEPosition.value && !newPEStrike.value) {
+    newPEStrike.value = currentPEPosition.value.strike
   }
 }
 
 // Fetch current premium
 const fetchCurrentPremium = async () => {
-  try {
-    if (currentCEPosition.value) {
-      const ceResponse = await api.get('/api/orders/ltp', {
-        params: {
-          underlying: props.underlying,
-          expiry: props.currentExpiry,
-          strike: currentCEPosition.value.strike,
-          option_type: 'CE'
-        }
-      })
-      currentPremium.value.ce = ceResponse.data?.ltp || 0
-    }
-
-    if (currentPEPosition.value) {
-      const peResponse = await api.get('/api/orders/ltp', {
-        params: {
-          underlying: props.underlying,
-          expiry: props.currentExpiry,
-          strike: currentPEPosition.value.strike,
-          option_type: 'PE'
-        }
-      })
-      currentPremium.value.pe = peResponse.data?.ltp || 0
-    }
-
-    currentPremium.value.total = currentPremium.value.ce + currentPremium.value.pe
-  } catch (err) {
-    console.error('Error fetching current premium:', err)
+  if (currentCEPosition.value) {
+    const ceRes = await autopilotStore.fetchOrderLTP({
+      underlying: props.underlying,
+      expiry: props.currentExpiry,
+      strike: currentCEPosition.value.strike,
+      option_type: 'CE',
+    })
+    currentPremium.value.ce = ceRes.success ? (ceRes.data?.ltp || 0) : 0
   }
+
+  if (currentPEPosition.value) {
+    const peRes = await autopilotStore.fetchOrderLTP({
+      underlying: props.underlying,
+      expiry: props.currentExpiry,
+      strike: currentPEPosition.value.strike,
+      option_type: 'PE',
+    })
+    currentPremium.value.pe = peRes.success ? (peRes.data?.ltp || 0) : 0
+  }
+
+  currentPremium.value.total = currentPremium.value.ce + currentPremium.value.pe
 }
 
 // Fetch new premium
 const fetchNewPremium = async () => {
-  try {
-    newPremium.value = { ce: 0, pe: 0, total: 0 }
+  newPremium.value = { ce: 0, pe: 0, total: 0 }
 
-    if (newCEStrike.value && targetExpiry.value) {
-      const ceResponse = await api.get('/api/orders/ltp', {
-        params: {
-          underlying: props.underlying,
-          expiry: targetExpiry.value,
-          strike: newCEStrike.value,
-          option_type: 'CE'
-        }
-      })
-      newPremium.value.ce = ceResponse.data?.ltp || 0
-    }
-
-    if (newPEStrike.value && targetExpiry.value) {
-      const peResponse = await api.get('/api/orders/ltp', {
-        params: {
-          underlying: props.underlying,
-          expiry: targetExpiry.value,
-          strike: newPEStrike.value,
-          option_type: 'PE'
-        }
-      })
-      newPremium.value.pe = peResponse.data?.ltp || 0
-    }
-
-    newPremium.value.total = newPremium.value.ce + newPremium.value.pe
-
-    // Calculate estimated credit/debit
-    // Credit = what we receive for closing current - what we pay for opening new
-    estimatedCredit.value = currentPremium.value.total - newPremium.value.total
-  } catch (err) {
-    console.error('Error fetching new premium:', err)
+  if (newCEStrike.value && targetExpiry.value) {
+    const ceRes = await autopilotStore.fetchOrderLTP({
+      underlying: props.underlying,
+      expiry: targetExpiry.value,
+      strike: newCEStrike.value,
+      option_type: 'CE',
+    })
+    newPremium.value.ce = ceRes.success ? (ceRes.data?.ltp || 0) : 0
   }
+
+  if (newPEStrike.value && targetExpiry.value) {
+    const peRes = await autopilotStore.fetchOrderLTP({
+      underlying: props.underlying,
+      expiry: targetExpiry.value,
+      strike: newPEStrike.value,
+      option_type: 'PE',
+    })
+    newPremium.value.pe = peRes.success ? (peRes.data?.ltp || 0) : 0
+  }
+
+  newPremium.value.total = newPremium.value.ce + newPremium.value.pe
+
+  // Calculate estimated credit/debit
+  // Credit = what we receive for closing current - what we pay for opening new
+  estimatedCredit.value = currentPremium.value.total - newPremium.value.total
 }
 
 // Execute roll
