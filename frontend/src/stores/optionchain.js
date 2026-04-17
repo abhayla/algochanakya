@@ -24,7 +24,7 @@ export const useOptionChainStore = defineStore('optionchain', () => {
   })
   const lotSize = ref(getLotSize('NIFTY'))
   const chain = ref([])
-  const dataFreshness = ref('LIVE')  // 'LIVE' | 'LAST_KNOWN'
+  const dataFreshness = ref('LIVE')  // 'LIVE' | 'LAST_KNOWN' | 'EOD_SNAPSHOT' | 'BROKER_EXHAUSTED'
   const summary = ref({
     total_ce_oi: 0,
     total_pe_oi: 0,

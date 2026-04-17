@@ -7,7 +7,7 @@
  * Mirrors the behavior of NSE India, Sensibull, and Opstra.
  */
 defineProps({
-  /** 'LIVE' | 'LAST_KNOWN' | 'EOD_SNAPSHOT' */
+  /** 'LIVE' | 'LAST_KNOWN' | 'EOD_SNAPSHOT' | 'BROKER_EXHAUSTED' */
   dataFreshness: {
     type: String,
     default: 'LIVE'
@@ -43,6 +43,17 @@ defineProps({
       Market closed &mdash; showing end-of-day snapshot data (OI, Volume, PCR, Max Pain)
     </span>
   </div>
+  <div
+    v-else-if="dataFreshness === 'BROKER_EXHAUSTED'"
+    class="market-status-banner broker-exhausted"
+    role="status"
+    :data-testid="`${screen}-broker-exhausted-banner`"
+  >
+    <span class="banner-icon" aria-hidden="true">⚠️</span>
+    <span class="banner-text">
+      Live data unavailable &mdash; brokers offline, showing last session snapshot
+    </span>
+  </div>
 </template>
 
 <style scoped>
@@ -73,5 +84,11 @@ defineProps({
   background: #eff6ff;
   border-color: #93c5fd;
   color: #1e40af;
+}
+
+.broker-exhausted {
+  background: #fef2f2;
+  border-color: #fca5a5;
+  color: #991b1b;
 }
 </style>

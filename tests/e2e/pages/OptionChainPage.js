@@ -223,11 +223,30 @@ export class OptionChainPage extends BasePage {
   async selectUnderlying(underlying) {
     const tab = this.getByTestId(`optionchain-underlying-${underlying.toLowerCase()}`);
     await tab.click();
-    await this.waitForChainLoad();
+    await this._waitForChainRefresh();
   }
 
   async selectExpiry(expiryValue) {
     await this.expirySelect.selectOption(expiryValue);
+    await this._waitForChainRefresh();
+  }
+
+  /**
+   * After a refetch-triggering action (underlying/expiry change), the old table
+   * remains in the DOM until the new response arrives. Waiting for
+   * `optionchain-table` alone would resolve on the stale table. Wait until the
+   * loading indicator has appeared and disappeared so the rendered rows match
+   * the new selection.
+   */
+  async _waitForChainRefresh() {
+    const loading = this.page.locator('text=Loading option chain');
+    try {
+      await loading.waitFor({ state: 'visible', timeout: 3000 });
+      await loading.waitFor({ state: 'hidden', timeout: 30000 });
+    } catch {
+      // Loading indicator may flash too briefly to catch — fall back to the
+      // standard wait.
+    }
     await this.waitForChainLoad();
   }
 

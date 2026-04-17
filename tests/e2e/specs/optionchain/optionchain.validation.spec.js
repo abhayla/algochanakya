@@ -277,7 +277,7 @@ test.describe('Option Chain - Data Validation @validation', () => {
 
       // data_freshness must be present and one of the valid values
       expect(chain.data_freshness, 'data_freshness field must be present in chain response').toBeDefined();
-      const validFreshness = ['LIVE', 'LIVE_ENGINE', 'LAST_KNOWN', 'EOD_SNAPSHOT'];
+      const validFreshness = ['LIVE', 'LIVE_ENGINE', 'LAST_KNOWN', 'EOD_SNAPSHOT', 'BROKER_EXHAUSTED'];
       expect(validFreshness, `data_freshness must be one of ${validFreshness.join('/')}, got '${chain.data_freshness}'`)
         .toContain(chain.data_freshness);
 

@@ -4,7 +4,7 @@ Option Chain API Routes
 Endpoints for full option chain with OI, IV, Greeks, and live prices.
 Uses unified market data adapter for broker-agnostic data access.
 """
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, Request, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 from datetime import datetime, date
@@ -18,6 +18,9 @@ from app.database import get_db
 from app.models import User
 from app.services.brokers.market_data import get_user_market_data_adapter
 from app.services.brokers.market_data.factory import get_platform_market_data_adapter
+from app.services.brokers.market_data.failover_fetch import (
+    fetch_option_chain_quotes_with_failover,
+)
 from app.services.autopilot.strike_finder_service import StrikeFinderService
 from app.utils.market_hours import get_data_freshness, is_market_open
 from app.services.options.option_chain_cache import (
@@ -55,6 +58,85 @@ def _should_use_eod_snapshot(all_quotes: dict) -> bool:
     total = len(all_quotes)
     zero_count = sum(1 for q in all_quotes.values() if q.get("oi", 0) == 0)
     return zero_count >= total * 0.9
+
+
+def _is_all_zero_quotes(all_quotes: dict) -> bool:
+    """Return True when every quote has last_price, oi, and volume all zero.
+
+    Why: SmartAPI's WebSocket snap can accept the subscription with a still-valid
+    feed token even when the REST JWT is expired, then stream placeholder ticks
+    with every field zero instead of raising an auth error. The result is a
+    non-empty all_quotes dict that poses as live data and blocks both the
+    broker failover and the EOD snapshot fallback, so the user sees a
+    fully-populated chain with 0 everywhere.
+    """
+    if not all_quotes:
+        return False
+    for q in all_quotes.values():
+        if q.get("last_price") or q.get("oi") or q.get("volume"):
+            return False
+    return True
+
+
+async def _apply_exhaustion_eod_fallback(
+    *,
+    all_quotes: dict,
+    strikes_data: dict,
+    underlying: str,
+    expiry_date: date,
+    db: AsyncSession,
+) -> tuple[dict, bool]:
+    """Last-resort EOD snapshot when every broker returned nothing.
+
+    Called from ``_compute_option_chain`` after the broker failover chain
+    reports exhaustion. Returns ``(all_quotes, use_eod)``:
+    - ``all_quotes`` non-empty on entry → no-op, returns ``(all_quotes, False)``
+    - Snapshot exists → quotes rebuilt from it, ``use_eod=True``
+    - No snapshot (or snapshot lookup raises) → 503 HTTPException
+
+    Broker-agnostic by design — mirrors the behaviour we want for SmartAPI,
+    Upstox, and any future adapter whose session expires.
+    """
+    if all_quotes:
+        return all_quotes, False
+
+    try:
+        snapshot_svc = EODSnapshotService()
+        eod_snapshot = await snapshot_svc.get_snapshot(underlying, expiry_date, db)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "[OptionChain] Exhaustion EOD lookup failed for %s %s: %s",
+            underlying, expiry_date, exc,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                "All market data brokers are offline and the backup EOD "
+                "snapshot could not be loaded. Please retry shortly."
+            ),
+        )
+
+    if not eod_snapshot:
+        logger.warning(
+            "[OptionChain] All brokers returned empty and no EOD snapshot "
+            "exists for %s %s — returning 503",
+            underlying, expiry_date,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                "All market data brokers are offline. No EOD snapshot is "
+                "available for this expiry either."
+            ),
+        )
+
+    filled = _apply_eod_fallback({}, eod_snapshot, strikes_data)
+    logger.warning(
+        "[OptionChain] EXHAUSTION FALLBACK: serving EOD snapshot for %s %s "
+        "(%d strikes)",
+        underlying, expiry_date, len(filled),
+    )
+    return filled, True
 
 
 def _apply_eod_fallback(
@@ -415,6 +497,7 @@ async def _compute_option_chain(
     expiry_date: date,
     user: Optional[User],
     db: AsyncSession,
+    request: Optional[Request] = None,
 ) -> dict:
     """Core option chain computation — extracted for cacheability.
 
@@ -669,10 +752,11 @@ async def _compute_option_chain(
                 "depth": {"buy": [], "sell": []},
             }
 
-    # PATH 3: Batched REST get_quote() fallback
+    # PATH 3: Batched REST get_quote() fallback — SmartAPI getMarketData caps
+    # at 50 symbols per request (AB4029 "Tokens max limit exceeded" otherwise)
     if not all_quotes and adapter:
-        for i in range(0, len(canonical_symbols), 100):
-            batch_symbols = canonical_symbols[i:i+100]
+        for i in range(0, len(canonical_symbols), 50):
+            batch_symbols = canonical_symbols[i:i+50]
             if not batch_symbols:
                 continue
             try:
@@ -700,7 +784,60 @@ async def _compute_option_chain(
 
     logger.info(f"[OptionChain] Fetched quotes for {len(all_quotes)}/{len(list(token_to_symbol.values()))} instruments")
 
-    # EOD Snapshot fallback: when market is closed and broker OI is all zeros
+    # ── BROKER FAILOVER SAFETY NET ──────────────────────────────────────────
+    # If the primary adapter's 3-path flow returned nothing (auth expired,
+    # WebSocket rejected, REST AG8001, etc.), iterate ORG_ACTIVE_BROKERS and
+    # try each remaining broker. Auth errors along the way are escalated to
+    # HealthMonitor so FailoverController can react pool-wide.
+    # Also trigger failover when every quote is all-zero — SmartAPI WS can
+    # accept a subscription with an expired session and stream placeholder
+    # ticks of zeros, which would otherwise pose as live data.
+    if not all_quotes or _is_all_zero_quotes(all_quotes):
+        if all_quotes:
+            logger.warning(
+                "[OptionChain] Primary path returned %d all-zero quotes "
+                "(likely stale session) — discarding and invoking failover",
+                len(all_quotes),
+            )
+            all_quotes = {}
+        health_monitor = None
+        if request is not None:
+            health_monitor = getattr(request.app.state, "ticker_health_monitor", None)
+        primary_broker_type = adapter.broker_type if adapter else None
+        logger.info(
+            "[OptionChain] Primary path empty — invoking broker failover "
+            "(skip=%s)", primary_broker_type,
+        )
+        try:
+            failover_adapter, failover_quotes = await fetch_option_chain_quotes_with_failover(
+                underlying=underlying,
+                expiry_str=expiry,
+                expiry_date=expiry_date,
+                user_id=user.id if user else None,
+                db=db,
+                health_monitor=health_monitor,
+                skip_broker_types=[primary_broker_type] if primary_broker_type else None,
+            )
+            if failover_quotes:
+                logger.info(
+                    "[OptionChain] Failover succeeded via %s (%d quotes)",
+                    failover_adapter.broker_type if failover_adapter else "?",
+                    len(failover_quotes),
+                )
+                all_quotes = failover_quotes
+                # Downstream Greeks calc uses `adapter.broker_type` only for
+                # diagnostic logging at this point, so leaving `adapter` as
+                # the primary is acceptable. If future code keys off the
+                # active adapter, update here: `adapter = failover_adapter`.
+        except Exception as failover_err:  # noqa: BLE001
+            logger.warning(
+                "[OptionChain] Failover helper raised: %s", failover_err,
+            )
+
+    # EOD Snapshot fallback: two independent triggers
+    #   A) Market closed + broker OI mostly zero — keep historical behaviour
+    #   B) Every broker returned nothing (primary + failover) — new Phase 4
+    #      path so users don't see silent zeros when all adapters are down
     eod_snapshot = None
     use_eod = False
     if not is_market_open() and _should_use_eod_snapshot(all_quotes):
@@ -715,6 +852,34 @@ async def _compute_option_chain(
                 logger.info(f"[OptionChain] Applied EOD snapshot fallback ({len(eod_snapshot)} strikes)")
         except Exception as e:
             logger.warning(f"[OptionChain] EOD snapshot failed: {e}")
+
+    # Path B — exhaustion fallback. Runs regardless of market hours. Raises
+    # 503 if no EOD is available either, so the frontend can show a clear
+    # "all brokers offline" banner instead of an all-zeros chain. Also
+    # triggers when every quote is all-zero (stale WS session posing as
+    # live data) so the EOD snapshot can repair the response.
+    broker_exhausted = False
+    if not all_quotes or _is_all_zero_quotes(all_quotes):
+        if all_quotes:
+            logger.warning(
+                "[OptionChain] Failover returned %d all-zero quotes — "
+                "discarding and falling back to EOD snapshot",
+                len(all_quotes),
+            )
+            all_quotes = {}
+        all_quotes, exhaustion_used_eod = await _apply_exhaustion_eod_fallback(
+            all_quotes=all_quotes,
+            strikes_data=strikes_data,
+            underlying=underlying,
+            expiry_date=expiry_date,
+            db=db,
+        )
+        # Only set use_eod during after-hours; during market hours the EOD
+        # snapshot is a broker-exhaustion degradation, not an end-of-day view.
+        if exhaustion_used_eod and not is_market_open():
+            use_eod = True
+        elif exhaustion_used_eod:
+            broker_exhausted = True
 
     if not strikes_data:
         raise HTTPException(
@@ -923,7 +1088,11 @@ async def _compute_option_chain(
         "spot_price": spot_price,
         "days_to_expiry": days_to_expiry,
         "lot_size": LOT_SIZES.get(underlying, 75),
-        "data_freshness": "EOD_SNAPSHOT" if use_eod else get_data_freshness(),
+        "data_freshness": (
+            "EOD_SNAPSHOT" if use_eod
+            else "BROKER_EXHAUSTED" if broker_exhausted
+            else get_data_freshness()
+        ),
         "chain": option_chain,
         "summary": {
             "total_ce_oi": total_ce_oi,
@@ -937,6 +1106,7 @@ async def _compute_option_chain(
 
 @router.get("/chain")
 async def get_option_chain(
+    request: Request,
     underlying: str = Query(..., description="NIFTY, BANKNIFTY, or FINNIFTY"),
     expiry: str = Query(..., description="Expiry date in YYYY-MM-DD format"),
     user: User = Depends(get_current_user),
@@ -973,7 +1143,7 @@ async def get_option_chain(
                 )
 
         async def compute():
-            return await _compute_option_chain(underlying, expiry, expiry_date, user, db)
+            return await _compute_option_chain(underlying, expiry, expiry_date, user, db, request=request)
 
         result = await get_or_compute(underlying, expiry, compute)
 

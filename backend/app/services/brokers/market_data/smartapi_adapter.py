@@ -61,6 +61,7 @@ class SmartAPIMarketDataAdapter(MarketDataBrokerAdapter):
             db: Database session for token lookups
         """
         super().__init__(credentials)
+        self._credentials = credentials
         self.db = db
         self._symbol_converter = SymbolConverter()
         self._token_manager = TokenManagerFactory.get_manager("smartapi", db)

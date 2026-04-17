@@ -25,6 +25,11 @@ _SMARTAPI_ERRORS: dict[str, RetryCategory] = {
     "AB1010": RetryCategory.RETRYABLE,       # Invalid Token — refreshable via TOTP
     "AB1004": RetryCategory.NOT_RETRYABLE,   # Invalid API Key — config error
     "AB2000": RetryCategory.RETRYABLE,       # Rate limited
+    # AG-prefixed codes are returned by SmartAPI production (smartConnect SDK)
+    # distinct from the AB-prefixed codes (SDK-internal). Observed in logs
+    # 2026-04-17 when platform JWT expired and refresh token also invalid.
+    "AG8001": RetryCategory.RETRYABLE,       # Invalid Token — attempt TOTP refresh
+    "AG8003": RetryCategory.RETRYABLE,       # Token missing — re-auth via TOTP
 }
 
 _UPSTOX_ERRORS: dict[str, RetryCategory] = {

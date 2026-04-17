@@ -74,6 +74,7 @@ Multi-broker platform where all 6 brokers (Zerodha, AngelOne, Dhan, Fyers, Paytm
 - DB stores `'zerodha'`/`'angelone'` but `BrokerType` enum uses `'kite'`/`'angel'` — use `BROKER_NAME_MAP`
 - AngelOne has 3 API keys: `ANGEL_API_KEY` (live data), `ANGEL_HIST_API_KEY` (history), `ANGEL_TRADE_API_KEY` (orders)
 - Never import broker SDKs directly — always use `app.services.brokers.factory`
+- Tests use SQLite in-memory; PostgreSQL types (JSONB, ARRAY, UUID, BigInteger) need `@compiles` dialect adapters in `conftest.py` — see `sqlite-test-compat` rule
 
 ## Git
 
