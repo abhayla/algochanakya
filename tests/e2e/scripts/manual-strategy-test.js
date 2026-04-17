@@ -135,7 +135,7 @@ async function runTests() {
     // TEST 5: Strategy Selector Bar
     console.log('\n--- TEST 5: Strategy Selector Bar ---');
     const selectorBar = await page.locator('[data-testid="strategy-selector-bar"]').isVisible();
-    const strategySelect = await page.locator('[data-testid="strategy-select"]').isVisible();
+    const strategySelect = await page.locator('[data-testid="strategy-selector-saved-select"]').isVisible();
     const strategyTypeSelect = await page.locator('[data-testid="strategy-type-select"]').isVisible();
 
     if (selectorBar && strategySelect && strategyTypeSelect) {

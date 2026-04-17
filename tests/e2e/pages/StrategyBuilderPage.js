@@ -27,7 +27,7 @@ export class StrategyBuilderPage extends BasePage {
 
   // Selector bar
   get selectorBar() { return this.getByTestId('strategy-selector-bar'); }
-  get strategySelect() { return this.getByTestId('strategy-select'); }
+  get strategySelect() { return this.getByTestId('strategy-selector-saved-select'); }
   get strategyNameInput() { return this.getByTestId('strategy-name-input'); }
   get saveButton() { return this.getByTestId('strategy-save-button'); }
   get deleteButton() { return this.getByTestId('strategy-delete-button'); }
