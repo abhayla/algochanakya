@@ -3,8 +3,7 @@ name: skill-author
 description: >
   Create, update, or manage Claude Code skills, rules, and agents using the dedicated authoring
   workflows. Dispatches to /writing-skills for skills, /claude-guardian for rules, and applies
-  pattern-structure.md standards for agents. Use when generating patterns as part of /synthesize-project
-  or when a user requests a new skill/rule/agent.
+  pattern-structure.md standards for agents. Use when a user requests a new skill/rule/agent.
 tools: ["Read", "Write", "Edit", "Grep", "Glob", "Bash", "Skill"]
 model: inherit
 ---
@@ -22,7 +21,6 @@ You are a pattern author specializing in creating high-quality Claude Code skill
 
 You receive one of:
 - A pattern type + description (e.g., "skill: automated API testing for FastAPI endpoints")
-- A convention hypothesis from `/synthesize-project` Step 7 (includes type, name, evidence files, confidence)
 - An update request for an existing pattern (e.g., "update /fix-loop to add retry budget")
 - A management action (e.g., "deprecate /old-skill", "split /oversized-skill")
 
@@ -37,7 +35,7 @@ You receive one of:
    - Step 8: template selection (A-G based on skill purpose)
 3. After `/writing-skills` returns the draft, validate against pattern rules:
    - Read `pattern-structure.md` — verify frontmatter has all required fields (`name`, `description`, `type`, `allowed-tools`, `argument-hint`, `version`)
-   - Read `pattern-portability.md` — verify no hardcoded paths, least-privilege tools, no project-specific references (unless this is a synthesized project-specific pattern)
+   - Read `pattern-portability.md` — verify no hardcoded paths, least-privilege tools, no project-specific references
    - Read `pattern-self-containment.md` — verify 30+ lines of content, no placeholders, cross-references exist
 4. Return the validated skill file
 
@@ -51,16 +49,13 @@ You receive one of:
 3. After `/claude-guardian` returns, verify:
    - Rule has scope declaration (globs or global)
    - MUST NOT rules provide alternatives ("Use Y instead of X")
-   - If synthesized: `synthesized: true` in frontmatter
 4. Return the validated rule file with placement recommendation
 
 ### Agents
 
 Agents do NOT have a dedicated authoring skill. Author directly using the template and standards:
 
-1. Read the Agent Template from the pattern-templates reference:
-   - Look in `.claude/skills/synthesize-project/references/pattern-templates.md` (Agent Template section)
-   - If not available, use the template below
+1. Use the Agent Template below
 2. Read `pattern-structure.md` for agent frontmatter requirements
 3. Generate the agent file with:
    - YAML frontmatter: `name`, `description`, `tools` (JSON array), `model: inherit`
