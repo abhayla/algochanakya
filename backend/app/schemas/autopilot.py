@@ -499,13 +499,17 @@ class GreeksSnapshot(BaseModel):
 
 
 class PositionGreeksResponse(BaseModel):
-    """Complete Greeks for strategy position"""
-    strategy_id: int
-    net_delta: float
-    net_gamma: float
-    net_theta: float
-    net_vega: float
-    legs: List[Dict[str, Any]] = []  # Per-leg Greeks
+    """Aggregate Greeks for a set of position legs (strategy or arbitrary).
+
+    Field names follow GreeksCalculatorService.calculate_position_greeks —
+    its consumers (AI adjustment advisor, stress engine) read total_*."""
+    total_delta: float
+    total_gamma: float
+    total_theta: float
+    total_vega: float
+    total_rho: float
+    spot_price: float
+    leg_greeks: List[Dict[str, Any]] = []  # Per-leg Greeks
     calculated_at: datetime
 
 
