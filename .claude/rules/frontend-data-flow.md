@@ -24,6 +24,12 @@ Views/Components  →  Stores (Pinia)  →  API Service (Axios)
 Views and components MUST access data through Pinia stores or composables.
 They MUST NOT import `api` from `@/services/api` directly.
 
+This boundary is now ABSOLUTE and fully enforced: zero direct
+`import api from '@/services/api'` remain in `frontend/src/views/` or
+`frontend/src/components/`. The 21 pre-migration violations were all migrated
+in the batch-1-through-8 store migration (final commit 25b4797). New components
+MUST go component → store action → api — no exceptions.
+
 ```javascript
 // CORRECT — view uses store:
 import { useOptionChainStore } from '@/stores/optionchain'
@@ -82,6 +88,22 @@ const suggestions = ref({ loading: false, error: null })
 // WRONG — single global loading:
 const loading = ref(false)  // Blocks entire store UI during any operation
 ```
+
+### Stale-data display for time-sensitive components
+
+Emerging pattern (SHOULD-level): components rendering time-sensitive data
+SHOULD cache the last successful fetch and degrade gracefully on failure
+instead of going blank or silently showing old numbers.
+
+- Keep `cachedChartData` + `lastFetchTime` refs alongside the live data ref
+- Compute `isStale` from the age of `lastFetchTime`
+- On fetch failure, render the cached data WITH an explicit stale warning,
+  the data's age, and a retry control — NEVER silently show stale numbers
+  as if they were live
+
+Reference implementation:
+`frontend/src/components/autopilot/monitoring/StraddlePremiumChart.vue`
+(~lines 40-70: `cachedChartData`, `lastFetchTime`, `isStale`, `staleTimeText`).
 
 ## Composables: Reusable UI Logic
 

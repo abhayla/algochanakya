@@ -25,11 +25,30 @@ await page.getByText("Submit").click()
 
 `data-testid` values follow: `[screen]-[component]-[element]`
 
+Values MUST have at least 3 hyphen-separated lowercase alphanumeric segments
+(`[screen]-[component]-[element]` or longer). 2-segment ids like `btn-clear`
+are INVALID.
+
 Examples:
 - `positions-exit-modal`
 - `dashboard-portfolio-card`
 - `autopilot-kill-switch-btn`
 - `optionchain-strike-row`
+
+Backfill examples (commit 863a9bf) — how to fix 2-segment ids:
+- `btn-clear` → `ai-activity-feed-clear-btn`
+- `btn-show-more` → `ai-activity-feed-show-more-btn`
+
+### Hook Enforcement
+
+The 3-segment minimum is now BLOCKED deterministically by
+`.claude/hooks/guard_testid_pattern.py` (`TESTID_PATTERN` regex, ~line 41) on
+Write/Edit of files under `frontend/src/views/` and `frontend/src/components/`.
+
+- Dynamic `:data-testid` bindings bypass the hook (the pattern cannot be
+  statically validated) — reviewers MUST check those manually.
+- ~55 older files with pre-convention ids are grandfathered until touched;
+  fix violations in any element you edit.
 
 ## Auth Fixture
 

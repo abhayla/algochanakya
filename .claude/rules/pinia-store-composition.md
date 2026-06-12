@@ -5,7 +5,7 @@ description: >
 globs: ["frontend/src/stores/**/*.js", "frontend/src/stores/**/*.ts"]
 synthesized: true
 private: false
-version: "1.0.0"
+version: "1.1.0"
 ---
 
 # Pinia Store Composition Pattern
@@ -52,6 +52,42 @@ export const useFeatureStore = defineStore('feature', () => {
 - MUST use `ref()` for individual state properties — not `reactive()` for the entire state object
 - MUST include the **loading/error/data triple**: every store that fetches data needs `loading`, `error`, and the primary data ref
 - For stores with multiple async operations, use operation-specific loading refs (e.g., `zerodhaLoading`, `angelOneLoading` as seen in `auth.js`)
+
+### Per-Feature Loading Refs (hardened post store-migration, April 2026)
+
+In multi-section stores, each async action MUST get its OWN dedicated loading ref.
+A single global `loading` ref is no longer acceptable for stores that serve more
+than one UI section — unrelated sections must be able to load independently
+without blocking each other's spinners.
+
+Canonical example — `aiAnalytics.js` (lines 5-12): five separate refs, one per
+feature area, all returned explicitly in the return block:
+
+```javascript
+export const useAIAnalyticsStore = defineStore('aiAnalytics', () => {
+  // Per-feature loading refs (keep UI sections unblocked from each other)
+  const autonomyLoading = ref(false)
+  const capitalRiskLoading = ref(false)
+  const regimeStrengthsLoading = ref(false)
+  const analyticsLoading = ref(false)
+  const paperTradingLoading = ref(false)
+  const error = ref(null)
+  // ...
+  return {
+    autonomyLoading,
+    capitalRiskLoading,
+    regimeStrengthsLoading,
+    analyticsLoading,
+    paperTradingLoading,
+    // ...
+  }
+})
+```
+
+- Each ref MUST be named `<feature>Loading` and set/cleared only by its own action(s)
+- Every loading ref MUST be returned explicitly in the return block — no implicit exposure
+- Older stores (e.g., `brokerPreferences.js`) predate this convention and are
+  grandfathered; do NOT copy their single-`loading` shape into new or migrated stores
 
 ### Action Functions
 
