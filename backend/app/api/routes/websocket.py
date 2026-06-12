@@ -27,6 +27,7 @@ from app.models.user_preferences import MarketDataSource, UserPreferences
 from app.utils.jwt import verify_access_token
 from app.utils.smartapi_utils import get_valid_smartapi_credentials
 from app.services.brokers.market_data.ticker import TickerPool, TickerRouter
+from app.services.brokers.market_data.ticker.index_token_maps import INDEX_TOKEN_MAPS as _INDEX_TOKEN_MAPS
 from app.config import settings
 
 logger = logging.getLogger(__name__)
@@ -235,6 +236,7 @@ async def _ensure_broker_credentials(
                 "client_id": user_creds.client_id or settings.DHAN_CLIENT_ID,
                 "access_token": user_creds.access_token,
                 "token_expiry": user_creds.token_expiry,
+                "token_map": _INDEX_TOKEN_MAPS["dhan"],
             })
             return True
 
@@ -243,6 +245,7 @@ async def _ensure_broker_credentials(
             pool.set_credentials("dhan", {
                 "client_id": settings.DHAN_CLIENT_ID,
                 "access_token": settings.DHAN_ACCESS_TOKEN,
+                "token_map": _INDEX_TOKEN_MAPS["dhan"],
             })
             return True
 
@@ -256,6 +259,7 @@ async def _ensure_broker_credentials(
                 "app_id": user_creds.client_id or settings.FYERS_APP_ID,
                 "access_token": user_creds.access_token,
                 "token_expiry": user_creds.token_expiry,
+                "token_map": _INDEX_TOKEN_MAPS["fyers"],
             })
             return True
 
@@ -264,6 +268,7 @@ async def _ensure_broker_credentials(
             pool.set_credentials("fyers", {
                 "app_id": settings.FYERS_APP_ID,
                 "access_token": settings.FYERS_ACCESS_TOKEN,
+                "token_map": _INDEX_TOKEN_MAPS["fyers"],
             })
             return True
 
@@ -284,6 +289,7 @@ async def _ensure_broker_credentials(
             pool.set_credentials("upstox", {
                 "api_key": user_creds.api_key or settings.UPSTOX_API_KEY,
                 "access_token": user_creds.access_token,
+                "token_map": _INDEX_TOKEN_MAPS["upstox"],
             })
             return True
 
@@ -299,6 +305,7 @@ async def _ensure_broker_credentials(
             pool.set_credentials("upstox", {
                 "api_key": api_key,
                 "access_token": access_token,
+                "token_map": _INDEX_TOKEN_MAPS["upstox"],
             })
             return True
 
@@ -313,6 +320,7 @@ async def _ensure_broker_credentials(
                 "api_key": user_creds.api_key or settings.PAYTM_API_KEY,
                 "public_access_token": user_creds.feed_token,
                 "token_expiry": user_creds.token_expiry,
+                "token_map": _INDEX_TOKEN_MAPS["paytm"],
             })
             return True
 
@@ -321,6 +329,7 @@ async def _ensure_broker_credentials(
             pool.set_credentials("paytm", {
                 "api_key": settings.PAYTM_API_KEY,
                 "public_access_token": settings.PAYTM_PUBLIC_ACCESS_TOKEN,
+                "token_map": _INDEX_TOKEN_MAPS["paytm"],
             })
             return True
 

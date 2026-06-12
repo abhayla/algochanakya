@@ -347,3 +347,107 @@ class TestWebSocketRouteNoLegacyImports:
         with open(ws_module.__file__) as f:
             line_count = sum(1 for _ in f)
         assert line_count < 500, f"websocket.py is {line_count} lines (expected < 500)"
+
+
+# ─── Per-user broker token maps (index fallback) ─────────────────────────────
+
+
+def _fake_jwt(exp: int = 9999999999) -> str:
+    """Build a structurally valid JWT with the given exp claim."""
+    import base64
+    import json as _json
+    payload = base64.b64encode(_json.dumps({"exp": exp}).encode()).decode()
+    return f"header.{payload}.signature"
+
+
+class TestUserBrokerTokenMaps:
+    """Every broker block in _ensure_broker_credentials MUST pass a token_map
+    so the ticker adapter can translate canonical tokens. Without it the
+    adapter connects, subscribes to nothing, and the user silently gets zero
+    ticks (the exact failure observed live with Upstox on 2026-06-12)."""
+
+    @pytest.fixture(autouse=True)
+    def reset_pool(self):
+        from app.services.brokers.market_data.ticker import TickerPool
+        TickerPool.reset_instance()
+        yield
+        TickerPool.reset_instance()
+
+    def _user_creds(self, **overrides):
+        creds = MagicMock()
+        creds.api_key = "user-api-key"
+        creds.client_id = "user-client-id"
+        creds.access_token = "user-access-token"
+        creds.feed_token = "user-feed-token"
+        creds.token_expiry = None  # no expiry = valid
+        for k, v in overrides.items():
+            setattr(creds, k, v)
+        return creds
+
+    @pytest.mark.asyncio
+    @patch("app.api.routes.websocket._get_user_broker_creds")
+    async def test_upstox_user_creds_include_index_token_map(self, mock_get_creds):
+        from app.services.brokers.market_data.ticker import TickerPool
+        mock_get_creds.return_value = self._user_creds(access_token=_fake_jwt())
+
+        result = await _ensure_broker_credentials("upstox", make_mock_user(), make_mock_db())
+        assert result is True
+        creds = TickerPool.get_instance()._credentials["upstox"]
+        assert "token_map" in creds, "upstox credentials missing token_map"
+        assert creds["token_map"][256265] == "NSE_INDEX|Nifty 50"
+        assert creds["token_map"][260105] == "NSE_INDEX|Nifty Bank"
+
+    @pytest.mark.asyncio
+    @patch("app.api.routes.websocket._get_user_broker_creds")
+    async def test_dhan_user_creds_include_index_token_map(self, mock_get_creds):
+        from app.services.brokers.market_data.ticker import TickerPool
+        mock_get_creds.return_value = self._user_creds()
+
+        result = await _ensure_broker_credentials("dhan", make_mock_user(), make_mock_db())
+        assert result is True
+        creds = TickerPool.get_instance()._credentials["dhan"]
+        assert "token_map" in creds, "dhan credentials missing token_map"
+        assert creds["token_map"][256265] == ("13", "IDX_I")
+        assert creds["token_map"][260105] == ("25", "IDX_I")
+
+    @pytest.mark.asyncio
+    @patch("app.api.routes.websocket._get_user_broker_creds")
+    async def test_fyers_user_creds_include_index_token_map(self, mock_get_creds):
+        from app.services.brokers.market_data.ticker import TickerPool
+        mock_get_creds.return_value = self._user_creds()
+
+        result = await _ensure_broker_credentials("fyers", make_mock_user(), make_mock_db())
+        assert result is True
+        creds = TickerPool.get_instance()._credentials["fyers"]
+        assert "token_map" in creds, "fyers credentials missing token_map"
+        assert creds["token_map"][256265] == "NSE:NIFTY50-INDEX"
+        assert creds["token_map"][260105] == "NSE:NIFTYBANK-INDEX"
+
+    @pytest.mark.asyncio
+    @patch("app.api.routes.websocket._get_user_broker_creds")
+    async def test_paytm_user_creds_include_index_token_map(self, mock_get_creds):
+        from app.services.brokers.market_data.ticker import TickerPool
+        mock_get_creds.return_value = self._user_creds()
+
+        result = await _ensure_broker_credentials("paytm", make_mock_user(), make_mock_db())
+        assert result is True
+        creds = TickerPool.get_instance()._credentials["paytm"]
+        assert "token_map" in creds, "paytm credentials missing token_map"
+        assert creds["token_map"][256265] == ("999920000", "NSE", "INDEX")
+        assert creds["token_map"][260105] == ("999920005", "NSE", "INDEX")
+
+    @pytest.mark.asyncio
+    @patch("app.api.routes.websocket.settings")
+    @patch("app.api.routes.websocket._get_user_broker_creds")
+    async def test_dhan_env_fallback_also_includes_token_map(self, mock_get_creds, mock_settings):
+        """The platform .env path must carry the token_map too."""
+        from app.services.brokers.market_data.ticker import TickerPool
+        mock_get_creds.return_value = None
+        mock_settings.DHAN_CLIENT_ID = "env-client"
+        mock_settings.DHAN_ACCESS_TOKEN = "env-token"
+
+        result = await _ensure_broker_credentials("dhan", make_mock_user(), make_mock_db())
+        assert result is True
+        creds = TickerPool.get_instance()._credentials["dhan"]
+        assert "token_map" in creds
+        assert 256265 in creds["token_map"]
