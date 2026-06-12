@@ -408,7 +408,7 @@ class TestExpiryCalculation:
 
     def test_current_week_before_thursday(self, order_executor):
         """Test current_week expiry before Thursday."""
-        with patch('app.services.order_executor.date') as mock_date:
+        with patch('app.services.autopilot.order_executor.date') as mock_date:
             mock_date.today.return_value = date(2024, 12, 23)  # Monday
             mock_date.side_effect = lambda *args, **kw: date(*args, **kw)
 
@@ -419,7 +419,7 @@ class TestExpiryCalculation:
 
     def test_next_week_expiry(self, order_executor):
         """Test next_week expiry."""
-        with patch('app.services.order_executor.date') as mock_date:
+        with patch('app.services.autopilot.order_executor.date') as mock_date:
             mock_date.today.return_value = date(2024, 12, 23)  # Monday
             mock_date.side_effect = lambda *args, **kw: date(*args, **kw)
 

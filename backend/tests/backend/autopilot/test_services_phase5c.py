@@ -247,7 +247,7 @@ class TestOIAnalysisService:
         """Test OI.PCR as condition variable."""
         engine = ConditionEngine(db_session, test_user.id, mock_market_data)
 
-        with patch('app.services.oi_analysis_service.OIAnalysisService.get_pcr', new_callable=AsyncMock) as mock_pcr:
+        with patch('app.services.options.oi_analysis_service.OIAnalysisService.get_pcr', new_callable=AsyncMock) as mock_pcr:
             mock_pcr.return_value = 1.25
 
             value = await engine._get_variable_value(
@@ -263,7 +263,7 @@ class TestOIAnalysisService:
         """Test PCR between range condition."""
         engine = ConditionEngine(db_session, test_user.id, mock_market_data)
 
-        with patch('app.services.oi_analysis_service.OIAnalysisService.get_pcr', new_callable=AsyncMock) as mock_pcr:
+        with patch('app.services.options.oi_analysis_service.OIAnalysisService.get_pcr', new_callable=AsyncMock) as mock_pcr:
             mock_pcr.return_value = 1.15
 
             condition = {
@@ -301,7 +301,7 @@ class TestOIAnalysisService:
         """Test OI.MAX_PAIN as condition variable."""
         engine = ConditionEngine(db_session, test_user.id, mock_market_data)
 
-        with patch('app.services.oi_analysis_service.OIAnalysisService.get_max_pain', new_callable=AsyncMock) as mock_max_pain:
+        with patch('app.services.options.oi_analysis_service.OIAnalysisService.get_max_pain', new_callable=AsyncMock) as mock_max_pain:
             mock_max_pain.return_value = 24700
 
             value = await engine._get_variable_value(
@@ -319,7 +319,7 @@ class TestOIAnalysisService:
 
         mock_market_data.get_spot_price = AsyncMock(return_value=MagicMock(ltp=25000))
 
-        with patch('app.services.oi_analysis_service.OIAnalysisService.get_max_pain', new_callable=AsyncMock) as mock_max_pain:
+        with patch('app.services.options.oi_analysis_service.OIAnalysisService.get_max_pain', new_callable=AsyncMock) as mock_max_pain:
             mock_max_pain.return_value = 24700
 
             spot = 25000
@@ -347,7 +347,7 @@ class TestOIAnalysisService:
         """Test OI.CHANGE as condition variable."""
         engine = ConditionEngine(db_session, test_user.id, mock_market_data)
 
-        with patch('app.services.oi_analysis_service.OIAnalysisService.get_oi_change_pct', new_callable=AsyncMock) as mock_oi_change:
+        with patch('app.services.options.oi_analysis_service.OIAnalysisService.get_oi_change_pct', new_callable=AsyncMock) as mock_oi_change:
             mock_oi_change.return_value = 25.5  # 25.5% increase
 
             value = await engine._get_variable_value(
@@ -396,7 +396,7 @@ class TestIVEntryConditions:
         """Test entry when IV Rank > 50."""
         engine = ConditionEngine(db_session, test_user.id, mock_market_data)
 
-        with patch('app.services.iv_metrics_service.IVMetricsService.get_iv_rank', new_callable=AsyncMock) as mock_iv_rank:
+        with patch('app.services.options.iv_metrics_service.IVMetricsService.get_iv_rank', new_callable=AsyncMock) as mock_iv_rank:
             mock_iv_rank.return_value = 62.5
 
             condition = {
@@ -414,7 +414,7 @@ class TestIVEntryConditions:
         """Test entry when IV Rank > 70 (very high IV)."""
         engine = ConditionEngine(db_session, test_user.id, mock_market_data)
 
-        with patch('app.services.iv_metrics_service.IVMetricsService.get_iv_rank', new_callable=AsyncMock) as mock_iv_rank:
+        with patch('app.services.options.iv_metrics_service.IVMetricsService.get_iv_rank', new_callable=AsyncMock) as mock_iv_rank:
             mock_iv_rank.return_value = 75.8
 
             condition = {
@@ -432,7 +432,7 @@ class TestIVEntryConditions:
         """Test entry when IV Percentile > 60."""
         engine = ConditionEngine(db_session, test_user.id, mock_market_data)
 
-        with patch('app.services.iv_metrics_service.IVMetricsService.get_iv_percentile', new_callable=AsyncMock) as mock_iv_percentile:
+        with patch('app.services.options.iv_metrics_service.IVMetricsService.get_iv_percentile', new_callable=AsyncMock) as mock_iv_percentile:
             mock_iv_percentile.return_value = 68.2
 
             condition = {
@@ -450,7 +450,7 @@ class TestIVEntryConditions:
         """Test IV condition combined with time condition (multi-condition logic)."""
         engine = ConditionEngine(db_session, test_user.id, mock_market_data)
 
-        with patch('app.services.iv_metrics_service.IVMetricsService.get_iv_rank', new_callable=AsyncMock) as mock_iv_rank:
+        with patch('app.services.options.iv_metrics_service.IVMetricsService.get_iv_rank', new_callable=AsyncMock) as mock_iv_rank:
             mock_iv_rank.return_value = 65.0
 
             iv_condition = {
@@ -504,7 +504,7 @@ class TestProbabilityOTM:
         """Test PROBABILITY.OTM as condition variable."""
         engine = ConditionEngine(db_session, test_user.id, mock_market_data)
 
-        with patch('app.services.greeks_calculator.GreeksCalculatorService.calculate_probability_otm', new_callable=AsyncMock) as mock_prob:
+        with patch('app.services.options.greeks_calculator.GreeksCalculatorService.calculate_probability_otm', new_callable=AsyncMock) as mock_prob:
             mock_prob.return_value = 78.5
 
             value = await engine._get_variable_value(
@@ -520,7 +520,7 @@ class TestProbabilityOTM:
         """Test entry when Probability OTM > 75%."""
         engine = ConditionEngine(db_session, test_user.id, mock_market_data)
 
-        with patch('app.services.greeks_calculator.GreeksCalculatorService.calculate_probability_otm', new_callable=AsyncMock) as mock_prob:
+        with patch('app.services.options.greeks_calculator.GreeksCalculatorService.calculate_probability_otm', new_callable=AsyncMock) as mock_prob:
             mock_prob.return_value = 80.2
 
             condition = {

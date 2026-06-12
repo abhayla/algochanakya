@@ -147,8 +147,8 @@ def mock_ws_manager():
 @pytest.fixture
 def strategy_monitor(mock_kite, mock_market_data, mock_condition_engine, mock_ws_manager):
     """Create StrategyMonitor with mocks."""
-    with patch('app.services.strategy_monitor.get_ws_manager', return_value=mock_ws_manager):
-        with patch('app.services.strategy_monitor.get_order_executor') as mock_executor:
+    with patch('app.services.autopilot.strategy_monitor.get_ws_manager', return_value=mock_ws_manager):
+        with patch('app.services.autopilot.strategy_monitor.get_order_executor') as mock_executor:
             mock_executor.return_value = AsyncMock(spec=OrderExecutor)
             monitor = StrategyMonitor(mock_kite, mock_market_data, mock_condition_engine)
             monitor.ws_manager = mock_ws_manager
@@ -701,8 +701,8 @@ class TestServiceFactory:
         """Test get_strategy_monitor creates instance."""
         await stop_strategy_monitor()  # Clear any existing
 
-        with patch('app.services.strategy_monitor.get_market_data_service') as mock_md:
-            with patch('app.services.strategy_monitor.get_condition_engine') as mock_ce:
+        with patch('app.services.autopilot.strategy_monitor.get_market_data_service') as mock_md:
+            with patch('app.services.autopilot.strategy_monitor.get_condition_engine') as mock_ce:
                 mock_md.return_value = MagicMock()
                 mock_ce.return_value = MagicMock()
 
@@ -717,8 +717,8 @@ class TestServiceFactory:
         """Test stop_strategy_monitor clears instance."""
         await stop_strategy_monitor()  # Clear any existing
 
-        with patch('app.services.strategy_monitor.get_market_data_service') as mock_md:
-            with patch('app.services.strategy_monitor.get_condition_engine') as mock_ce:
+        with patch('app.services.autopilot.strategy_monitor.get_market_data_service') as mock_md:
+            with patch('app.services.autopilot.strategy_monitor.get_condition_engine') as mock_ce:
                 mock_md.return_value = MagicMock()
                 mock_ce.return_value = MagicMock()
 

@@ -490,7 +490,7 @@ class TestIVRankTracking:
         engine = ConditionEngine(db_session, test_user.id, mock_market_data)
 
         # Mock IV metrics service
-        with patch('app.services.iv_metrics_service.IVMetricsService.get_iv_rank', new_callable=AsyncMock) as mock_iv_rank:
+        with patch('app.services.options.iv_metrics_service.IVMetricsService.get_iv_rank', new_callable=AsyncMock) as mock_iv_rank:
             mock_iv_rank.return_value = 65.5
 
             value = await engine._get_variable_value(
@@ -506,7 +506,7 @@ class TestIVRankTracking:
         """Test IV.PERCENTILE as condition variable."""
         engine = ConditionEngine(db_session, test_user.id, mock_market_data)
 
-        with patch('app.services.iv_metrics_service.IVMetricsService.get_iv_percentile', new_callable=AsyncMock) as mock_iv_percentile:
+        with patch('app.services.options.iv_metrics_service.IVMetricsService.get_iv_percentile', new_callable=AsyncMock) as mock_iv_percentile:
             mock_iv_percentile.return_value = 72.8
 
             value = await engine._get_variable_value(

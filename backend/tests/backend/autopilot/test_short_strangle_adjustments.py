@@ -33,10 +33,10 @@ from app.models.autopilot import (
 def mock_greeks_calculator_service():
     patches = [
         patch('app.services.option_chain_service.GreeksCalculatorService'),
-        patch('app.services.payoff_calculator.GreeksCalculatorService'),
-        patch('app.services.whatif_simulator.GreeksCalculatorService'),
-        patch('app.services.strategy_monitor.GreeksCalculatorService'),
-        patch('app.services.position_leg_service.GreeksCalculatorService'),
+        patch('app.services.options.payoff_calculator.GreeksCalculatorService'),
+        patch('app.services.autopilot.whatif_simulator.GreeksCalculatorService'),
+        patch('app.services.autopilot.strategy_monitor.GreeksCalculatorService'),
+        patch('app.services.autopilot.position_leg_service.GreeksCalculatorService'),
     ]
     mocks = []
     for p in patches:

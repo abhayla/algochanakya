@@ -115,11 +115,9 @@ class StrategyMonitor:
         self._task: Optional[asyncio.Task] = None
         self._last_market_status: Optional[bool] = None
 
-        # Phase 3 services
-        self.kill_switch = KillSwitchService()
-        self.adjustment_engine = AdjustmentEngine(market_data)
-        self.confirmation_service = ConfirmationService()
-        self.trailing_stop = TrailingStopService(market_data)
+        # Phase 3 services are per-user (db, user_id) — KillSwitchService,
+        # ConfirmationService, AdjustmentEngine, and TrailingStopService are
+        # constructed at the call site with the strategy owner's id
         self.greeks_calculator = GreeksCalculatorService()
 
         # Phase 5 services (initialized per-session in methods that need db)
@@ -189,18 +187,6 @@ class StrategyMonitor:
     async def _process_strategies(self):
         """Process all active strategies."""
         async with get_db_session() as db:
-            # Phase 3: Check global kill switch first
-            kill_switch_status = await self.kill_switch.get_status(db)
-            if kill_switch_status.is_enabled:
-                logger.warning(f"Kill switch is ENABLED: {kill_switch_status.reason}. Skipping strategy processing.")
-                # Broadcast kill switch status to all connected clients
-                await self.ws_manager.send_system_alert(
-                    alert_type="kill_switch_active",
-                    message=f"Kill Switch Active: {kill_switch_status.reason}",
-                    data={"triggered_at": kill_switch_status.triggered_at.isoformat() if kill_switch_status.triggered_at else None}
-                )
-                return
-
             # Get all waiting, active, waiting_staged_entry, and reentry_waiting strategies
             result = await db.execute(
                 select(AutoPilotStrategy).where(
@@ -209,7 +195,30 @@ class StrategyMonitor:
             )
             strategies = result.scalars().all()
 
+            # Kill switch is per-user — check each owner once per cycle and
+            # skip (never process) strategies of users whose switch is enabled
+            kill_switch_by_user: dict = {}
             for strategy in strategies:
+                uid = strategy.user_id
+                if uid not in kill_switch_by_user:
+                    status = await KillSwitchService(db, uid).get_status()
+                    kill_switch_by_user[uid] = status
+                    if status.is_enabled:
+                        logger.warning(
+                            f"Kill switch ENABLED for user {uid}: {status.reason}. "
+                            f"Skipping their strategies."
+                        )
+                        await self.ws_manager.send_system_alert(
+                            alert_type="kill_switch_active",
+                            message=f"Kill Switch Active: {status.reason}",
+                            data={
+                                "user_id": str(uid),
+                                "triggered_at": status.triggered_at.isoformat() if status.triggered_at else None,
+                            },
+                        )
+                if kill_switch_by_user[uid].is_enabled:
+                    continue
+
                 try:
                     await self._process_strategy(db, strategy)
                 except Exception as e:
@@ -1069,157 +1078,81 @@ class StrategyMonitor:
         return False
 
     async def _update_trailing_stop(self, db: AsyncSession, strategy: AutoPilotStrategy):
-        """Update trailing stop levels using the TrailingStopService."""
+        """Update trailing stop and exit the strategy if it triggered.
+
+        TrailingStopService is per-user and owns activation, high-water-mark
+        tracking, event logging, and WebSocket notifications. The monitor
+        executes the exit when the service reports the stop was hit.
+        """
         try:
             runtime_state = strategy.runtime_state or {}
-            current_pnl = runtime_state.get('current_pnl', 0)
+            current_pnl = Decimal(str(runtime_state.get('current_pnl', 0)))
 
-            # Get current spot price
-            spot_price = await self.market_data.get_spot_price(strategy.underlying)
-            if spot_price is None:
-                return
+            service = TrailingStopService(db, strategy.user_id)
+            service.set_websocket_manager(self.ws_manager)
+            should_exit, reason = await service.update_trailing_stop(strategy, current_pnl)
 
-            # Update trailing stop via service
-            trailing_status = await self.trailing_stop.update_trailing_stop(
-                db=db,
-                strategy_id=strategy.id,
-                user_id=strategy.user_id,
-                current_pnl=current_pnl,
-                spot_price=spot_price,
-                risk_settings=strategy.risk_settings or {}
-            )
+            if should_exit:
+                exit_reason = reason or "Trailing stop triggered"
+                logger.info(f"Trailing stop exit for strategy {strategy.id}: {exit_reason}")
 
-            if trailing_status:
-                # Store updated trailing stop info in runtime state
-                runtime_state['trailing_stop'] = {
-                    'peak_pnl': trailing_status.peak_pnl,
-                    'current_stop_level': trailing_status.current_stop_level,
-                    'distance_to_stop': trailing_status.distance_to_stop,
-                    'is_active': trailing_status.is_active,
-                    'updated_at': datetime.now().isoformat()
-                }
+                paper_trading = runtime_state.get('paper_trading', False)
+                await self.order_executor.execute_exit(
+                    db=db,
+                    strategy=strategy,
+                    exit_type="market",
+                    reason=exit_reason,
+                    dry_run=paper_trading
+                )
+
+                runtime_state = strategy.runtime_state or {}
+                strategy.status = "completed"
+                strategy.completed_at = datetime.now()
+                runtime_state['exit_reason'] = exit_reason
+                runtime_state['exit_time'] = datetime.now().isoformat()
+                runtime_state['realized_pnl'] = runtime_state.get('realized_pnl', 0) + float(current_pnl)
                 strategy.runtime_state = runtime_state
                 await db.commit()
-
-                # Send trailing stop update via WebSocket
-                await self.ws_manager.send_strategy_update(
-                    user_id=str(strategy.user_id),
-                    strategy_id=strategy.id,
-                    update_type="trailing_stop",
-                    data={
-                        "peak_pnl": trailing_status.peak_pnl,
-                        "current_stop_level": trailing_status.current_stop_level,
-                        "distance_to_stop": trailing_status.distance_to_stop,
-                        "is_active": trailing_status.is_active
-                    }
-                )
 
         except Exception as e:
             logger.error(f"Error updating trailing stop for strategy {strategy.id}: {e}")
 
     async def _evaluate_adjustments(self, db: AsyncSession, strategy: AutoPilotStrategy):
-        """Evaluate adjustment rules and execute if triggered."""
+        """Evaluate adjustment rules and execute if triggered.
+
+        AdjustmentEngine is per-user and owns SEMI_AUTO confirmation creation,
+        MANUAL-mode logging, AUTO execution, adjustment logs, and WebSocket
+        notifications — the monitor only assembles market data and delegates.
+        """
         try:
-            adjustment_rules = strategy.adjustment_rules or []
-            if not adjustment_rules:
+            if not (strategy.adjustment_rules or []):
                 return
 
             runtime_state = strategy.runtime_state or {}
-            current_pnl = runtime_state.get('current_pnl', 0)
-            current_positions = runtime_state.get('current_positions', [])
 
-            # Get current market data
             spot_price = await self.market_data.get_spot_price(strategy.underlying)
             vix = await self.market_data.get_vix()
+            market_data = {
+                "spot": spot_price,
+                "vix": vix,
+                "current_pnl": runtime_state.get("current_pnl", 0),
+                "option_prices": runtime_state.get("option_prices", {}),
+            }
 
-            # Evaluate adjustments
-            triggered_adjustment = await self.adjustment_engine.evaluate_adjustments(
-                strategy_id=strategy.id,
-                adjustment_rules=adjustment_rules,
-                current_pnl=current_pnl,
-                spot_price=spot_price,
-                current_positions=current_positions,
-                vix=vix
-            )
+            engine = AdjustmentEngine(db, strategy.user_id)
+            engine.set_market_data_service(self.market_data)
+            engine.set_order_executor(self.order_executor)
+            engine.set_confirmation_service(ConfirmationService(db, strategy.user_id))
+            engine.set_websocket_manager(self.ws_manager)
 
-            if triggered_adjustment:
-                logger.info(f"Adjustment triggered for strategy {strategy.id}: {triggered_adjustment.action}")
-
-                # Check execution mode
-                execution_mode = strategy.execution_mode
-                paper_trading = runtime_state.get('paper_trading', False)
-
-                if execution_mode == ExecutionMode.SEMI_AUTO:
-                    # Create confirmation request instead of executing
-                    confirmation = await self.confirmation_service.create_confirmation(
-                        db=db,
-                        user_id=strategy.user_id,
-                        strategy_id=strategy.id,
-                        action_type="adjustment",
-                        action_description=triggered_adjustment.description,
-                        action_data={
-                            "rule_id": triggered_adjustment.rule_id,
-                            "action": triggered_adjustment.action,
-                            "legs_to_modify": triggered_adjustment.legs_to_modify
-                        }
-                    )
-
-                    # Send notification
-                    await self.ws_manager.send_confirmation_request(
-                        user_id=str(strategy.user_id),
-                        strategy_id=strategy.id,
-                        confirmation_id=confirmation.id,
-                        action_type="adjustment",
-                        description=triggered_adjustment.description,
-                        expires_at=confirmation.expires_at
-                    )
-
-                    # Log pending confirmation
-                    log = AutoPilotLog(
-                        user_id=strategy.user_id,
-                        strategy_id=strategy.id,
-                        event_type="adjustment_pending",
-                        severity="warning",
-                        message=f"Adjustment pending confirmation: {triggered_adjustment.description}",
-                        event_data={"rule_id": triggered_adjustment.rule_id, "confirmation_id": confirmation.id}
-                    )
-                    db.add(log)
-                    await db.commit()
-
-                else:
-                    # Execute adjustment immediately (full auto mode)
-                    success = await self.adjustment_engine.execute_adjustment(
-                        db=db,
-                        strategy=strategy,
-                        adjustment=triggered_adjustment,
-                        order_executor=self.order_executor,
-                        dry_run=paper_trading
-                    )
-
-                    if success:
-                        # Log successful adjustment
-                        log = AutoPilotLog(
-                            user_id=strategy.user_id,
-                            strategy_id=strategy.id,
-                            event_type="adjustment_executed",
-                            severity="info",
-                            message=f"Adjustment executed: {triggered_adjustment.description}",
-                            event_data={"rule_id": triggered_adjustment.rule_id, "action": triggered_adjustment.action}
-                        )
-                        db.add(log)
-                        await db.commit()
-
-                        # Send WebSocket update
-                        await self.ws_manager.send_strategy_update(
-                            user_id=str(strategy.user_id),
-                            strategy_id=strategy.id,
-                            update_type="adjustment_executed",
-                            data={
-                                "rule_id": triggered_adjustment.rule_id,
-                                "action": triggered_adjustment.action,
-                                "description": triggered_adjustment.description
-                            }
-                        )
+            triggered = await engine.evaluate_rules(strategy, market_data)
+            for rule, evaluation in triggered:
+                logger.info(
+                    f"Adjustment rule '{rule.get('name')}' triggered for strategy {strategy.id}"
+                )
+                await engine.execute_adjustment(
+                    strategy, rule, evaluation, execution_mode=strategy.execution_mode
+                )
 
         except Exception as e:
             logger.error(f"Error evaluating adjustments for strategy {strategy.id}: {e}")
