@@ -7,9 +7,12 @@ description: >
   detection, and summary report. Includes Phase 1-3 performance optimization tests
   (cache, vectorized IV/Greeks, live engine) and live engine performance verification.
   Supports `--phase live-engine` for a standalone Step 3.5 probe (market hours only).
+  Persists run state to `test-results/run-optionchain-tests.state.json` so the skill
+  can compute "what's next" and resume from the first pending item after confusion,
+  context reset, or a resumed session — without re-running already-passing tests.
 allowed-tools: "Bash Read Grep Glob Write Edit Skill Agent"
-argument-hint: "[--phase backend|frontend|e2e|live-engine|all] [--include-live] [--max-fix-attempts 3]"
-version: "2.1.0"
+argument-hint: "[--phase backend|frontend|e2e|live-engine|all] [--include-live] [--max-fix-attempts 3] [--resume]"
+version: "2.3.0"
 type: workflow
 triggers:
   - /run-optionchain-tests
@@ -18,6 +21,9 @@ triggers:
   - "verify option chain completely"
   - "option chain full test suite"
   - "probe live engine fast path"
+  - "what's next in option chain tests"
+  - "resume option chain tests"
+  - "continue option chain test run"
 ---
 
 # Run Option Chain Tests — Full Sequential Suite
@@ -28,6 +34,17 @@ with escalation to `/systematic-debugging` when needed.
 
 **Arguments:** $ARGUMENTS
 
+**Default behaviour — no confirmation, full suite, auto-start servers:**
+
+- When invoked with no arguments, IMMEDIATELY run the full 39-item suite (`--phase all`). Do NOT stop and ask the user to pick a scope (A/B/C, backend-only, etc.) — the user already approved by invoking the skill.
+- Auto-start every prerequisite the run needs as soon as STEP 0 identifies a missing one:
+  - Backend on `:8001` missing → launch `backend/run.py` in the background and continue
+  - Frontend on `:5173` missing → launch `frontend && npm run dev` in the background and continue
+  - Backend venv missing → create it (`python -m venv venv`) and install requirements
+  - `test-results/` directory missing → create it
+  - `screenshots/` directory missing → create it
+- Only pause for the user when a truly manual action is required (Zerodha OAuth login when the token is expired and the E2E phase has started). Everything else proceeds autonomously.
+
 ---
 
 ## Parameters
@@ -37,6 +54,7 @@ with escalation to `/systematic-debugging` when needed.
 | `--phase` | `all` | Which phase(s) to run: `backend`, `frontend`, `e2e`, `live-engine`, or `all` |
 | `--include-live` | false | Include `tests/live/test_live_option_chain.py` (hits real broker APIs) |
 | `--max-fix-attempts` | 3 | Max `/fix-loop` cycles per failing test before escalating to `/systematic-debugging` |
+| `--resume` | auto | Resume from the first pending item in the state file. Auto-detected if a state file exists and is less than 24h old — pass `--resume=false` to force a fresh run |
 
 ### `--phase live-engine` — standalone Step 3.5 probe
 
@@ -55,6 +73,109 @@ Runs **only** STEP 3.5 (Live Engine Performance Verification) and skips every ot
 3. Emit only the **Live Engine Performance** table from STEP 4 (not the full suite summary)
 
 Skip STEP 0d (manual Zerodha login) entirely if `tests/config/.auth-token` exists and `GET /api/auth/me` returns 200 — the session manager agent already performs this check.
+
+---
+
+## Execution Loop & Resumption Protocol
+
+This skill is an **iterative loop** over a fixed, numbered master list (11 backend + 2 frontend + 18 E2E + optional live/perf items). State is persisted after every test so the skill can resume without losing progress.
+
+### Canonical Loop
+
+```
+ensure_prerequisites()              # STEP 0 — run once per session
+pending = compute_pending_items()   # master_list − state.results
+
+while pending:
+    item = pending[0]
+    result = run(item)              # pytest / vitest / playwright
+
+    if result == FAIL:
+        result = fix_loop(item, max_iterations=max_fix_attempts)
+        if result == UNRESOLVED:
+            result = systematic_debugging(item)
+
+    record_state(item, result)      # write state file after EVERY item
+
+    if result == FIXED:
+        re_run_previously_passing_in_phase()   # regression catch
+        # any newly broken tests jump to the FRONT of pending
+
+    pending = pending[1:]           # advance
+
+emit_summary()                      # STEP 4
+```
+
+The loop NEVER stops on a single item's failure. BLOCKED / SKIP items are recorded and the loop continues. The only early-exit is the Core Tier Gate (happy + edge both fail in Phase 3).
+
+### State File — `test-results/run-optionchain-tests.state.json`
+
+Write after EVERY test completion (PASS / FIXED / FAILED / BLOCKED / SKIPPED). Schema:
+
+```json
+{
+  "run_id": "2026-04-20T10-00-00+0530_abc1234",
+  "skill_version": "2.2.0",
+  "started_at": "2026-04-20T10:00:00+05:30",
+  "last_updated": "2026-04-20T10:42:13+05:30",
+  "market_status": "OPEN",
+  "phases_requested": ["backend", "frontend", "e2e"],
+  "prereqs": {
+    "dev_stack_healthy": true,
+    "zerodha_token_valid": true,
+    "smartapi_verdict": "READY"
+  },
+  "results": [
+    {"phase": "backend", "n": 1, "item": "test_services_option_chain.py", "result": "PASSED", "fixed": false, "duration_ms": 4210, "timestamp": "2026-04-20T10:05:00+05:30"},
+    {"phase": "backend", "n": 2, "item": "test_api_option_chain.py", "result": "FIXED", "fixed": true, "fix_summary": "added missing import in conftest", "duration_ms": 8120, "timestamp": "2026-04-20T10:07:30+05:30"},
+    {"phase": "e2e", "n": 1, "item": "optionchain.happy.spec.js", "result": "BLOCKED", "fixed": false, "reason": "SmartAPI slow — all beforeEach timed out", "timestamp": "2026-04-20T10:35:00+05:30"}
+  ],
+  "current_item": null,
+  "pending": []
+}
+```
+
+Create `test-results/` if missing. Never delete a state file mid-run.
+
+### "What's Next" — Resumption Protocol
+
+Trigger: skill invoked with `--resume`, user asks *"what's next?"*, *"where are we?"*, *"what's pending?"*, or the session was reset/context was compacted. When triggered:
+
+1. Read `test-results/run-optionchain-tests.state.json`
+   - If missing or > 24h old → start fresh from STEP 0 (log: `[RESUME] No recent state — starting fresh`)
+2. Build `master_list` from STEP 1 / 2 / 3 tables (11 + 2 + 18 items, plus conditionals)
+3. Compute `pending = [item for item in master_list if item not in state.results]`
+4. Log a resume banner:
+   ```
+   [RESUME] Run {run_id}
+     Completed: {n}/{total}   Fixed: {fixed_n}   Blocked: {blocked_n}   Skipped: {skipped_n}
+     Pending:   {pending_n}
+     Next:      {first_pending_phase}/{first_pending_item}
+     Last done: {last_item} at {last_timestamp}
+   ```
+5. Re-verify decaying prerequisites (market status, dev stack health, SmartAPI session). These can change between runs — re-run STEP 0a and 0c only; do NOT re-do 0d login if the token is still valid.
+6. If `phases_requested` omits an earlier phase the user now wants, add it to `pending` with `n` offsets.
+7. Resume the loop at `pending[0]`. Do NOT re-run items already in `state.results` unless a regression sweep requires it.
+
+### When to Explicitly "Run What's Next"
+
+Run the Resumption Protocol (not a fresh STEP 0) whenever:
+
+- User asks *"what's next?"*, *"what's pending?"*, *"resume tests"*, *"continue from where we left off"*
+- A new session starts while `test-results/run-optionchain-tests.state.json` exists and is < 24h old
+- Context is compacted or truncated mid-run
+- The skill is re-invoked after any interruption (crash, user abort, network outage, IDE restart)
+- You are confused about which test comes next or whether an item was completed
+
+Do NOT re-invoke STEP 0 end-to-end after context loss — it wastes cycles logging in again. Re-verify only what decays (market time, dev stack, token TTL).
+
+### Regression Sweep After a Fix
+
+When a test goes PASS → FAIL → FIXED, re-run ALL previously-PASSED items in the same phase:
+
+- If any regress → push the regressed item to the front of `pending` and record the regression in state
+- Repeat until a full regression sweep produces zero failures
+- The `fixed` flag in state distinguishes a clean PASS from a FIX that required source changes, so post-mortem analysis can see where fragility lives
 
 ---
 
@@ -121,12 +242,24 @@ If any are missing, STOP and report which credentials are missing.
 | Frontend (Phase 2) | NO — unit tests with mocks | NO |
 | E2E (Phase 3) | YES — backend:8001 + frontend:5173 | YES — Zerodha OAuth login |
 
-For Phase 3 only:
-1. Start backend if not running: `cd backend && source venv/Scripts/activate && python run.py`
-2. Start frontend if not running: `cd frontend && npm run dev`
-3. Health check: verify `http://localhost:8001/docs` returns 200
-4. Health check: verify `http://localhost:5173` loads
-5. If either health check fails, STOP and report — do not proceed to E2E tests
+### Autostart Policy — Run Upfront, Never Ask
+
+As soon as STEP 0 begins (for any phase that eventually needs them), start missing prerequisites in the **background** so they warm up while earlier phases run. Never prompt the user — the invocation of this skill is standing approval to start dev services. Commands:
+
+| Prereq | Detection | Start Command | Background? |
+|--------|-----------|---------------|-------------|
+| Backend :8001 | `curl -s -o /dev/null -w "%{http_code}" --max-time 3 http://localhost:8001/docs` returns non-200 | `cd backend && source venv/Scripts/activate && python run.py` | Yes (`run_in_background: true`) |
+| Frontend :5173 | `curl -s -o /dev/null -w "%{http_code}" --max-time 3 http://localhost:5173` returns non-200 | `cd frontend && npm run dev` | Yes (`run_in_background: true`) |
+| Backend venv | `backend/venv/Scripts/python` missing | `cd backend && python -m venv venv && source venv/Scripts/activate && pip install -r requirements.txt` | No (blocking) |
+| `test-results/` | Directory missing | `mkdir -p test-results` | No |
+| `screenshots/` | Directory missing at project root | `mkdir -p screenshots` | No |
+
+**For the full suite (`--phase all` or default):** kick off the backend/frontend startup BEFORE running Phase 1 pytest. Phase 1 runs against SQLite in-memory and does not depend on the dev stack, so the servers warm up in parallel during the ~5–10 minutes of backend tests and are ready when Phase 3 begins.
+
+**Health-check gate before Phase 3 only:**
+1. Before Phase 3's first spec, re-run the curl health checks on `:8001/docs` and `:5173`.
+2. Wait up to 60 seconds for both to return 200 (backend startup can take 30–45s with instrument master refresh).
+3. If either health check still fails after 60s, log Phase 3 as BLOCKED (dev stack failed to start), continue to write the state file, and produce the summary. Do NOT repeatedly restart — investigate logs instead.
 
 ### 0d. App Login and Data Source Configuration
 
@@ -805,6 +938,15 @@ Only change if the value is explicitly a non-SmartAPI broker (e.g., `upstox`).
 - Always wait 10-15 seconds after page load before measuring engine response time — Why: WebSocket needs time to establish and for ticks to populate the engine snapshot
 - Always check backend logs for `LIVE ENGINE HIT` to confirm fast path was used — Why: response time alone doesn't distinguish fast path from a fast normal path; the log line is the authoritative signal
 - Always record live engine metrics in the summary report (Step 4) — Why: creates a baseline for future performance tracking and catches regressions
+- Always write to `test-results/run-optionchain-tests.state.json` after EVERY test completion (PASS, FAIL, FIXED, BLOCKED, SKIPPED) — Why: the state file is the only way the skill can resume after confusion, context reset, or session interruption without re-running already-passing tests
+- Always run the Resumption Protocol (not a fresh STEP 0) when the user asks "what's next?" / "what's pending?" / "resume tests" / "continue from where we left off", or when a state file exists and is less than 24h old — Why: skipping straight to pending items saves time and preserves fix attempts for the remaining work
+- Always re-verify decaying prerequisites on resume (market status via 0a, dev stack via 0c, SmartAPI session via session manager) — Why: these change between runs; a stale state file cannot guarantee the stack is still healthy
+- Always compute pending items as `master_list − state.results` before acting when confused — Why: this is the authoritative source of truth; any other guess about "what's next" is speculation
+- Always push regressions to the front of the pending queue — Why: a regression caused by your own fix is the highest-priority item; letting it sit while you move to the next test hides compounding damage
+- Always default to the full 39-item suite (`--phase all`) when the skill is invoked with no arguments — Why: the user already approved the run by invoking the skill; asking for scope confirmation wastes a turn and breaks autonomous execution
+- Always start the backend (`:8001`) and frontend (`:5173`) in the background at STEP 0 if they are not already running, regardless of which phase is starting first — Why: both servers take 30–45s to warm up; starting them in parallel with Phase 1 means they are ready by the time Phase 3 begins, with zero idle wait
+- Always wait up to 60s for the dev stack health check (`:8001/docs`, `:5173`) to return 200 before beginning Phase 3 — Why: backend startup includes instrument master refresh (~30s); a shorter timeout causes false BLOCKED results
+- Always create `test-results/` and `screenshots/` directories automatically at STEP 0 if missing — Why: these are required by state tracking and Phase 3 screenshot capture; failing late because of a missing directory wastes a test slot
 
 ## MUST NOT
 
@@ -843,3 +985,12 @@ Only change if the value is explicitly a non-SmartAPI broker (e.g., `upstox`).
 - MUST NOT skip Step 3.5 during market hours — this is the only verification window. Why: the engine requires live ticks from WebSocket; there's no way to simulate this outside market hours
 - MUST NOT claim sub-10ms response times without measuring — record actual timing from backend logs. Why: spot price fetch adds 50-200ms; vectorized IV/Greeks adds 5-20ms; the real fast-path time is ~100-300ms, not <10ms
 - MUST NOT measure engine performance without an active WebSocket connection — open the Option Chain page first. Why: the engine piggybacks on WebSocket subscriptions; without them, no ticks flow and the engine snapshot stays empty
+- MUST NOT restart from STEP 0 when a state file exists and is less than 24h old — resume from the first pending item instead. Why: re-running already-passing tests wastes dev-stack time, SmartAPI quota, and fix-loop budget that belongs to the remaining work
+- MUST NOT delete, truncate, or overwrite `test-results/run-optionchain-tests.state.json` mid-run — append results only. Why: the state file is the single source of truth for "what's next"; corrupting it makes resumption impossible
+- MUST NOT guess which item comes next when confused — read the state file and compute `master_list − state.results`. Why: a guess can skip an item or re-run a completed one; the computation is deterministic and takes one file read
+- MUST NOT continue to the next pending item while a regression caused by the current fix is unresolved — fix the regression first. Why: leaving regressions to accumulate produces a pile of broken tests by the end of the run that is far harder to untangle than a single fresh regression
+- MUST NOT treat BLOCKED or SKIPPED items as failures that stop the loop — record the reason in state and move on. Why: the loop is designed to complete the full master list; the summary report (STEP 4) is where blockers get surfaced for human review
+- MUST NOT prompt the user to pick a scope (A/B/C, backend-only, "which phase", etc.) when the skill is invoked with no arguments — the default IS the full 39-item suite. Why: the user already approved by invoking the skill; asking for confirmation violates autonomous execution and wastes a turn
+- MUST NOT ask the user to start the backend or frontend — start them in the background via `run_in_background: true` and continue. Why: the skill is standing approval to start dev servers; prompting delays the run and contradicts the user's autonomy preference
+- MUST NOT block Phase 1 or Phase 2 on dev stack readiness — only Phase 3 needs `:8001` + `:5173`. Why: Phase 1 uses SQLite in-memory and Phase 2 uses mocks; waiting for the stack before running them wastes the parallel warm-up window
+- MUST NOT repeatedly restart a failed dev server — investigate the startup log instead. Why: a restart loop masks real startup errors (port conflict, missing venv, migration failure) and produces no useful signal
