@@ -58,3 +58,21 @@ Every adapter must implement `TickerAdapter` ABC from `ticker/adapter_base.py`:
 - `subscribed_tokens: Set[int]` (property)
 - `broker_type: str` (property)
 - `load_token_map(mapping: dict) -> None`
+
+## Upstox v3 Feed Gotchas (learned from live verification 2026-06-12)
+
+- **Requests MUST be BINARY WebSocket frames** — `ws.send(json.dumps(msg).encode())`.
+  TEXT frames are silently ignored by the server (no error, no ticks).
+- **`FeedResponse.type` is an enum varint**, not a string: 0=initial_feed,
+  1=live_feed, 2=market_info. Both 0 and 1 carry feeds.
+- The inline schema in `upstox.py` MUST match `MarketDataFeedV3.proto` field
+  numbers exactly. Golden frames captured from the live feed pin this in
+  `tests/backend/brokers/fixtures/upstox/` — if schema drifts, those tests fail.
+- protobuf >=5 removed `MessageFactory.GetPrototype` — use
+  `message_factory.GetMessageClass(descriptor)`.
+
+## Dispatch Contract
+
+`_dispatch_async()` (adapter_base) drops ticks for tokens not in
+`_subscribed_tokens` — brokers keep pushing for a few ms after unsubscribe.
+Tests that dispatch directly must add tokens to `_subscribed_tokens` first.
