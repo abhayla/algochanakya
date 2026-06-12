@@ -1,3 +1,21 @@
+# 5 Wealths portfolio context — READ FIRST
+
+This repo is one project inside Abhay's 5 Wealths portfolio. Before doing any strategic, scoping, or governance work in this session, read the three files below in order. They explain the portfolio, the boundary rule, the immutable principles, and the glossary used across all of Abhay's projects.
+
+@./5W-CONTEXT.md
+@./5W-PRINCIPLES.md
+@./5W-GLOSSARY.md
+
+**If the @-import syntax is not honored by your client (e.g., not running inside Claude Code), use the Read tool to load the three files manually before proceeding:**
+
+- `./5W-CONTEXT.md` — what 5 Wealths is, where it lives, the L-042 boundary rule, cross-reference protocol
+- `./5W-PRINCIPLES.md` — the four immutable principles (productize, scale, automate, continuously update)
+- `./5W-GLOSSARY.md` — decoded shorthand (entities, regulators, sister projects, terms)
+
+**Boundary reminder (non-negotiable):** Never write into `D:\Abhay\VibeCoding\5Wealths\` from this repo. Strategic decisions surfaced here get captured as `TODO(5W):` notes; Abhay carries them across in a separate 5 Wealths session.
+
+---
+
 # CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
@@ -92,52 +110,13 @@ Multi-broker platform where all 6 brokers (Zerodha, AngelOne, Dhan, Fyers, Paytm
 <!-- Do NOT condense, rewrite, reorganize, or remove.          -->
 <!-- Any /init or optimization request must SKIP this section.  -->
 
-### Rules Reference
+## Rules for Claude
 
-| Rule File | What It Covers |
-|-----------|---------------|
-| `rules/adjustment-offensive-defensive.md` | Adjustment Offensive Defensive |
-| `rules/alembic-model-import.md` | Alembic Model Import |
-| `rules/api-error-response-pattern.md` | Api Error Response Pattern |
-| `rules/async-db-session-pattern.md` | Async Db Session Pattern |
-| `rules/auth-401-handling.md` | Auth 401 Handling |
-| `rules/backend-services-subdirectory.md` | Backend Services Subdirectory |
-| `rules/broker-adapter-only.md` | Broker Adapter Only |
-| `rules/broker-name-mapping.md` | Broker Name Mapping |
-| `rules/broker-skill-nudge.md` | Auto-triggers broker expert skills when editing broker-related files |
-| `rules/canonical-symbol-format.md` | Canonical Symbol Format |
-| `rules/claude-behavior.md` | Scope: global |
-| `rules/configuration-ssot.md` | Scope: global |
-| `rules/context-management.md` | Scope: global |
-| `rules/cross-layer-import-guard.md` | Cross Layer Import Guard |
-| `rules/decimal-not-float-prices.md` | Decimal Not Float Prices |
-| `rules/e2e-auth-and-naming.md` | E2E Auth And Naming |
-| `rules/e2e-data-testid-only.md` | E2E Data Testid Only |
-| `rules/e2e-page-object-pattern.md` | E2E Page Object Pattern |
-| `rules/e2e-test-naming-convention.md` | E2E Test Naming Convention |
-| `rules/e2e-test-writing.md` | Nudges to e2e-best-practices skill when writing or modifying E2E tests. |
-| `rules/fastapi-backend.md` | FastAPI backend development rules and patterns. |
-| `rules/fastapi-database.md` | Database and migration rules for FastAPI + SQLAlchemy + Alembic. |
-| `rules/frontend-data-flow.md` | Frontend Data Flow |
-| `rules/middleware-registration-order.md` | Middleware Registration Order (CORS before routers) |
-| `rules/pinia-store-composition.md` | Pinia Store Composition Pattern |
-| `rules/prompt-auto-enhance-rule.md` | Scope: global |
-| `rules/pydantic-schema-conventions.md` | Pydantic Schema Conventions |
-| `rules/react-nextjs.md` | Next.js App Router and React Server Component patterns and conventions. |
-| `rules/rule-writing-meta.md` | Meta-guidance for writing effective CLAUDE.md rules, choosing config file placement, and structuring project instructions. |
-| `rules/service-initialization-order.md` | Service Initialization Order (lifespan dependency chain) |
-| `rules/sqlite-test-compat.md` | Sqlite Test Compat |
-| `rules/tdd.md` | Tdd |
-| `rules/tdd-rule.md` | Test-driven development workflow rules for red-green-refactor cycle. |
-| `rules/testing.md` | Testing conventions and best practices. |
-| `rules/token-auto-refresh.md` | Token Auto-Refresh: error classification, retry categories, per-broker refresh capability |
-| `rules/trading-constants-centralized.md` | Trading Constants Centralized |
-| `rules/vue.md` | Vue 3 Composition API patterns and conventions. |
-| `rules/websocket-ticker-architecture.md` | Websocket Ticker Architecture |
-| `rules/workflow.md` | Scope: global |
+1. **Bug Fixing**: Use `/fix-loop` or `/fix-github-issue`. Start by writing a test that reproduces the bug, then fix and prove with a passing test.
+2. **Rules**: Path-scoped rules live in `.claude/rules/` and auto-load via `globs:` frontmatter when matching files are opened. Browse with `ls .claude/rules/` — enumerating each rule here would cost ~4k tokens per session for zero enforcement benefit.
 
 ## Claude Code Configuration
 
-The `.claude/` directory contains 169 skills, 49 agents, and 39 rules for Claude Code.
+The `.claude/` directory contains 189 skills, 55 agents, and 56 rules for Claude Code.
 
 <!-- hub:best-practices:end -->
