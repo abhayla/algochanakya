@@ -483,6 +483,11 @@ def upstox_ticker_adapter(upstox_credentials):
     from app.services.brokers.market_data.ticker.adapters.upstox import UpstoxTickerAdapter
 
     adapter = UpstoxTickerAdapter(broker_type="upstox")
+    # Upstox token map: canonical Kite token → Upstox instrument_key string
+    adapter.load_token_map({
+        256265: "NSE_INDEX|Nifty 50",
+        260105: "NSE_INDEX|Nifty Bank",
+    })
     adapter._live_credentials = {
         "access_token": upstox_credentials["access_token"],
     }

@@ -178,11 +178,14 @@ def _build_proto_classes():
         _parse_proto_schema(file_proto)
         pool.Add(file_proto)
 
-        factory = message_factory.MessageFactory(pool=pool)
         desc = pool.FindMessageTypeByName(
             "com.upstox.marketdatafeeder.rpc.proto.FeedResponse"
         )
-        FeedResponse = factory.GetPrototype(desc)
+        if hasattr(message_factory, "GetMessageClass"):
+            # protobuf >= 4.21 (MessageFactory.GetPrototype removed in 5.x)
+            FeedResponse = message_factory.GetMessageClass(desc)
+        else:
+            FeedResponse = message_factory.MessageFactory(pool=pool).GetPrototype(desc)
         logger.info("[Upstox] Protobuf FeedResponse class built successfully")
         return FeedResponse
     except Exception as e:
@@ -233,60 +236,95 @@ def _parse_proto_schema(file_proto):
     LABEL_OPTIONAL = FDP.LABEL_OPTIONAL
     LABEL_REPEATED = FDP.LABEL_REPEATED
 
-    # ── Level ──
-    add_msg("Level", [
-        ("price", 1, TYPE_DOUBLE, LABEL_OPTIONAL),
-        ("quantity", 2, TYPE_INT64, LABEL_OPTIONAL),
-        ("orders", 3, TYPE_INT64, LABEL_OPTIONAL),
-    ])
+    # Schema mirrors Upstox MarketDataFeedV3.proto (verified against captured
+    # live frames 2026-06-12 — see tests/backend/brokers/fixtures/upstox/).
+    # Field numbers MUST match the official proto exactly.
 
-    # ── OHLC ──
-    add_msg("OHLC", [
-        ("open", 1, TYPE_DOUBLE, LABEL_OPTIONAL),
-        ("high", 2, TYPE_DOUBLE, LABEL_OPTIONAL),
-        ("low", 3, TYPE_DOUBLE, LABEL_OPTIONAL),
-        ("close", 4, TYPE_DOUBLE, LABEL_OPTIONAL),
-    ])
-
-    # ── LTPC ──
+    # ── LTPC ── (ltt = last trade time ms, ltq = last trade qty, cp = prev close)
     add_msg("LTPC", [
         ("ltp", 1, TYPE_DOUBLE, LABEL_OPTIONAL),
-        ("close", 2, TYPE_DOUBLE, LABEL_OPTIONAL),
-        ("change", 3, TYPE_DOUBLE, LABEL_OPTIONAL),
-        ("change_percent", 4, TYPE_DOUBLE, LABEL_OPTIONAL),
+        ("ltt", 2, TYPE_INT64, LABEL_OPTIONAL),
+        ("ltq", 3, TYPE_INT64, LABEL_OPTIONAL),
+        ("cp", 4, TYPE_DOUBLE, LABEL_OPTIONAL),
     ])
 
-    # ── MarketDepth ──
-    add_msg("MarketDepth", [
-        ("bid", 1, TYPE_MESSAGE, LABEL_REPEATED, "Level"),
-        ("ask", 2, TYPE_MESSAGE, LABEL_REPEATED, "Level"),
+    # ── OHLC ── (interval: '1d' = day, 'I1' = 1-min intraday)
+    add_msg("OHLC", [
+        ("interval", 1, TYPE_STRING, LABEL_OPTIONAL),
+        ("open", 2, TYPE_DOUBLE, LABEL_OPTIONAL),
+        ("high", 3, TYPE_DOUBLE, LABEL_OPTIONAL),
+        ("low", 4, TYPE_DOUBLE, LABEL_OPTIONAL),
+        ("close", 5, TYPE_DOUBLE, LABEL_OPTIONAL),
+        ("vol", 6, TYPE_INT64, LABEL_OPTIONAL),
+        ("ts", 7, TYPE_INT64, LABEL_OPTIONAL),
     ])
 
-    # ── OptionGreeks ──
+    add_msg("MarketOHLC", [
+        ("ohlc", 1, TYPE_MESSAGE, LABEL_REPEATED, "OHLC"),
+    ])
+
+    # ── Quote ── (bid/ask depth level)
+    add_msg("Quote", [
+        ("bidQ", 1, TYPE_INT64, LABEL_OPTIONAL),
+        ("bidP", 2, TYPE_DOUBLE, LABEL_OPTIONAL),
+        ("askQ", 3, TYPE_INT64, LABEL_OPTIONAL),
+        ("askP", 4, TYPE_DOUBLE, LABEL_OPTIONAL),
+    ])
+
+    add_msg("MarketLevel", [
+        ("bidAskQuote", 1, TYPE_MESSAGE, LABEL_REPEATED, "Quote"),
+    ])
+
     add_msg("OptionGreeks", [
         ("delta", 1, TYPE_DOUBLE, LABEL_OPTIONAL),
-        ("gamma", 2, TYPE_DOUBLE, LABEL_OPTIONAL),
-        ("theta", 3, TYPE_DOUBLE, LABEL_OPTIONAL),
+        ("theta", 2, TYPE_DOUBLE, LABEL_OPTIONAL),
+        ("gamma", 3, TYPE_DOUBLE, LABEL_OPTIONAL),
         ("vega", 4, TYPE_DOUBLE, LABEL_OPTIONAL),
-        ("iv", 5, TYPE_DOUBLE, LABEL_OPTIONAL),
+        ("rho", 5, TYPE_DOUBLE, LABEL_OPTIONAL),
     ])
 
-    # ── FullFeed ──
+    # ── MarketFullFeed ── (full mode, non-index instruments)
+    add_msg("MarketFullFeed", [
+        ("ltpc", 1, TYPE_MESSAGE, LABEL_OPTIONAL, "LTPC"),
+        ("marketLevel", 2, TYPE_MESSAGE, LABEL_OPTIONAL, "MarketLevel"),
+        ("optionGreeks", 3, TYPE_MESSAGE, LABEL_OPTIONAL, "OptionGreeks"),
+        ("marketOHLC", 4, TYPE_MESSAGE, LABEL_OPTIONAL, "MarketOHLC"),
+        ("atp", 5, TYPE_DOUBLE, LABEL_OPTIONAL),
+        ("vtt", 6, TYPE_INT64, LABEL_OPTIONAL),
+        ("oi", 7, TYPE_DOUBLE, LABEL_OPTIONAL),
+        ("iv", 8, TYPE_DOUBLE, LABEL_OPTIONAL),
+        ("tbq", 9, TYPE_DOUBLE, LABEL_OPTIONAL),
+        ("tsq", 10, TYPE_DOUBLE, LABEL_OPTIONAL),
+    ])
+
+    # ── IndexFullFeed ── (full mode, index instruments)
+    add_msg("IndexFullFeed", [
+        ("ltpc", 1, TYPE_MESSAGE, LABEL_OPTIONAL, "LTPC"),
+        ("marketOHLC", 2, TYPE_MESSAGE, LABEL_OPTIONAL, "MarketOHLC"),
+    ])
+
+    # ── FullFeed ── (oneof wrapper: marketFF | indexFF)
     add_msg("FullFeed", [
-        ("ohlc", 1, TYPE_MESSAGE, LABEL_OPTIONAL, "OHLC"),
-        ("depth", 2, TYPE_MESSAGE, LABEL_OPTIONAL, "MarketDepth"),
-        ("volume", 3, TYPE_INT64, LABEL_OPTIONAL),
-        ("oi", 4, TYPE_INT64, LABEL_OPTIONAL),
-        ("avg_price", 5, TYPE_DOUBLE, LABEL_OPTIONAL),
-        ("total_buy_qty", 6, TYPE_INT64, LABEL_OPTIONAL),
-        ("total_sell_qty", 7, TYPE_INT64, LABEL_OPTIONAL),
+        ("marketFF", 1, TYPE_MESSAGE, LABEL_OPTIONAL, "MarketFullFeed"),
+        ("indexFF", 2, TYPE_MESSAGE, LABEL_OPTIONAL, "IndexFullFeed"),
     ])
 
-    # ── Feed ──
+    # ── FirstLevelWithGreeks ── (option_greeks mode)
+    add_msg("FirstLevelWithGreeks", [
+        ("ltpc", 1, TYPE_MESSAGE, LABEL_OPTIONAL, "LTPC"),
+        ("firstDepth", 2, TYPE_MESSAGE, LABEL_OPTIONAL, "Quote"),
+        ("optionGreeks", 3, TYPE_MESSAGE, LABEL_OPTIONAL, "OptionGreeks"),
+        ("vtt", 4, TYPE_INT64, LABEL_OPTIONAL),
+        ("oi", 5, TYPE_DOUBLE, LABEL_OPTIONAL),
+        ("iv", 6, TYPE_DOUBLE, LABEL_OPTIONAL),
+    ])
+
+    # ── Feed ── (oneof: ltpc | fullFeed | firstLevelWithGreeks)
     add_msg("Feed", [
         ("ltpc", 1, TYPE_MESSAGE, LABEL_OPTIONAL, "LTPC"),
-        ("ff", 2, TYPE_MESSAGE, LABEL_OPTIONAL, "FullFeed"),
-        ("og", 3, TYPE_MESSAGE, LABEL_OPTIONAL, "OptionGreeks"),
+        ("fullFeed", 2, TYPE_MESSAGE, LABEL_OPTIONAL, "FullFeed"),
+        ("firstLevelWithGreeks", 3, TYPE_MESSAGE, LABEL_OPTIONAL, "FirstLevelWithGreeks"),
+        ("requestMode", 4, TYPE_INT64, LABEL_OPTIONAL),
     ])
 
     # ── FeedResponse ── (has a map field — needs special handling)
@@ -295,11 +333,11 @@ def _parse_proto_schema(file_proto):
     resp_msg = file_proto.message_type.add()
     resp_msg.name = "FeedResponse"
 
-    # type field
+    # type field — enum on the wire (varint): 0=initial_feed, 1=live_feed, 2=market_info
     type_f = resp_msg.field.add()
     type_f.name = "type"
     type_f.number = 1
-    type_f.type = TYPE_STRING
+    type_f.type = TYPE_INT64
     type_f.label = LABEL_OPTIONAL
 
     # feeds map<string, Feed> — represented as a nested MapEntry message
@@ -327,6 +365,12 @@ def _parse_proto_schema(file_proto):
     feeds_f.type = TYPE_MESSAGE
     feeds_f.label = LABEL_REPEATED
     feeds_f.type_name = f".{pkg}.FeedResponse.FeedsEntry"
+
+    ts_f = resp_msg.field.add()
+    ts_f.name = "currentTs"
+    ts_f.number = 3
+    ts_f.type = TYPE_INT64
+    ts_f.label = LABEL_OPTIONAL
 
 
 # Build the FeedResponse class at import time (None if protobuf unavailable)
@@ -557,7 +601,9 @@ class UpstoxTickerAdapter(TickerAdapter):
             },
         }
 
-        await self._ws.send(json.dumps(msg))
+        # Upstox v3 feed requires request messages as BINARY frames —
+        # TEXT frames are silently ignored by the server
+        await self._ws.send(json.dumps(msg).encode("utf-8"))
         logger.info(
             "[Upstox] Subscribed to %d instruments (mode=%s)",
             len(broker_tokens), upstox_mode,
@@ -585,7 +631,7 @@ class UpstoxTickerAdapter(TickerAdapter):
             },
         }
 
-        await self._ws.send(json.dumps(msg))
+        await self._ws.send(json.dumps(msg).encode("utf-8"))
         logger.info("[Upstox] Unsubscribed from %d instruments", len(broker_tokens))
 
     def _translate_to_broker_tokens(self, canonical_tokens: List[int]) -> list:
@@ -670,9 +716,10 @@ class UpstoxTickerAdapter(TickerAdapter):
             logger.error("[Upstox] Protobuf parse error (len=%d): %s", len(data), e)
             return []
 
-        # type field: "live_feed" for live data, "disconnected" etc. for control
+        # type enum: 0=initial_feed (snapshot on subscribe), 1=live_feed,
+        # 2=market_info (segment status — no ticks). 0 and 1 carry feeds.
         msg_type = feed_response.type
-        if msg_type and msg_type != "live_feed":
+        if msg_type not in (0, 1):
             logger.debug("[Upstox] Non-tick message type: %s", msg_type)
             return []
 
@@ -707,18 +754,39 @@ class UpstoxTickerAdapter(TickerAdapter):
         if canonical_token == 0:
             return None
 
-        # ── LTPC (always present) ──
-        if not feed.HasField("ltpc"):
+        # ── Locate LTPC inside the Feed oneof ──
+        # Feed is a oneof: ltpc (ltpc mode) | fullFeed (full mode) |
+        # firstLevelWithGreeks (option_greeks mode)
+        ltpc = None
+        mff = None   # MarketFullFeed (non-index)
+        iff = None   # IndexFullFeed
+        flwg = None  # FirstLevelWithGreeks
+
+        if feed.HasField("ltpc"):
+            ltpc = feed.ltpc
+        elif feed.HasField("fullFeed"):
+            full = feed.fullFeed
+            if full.HasField("marketFF"):
+                mff = full.marketFF
+                if mff.HasField("ltpc"):
+                    ltpc = mff.ltpc
+            elif full.HasField("indexFF"):
+                iff = full.indexFF
+                if iff.HasField("ltpc"):
+                    ltpc = iff.ltpc
+        elif feed.HasField("firstLevelWithGreeks"):
+            flwg = feed.firstLevelWithGreeks
+            if flwg.HasField("ltpc"):
+                ltpc = flwg.ltpc
+
+        if ltpc is None:
             logger.debug("[Upstox] No ltpc for %s — skipping", instrument_key)
             return None
 
-        ltpc = feed.ltpc
         ltp = Decimal(str(round(ltpc.ltp, 2)))
-        close = Decimal(str(round(ltpc.close, 2)))
-        change = Decimal(str(round(ltpc.change, 2)))
-        change_percent = Decimal(str(round(ltpc.change_percent, 4)))
+        close = Decimal(str(round(ltpc.cp, 2)))  # cp = previous close
 
-        # ── FullFeed (present in full / option_greeks mode) ──
+        # ── OHLC / volume / OI / depth (full and option_greeks modes) ──
         open_price = Decimal("0")
         high = Decimal("0")
         low = Decimal("0")
@@ -729,34 +797,49 @@ class UpstoxTickerAdapter(TickerAdapter):
         bid_qty: Optional[int] = None
         ask_qty: Optional[int] = None
 
-        if feed.HasField("ff"):
-            ff = feed.ff
-            volume = int(ff.volume)
-            oi = int(ff.oi)
+        market_ohlc = None
+        if mff is not None:
+            volume = int(mff.vtt)
+            oi = int(mff.oi)
+            if mff.HasField("marketOHLC"):
+                market_ohlc = mff.marketOHLC
+            if mff.HasField("marketLevel") and mff.marketLevel.bidAskQuote:
+                best = mff.marketLevel.bidAskQuote[0]
+                if best.bidP > 0:
+                    bid = Decimal(str(round(best.bidP, 2)))
+                    bid_qty = int(best.bidQ)
+                if best.askP > 0:
+                    ask = Decimal(str(round(best.askP, 2)))
+                    ask_qty = int(best.askQ)
+        elif iff is not None:
+            if iff.HasField("marketOHLC"):
+                market_ohlc = iff.marketOHLC
+        elif flwg is not None:
+            volume = int(flwg.vtt)
+            oi = int(flwg.oi)
+            if flwg.HasField("firstDepth"):
+                best = flwg.firstDepth
+                if best.bidP > 0:
+                    bid = Decimal(str(round(best.bidP, 2)))
+                    bid_qty = int(best.bidQ)
+                if best.askP > 0:
+                    ask = Decimal(str(round(best.askP, 2)))
+                    ask_qty = int(best.askQ)
 
-            if ff.HasField("ohlc"):
-                ohlc = ff.ohlc
-                open_price = Decimal(str(round(ohlc.open, 2)))
-                high = Decimal(str(round(ohlc.high, 2)))
-                low = Decimal(str(round(ohlc.low, 2)))
-                # OHLC.close and LTPC.close should match; prefer OHLC.close
-                if ohlc.close:
-                    close = Decimal(str(round(ohlc.close, 2)))
+        if market_ohlc is not None:
+            # Day OHLC is the entry with interval '1d' ('I1' = 1-min intraday bar)
+            for bar in market_ohlc.ohlc:
+                if bar.interval == "1d":
+                    open_price = Decimal(str(round(bar.open, 2)))
+                    high = Decimal(str(round(bar.high, 2)))
+                    low = Decimal(str(round(bar.low, 2)))
+                    if volume == 0 and bar.vol:
+                        volume = int(bar.vol)
+                    break
 
-            if ff.HasField("depth"):
-                depth = ff.depth
-                if depth.bid:
-                    best_bid = depth.bid[0]
-                    if best_bid.price > 0:
-                        bid = Decimal(str(round(best_bid.price, 2)))
-                        bid_qty = int(best_bid.quantity)
-                if depth.ask:
-                    best_ask = depth.ask[0]
-                    if best_ask.price > 0:
-                        ask = Decimal(str(round(best_ask.price, 2)))
-                        ask_qty = int(best_ask.quantity)
-
-        # Recalculate change from Decimal to avoid float precision drift
+        # v3 LTPC carries no change fields — derive from Decimal ltp/close
+        change = Decimal("0")
+        change_percent = Decimal("0")
         if close != 0:
             change = ltp - close
             change_percent = (change / close * 100).quantize(Decimal("0.0001"))
