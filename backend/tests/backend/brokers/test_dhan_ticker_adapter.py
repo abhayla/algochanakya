@@ -649,6 +649,7 @@ class TestDispatchIntegration:
 
         adapter.set_on_tick_callback(on_tick)
         adapter._event_loop = asyncio.get_event_loop()
+        adapter._subscribed_tokens.add(256265)  # dispatch drops unsubscribed tokens
 
         # Build a valid ticker packet
         pkt = build_ticker_packet(security_id=13, ltp=24500.50)

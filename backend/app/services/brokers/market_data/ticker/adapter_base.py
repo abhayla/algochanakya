@@ -212,6 +212,12 @@ class TickerAdapter(ABC):
         """
         if not ticks or not self._on_tick_callback:
             return
+        # Drop in-flight ticks for tokens that were unsubscribed after the
+        # broker pushed them — brokers keep sending for a few ms after the
+        # unsubscribe request until they process it server-side
+        ticks = [t for t in ticks if t.token in self._subscribed_tokens]
+        if not ticks:
+            return
         self._last_tick_time = datetime.now()
         try:
             result = self._on_tick_callback(ticks)

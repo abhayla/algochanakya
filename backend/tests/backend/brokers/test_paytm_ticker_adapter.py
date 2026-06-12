@@ -824,6 +824,7 @@ class TestReceiveLoop:
             dispatched.extend(ticks)
 
         adapter.set_on_tick_callback(mock_callback)
+        adapter._subscribed_tokens.add(256265)  # dispatch drops unsubscribed tokens
 
         # Mock WebSocket that yields one message then raises ConnectionClosed
         import websockets.exceptions

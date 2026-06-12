@@ -135,3 +135,35 @@ class TestLastErrorProperty:
 
         assert adapter.last_error["error_type"] == "auth"
         assert adapter.last_error["error_code"] == "AB1010"
+
+
+class TestDispatchUnsubscribeRace:
+    """In-flight ticks can arrive milliseconds after unsubscribe() returns —
+    the broker keeps pushing until it processes the request (observed live
+    with SmartAPI 2026-06-12: 2 ticks ~7ms post-unsubscribe). The dispatch
+    layer must drop ticks for tokens no longer subscribed."""
+
+    def _tick(self, token: int) -> NormalizedTick:
+        return NormalizedTick(token=token, ltp=Decimal("100.5"), broker_type="test_broker")
+
+    @pytest.mark.asyncio
+    async def test_dispatch_drops_ticks_for_unsubscribed_tokens(self, adapter: StubAdapter):
+        received = []
+        adapter.set_on_tick_callback(lambda ticks: received.extend(ticks))
+        adapter._connected = True
+        await adapter.subscribe([256265, 260105])
+        await adapter.unsubscribe([256265, 260105])
+
+        await adapter._dispatch_async([self._tick(256265), self._tick(260105)])
+        assert received == [], "ticks for unsubscribed tokens must not reach the callback"
+
+    @pytest.mark.asyncio
+    async def test_dispatch_keeps_ticks_for_still_subscribed_tokens(self, adapter: StubAdapter):
+        received = []
+        adapter.set_on_tick_callback(lambda ticks: received.extend(ticks))
+        adapter._connected = True
+        await adapter.subscribe([256265, 260105])
+        await adapter.unsubscribe([260105])  # partial unsubscribe
+
+        await adapter._dispatch_async([self._tick(256265), self._tick(260105)])
+        assert [t.token for t in received] == [256265]
