@@ -4,6 +4,10 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { usePositionsStore } from '../stores/positions'
 import { useWatchlistStore } from '../stores/watchlist'
+import { isModuleEnabled } from '../config/features'
+
+const isOfoEnabled = isModuleEnabled('ofo')
+const isAutopilotEnabled = isModuleEnabled('autopilot')
 import KiteLayout from '../components/layout/KiteLayout.vue'
 import BrokerUpgradeBanner from '../components/common/BrokerUpgradeBanner.vue'
 import DataSourceBadge from '../components/common/DataSourceBadge.vue'
@@ -133,7 +137,7 @@ onMounted(async () => {
           </router-link>
 
           <!-- OFO Card -->
-          <router-link to="/ofo" class="dashboard-card card-ofo" data-testid="dashboard-ofo-card">
+          <router-link v-if="isOfoEnabled" to="/ofo" class="dashboard-card card-ofo" data-testid="dashboard-ofo-card">
             <div class="card-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="12" cy="12" r="10"/>
@@ -181,7 +185,7 @@ onMounted(async () => {
           </router-link>
 
           <!-- AutoPilot Card -->
-          <router-link to="/autopilot" class="dashboard-card card-autopilot" data-testid="dashboard-autopilot-card">
+          <router-link v-if="isAutopilotEnabled" to="/autopilot" class="dashboard-card card-autopilot" data-testid="dashboard-autopilot-card">
             <div class="card-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <rect x="3" y="11" width="18" height="10" rx="2"/>

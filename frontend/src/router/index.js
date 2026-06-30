@@ -198,6 +198,13 @@ const allRoutes = [
     component: () => import('../views/autopilot/SharedStrategiesView.vue'),
     meta: { requiresAuth: true, feature: 'autopilot' },
   },
+  // Catch-all: any unregistered route (including feature-flag-hidden ones) redirects to /dashboard.
+  // Place LAST so it never overrides a specific route.
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'NotFoundRedirect',
+    redirect: '/dashboard',
+  },
 ]
 
 const router = createRouter({
