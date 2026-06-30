@@ -247,3 +247,7 @@ smartapi_temp.json
 
 # Corrupted filenames (Windows path artifacts)
 D?AbhayVibeCoding*
+
+# Ephemeral Claude Code workflow runtime artifacts (claude-best-practices hub)
+.workflows/
+test-evidence/
