@@ -92,17 +92,17 @@ Multi-broker platform where all 6 brokers (Zerodha, AngelOne, Dhan, Fyers, Paytm
 - DB stores `'zerodha'`/`'angelone'` but `BrokerType` enum uses `'kite'`/`'angel'` — use `BROKER_NAME_MAP`
 - AngelOne has 3 API keys: `ANGEL_API_KEY` (live data), `ANGEL_HIST_API_KEY` (history), `ANGEL_TRADE_API_KEY` (orders)
 - Never import broker SDKs directly — always use `app.services.brokers.factory`
+- Instrument queries MUST filter by `source_broker` — kite vs smartapi share strikes but use different tokens; unfiltered selects crash `scalar_one_or_none()` (see `instrument-source-broker-filter` rule)
 - Tests use SQLite in-memory; PostgreSQL types (JSONB, ARRAY, UUID, BigInteger) need `@compiles` dialect adapters in `conftest.py` — see `sqlite-test-compat` rule
 
 ## Git
 
 **Commit convention:** `type(scope): description` — types: `feat`, `fix`, `refactor`, `docs`, `chore`, `test`
 
-## Rules & Workflow
+## Workflow
 
-- Architectural constraints auto-load from `.claude/rules/` based on file context — no need to read them manually. SSOT: each fact in one file only.
-- For bug fixing: use `/fix-loop` or `/fix-issue`. Start by writing a test that reproduces the bug, then fix and prove with a passing test.
-- After code changes: invoke `auto-verify` skill. To fix failures: `test-fixer` skill.
+- After code changes: invoke `/auto-verify`. To fix failures: `/test-fixer` or `/fix-loop`.
+- See the hub-managed "Rules for Claude" section below for bug-fixing and rules-loading conventions.
 
 <!-- hub:best-practices:start -->
 
