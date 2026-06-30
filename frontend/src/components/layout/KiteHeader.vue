@@ -162,10 +162,7 @@
           <button
             class="dropdown-item"
             data-testid="kite-header-settings-button"
-            @click="
-              router.push('/settings')
-              showUserDropdown = false
-            "
+            @click="goToSettings"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="12" cy="12" r="3" />
@@ -339,6 +336,11 @@
     await authStore.logout()
     watchlistStore.disconnectWebSocket()
     router.push('/login')
+  }
+
+  const goToSettings = () => {
+    router.push('/settings')
+    showUserDropdown.value = false
   }
 
   // Stop polling when WebSocket connects
