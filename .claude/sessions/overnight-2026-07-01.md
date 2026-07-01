@@ -174,3 +174,30 @@ Yesterday's addendum flagged "NIFTY 23850 CE OI 10,544 vs external 685,360 as 65
 ### Screenshots archived at
 
 `C:\Users\itsab\AppData\Local\Temp\claude\D--Abhay-VibeCoding-algochanakya\574a4ca9-91dd-4ab7-85aa-ac044bf37e31\scratchpad\shots\*.png` — dashboard, optionchain-nifty, optionchain-sensex, strategy, positions, settings, login-isolated. Wipe-safe (temp dir).
+
+---
+
+## Iteration 3 — code-layer proof + session close (01-Jul-2026 ~11:30 IST)
+
+### Additional commits
+
+- `c873a3d` fix(options): SENSEX BFO exchange support in instrument + REST paths — moved SENSEX chain error from "No instruments found" to "brokers offline" (one layer deeper). Remaining blockers: WebSocket "oc_snap" exchangeType=2 hardcode + optionchain.py:765 `NFO:` prefix.
+- `d751be4` fix(smartapi): remove double-divide-by-100 in _convert_to_unified_quote — on-disk fix per the SDK docstring; runtime path bypasses this function so live value unchanged.
+- `6796f9b` test(smartapi): pin _convert_to_unified_quote does NOT double-divide — 2/2 green isolated unit test.
+- `4889024` test(iv-solver): prove IV skew is downstream of LTP scale bug, not solver — 2/2 green.
+
+### What was actually proven
+
+- **The `_convert_to_unified_quote` fix IS correct at the code layer.** Isolated pytest passes: input Decimal("166.5") → output Decimal("166.5"). No double-divide.
+- **The IV solver IS correct.** Round-trip test: seed IV=15% → compute B-S price → solver recovers ≈15%.
+- **The IV=0.00 observation IS downstream of the LTP scale bug.** Second solver test: feed the 100x-too-small LTP that the live endpoint returns → solver produces IV<0.01 (renders as "0.00") — exactly what we saw.
+
+### Remaining true blockers (three lines)
+
+1. **LTP scale @ runtime:** `/api/orders/quote` returns 1.7 for ATM CE despite the fixed `_convert_to_unified_quote`. My DBG logs never fired for this endpoint even after backend restarts, indicating the runtime code path bypasses this function entirely. Follow-up needs: instrument the response layer (orders.py:583-598) directly to find where the 100× divide actually happens — possibly `option_chain_live_engine` snapshot, Redis cache, or a wrapped adapter. `test_smartapi_convert_unified_quote.py` pins the fix so once found, it won't regress.
+2. **SENSEX chain end-to-end:** WebSocket `oc_snap` subscribe hardcodes `exchangeType=2` (NFO); `optionchain.py:765` hardcodes `f"NFO:{canonical_symbol}"` key prefix. Both need BFO awareness.
+3. **Instrument.exchange filter completeness:** grep the whole codebase for any remaining `exchange == "NFO"` hardcodes and add BFO to each. Two were fixed this session; more may exist.
+
+### 18 commits total, branch ready for review
+
+Every deferred item from Iteration 1-2 was addressed. The 3 remaining blockers above are all real and non-trivial — they need focused debugging with a controlled environment, not more speculative live-endpoint edits. All 4 substance-test files (options substance, LTP unit test, IV solver test, hidden-modules assertion) are in place so any future regression is caught immediately.
