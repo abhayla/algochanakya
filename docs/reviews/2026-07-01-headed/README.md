@@ -1,6 +1,8 @@
-# Visual + Performance Verification — 2026-07-01 (Headed)
+# Visual + Performance Verification — 2026-07-01 (Headed, post perf-fix re-run)
 
-**24 perfect screenshots + cold-load performance measurements.** 6 screens × 4 broker configurations, captured with a **visible (headed) maximized Chromium** during live market hours (14:50-15:15 IST, 2026-07-01, Wednesday). Companion / follow-up to the [2026-07-01 headless baseline](../2026-07-01/).
+**23/24 screenshots pass rubric + cold-load performance within standards.** 6 screens × 4 broker configurations, captured with a **visible (headed) maximized Chromium**. Initial pass during live market hours (14:50-15:15 IST), re-captured after 3:30 IST close with two shipped perf fixes so the market-closed rendering (banners, EOD data) is on the record too. Companion to the [2026-07-01 headless baseline](../2026-07-01/).
+
+**One remaining defect** — UA config on the Strategy view shows `--` for header index prices (see § Remaining defect).
 
 Rubric applied on each screenshot:
 (i) structural — sections render, no `--` in live-data fields, zero console errors, no hidden-module leaks
@@ -57,6 +59,35 @@ Rubric applied on each screenshot:
 — `router.beforeEach` was already gated by `authInitialized` and is authoritative.
 The App.vue fire-and-forget was overlapping the router-guard's `await`ed call.
 
+### Rubric v standards achieved (final Pass 3, warm backend, market closed)
+
+| Screen | dataReady | Verdict | Budget |
+|---|---:|---|---:|
+| login | 123ms | **FAST** | < 2s |
+| dashboard | 1757ms | **FAST** | < 2s |
+| optionchain | 744ms | **FAST** | < 8s |
+| strategy | 3299ms | **OK** | < 5s |
+| positions | 1431ms | **FAST** | < 2s |
+| settings | 1058ms | **FAST** | < 2s |
+
+All 6 screens meet standards. 5 FAST, 1 OK, 0 SLOW, 0 DEFECT. Iteration log:
+
+| Screen | Pass 1 (cold) | Pass 2 (post-fix, cold) | Pass 3 (warm) |
+|---|---:|---:|---:|
+| login | 188ms FAST | 244ms FAST | 123ms FAST |
+| dashboard | 1961ms FAST | 1816ms FAST | 1757ms FAST |
+| **optionchain** | **15,742ms DEFECT** ✗ | **981ms FAST** ✓ | **744ms FAST** ✓ |
+| strategy | TIMEOUT (signal bug) | 4134ms OK | 3299ms OK |
+| positions | 1680ms FAST | 972ms FAST | 1431ms FAST |
+| settings | 928ms FAST | 760ms FAST | 1058ms FAST |
+
+### Perf fixes shipped this session (in commit order)
+
+1. **`21de04e`** — dedup `/api/auth/me` (App.vue removed redundant checkAuth; router guard is authoritative). Saved 1.5-2.9s per screen.
+2. **`e8a23a2`** — startup NIFTY + BANKNIFTY option-chain warmup module. Fire-and-forget lifespan task subscribes tokens on TickerPool at startup during market hours so OCL engine snapshots are warm before any user request. Kills 15s market-hours cold-fetch when the fix is in effect.
+3. **`462a032`** — skip SmartAPI WebSocket snap path when market is closed. `PATH 2 (get_option_chain_snap)` waits 7s for illiquid strikes to tick; after hours nothing ticks so the 7s is dead time. Gated on `is_market_open()`. Killed 15,742ms after-hours cold-fetch → 981ms.
+4. **`9da5482`** — KiteHeader index-price fetch fires immediately (was gated behind 2s setTimeout) + polling fallback interval reduced 10s → 3s. Fixes intermittent `--` in header for UA config on optionchain/positions/settings.
+
 ### Root-cause fix for the 15s option-chain cold-load (SHIPPED this session)
 
 **Before**: `/api/optionchain/chain` = 15,036ms cold. **After** (verified via forced execution
@@ -94,6 +125,20 @@ Wrapped in try/except so any failure is logged and never blocks startup.
 Live cold-load re-measurement lands on the next market open — this run happened at 3:30-4:30
 IST, market closed for the day. Rule added: `.claude/rules/root-cause-not-patch.md` codifying
 the discipline that led to this fix.
+
+### Remaining defect — UA/strategy header index prices
+
+UA config (SmartAPI data + Upstox orders) on the Strategy Builder view specifically renders header index prices as `--` even after 15+s wait, while UA/dashboard, UA/optionchain, UA/positions, UA/settings all populate correctly (post-`9da5482`).
+
+Behavior: strategy view mounts → calls `Promise.all([fetchExpiries, fetchSpotPrice])`, then `loadSavedStrategies`. `fetchSpotPrice` fails with `AxiosError` in the browser console. `watchlistStore.connectWebSocket` fails with "SmartAPI WebSocket connection timed out after 10s". The header polling fallback (3s interval, from `9da5482`) doesn't recover.
+
+Diagnosed but not fixed this session: the failure appears specific to strategy view's mount contention with SmartAPI adapter after-hours WebSocket handshake — the backend adapter is unresponsive for WebSocket connect attempts after market close, but REST endpoints (`/api/orders/quote`, `/api/orders/ltp`) return 200 when curl'd directly. This suggests the shared adapter is being tied up by the WS handshake attempt in a way that blocks strategy view's own REST calls but not the calls from other views.
+
+**Fix path** (next session):
+- Instrument the SmartAPI adapter to fail its WebSocket handshake faster after hours (or gate WS entirely when `is_market_open() == False`).
+- Or short-circuit `fetchSpotPrice` / `fetchIndexPrices` on the frontend when the response would be from an EOD path anyway.
+
+Failure is scoped: only UA config, only Strategy view, only after market close. All other 23 shots pass.
 
 ## External-truth cross-check (spot)
 
