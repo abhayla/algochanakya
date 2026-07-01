@@ -14,8 +14,8 @@ const OUT_ROOT = 'D:/Abhay/VibeCoding/algochanakya/docs/reviews/2026-07-01-heade
 const OUT_DIR = path.join(OUT_ROOT, config)
 fs.mkdirSync(OUT_DIR, { recursive: true })
 
-const STORAGE = 'D:/Abhay/VibeCoding/algochanakya/tests/config/.auth-state.5174.json'
-const BASE = 'http://localhost:5174'
+const STORAGE = 'D:/Abhay/VibeCoding/algochanakya/tests/config/.auth-state.5175.json'
+const BASE = 'http://localhost:5175'
 
 const browser = await chromium.launch({
   headless: false,
