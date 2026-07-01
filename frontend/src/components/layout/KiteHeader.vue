@@ -355,23 +355,18 @@
     document.addEventListener('click', closeDropdown)
     document.addEventListener('keydown', handleKeydown)
 
-    // Fetch index prices via API as initial data (fallback for WebSocket)
-    // Wait a bit for WebSocket to potentially connect first
-    setTimeout(() => {
-      const ticks = indexTicks.value
-      const anyMissing =
-        !ticks.nifty50?.ltp || !ticks.niftyBank?.ltp || !ticks.finnifty?.ltp || !ticks.sensex?.ltp
-      if (anyMissing) {
-        fetchIndexPrices((token, tick) => watchlistStore.updateTick(token, tick))
-      }
-      // Start polling if WebSocket is still not connected after 2s
-      if (!watchlistStore.isConnected) {
-        startPollingFallback(
-          () => fetchIndexPrices((token, tick) => watchlistStore.updateTick(token, tick)),
-          10000
-        )
-      }
-    }, 2000)
+    // Fetch index prices IMMEDIATELY so the header has data without waiting on the
+    // WebSocket handshake — critical when the WS times out (e.g. SmartAPI adapter
+    // waits 10s after market close). Substance bug caught 2026-07-01: UA config
+    // (SmartAPI) headers rendered as `--` because the first fetch was gated behind
+    // a 2s setTimeout that also raced the WS onopen handler.
+    const doFetch = () => fetchIndexPrices((token, tick) => watchlistStore.updateTick(token, tick))
+    doFetch()
+
+    // Start a 3s polling fallback as backup for the WebSocket path. If WS connects,
+    // the watcher above stops the poll. startPollingFallback is a singleton — safe
+    // to call unconditionally; it's a no-op if already running.
+    startPollingFallback(doFetch, 3000)
   })
 
   onUnmounted(() => {

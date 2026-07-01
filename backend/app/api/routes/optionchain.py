@@ -718,9 +718,12 @@ async def _compute_option_chain(
             logger.warning(f"[OptionChain] Upstox option chain failed, falling back: {e}")
             all_quotes = {}
 
-    # PATH 2: SmartAPI WebSocket V2 snap
+    # PATH 2: SmartAPI WebSocket V2 snap — skipped after market close because no
+    # ticks can flow, so the 7s wait is dead time. Perf-fix (see rubric v):
+    # observed 15.7s cold-load after-hours vs the 8s DEFECT budget. During market
+    # hours we still try WS first for freshest data.
     ws_quotes = {}
-    if not all_quotes and adapter and hasattr(adapter, 'get_option_chain_snap') and token_to_symbol:
+    if not all_quotes and adapter and hasattr(adapter, 'get_option_chain_snap') and token_to_symbol and is_market_open():
         try:
             import time as _time
             ws_start = _time.time()
