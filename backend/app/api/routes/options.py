@@ -23,6 +23,7 @@ UNDERLYING_MAP = {
     "NIFTY": "NIFTY",
     "BANKNIFTY": "BANKNIFTY",
     "FINNIFTY": "FINNIFTY",
+    "SENSEX": "SENSEX",
 }
 
 
@@ -54,7 +55,7 @@ async def get_expiries(
         query = select(distinct(Instrument.expiry)).where(
             and_(
                 Instrument.name == UNDERLYING_MAP[underlying],
-                Instrument.exchange == "NFO",
+                Instrument.exchange.in_(["NFO", "BFO"]),
                 Instrument.instrument_type.in_(["CE", "PE"]),
                 Instrument.expiry >= date.today(),
                 Instrument.source_broker == "kite",
