@@ -729,12 +729,16 @@ class SmartAPIMarketDataAdapter(MarketDataBrokerAdapter):
         Returns:
             UnifiedQuote with prices in RUPEES
         """
-        # SmartAPI returns prices in PAISE - divide by 100
-        ltp = Decimal(str(raw_data.get("ltp", 0))) / 100
-        open_price = Decimal(str(raw_data.get("open", 0))) / 100
-        high = Decimal(str(raw_data.get("high", 0))) / 100
-        low = Decimal(str(raw_data.get("low", 0))) / 100
-        close = Decimal(str(raw_data.get("close", 0))) / 100
+        # raw_data comes from SmartAPIMarketData._normalize_quotes which
+        # explicitly states "prices already in rupees from REST API" — the
+        # SmartAPI getMarketData FULL-mode REST response is in rupees, not
+        # paise. The old /100 divide here was double-scaling: NIFTY 24000 CE
+        # ATM last_price showed as 1.66 instead of 166.
+        ltp = Decimal(str(raw_data.get("ltp", 0)))
+        open_price = Decimal(str(raw_data.get("open", 0)))
+        high = Decimal(str(raw_data.get("high", 0)))
+        low = Decimal(str(raw_data.get("low", 0)))
+        close = Decimal(str(raw_data.get("close", 0)))
 
         return UnifiedQuote(
             tradingsymbol=canonical_symbol,
@@ -749,9 +753,9 @@ class SmartAPIMarketDataAdapter(MarketDataBrokerAdapter):
             change_percent=((ltp - close) / close * 100) if close > 0 else Decimal("0"),
             volume=raw_data.get("volume", 0),
             oi=raw_data.get("oi", 0),
-            bid_price=Decimal(str(raw_data.get("bid_price", 0))) / 100,
+            bid_price=Decimal(str(raw_data.get("bid_price", 0))),
             bid_quantity=raw_data.get("bid_qty", 0),
-            ask_price=Decimal(str(raw_data.get("ask_price", 0))) / 100,
+            ask_price=Decimal(str(raw_data.get("ask_price", 0))),
             ask_quantity=raw_data.get("ask_qty", 0),
             last_trade_time=datetime.now(),  # SmartAPI doesn't provide this
             raw_response=raw_data
