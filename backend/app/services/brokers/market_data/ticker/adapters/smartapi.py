@@ -285,12 +285,19 @@ class SmartAPITickerAdapter(TickerAdapter):
             if canonical_token == 0:
                 return []
 
-            # Extract prices in paise and convert to Decimal rupees
-            ltp = Decimal(raw_data.get("last_traded_price", 0)) / _PAISE_DIVISOR
-            open_price = Decimal(raw_data.get("open_price_of_the_day", 0)) / _PAISE_DIVISOR
-            high = Decimal(raw_data.get("high_price_of_the_day", 0)) / _PAISE_DIVISOR
-            low = Decimal(raw_data.get("low_price_of_the_day", 0)) / _PAISE_DIVISOR
-            close = Decimal(raw_data.get("closed_price", 0)) / _PAISE_DIVISOR
+            # Live observation 01-Jul-2026 during market hours: SmartAPI
+            # WebSocket returns NSE/BSE index prices in paise (needs /100 to
+            # get rupees — NIFTY raw 2402615 → 24026.15 ✓) but NFO/BFO option
+            # prices appear to be in rupees already (ATM CE raw 181 was being
+            # shown as 1.81 after /100, but real market ATM CE ≈ ₹181). Divide
+            # only for exchanges that actually send paise.
+            exchange_type = self._token_exchange_type.get(canonical_token, self.EXCHANGE_NFO)
+            divisor = _PAISE_DIVISOR if exchange_type in (self.EXCHANGE_NSE, self.EXCHANGE_BSE) else Decimal("1")
+            ltp = Decimal(raw_data.get("last_traded_price", 0)) / divisor
+            open_price = Decimal(raw_data.get("open_price_of_the_day", 0)) / divisor
+            high = Decimal(raw_data.get("high_price_of_the_day", 0)) / divisor
+            low = Decimal(raw_data.get("low_price_of_the_day", 0)) / divisor
+            close = Decimal(raw_data.get("closed_price", 0)) / divisor
 
             # Change metrics
             change = ltp - close

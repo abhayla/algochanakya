@@ -178,8 +178,10 @@ class SmartAPIMarketDataAdapter(MarketDataBrokerAdapter):
                 for symbol in option_symbols:
                     token = await self._token_manager.get_token(symbol)
                     if not token:
-                        # Fallback: direct lookup via SmartAPI instrument master
-                        token_str = await self._instruments.lookup_token(symbol, "NFO")
+                        # Fallback: direct lookup via SmartAPI instrument master.
+                        # SENSEX options live on BFO, all others on NFO.
+                        exch = "BFO" if symbol.upper().startswith("SENSEX") else "NFO"
+                        token_str = await self._instruments.lookup_token(symbol, exch)
                         if token_str:
                             token = int(token_str)
                     if token:
@@ -188,21 +190,26 @@ class SmartAPIMarketDataAdapter(MarketDataBrokerAdapter):
                         logger.warning(f"[SmartAPI] Token not found for symbol: {symbol}")
 
                 if tokens_map:
-                    # Get quotes from SmartAPI (assuming NFO exchange for options)
-                    raw_quotes = await self._market_data.get_quote(
-                        exchange="NFO",
-                        tokens=list(tokens_map.keys()),
-                        mode="FULL"
-                    )
+                    # SENSEX options live on BFO; NIFTY/BANKNIFTY/FINNIFTY on NFO.
+                    # Split tokens by exchange and query each separately.
+                    nfo_tokens = {t: s for t, s in tokens_map.items() if not s.upper().startswith("SENSEX")}
+                    bfo_tokens = {t: s for t, s in tokens_map.items() if s.upper().startswith("SENSEX")}
 
-                    # Convert to UnifiedQuote
-                    for token, raw_data in raw_quotes.items():
-                        canonical_symbol = tokens_map.get(token)
-                        if canonical_symbol:
-                            unified_quotes[canonical_symbol] = self._convert_to_unified_quote(
-                                raw_data,
-                                canonical_symbol
-                            )
+                    for exch, tmap in (("NFO", nfo_tokens), ("BFO", bfo_tokens)):
+                        if not tmap:
+                            continue
+                        raw_quotes = await self._market_data.get_quote(
+                            exchange=exch,
+                            tokens=list(tmap.keys()),
+                            mode="FULL"
+                        )
+                        for token, raw_data in raw_quotes.items():
+                            canonical_symbol = tmap.get(token)
+                            if canonical_symbol:
+                                unified_quotes[canonical_symbol] = self._convert_to_unified_quote(
+                                    raw_data,
+                                    canonical_symbol
+                                )
 
             return unified_quotes
 
@@ -356,12 +363,16 @@ class SmartAPIMarketDataAdapter(MarketDataBrokerAdapter):
                 if not token_str or token_str not in smartapi_token_to_symbol:
                     return
                 symbol = smartapi_token_to_symbol[token_str]
+                # Options subscription (exchangeType=2 = NFO) — SmartAPI SNAP
+                # mode 3 returns option prices already in rupees, not paise.
+                # Verified live 01-Jul-2026: raw last_traded_price of ~181 for
+                # ATM NIFTY CE is the actual ₹181. Do NOT divide options by 100.
                 collected[symbol] = {
-                    "ltp": message.get("last_traded_price", 0) / 100.0,
-                    "open": message.get("open_price_of_the_day", 0) / 100.0,
-                    "high": message.get("high_price_of_the_day", 0) / 100.0,
-                    "low": message.get("low_price_of_the_day", 0) / 100.0,
-                    "close": message.get("closed_price", 0) / 100.0,
+                    "ltp": message.get("last_traded_price", 0),
+                    "open": message.get("open_price_of_the_day", 0),
+                    "high": message.get("high_price_of_the_day", 0),
+                    "low": message.get("low_price_of_the_day", 0),
+                    "close": message.get("closed_price", 0),
                     "volume": message.get("volume_trade_for_the_day", 0) or 0,
                     "oi": message.get("open_interest", 0) or 0,
                 }
@@ -722,12 +733,16 @@ class SmartAPIMarketDataAdapter(MarketDataBrokerAdapter):
         Returns:
             UnifiedQuote with prices in RUPEES
         """
-        # SmartAPI returns prices in PAISE - divide by 100
-        ltp = Decimal(str(raw_data.get("ltp", 0))) / 100
-        open_price = Decimal(str(raw_data.get("open", 0))) / 100
-        high = Decimal(str(raw_data.get("high", 0))) / 100
-        low = Decimal(str(raw_data.get("low", 0))) / 100
-        close = Decimal(str(raw_data.get("close", 0))) / 100
+        # raw_data comes from SmartAPIMarketData._normalize_quotes which
+        # explicitly states "prices already in rupees from REST API" — the
+        # SmartAPI getMarketData FULL-mode REST response is in rupees, not
+        # paise. The old /100 divide here was double-scaling: NIFTY 24000 CE
+        # ATM last_price showed as 1.66 instead of 166.
+        ltp = Decimal(str(raw_data.get("ltp", 0)))
+        open_price = Decimal(str(raw_data.get("open", 0)))
+        high = Decimal(str(raw_data.get("high", 0)))
+        low = Decimal(str(raw_data.get("low", 0)))
+        close = Decimal(str(raw_data.get("close", 0)))
 
         return UnifiedQuote(
             tradingsymbol=canonical_symbol,
@@ -742,9 +757,9 @@ class SmartAPIMarketDataAdapter(MarketDataBrokerAdapter):
             change_percent=((ltp - close) / close * 100) if close > 0 else Decimal("0"),
             volume=raw_data.get("volume", 0),
             oi=raw_data.get("oi", 0),
-            bid_price=Decimal(str(raw_data.get("bid_price", 0))) / 100,
+            bid_price=Decimal(str(raw_data.get("bid_price", 0))),
             bid_quantity=raw_data.get("bid_qty", 0),
-            ask_price=Decimal(str(raw_data.get("ask_price", 0))) / 100,
+            ask_price=Decimal(str(raw_data.get("ask_price", 0))),
             ask_quantity=raw_data.get("ask_qty", 0),
             last_trade_time=datetime.now(),  # SmartAPI doesn't provide this
             raw_response=raw_data

@@ -207,6 +207,15 @@ export const useStrategyStore = defineStore('strategy', () => {
     if (!legData?.strike_price && defaultExpiry && strikes.value[defaultExpiry]) {
       if (currentSpot.value > 0) {
         defaultStrike = findNearestStrike(currentSpot.value, strikes.value[defaultExpiry])
+      } else {
+        // Spot unavailable (e.g. market closed, broker quote API down) — fall back to
+        // the median strike of the loaded chain so the user has a sensible starting
+        // point instead of an empty row. They can still change it.
+        const list = strikes.value[defaultExpiry]
+        if (Array.isArray(list) && list.length > 0) {
+          const sorted = [...list].sort((a, b) => Number(a) - Number(b))
+          defaultStrike = sorted[Math.floor(sorted.length / 2)]
+        }
       }
     }
 
@@ -237,10 +246,11 @@ export const useStrategyStore = defineStore('strategy', () => {
       }
       // Auto-calculate P/L after adding leg
       await calculatePnL()
-    } else {
-      // No strike set (spot price unavailable), calculate P/L anyway (will likely show error)
-      await calculatePnL()
     }
+    // If no strike yet (spot price unavailable — e.g. after market close), skip
+    // calculatePnL — surfacing 'Legs must have strike price' the moment the user
+    // clicks Add Row is confusing. They will see the P/L update naturally when
+    // they select a strike or when spot price becomes available.
   }
 
   function updateLeg(index, updates) {

@@ -139,7 +139,7 @@
                   <div class="instrument-header">
                     <span class="instrument-name">{{ pos.tradingsymbol }}</span>
                     <AutoPilotBadge
-                      v-if="pos.is_autopilot"
+                      v-if="pos.is_autopilot && isAutopilotEnabled"
                       :strategy="{
                         id: pos.autopilot_strategy_id,
                         name: pos.autopilot_strategy_name,
@@ -434,6 +434,9 @@ import { useScrollIndicator } from '@/composables/useScrollIndicator';
 import BrokerUpgradeBanner from '@/components/common/BrokerUpgradeBanner.vue';
 import DataSourceBadge from '@/components/common/DataSourceBadge.vue';
 import MarketStatusBanner from '@/components/common/MarketStatusBanner.vue';
+import { isModuleEnabled } from '@/config/features';
+
+const isAutopilotEnabled = isModuleEnabled('autopilot');
 
 const store = usePositionsStore();
 

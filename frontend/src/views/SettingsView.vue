@@ -16,6 +16,10 @@ import DhanSettings from '@/components/settings/DhanSettings.vue'
 import UpstoxSettings from '@/components/settings/UpstoxSettings.vue'
 import FyersSettings from '@/components/settings/FyersSettings.vue'
 import PaytmSettings from '@/components/settings/PaytmSettings.vue'
+import { isBrokerEnabled } from '@/config/features'
+
+const isFyersEnabled = isBrokerEnabled('fyers')
+const isPaytmEnabled = isBrokerEnabled('paytm')
 
 const router = useRouter()
 const store = useUserPreferencesStore()
@@ -231,7 +235,7 @@ onBeforeRouteLeave(() => {
         </div>
 
         <!-- Fyers Settings -->
-        <div class="settings-section">
+        <div v-if="isFyersEnabled" class="settings-section">
           <div class="section-header">
             <h2 class="section-title">Fyers</h2>
             <p class="section-subtitle">Connect your Fyers account via OAuth</p>
@@ -242,7 +246,7 @@ onBeforeRouteLeave(() => {
         </div>
 
         <!-- Paytm Money Settings -->
-        <div class="settings-section">
+        <div v-if="isPaytmEnabled" class="settings-section">
           <div class="section-header">
             <h2 class="section-title">Paytm Money</h2>
             <p class="section-subtitle">Connect your Paytm Money account via OAuth</p>

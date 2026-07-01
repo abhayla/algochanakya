@@ -32,12 +32,14 @@ test.describe('Dashboard - Happy Path @happy', () => {
     expect(titleText).toMatch(/Good (morning|afternoon|evening)/i);
   });
 
-  test('all five navigation cards are visible', async () => {
+  test('visible navigation cards (default flags hide OFO + AutoPilot)', async () => {
     await expect(dashboardPage.optionchainCard).toBeVisible();
-    await expect(dashboardPage.ofoCard).toBeVisible();
     await expect(dashboardPage.strategyCard).toBeVisible();
     await expect(dashboardPage.positionsCard).toBeVisible();
     await expect(dashboardPage.strategiesCard).toBeVisible();
+    // OFO + AutoPilot hidden by default feature flags — confirm they are NOT visible.
+    await expect(dashboardPage.ofoCard).toHaveCount(0);
+    await expect(dashboardPage.page.getByTestId('dashboard-autopilot-card')).toHaveCount(0);
   });
 
   test('option chain card navigates to /optionchain', async ({ authenticatedPage }) => {
@@ -46,11 +48,8 @@ test.describe('Dashboard - Happy Path @happy', () => {
     expect(authenticatedPage.url()).toContain('/optionchain');
   });
 
-  test('ofo card navigates to /ofo', async ({ authenticatedPage }) => {
-    await dashboardPage.goToOFO();
-    await authenticatedPage.waitForURL('**/ofo**');
-    expect(authenticatedPage.url()).toContain('/ofo');
-  });
+  // ofo card test removed — OFO module is hidden by default feature flag. Re-add
+  // only if VITE_ENABLE_OFO=true in a future variant suite.
 
   test('strategy card navigates to /strategy', async ({ authenticatedPage }) => {
     await dashboardPage.goToStrategy();

@@ -1,202 +1,215 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { isModuleEnabled } from '../config/features'
 import LoginView from '../views/LoginView.vue'
 import AuthCallbackView from '../views/AuthCallbackView.vue'
 
 let authInitialized = false
 
+const allRoutes = [
+  {
+    path: '/',
+    redirect: '/dashboard',
+  },
+  {
+    path: '/login',
+    name: 'login',
+    component: LoginView,
+    meta: { requiresAuth: false },
+  },
+  {
+    path: '/auth/callback',
+    name: 'auth-callback',
+    component: AuthCallbackView,
+    meta: { requiresAuth: false },
+  },
+  {
+    path: '/watchlist',
+    name: 'watchlist',
+    component: () => import('../views/WatchlistView.vue'),
+    meta: { requiresAuth: true, feature: 'watchlist' },
+  },
+  {
+    path: '/dashboard',
+    name: 'dashboard',
+    component: () => import('../views/DashboardView.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/optionchain',
+    name: 'optionchain',
+    component: () => import('../views/OptionChainView.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/ofo',
+    name: 'ofo',
+    component: () => import('../views/OFOView.vue'),
+    meta: { requiresAuth: true, feature: 'ofo' },
+  },
+  {
+    path: '/strategy',
+    name: 'strategy',
+    component: () => import('../views/StrategyBuilderView.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/strategy/:id',
+    name: 'strategy-detail',
+    component: () => import('../views/StrategyBuilderView.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/strategy/shared/:shareCode',
+    name: 'shared-strategy',
+    component: () => import('../views/StrategyBuilderView.vue'),
+    meta: { requiresAuth: false }, // Public access for shared strategies
+  },
+  {
+    path: '/positions',
+    name: 'positions',
+    component: () => import('../views/PositionsView.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/strategies',
+    name: 'strategies',
+    component: () => import('../views/StrategyLibraryView.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/settings',
+    name: 'settings',
+    component: () => import('../views/SettingsView.vue'),
+    meta: { requiresAuth: true },
+  },
+  // AutoPilot routes
+  {
+    path: '/autopilot',
+    name: 'AutoPilot',
+    component: () => import('../views/autopilot/DashboardView.vue'),
+    meta: { requiresAuth: true, feature: 'autopilot' },
+  },
+  {
+    path: '/autopilot/builder',
+    redirect: '/autopilot/strategies/new',
+    meta: { feature: 'autopilot' },
+  },
+  {
+    path: '/autopilot/strategies/new',
+    name: 'AutoPilotStrategyBuilder',
+    component: () => import('../views/autopilot/StrategyBuilderView.vue'),
+    meta: { requiresAuth: true, feature: 'autopilot' },
+  },
+  {
+    path: '/autopilot/strategies/:id',
+    name: 'AutoPilotStrategyDetail',
+    component: () => import('../views/autopilot/StrategyDetailView.vue'),
+    meta: { requiresAuth: true, feature: 'autopilot' },
+  },
+  {
+    path: '/autopilot/strategies/:id/edit',
+    name: 'AutoPilotStrategyEdit',
+    component: () => import('../views/autopilot/StrategyBuilderView.vue'),
+    meta: { requiresAuth: true, feature: 'autopilot' },
+  },
+  {
+    path: '/autopilot/settings',
+    name: 'AutoPilotSettings',
+    component: () => import('../views/autopilot/SettingsView.vue'),
+    meta: { requiresAuth: true, feature: 'autopilot' },
+  },
+  // AI routes - redirect /ai to /ai/settings
+  {
+    path: '/ai',
+    redirect: '/ai/settings',
+    meta: { feature: 'ai' },
+  },
+  {
+    path: '/ai/settings',
+    name: 'AISettings',
+    component: () => import('../views/ai/AISettingsView.vue'),
+    meta: { requiresAuth: true, feature: 'ai' },
+  },
+  {
+    path: '/ai/paper-trading',
+    name: 'AIPaperTrading',
+    component: () => import('../views/ai/PaperTradingView.vue'),
+    meta: { requiresAuth: true, feature: 'ai' },
+  },
+  {
+    path: '/ai/analytics',
+    name: 'AIAnalytics',
+    component: () => import('../views/ai/AnalyticsView.vue'),
+    meta: { requiresAuth: true, feature: 'ai' },
+  },
+  {
+    path: '/autopilot/orders',
+    name: 'AutoPilotOrders',
+    component: () => import('../views/autopilot/OrderHistoryView.vue'),
+    meta: { requiresAuth: true, feature: 'autopilot' },
+  },
+  // Phase 5 routes - Redirect to main option chain
+  {
+    path: '/autopilot/option-chain',
+    redirect: '/optionchain',
+    meta: { feature: 'autopilot' },
+  },
+  // Phase 4 routes
+  {
+    path: '/autopilot/templates',
+    name: 'AutoPilotTemplates',
+    component: () => import('../views/autopilot/TemplateLibraryView.vue'),
+    meta: { requiresAuth: true, feature: 'autopilot' },
+  },
+  {
+    path: '/autopilot/journal',
+    name: 'AutoPilotJournal',
+    component: () => import('../views/autopilot/TradeJournalView.vue'),
+    meta: { requiresAuth: true, feature: 'autopilot' },
+  },
+  {
+    path: '/autopilot/analytics',
+    name: 'AutoPilotAnalytics',
+    component: () => import('../views/autopilot/AnalyticsView.vue'),
+    meta: { requiresAuth: true, feature: 'autopilot' },
+  },
+  {
+    path: '/autopilot/reports',
+    name: 'AutoPilotReports',
+    component: () => import('../views/autopilot/ReportsView.vue'),
+    meta: { requiresAuth: true, feature: 'autopilot' },
+  },
+  {
+    path: '/autopilot/backtests',
+    name: 'AutoPilotBacktests',
+    component: () => import('../views/autopilot/BacktestsView.vue'),
+    meta: { requiresAuth: true, feature: 'autopilot' },
+  },
+  {
+    path: '/autopilot/shared/:token',
+    name: 'AutoPilotSharedStrategy',
+    component: () => import('../views/autopilot/SharedStrategyView.vue'),
+    meta: { requiresAuth: false, feature: 'autopilot' },
+  },
+  {
+    path: '/autopilot/shared',
+    name: 'AutoPilotSharedList',
+    component: () => import('../views/autopilot/SharedStrategiesView.vue'),
+    meta: { requiresAuth: true, feature: 'autopilot' },
+  },
+  // Catch-all: any unregistered route (including feature-flag-hidden ones) redirects to /dashboard.
+  // Place LAST so it never overrides a specific route.
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'NotFoundRedirect',
+    redirect: '/dashboard',
+  },
+]
+
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
-  routes: [
-    {
-      path: '/',
-      redirect: '/dashboard',
-    },
-    {
-      path: '/login',
-      name: 'login',
-      component: LoginView,
-      meta: { requiresAuth: false },
-    },
-    {
-      path: '/auth/callback',
-      name: 'auth-callback',
-      component: AuthCallbackView,
-      meta: { requiresAuth: false },
-    },
-    {
-      path: '/watchlist',
-      name: 'watchlist',
-      component: () => import('../views/WatchlistView.vue'),
-      meta: { requiresAuth: true },
-    },
-    {
-      path: '/dashboard',
-      name: 'dashboard',
-      component: () => import('../views/DashboardView.vue'),
-      meta: { requiresAuth: true },
-    },
-    {
-      path: '/optionchain',
-      name: 'optionchain',
-      component: () => import('../views/OptionChainView.vue'),
-      meta: { requiresAuth: true },
-    },
-    {
-      path: '/ofo',
-      name: 'ofo',
-      component: () => import('../views/OFOView.vue'),
-      meta: { requiresAuth: true },
-    },
-    {
-      path: '/strategy',
-      name: 'strategy',
-      component: () => import('../views/StrategyBuilderView.vue'),
-      meta: { requiresAuth: true },
-    },
-    {
-      path: '/strategy/:id',
-      name: 'strategy-detail',
-      component: () => import('../views/StrategyBuilderView.vue'),
-      meta: { requiresAuth: true },
-    },
-    {
-      path: '/strategy/shared/:shareCode',
-      name: 'shared-strategy',
-      component: () => import('../views/StrategyBuilderView.vue'),
-      meta: { requiresAuth: false },  // Public access for shared strategies
-    },
-    {
-      path: '/positions',
-      name: 'positions',
-      component: () => import('../views/PositionsView.vue'),
-      meta: { requiresAuth: true },
-    },
-    {
-      path: '/strategies',
-      name: 'strategies',
-      component: () => import('../views/StrategyLibraryView.vue'),
-      meta: { requiresAuth: true },
-    },
-    {
-      path: '/settings',
-      name: 'settings',
-      component: () => import('../views/SettingsView.vue'),
-      meta: { requiresAuth: true },
-    },
-    // AutoPilot routes
-    {
-      path: '/autopilot',
-      name: 'AutoPilot',
-      component: () => import('../views/autopilot/DashboardView.vue'),
-      meta: { requiresAuth: true },
-    },
-    {
-      path: '/autopilot/builder',
-      redirect: '/autopilot/strategies/new'
-    },
-    {
-      path: '/autopilot/strategies/new',
-      name: 'AutoPilotStrategyBuilder',
-      component: () => import('../views/autopilot/StrategyBuilderView.vue'),
-      meta: { requiresAuth: true },
-    },
-    {
-      path: '/autopilot/strategies/:id',
-      name: 'AutoPilotStrategyDetail',
-      component: () => import('../views/autopilot/StrategyDetailView.vue'),
-      meta: { requiresAuth: true },
-    },
-    {
-      path: '/autopilot/strategies/:id/edit',
-      name: 'AutoPilotStrategyEdit',
-      component: () => import('../views/autopilot/StrategyBuilderView.vue'),
-      meta: { requiresAuth: true },
-    },
-    {
-      path: '/autopilot/settings',
-      name: 'AutoPilotSettings',
-      component: () => import('../views/autopilot/SettingsView.vue'),
-      meta: { requiresAuth: true },
-    },
-    // AI routes - redirect /ai to /ai/settings
-    {
-      path: '/ai',
-      redirect: '/ai/settings'
-    },
-    {
-      path: '/ai/settings',
-      name: 'AISettings',
-      component: () => import('../views/ai/AISettingsView.vue'),
-      meta: { requiresAuth: true },
-    },
-    {
-      path: '/ai/paper-trading',
-      name: 'AIPaperTrading',
-      component: () => import('../views/ai/PaperTradingView.vue'),
-      meta: { requiresAuth: true },
-    },
-    {
-      path: '/ai/analytics',
-      name: 'AIAnalytics',
-      component: () => import('../views/ai/AnalyticsView.vue'),
-      meta: { requiresAuth: true },
-    },
-    {
-      path: '/autopilot/orders',
-      name: 'AutoPilotOrders',
-      component: () => import('../views/autopilot/OrderHistoryView.vue'),
-      meta: { requiresAuth: true },
-    },
-    // Phase 5 routes - Redirect to main option chain
-    {
-      path: '/autopilot/option-chain',
-      redirect: '/optionchain'
-    },
-    // Phase 4 routes
-    {
-      path: '/autopilot/templates',
-      name: 'AutoPilotTemplates',
-      component: () => import('../views/autopilot/TemplateLibraryView.vue'),
-      meta: { requiresAuth: true },
-    },
-    {
-      path: '/autopilot/journal',
-      name: 'AutoPilotJournal',
-      component: () => import('../views/autopilot/TradeJournalView.vue'),
-      meta: { requiresAuth: true },
-    },
-    {
-      path: '/autopilot/analytics',
-      name: 'AutoPilotAnalytics',
-      component: () => import('../views/autopilot/AnalyticsView.vue'),
-      meta: { requiresAuth: true },
-    },
-    {
-      path: '/autopilot/reports',
-      name: 'AutoPilotReports',
-      component: () => import('../views/autopilot/ReportsView.vue'),
-      meta: { requiresAuth: true },
-    },
-    {
-      path: '/autopilot/backtests',
-      name: 'AutoPilotBacktests',
-      component: () => import('../views/autopilot/BacktestsView.vue'),
-      meta: { requiresAuth: true },
-    },
-    {
-      path: '/autopilot/shared/:token',
-      name: 'AutoPilotSharedStrategy',
-      component: () => import('../views/autopilot/SharedStrategyView.vue'),
-      meta: { requiresAuth: false },  // Public access for shared strategies
-    },
-    {
-      path: '/autopilot/shared',
-      name: 'AutoPilotSharedList',
-      component: () => import('../views/autopilot/SharedStrategiesView.vue'),
-      meta: { requiresAuth: true },
-    },
-  ],
+  routes: allRoutes.filter((r) => !r.meta?.feature || isModuleEnabled(r.meta.feature)),
 })
 
 // Navigation guard
