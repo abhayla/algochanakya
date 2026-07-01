@@ -65,12 +65,13 @@ async def get_nfo_instruments(
     """
     sources = preferred_source_brokers(broker_type)
 
+    # SENSEX options live on BFO; NIFTY/BANKNIFTY/FINNIFTY on NFO. Include both.
     for source in sources:
         result = await db.execute(
             select(Instrument).where(
                 and_(
                     Instrument.name == underlying,
-                    Instrument.exchange == "NFO",
+                    Instrument.exchange.in_(["NFO", "BFO"]),
                     Instrument.instrument_type.in_(["CE", "PE"]),
                     Instrument.expiry == expiry,
                     Instrument.strike.isnot(None),
@@ -124,7 +125,7 @@ async def get_single_instrument(
             select(Instrument).where(
                 and_(
                     Instrument.name == underlying,
-                    Instrument.exchange == "NFO",
+                    Instrument.exchange.in_(["NFO", "BFO"]),
                     Instrument.expiry == expiry,
                     Instrument.strike == strike,
                     Instrument.instrument_type == contract_type,

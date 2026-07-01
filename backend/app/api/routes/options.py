@@ -104,7 +104,7 @@ async def get_strikes(
         # Build query conditions
         conditions = [
             Instrument.name == UNDERLYING_MAP[underlying],
-            Instrument.exchange == "NFO",
+            Instrument.exchange.in_(["NFO", "BFO"]),
             Instrument.expiry == expiry,
             Instrument.strike.isnot(None),
             Instrument.source_broker == "kite",

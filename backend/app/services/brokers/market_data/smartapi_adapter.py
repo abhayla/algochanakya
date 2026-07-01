@@ -178,8 +178,10 @@ class SmartAPIMarketDataAdapter(MarketDataBrokerAdapter):
                 for symbol in option_symbols:
                     token = await self._token_manager.get_token(symbol)
                     if not token:
-                        # Fallback: direct lookup via SmartAPI instrument master
-                        token_str = await self._instruments.lookup_token(symbol, "NFO")
+                        # Fallback: direct lookup via SmartAPI instrument master.
+                        # SENSEX options live on BFO, all others on NFO.
+                        exch = "BFO" if symbol.upper().startswith("SENSEX") else "NFO"
+                        token_str = await self._instruments.lookup_token(symbol, exch)
                         if token_str:
                             token = int(token_str)
                     if token:
@@ -188,21 +190,26 @@ class SmartAPIMarketDataAdapter(MarketDataBrokerAdapter):
                         logger.warning(f"[SmartAPI] Token not found for symbol: {symbol}")
 
                 if tokens_map:
-                    # Get quotes from SmartAPI (assuming NFO exchange for options)
-                    raw_quotes = await self._market_data.get_quote(
-                        exchange="NFO",
-                        tokens=list(tokens_map.keys()),
-                        mode="FULL"
-                    )
+                    # SENSEX options live on BFO; NIFTY/BANKNIFTY/FINNIFTY on NFO.
+                    # Split tokens by exchange and query each separately.
+                    nfo_tokens = {t: s for t, s in tokens_map.items() if not s.upper().startswith("SENSEX")}
+                    bfo_tokens = {t: s for t, s in tokens_map.items() if s.upper().startswith("SENSEX")}
 
-                    # Convert to UnifiedQuote
-                    for token, raw_data in raw_quotes.items():
-                        canonical_symbol = tokens_map.get(token)
-                        if canonical_symbol:
-                            unified_quotes[canonical_symbol] = self._convert_to_unified_quote(
-                                raw_data,
-                                canonical_symbol
-                            )
+                    for exch, tmap in (("NFO", nfo_tokens), ("BFO", bfo_tokens)):
+                        if not tmap:
+                            continue
+                        raw_quotes = await self._market_data.get_quote(
+                            exchange=exch,
+                            tokens=list(tmap.keys()),
+                            mode="FULL"
+                        )
+                        for token, raw_data in raw_quotes.items():
+                            canonical_symbol = tmap.get(token)
+                            if canonical_symbol:
+                                unified_quotes[canonical_symbol] = self._convert_to_unified_quote(
+                                    raw_data,
+                                    canonical_symbol
+                                )
 
             return unified_quotes
 
