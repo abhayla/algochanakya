@@ -13,7 +13,7 @@
           <!-- Underlying Tabs -->
           <div class="underlying-tabs" data-testid="optionchain-underlying-tabs" role="tablist">
             <button
-              v-for="ul in ['NIFTY', 'BANKNIFTY', 'FINNIFTY']"
+              v-for="ul in ['NIFTY', 'BANKNIFTY', 'FINNIFTY', 'SENSEX']"
               :key="ul"
               role="tab"
               :class="['tab-btn', { active: store.underlying === ul }]"

@@ -7,7 +7,7 @@
           <div class="toolbar-left">
             <div class="underlying-tabs" data-testid="strategy-underlying-tabs">
               <button
-                v-for="u in ['NIFTY', 'BANKNIFTY', 'FINNIFTY']"
+                v-for="u in ['NIFTY', 'BANKNIFTY', 'FINNIFTY', 'SENSEX']"
                 :key="u"
                 :class="['underlying-tab', { active: strategyStore.underlying === u }]"
                 @click="handleUnderlyingChange(u)"
