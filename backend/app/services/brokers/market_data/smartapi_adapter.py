@@ -363,12 +363,16 @@ class SmartAPIMarketDataAdapter(MarketDataBrokerAdapter):
                 if not token_str or token_str not in smartapi_token_to_symbol:
                     return
                 symbol = smartapi_token_to_symbol[token_str]
+                # Options subscription (exchangeType=2 = NFO) — SmartAPI SNAP
+                # mode 3 returns option prices already in rupees, not paise.
+                # Verified live 01-Jul-2026: raw last_traded_price of ~181 for
+                # ATM NIFTY CE is the actual ₹181. Do NOT divide options by 100.
                 collected[symbol] = {
-                    "ltp": message.get("last_traded_price", 0) / 100.0,
-                    "open": message.get("open_price_of_the_day", 0) / 100.0,
-                    "high": message.get("high_price_of_the_day", 0) / 100.0,
-                    "low": message.get("low_price_of_the_day", 0) / 100.0,
-                    "close": message.get("closed_price", 0) / 100.0,
+                    "ltp": message.get("last_traded_price", 0),
+                    "open": message.get("open_price_of_the_day", 0),
+                    "high": message.get("high_price_of_the_day", 0),
+                    "low": message.get("low_price_of_the_day", 0),
+                    "close": message.get("closed_price", 0),
                     "volume": message.get("volume_trade_for_the_day", 0) or 0,
                     "oi": message.get("open_interest", 0) or 0,
                 }
