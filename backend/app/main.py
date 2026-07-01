@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 from sqlalchemy import select, func
+import asyncio
 import logging
 import traceback
 
@@ -225,6 +226,20 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"[WARNING] AI Daily Scheduler failed to start: {e}")
         logger.error("AI Daily Scheduler init failed: %s", e, exc_info=True)
+
+    # Option Chain warm-up — root-cause fix for 15s cold-fetch latency.
+    # Fire-and-forget: subscribes NIFTY + BANKNIFTY current-expiry option chain
+    # tokens on TickerPool at startup so ticks flow into OptionChainLiveEngine
+    # before any user request arrives. First /api/optionchain/chain request
+    # then hits the LIVE_ENGINE fast path (<100ms) instead of the SmartAPI
+    # WebSocket cold path (~15s). Gated by is_market_open() internally,
+    # errors are swallowed — never blocks startup.
+    try:
+        from app.services.options.startup_chain_warmup import warmup_option_chains
+        asyncio.create_task(warmup_option_chains())
+        print("[SUCCESS] Option Chain warm-up: scheduled (fires 15s after startup during market hours)")
+    except Exception as e:
+        print(f"[WARNING] Option Chain warm-up failed to schedule: {e}")
 
     yield
 

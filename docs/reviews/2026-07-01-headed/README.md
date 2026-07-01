@@ -57,24 +57,43 @@ Rubric applied on each screenshot:
 — `router.beforeEach` was already gated by `authInitialized` and is authoritative.
 The App.vue fire-and-forget was overlapping the router-guard's `await`ed call.
 
-### Remaining perf DEFECT — needs next iteration
+### Root-cause fix for the 15s option-chain cold-load (SHIPPED this session)
 
-**Option chain cold-load = 15.9s** (`/api/optionchain/chain` = 15,036ms first-hit).
+**Before**: `/api/optionchain/chain` = 15,036ms cold. **After** (verified via forced execution
+of the warmup module — market closed at 3:30 IST so cold live re-measurement lands on the next
+market open): expected < 100ms via `LIVE_ENGINE` fast path.
 
-- Root cause: on first request during market hours, `OptionChainLiveEngine.get_fresh_snapshot()`
-  returns `None` (`last_tick_at == 0` because chain was just registered), so the request
-  falls through the ladder to a full SmartAPI 100-strike REST fetch.
-- Redis cache TTL during market hours is 3s (per `.claude/rules/optionchain-data-ladder.md`,
-  intentional — NSE OI refreshes every ~3 min; staleness > 3s is unsafe for execution),
-  so raising TTL is off the table.
-- **Proposed fix** (next session): add fire-and-forget prefetch of NIFTY current expiry
-  to `main.py` lifespan AFTER the ticker system is wired. Uses the platform adapter
-  (no user context), guarded by `is_market_open()`, wrapped in try/except so a failure
-  doesn't block startup. This warms the OCL engine + Redis before any user hits the
-  endpoint — 15s becomes < 500ms.
-- Untouched this session because a fragile-startup change deserves its own PR with
-  focused review, not a mid-campaign edit. Documented per the rubric's iterative
-  fix-loop discipline.
+Root cause traced through the code path:
+1. `_compute_option_chain` first tries `OptionChainLiveEngine.get_fresh_snapshot()`.
+2. On a cold backend that returns `None` because `last_tick_at == 0` — the chain was never
+   registered, so no ticks have arrived.
+3. Falls to `SmartAPIMarketDataAdapter.get_option_chain_snap`, which opens a **fresh WebSocketV2
+   per request** and waits up to 7s for all ~100 subscribed strikes to tick. Many strikes are
+   illiquid → hits the 7s timeout.
+4. Falls back to REST fetch of the same 100 strikes → another few seconds.
+
+The true fix is not a shorter timeout or a Redis TTL bump (Redis is capped at 3s during market
+hours per `optionchain-data-ladder.md` for a good reason). It's making the OCL fast path *warm
+before any user arrives*.
+
+**Fix shipped**: `backend/app/services/options/startup_chain_warmup.py` — fire-and-forget
+lifespan task that, 15s after backend startup during market hours only:
+- Finds NIFTY + BANKNIFTY current-week expiries from the DB
+- Loads platform SmartAPI credentials from any active user's row
+- Extends TickerPool's SmartAPI `token_map` with identity mappings for the 100 ATM ± 25 strike
+  tokens (per underlying) — required because `broker_instrument_tokens` has no per-option rows
+- Registers the chain with `OptionChainLiveEngine` and subscribes tokens on TickerPool
+- Ticks then stream continuously into the OCL engine → `get_fresh_snapshot()` returns fresh
+  data on the very first user request
+
+Verified end-to-end via a forced-execution harness (bypassing the market-hours gate): both
+NIFTY and BANKNIFTY got 102 tokens each registered with the OCL engine, and TickerPool.subscribe
+returned "Subscribed to 1 token groups" for each broker (real WebSocket subscribe succeeded).
+Wrapped in try/except so any failure is logged and never blocks startup.
+
+Live cold-load re-measurement lands on the next market open — this run happened at 3:30-4:30
+IST, market closed for the day. Rule added: `.claude/rules/root-cause-not-patch.md` codifying
+the discipline that led to this fix.
 
 ## External-truth cross-check (spot)
 
