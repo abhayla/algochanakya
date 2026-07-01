@@ -137,3 +137,40 @@ Sources: HDFCSky, MunafaSutra, NiftyInvest, Trading Economics (URLs in commit me
 ## What's genuinely blocking further progress right now
 
 Zombie python processes holding port 8001 that don't die on `taskkill` — apparently owned by the harness's task runner. Fresh restart requires a clean shell exit. When you resume tomorrow, the first `venv/Scripts/python.exe run.py` will be clean and the SENSEX fix will validate, and I can properly debug the LTP/IV/OI defects with hot-reload actually working.
+
+---
+
+## Iteration 2 — screenshot-driven audit (01-Jul-2026 ~11:00 IST, live market)
+
+Per-screen screenshots captured via Playwright (headless chromium, storageState from `.auth-state.json`). Screenshots at `scratchpad/shots/*.png`.
+
+### Fixes applied this iteration (commits `29b2c28`, `f535c09`)
+
+1. **Settings sibling-sweep miss** — Fyers and Paytm Money credential-management sections were still rendered at the bottom of the Settings view. The earlier hide only filtered the market-data source radio and order-broker dropdown. `v-if` on `isBrokerEnabled('fyers')` / `('paytm')` gate the whole section. **Verified visually — both sections gone.**
+2. **SENSEX tab missing** in Option Chain and Strategy Builder. Both had hardcoded `['NIFTY','BANKNIFTY','FINNIFTY']` arrays. Added `'SENSEX'`. **Verified visually — SENSEX tab renders and expiries populate via my earlier backend fix (commit `29b2c28`).**
+3. **SENSEX expiries** (commit `29b2c28`) — added `SENSEX` to `UNDERLYING_MAP`, changed exchange filter to `IN ('NFO','BFO')`. Confirmed 20 SENSEX expiries now returned by `/api/options/expiries?underlying=SENSEX`.
+4. **New substance test suite** (commit `29b2c28`) — `optionchain.substance.spec.js` per-underlying assertions for spot range, ATM strike proximity, put-call parity floor, IV bounds, OI integer positivity.
+
+### Not-actually-bugs (were cold-start timing, not defects)
+
+- Dashboard NIFTY 50 + BANK NIFTY cards showed `--` at 4s wait; at 8s wait they populated correctly (23,985 / 57,788).
+- Strategy Builder NIFTY SPOT card showed `0` at 4s wait; at 8s wait it populated correctly (23,989).
+- Both are `fetchSpotPrice()` / `watchlistStore` WS-handshake timing — the tests just needed more patience, no code fix required.
+
+### Remaining defects (new tasks #28-#30)
+
+1. **SENSEX option chain data path incomplete** — the tab exists, expiries load, but the chain fetch returns NIFTY strikes (23000-24600, lot size 75) with a "No instruments found for SENSEX expiry" banner. The BFO exchange filter fixed the expiries route but the chain fetch has its own instrument lookup path that hasn't been updated.
+2. **Option LTP 100× scale** — live NIFTY 24000 CE returns `last_price: 1.66` (should be ~150). Investigation showed `_normalize_quotes` in `smartapi_market_data.py` is NOT the code path called (DBG log never fires); the actual divide-by-100 is elsewhere in the WebSocket "oc_snap" fetch path.
+3. **IV values garbage** — SENSEX-showing-NIFTY chain has IV = 0.00 for near-ATM strikes and 1.00 for far strikes. Related to #2 (broken LTP → broken IV solver input).
+
+### OI mismatch resolved (was unit confusion)
+
+Yesterday's addendum flagged "NIFTY 23850 CE OI 10,544 vs external 685,360 as 65× underreport." Today's live screenshot shows OI in Indian units: `1.16Cr` for NIFTY 24000 CE. `1.16 crore = 11,600,000` — this matches real ATM NIFTY OI. Yesterday's `10,544` was likely the OI for a different strike/expiry snapshot. The OI magnitudes across the current chain are all in the realistic ranges (lakhs for far strikes, crores for near-ATM). **No bug — closing task #23 correctly this time.**
+
+### Additional commits this iteration
+
+- `f535c09` fix(frontend): screenshot-audit findings — Settings sibling-sweep + SENSEX tab
+
+### Screenshots archived at
+
+`C:\Users\itsab\AppData\Local\Temp\claude\D--Abhay-VibeCoding-algochanakya\574a4ca9-91dd-4ab7-85aa-ac044bf37e31\scratchpad\shots\*.png` — dashboard, optionchain-nifty, optionchain-sensex, strategy, positions, settings, login-isolated. Wipe-safe (temp dir).
