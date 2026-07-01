@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useAuthStore } from '../stores/auth'
+import { isBrokerEnabled } from '../config/features'
 
 const authStore = useAuthStore()
 
@@ -14,14 +15,15 @@ const angelTotp = ref('')
 const dhanClientId = ref('')
 const dhanAccessToken = ref('')
 
-const brokers = [
-  { id: 'zerodha', name: 'Zerodha', type: 'oauth', color: '#e74c3c' },
-  { id: 'angelone', name: 'Angel One', type: 'credentials', color: '#2196f3' },
-  { id: 'upstox', name: 'Upstox', type: 'oauth', color: '#6b21a8' },
-  { id: 'fyers', name: 'Fyers', type: 'oauth', color: '#0ea5e9' },
-  { id: 'dhan', name: 'Dhan', type: 'inline', color: '#059669' },
-  { id: 'paytm', name: 'Paytm Money', type: 'oauth', color: '#1e40af' },
+const allBrokers = [
+  { id: 'zerodha', name: 'Zerodha', type: 'oauth', color: '#e74c3c', flag: 'zerodha' },
+  { id: 'angelone', name: 'Angel One', type: 'credentials', color: '#2196f3', flag: 'angelone' },
+  { id: 'upstox', name: 'Upstox', type: 'oauth', color: '#6b21a8', flag: 'upstox' },
+  { id: 'fyers', name: 'Fyers', type: 'oauth', color: '#0ea5e9', flag: 'fyers' },
+  { id: 'dhan', name: 'Dhan', type: 'inline', color: '#059669', flag: 'dhan' },
+  { id: 'paytm', name: 'Paytm Money', type: 'oauth', color: '#1e40af', flag: 'paytm' },
 ]
+const brokers = allBrokers.filter((b) => isBrokerEnabled(b.flag))
 
 const currentBroker = computed(() => brokers.find(b => b.id === selectedBroker.value))
 

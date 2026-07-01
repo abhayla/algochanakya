@@ -166,6 +166,7 @@ error-screenshot.png
 dashboard-screenshot.png
 strategy-screenshot.png
 *.png
+!docs/reviews/**/*.png
 
 # Temporary implementation documentation (root level - docs/ versions are tracked)
 /IMPLEMENTATION_SUMMARY.md
