@@ -96,3 +96,44 @@ Nothing critical. Kite/Dhan integrations remain deferred (paid, per Q1 grill). L
 ## Branch is ready for review
 
 `feat/visible-views-and-hide-modules` — 8 commits, no push. Push + open PR is your call.
+
+---
+
+## Addendum — Live market-hours verification (01-Jul-2026 ~10:00 IST)
+
+**Substance verification revealed 4 real defects** (previously masked by shape-only tests):
+
+| # | Defect | Evidence | Status |
+|---|---|---|---|
+| 1 | **Option LTP scale bug** — live NIFTY 24000 CE returns last_price=1.71 (should be ~170) via `/api/orders/quote`. OHLC values (open=1.4, high=1.7355, close=1.3985) all 100× too small. | Cross-verified against MunafaSutra NIFTY 23850 CE (LTP=214.50) and 30-Jun close data. | **UNFIXED.** Speculative fix to `_convert_to_unified_quote` /100 divisor was correct on paper but didn't reach runtime (zombie backend process blocking hot-reload). Reverted so branch isn't polluted with untested edits. Needs focused session with fresh backend + pytest-based repro. |
+| 2 | **ATM IV asymmetry** — NIFTY 23850 CE IV=17.15 vs PE IV=10.33 (should be within ~3pp for ATM). | 30-Jun EOD snapshot. | **UNFIXED.** Root cause TBD — possibly IV solver getting different inputs (price, T, r) per side. Related to defect #1 (broken LTP feeds broken IV). |
+| 3 | **OI mismatch** — backend reports NIFTY 23850 CE OI=10,544 vs MunafaSutra 685,360 (~65× underreport). | 30-Jun EOD. | **UNFIXED.** Investigation candidates: broker-per-symbol OI vs NSE aggregate, or bogus scaling. |
+| 4 | **SENSEX option chain returns no expiries.** `/api/options/expiries?underlying=SENSEX` returns empty. | Direct API probe. DB has 3,135 SENSEX CE/PE rows but filter excluded them. | **FIXED on disk** (commit `29b2c28`): the query hardcoded exchange='NFO'; SENSEX options are on 'BFO'. Added SENSEX to `UNDERLYING_MAP` and changed filter to `exchange IN ('NFO','BFO')`. Runtime verification pending (zombie backend). |
+
+## New substance test suite (commit `29b2c28`)
+
+`tests/e2e/specs/optionchain/optionchain.substance.spec.js` per underlying:
+- spot in domain-sane range
+- ATM strike within one strike step of spot
+- CE + PE >= |spot - ATM| (put-call parity — catches LTP scale bugs)
+- ATM IV in [3, 80] and CE/PE IV within 30 pp (catches IV skew)
+- ATM OI positive integer
+
+These tests would have caught defects #1, #2, #3 at CI time.
+
+## Cross-verification results (against external sources)
+
+- ✅ NIFTY 50 close 30-Jun-2026: backend 23,865.75 == HDFCSky 23,865.75 (EXACT MATCH)
+- ✅ SENSEX close 30-Jun-2026: backend 76,478.67 vs Trading Economics 76,479 (rounding match)
+- ⚠️ NIFTY 23850 CE 07-Jul close LTP: backend 231.50 vs MunafaSutra 214.50 (~7% delta — plausibly snapshot timing)
+- 🔴 NIFTY 23850 CE 07-Jul OI: backend 10,544 vs MunafaSutra 685,360 (65× — real defect)
+
+Sources: HDFCSky, MunafaSutra, NiftyInvest, Trading Economics (URLs in commit messages).
+
+## What's in this session's ADDITIONAL commits
+
+- `29b2c28` fix(options): SENSEX exchange filter + substance E2E for option chain
+
+## What's genuinely blocking further progress right now
+
+Zombie python processes holding port 8001 that don't die on `taskkill` — apparently owned by the harness's task runner. Fresh restart requires a clean shell exit. When you resume tomorrow, the first `venv/Scripts/python.exe run.py` will be clean and the SENSEX fix will validate, and I can properly debug the LTP/IV/OI defects with hot-reload actually working.
