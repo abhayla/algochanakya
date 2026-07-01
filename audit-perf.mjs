@@ -32,8 +32,13 @@ const READY_SIGNALS = {
     !(await page.locator('text=/Loading option chain/i').isVisible().catch(() => false)) &&
     (await page.locator('text=/ATM/').isVisible().catch(() => false)),
   strategy: async (page) => {
-    const txt = await page.locator('text=/NIFTY SPOT/').locator('xpath=..').textContent().catch(() => '')
-    return /\d{4,}/.test(txt) && !txt.includes('0\n')  // e.g. contains "24,007"
+    // Detect populated spot card: any of "NIFTY SPOT", "BANKNIFTY SPOT" (varies by underlying)
+    // followed by a 4-5 digit number that isn't literal "0".
+    const txt = await page.locator('body').textContent().catch(() => '')
+    const m = txt.match(/(NIFTY|BANKNIFTY|FINNIFTY|SENSEX)\s*SPOT[\s\S]{0,40}?([\d,]+)/i)
+    if (!m) return false
+    const num = m[2].replace(/,/g, '')
+    return num.length >= 4 && num !== '0'  // "23,995" → "23995" (5 digits), reject "0"
   },
   positions: async (page) =>
     !!(await page.locator('text=/No Open Positions|TOTAL P&L/').first().isVisible().catch(() => false)),
