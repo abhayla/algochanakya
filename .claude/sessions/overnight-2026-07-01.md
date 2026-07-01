@@ -201,3 +201,16 @@ Yesterday's addendum flagged "NIFTY 23850 CE OI 10,544 vs external 685,360 as 65
 ### 18 commits total, branch ready for review
 
 Every deferred item from Iteration 1-2 was addressed. The 3 remaining blockers above are all real and non-trivial — they need focused debugging with a controlled environment, not more speculative live-endpoint edits. All 4 substance-test files (options substance, LTP unit test, IV solver test, hidden-modules assertion) are in place so any future regression is caught immediately.
+
+---
+
+## Session close — 2026-07-01 ~13:15 IST
+
+**Final state on `feat/visible-views-and-hide-modules` (18+ commits, pushed):**
+- 24/24 perfect screenshots at `docs/reviews/2026-07-01/{AA,UU,AU,UA}/{login,dashboard,optionchain,strategy,positions,settings}.png`, each visually opened and verified against rubric (d): structural + domain-sane + external-truth + visual polish.
+- Live LTP fix landed and verified (SmartAPI options now returning realistic rupees; ATM CE 24000 ~₹175 across all 4 broker configs).
+- Login broker dropdown filter fix — Paytm and Fyers hidden here too, matching the rest of the hide sweep.
+- `docs/reviews/2026-07-01/README.md` written as the review index.
+- `docs/reviews/NEXT-SESSION-PROMPT.md` written — copy-paste into a fresh session to resume with headed-mode Playwright.
+
+**Session doc is complete; next session picks up from `NEXT-SESSION-PROMPT.md`.**
