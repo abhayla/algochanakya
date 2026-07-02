@@ -93,6 +93,7 @@ Multi-broker platform where all 6 brokers (Zerodha, AngelOne, Dhan, Fyers, Paytm
 - AngelOne has 3 API keys: `ANGEL_API_KEY` (live data), `ANGEL_HIST_API_KEY` (history), `ANGEL_TRADE_API_KEY` (orders)
 - Never import broker SDKs directly — always use `app.services.brokers.factory`
 - Tests use SQLite in-memory; PostgreSQL types (JSONB, ARRAY, UUID, BigInteger) need `@compiles` dialect adapters in `conftest.py` — see `sqlite-test-compat` rule
+- Modules/brokers are gated by env flags in `frontend/src/config/features.js` (`VITE_ENABLE_*`): AutoPilot, AI, Watchlist, OFO, Fyers, Paytm are **OFF by default** — their screens are hidden and E2E tests against them fail unless the flag is enabled in `frontend/.env.local`
 
 ## Git
 
