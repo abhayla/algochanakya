@@ -54,7 +54,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -144,7 +144,7 @@ jobs:
           path: allure-results
 
       - name: Get Allure history
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         if: always()
         continue-on-error: true
         with:
