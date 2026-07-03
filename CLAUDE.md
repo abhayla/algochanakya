@@ -89,7 +89,7 @@ Multi-broker platform where all 6 brokers (Zerodha, AngelOne, Dhan, Fyers, Paytm
 - Backend port is **8001** in dev (not 8000 — that's production)
 - `frontend/.env.local` must point to `http://localhost:8001` (not 8000 or 8005)
 - New models need imports in both `backend/app/models/__init__.py` AND `backend/alembic/env.py`
-- DB stores `'zerodha'`/`'angelone'` but `BrokerType` enum uses `'kite'`/`'angel'` — use `BROKER_NAME_MAP`
+- DB stores `'zerodha'`/`'angelone'` but `BrokerType` enum uses `'kite'`/`'angel'` — convert via a name→type map (see `broker-name-mapping.md` rule); it's currently duplicated inline across `user_preferences.py`, `websocket.py`, `failover_fetch.py`, not a shared `BROKER_NAME_MAP` constant
 - AngelOne has 3 API keys: `ANGEL_API_KEY` (live data), `ANGEL_HIST_API_KEY` (history), `ANGEL_TRADE_API_KEY` (orders)
 - Never import broker SDKs directly — always use `app.services.brokers.factory`
 - Tests use SQLite in-memory; PostgreSQL types (JSONB, ARRAY, UUID, BigInteger) need `@compiles` dialect adapters in `conftest.py` — see `sqlite-test-compat` rule
