@@ -16,7 +16,7 @@
     "format:check": "prettier --check src/"
   },
   "dependencies": {
-    "@tailwindcss/postcss": "^4.1.17",
+    "@tailwindcss/postcss": "^4.3.2",
     "axios": "^1.13.6",
     "chart.js": "^4.5.1",
     "pinia": "^3.0.4",
