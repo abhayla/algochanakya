@@ -1,10 +1,12 @@
 {
   "schema_version": "2.0.0",
-  "run_id": "2026-07-13T03-10-05Z_51bb157",
-  "started_at": "2026-07-13T03:10:05Z",
-  "wall_clock_started_at": "2026-07-13T03:10:05Z",
+  "run_id": "2026-07-13T03-28-04Z_93c9ada",
+  "started_at": "2026-07-13T03:28:04Z",
+  "wall_clock_started_at": "2026-07-13T03:28:04Z",
   "mode": "Verify",
   "flags": {
+    "force": true,
+    "scope": "backend/tests",
     "capture_proof": false,
     "skip_fix": true,
     "allow_gaps": false,
@@ -12,22 +14,17 @@
     "full_suite_before_success": false,
     "update_baselines": false
   },
-  "config_source": "bundled_default",
-  "config_source_reason": "project config .claude/config/test-pipeline.yml is schema_version 1.0.0 (fix-loop shape) — incompatible with required 2.0.0 three-lane schema; using bundled plugin default per user directive",
-  "queues": { "functional": [], "api": [], "ui": [] },
+  "user_scope_directive": "backend pytest only; api/ui lanes empty; no repo-wide exploration",
+  "queues": {"functional": ["backend/tests"], "api": [], "ui": []},
   "tracks_required_per_test": {},
   "step_status": {
     "INIT": "done",
-    "SCOUT": "pending",
+    "SCOUT": "bypassed",
     "WAVE1": "pending",
-    "WAVE2": "pending",
-    "JOIN": "pending",
-    "TRIAGE": "skipped",
-    "VERIFY_AFFECTED": "skipped",
-    "FINAL_FULL_SUITE": "skipped",
-    "COMMIT_REPORT": "pending"
+    "WAVE2": "skipped",
+    "JOIN": "pending"
   },
   "dispatches_used": 0,
   "global_retries_remaining": 15,
-  "wave1_topology": null
+  "wave1_topology": "serial"
 }
