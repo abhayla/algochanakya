@@ -1,2 +1,6 @@
 {"ts":"2026-07-13T03:10:05Z","event":"LOCK_ACQUIRED","run_id":"2026-07-13T03-10-05Z_51bb157"}
 {"ts":"2026-07-13T03:10:05Z","event":"INIT","run_id":"2026-07-13T03-10-05Z_51bb157","mode":"Verify","config_source":"bundled_default","skip_fix":true}
+{"ts":"2026-07-13T03:21:25Z","event":"LOCK_RELEASED","run_id":"2026-07-13T03-21-25Z_73dffda","reason":"stale_lock_forced","prior_run_id":"2026-07-13T03-10-05Z_51bb157"}
+{"ts":"2026-07-13T03:21:25Z","event":"INIT","run_id":"2026-07-13T03-21-25Z_73dffda","mode":"Full","flags":{"force":true,"scope_request":"backend-only"}}
+{"ts":"2026-07-13T03:21:25Z","event":"CONFIG_SCHEMA_GATE_FAILED","run_id":"2026-07-13T03-21-25Z_73dffda","observed_schema":null,"observed_pipeline_version":"1.0.0","missing_keys":["schema_version","lanes.parallel_classifier","budget.max_total_dispatches","budget.max_wall_clock_minutes","retry.global_budget"]}
+{"ts":"2026-07-13T03:21:25Z","event":"PIPELINE_DONE","run_id":"2026-07-13T03-21-25Z_73dffda","result":"BLOCKED","ci_gate":"FAILED","blocker":"CONFIG_SCHEMA_INCOMPATIBLE"}
