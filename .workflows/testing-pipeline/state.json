@@ -1,0 +1,33 @@
+{
+  "schema_version": "2.0.0",
+  "run_id": "2026-07-13T03-10-05Z_51bb157",
+  "started_at": "2026-07-13T03:10:05Z",
+  "wall_clock_started_at": "2026-07-13T03:10:05Z",
+  "mode": "Verify",
+  "flags": {
+    "capture_proof": false,
+    "skip_fix": true,
+    "allow_gaps": false,
+    "fix_pr_mode": false,
+    "full_suite_before_success": false,
+    "update_baselines": false
+  },
+  "config_source": "bundled_default",
+  "config_source_reason": "project config .claude/config/test-pipeline.yml is schema_version 1.0.0 (fix-loop shape) — incompatible with required 2.0.0 three-lane schema; using bundled plugin default per user directive",
+  "queues": { "functional": [], "api": [], "ui": [] },
+  "tracks_required_per_test": {},
+  "step_status": {
+    "INIT": "done",
+    "SCOUT": "pending",
+    "WAVE1": "pending",
+    "WAVE2": "pending",
+    "JOIN": "pending",
+    "TRIAGE": "skipped",
+    "VERIFY_AFFECTED": "skipped",
+    "FINAL_FULL_SUITE": "skipped",
+    "COMMIT_REPORT": "pending"
+  },
+  "dispatches_used": 0,
+  "global_retries_remaining": 15,
+  "wave1_topology": null
+}
