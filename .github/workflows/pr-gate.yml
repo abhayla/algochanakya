@@ -1,0 +1,101 @@
+name: PR Gate
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    name: PR Gate — validate
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed paths
+        id: changes
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+            frontend:
+              - 'frontend/**'
+
+      # --- Universal steps: always run, cheap, catch structural issues on every PR ---
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Validate folder structure
+        run: python .github/scripts/validate-structure.py
+
+      - name: Validate cross-layer imports
+        run: python .github/scripts/validate-cross-imports.py
+
+      # --- Backend suite: only when backend/ changed ---
+      - name: Set up Python deps (backend)
+        if: steps.changes.outputs.backend == 'true'
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio httpx
+
+      - name: Run backend tests
+        if: steps.changes.outputs.backend == 'true'
+        working-directory: backend
+        env:
+          DATABASE_URL: "sqlite+aiosqlite:///:memory:"
+          SECRET_KEY: test-secret-key-for-ci
+          JWT_SECRET: test-jwt-secret-for-ci
+          KITE_API_KEY: test-kite-api-key
+          KITE_API_SECRET: test-kite-api-secret
+          KITE_REDIRECT_URL: "http://localhost:8001/api/auth/zerodha/callback"
+          FRONTEND_URL: "http://localhost:3000"
+          ANTHROPIC_API_KEY: test-anthropic-api-key
+        run: pytest tests/ -v
+
+      # --- Frontend suite: only when frontend/ changed ---
+      - name: Set up Node.js
+        if: steps.changes.outputs.frontend == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        if: steps.changes.outputs.frontend == 'true'
+        working-directory: frontend
+        run: npm ci
+
+      - name: Lint frontend
+        if: steps.changes.outputs.frontend == 'true'
+        working-directory: frontend
+        run: npm run lint
+
+      - name: Run frontend unit tests
+        if: steps.changes.outputs.frontend == 'true'
+        working-directory: frontend
+        run: npm run test:run
+
+      - name: Build frontend
+        if: steps.changes.outputs.frontend == 'true'
+        working-directory: frontend
+        run: npm run build
+
+      - name: Gate summary
+        if: always()
+        run: |
+          echo "## PR Gate Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- Backend changed: ${{ steps.changes.outputs.backend }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Frontend changed: ${{ steps.changes.outputs.frontend }}" >> $GITHUB_STEP_SUMMARY
