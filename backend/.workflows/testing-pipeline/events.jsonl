@@ -1,0 +1,7 @@
+{"ts": "2026-07-13T03:37:00Z", "event": "WAVE1_DISPATCH_FUNCTIONAL", "runner": "pytest", "scope": "backend/tests"}
+{"ts": "2026-07-13T03:37:00Z", "event": "WAVE1_DONE", "functional_gate": "FAILED", "api_gate": "SKIP", "ui_gate": "SKIP"}
+{"ts": "2026-07-13T03:37:01Z", "event": "WAVE2_SKIPPED", "reason": "no UI lane screenshots"}
+{"ts": "2026-07-13T03:37:02Z", "event": "JOIN_DONE", "result": "FAILED"}
+{"ts": "2026-07-13T03:37:03Z", "event": "TRIAGE_SKIPPED", "reason": "user_directive: report-only, do not fix"}
+{"ts": "2026-07-13T03:37:04Z", "event": "PIPELINE_DONE", "result": "FAILED", "ci_gate": "FAILED"}
+{"ts": "2026-07-13T03:37:04Z", "event": "LOCK_RELEASED"}

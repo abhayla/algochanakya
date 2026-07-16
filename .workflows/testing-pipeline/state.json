@@ -1,0 +1,30 @@
+{
+  "schema_version": "2.0.0",
+  "run_id": "2026-07-13T03-28-04Z_93c9ada",
+  "started_at": "2026-07-13T03:28:04Z",
+  "wall_clock_started_at": "2026-07-13T03:28:04Z",
+  "mode": "Verify",
+  "flags": {
+    "force": true,
+    "scope": "backend/tests",
+    "capture_proof": false,
+    "skip_fix": true,
+    "allow_gaps": false,
+    "fix_pr_mode": false,
+    "full_suite_before_success": false,
+    "update_baselines": false
+  },
+  "user_scope_directive": "backend pytest only; api/ui lanes empty; no repo-wide exploration",
+  "queues": {"functional": ["backend/tests"], "api": [], "ui": []},
+  "tracks_required_per_test": {},
+  "step_status": {
+    "INIT": "done",
+    "SCOUT": "bypassed",
+    "WAVE1": "pending",
+    "WAVE2": "skipped",
+    "JOIN": "pending"
+  },
+  "dispatches_used": 0,
+  "global_retries_remaining": 15,
+  "wave1_topology": "serial"
+}
