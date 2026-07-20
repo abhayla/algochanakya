@@ -30,7 +30,7 @@ httpx==0.28.1
 hyperlink==21.0.0
 idna==3.11
 Incremental==24.11.0
-kiteconnect==5.0.1
+kiteconnect==5.2.0
 smartapi-python==1.5.5
 pyotp==2.9.0
 logzero==1.7.0
