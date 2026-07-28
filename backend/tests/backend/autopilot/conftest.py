@@ -3502,3 +3502,23 @@ def assert_option_chain_response(response_data: Dict[str, Any]):
         assert "option_type" in entry
         assert "ltp" in entry
         assert "delta" in entry
+
+
+# =============================================================================
+# FIXTURE NAME ALIASES
+# =============================================================================
+# Some test modules request these older fixture names. They are exact aliases
+# of the canonical fixtures above -- kept so both names resolve to one object
+# per test (requesting the alias and the canonical name in the same test yields
+# the same instance, not two rows).
+
+@pytest_asyncio.fixture
+async def test_autopilot_strategy(test_strategy: AutoPilotStrategy) -> AutoPilotStrategy:
+    """Alias for `test_strategy`."""
+    return test_strategy
+
+
+@pytest_asyncio.fixture
+async def test_user_settings(test_settings: AutoPilotUserSettings) -> AutoPilotUserSettings:
+    """Alias for `test_settings`."""
+    return test_settings
