@@ -73,16 +73,16 @@ class TestPhase4SchemaEnums:
 
     def test_backtest_status_enum_values(self):
         """Test BacktestStatus enum values."""
-        assert BacktestStatus.pending.value == "pending"
-        assert BacktestStatus.running.value == "running"
-        assert BacktestStatus.completed.value == "completed"
-        assert BacktestStatus.failed.value == "failed"
+        assert BacktestStatus.PENDING.value == "pending"
+        assert BacktestStatus.RUNNING.value == "running"
+        assert BacktestStatus.COMPLETED.value == "completed"
+        assert BacktestStatus.FAILED.value == "failed"
 
     def test_share_mode_enum_values(self):
         """Test ShareMode enum values."""
-        assert ShareMode.private.value == "private"
-        assert ShareMode.link.value == "link"
-        assert ShareMode.public.value == "public"
+        assert ShareMode.PRIVATE.value == "private"
+        assert ShareMode.LINK.value == "link"
+        assert ShareMode.PUBLIC.value == "public"
 
     def test_market_outlook_enum_values(self):
         """Test MarketOutlook enum values."""
@@ -230,7 +230,7 @@ class TestTemplateDeployRequest:
             name="My Deployed Strategy",
             lots=2,
             expiry_type="current_week",
-            execution_mode=ExecutionMode.auto,
+            execution_mode=ExecutionMode.AUTO,
             activate_immediately=True
         )
         assert request.lots == 2
@@ -607,13 +607,13 @@ class TestStrategyShareRequest:
 
     def test_share_request_link_mode(self):
         """Test share request with link mode."""
-        request = StrategyShareRequest(share_mode=ShareMode.link)
-        assert request.share_mode == ShareMode.link
+        request = StrategyShareRequest(share_mode=ShareMode.LINK)
+        assert request.share_mode == ShareMode.LINK
 
     def test_share_request_default_mode(self):
         """Test share request default mode."""
         request = StrategyShareRequest()
-        assert request.share_mode == ShareMode.link
+        assert request.share_mode == ShareMode.LINK
 
 
 class TestStrategyShareResponse:
