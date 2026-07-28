@@ -552,6 +552,7 @@ class StrikeFinderService:
                             'tradingsymbol': opt['tradingsymbol'],
                             'instrument_token': opt['instrument_token'],
                             'ltp': opt.get('ltp'),
+                            'premium': opt.get('ltp'),  # Alias for ltp, matches find_strike_by_premium
                             'delta': opt.get('delta'),
                             'iv': opt.get('iv'),
                         })
@@ -565,6 +566,7 @@ class StrikeFinderService:
                                 'tradingsymbol': opt['tradingsymbol'],
                                 'instrument_token': opt['instrument_token'],
                                 'ltp': opt.get('ltp'),
+                                'premium': opt.get('ltp'),  # Alias for ltp, matches find_strike_by_premium
                                 'delta': opt.get('delta'),
                                 'iv': opt.get('iv'),
                             })
