@@ -117,7 +117,8 @@ class AdjustmentCostTracker:
             AdjustmentCostSummary with all cost analytics
         """
         # Get original premium collected (entry premium)
-        original_premium = strategy.entry_premium or Decimal("0")
+        runtime_state = strategy.runtime_state or {}
+        original_premium = Decimal(str(runtime_state.get("entry_premium") or 0))
 
         if original_premium == 0:
             # If no entry premium, can't calculate percentages
