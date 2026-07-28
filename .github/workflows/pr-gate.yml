@@ -54,6 +54,7 @@ jobs:
         working-directory: backend
         env:
           DATABASE_URL: "sqlite+aiosqlite:///:memory:"
+          REDIS_URL: "redis://localhost:6379"
           SECRET_KEY: test-secret-key-for-ci
           JWT_SECRET: test-jwt-secret-for-ci
           KITE_API_KEY: test-kite-api-key
