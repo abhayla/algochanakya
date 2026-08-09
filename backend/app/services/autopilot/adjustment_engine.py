@@ -632,7 +632,8 @@ class AdjustmentEngine:
         returns 50.0 (50% of max profit captured)
         """
         current_pnl = await self._get_strategy_pnl(strategy, market_data)
-        max_profit = strategy.max_profit or 0
+        runtime_state = strategy.runtime_state or {}
+        max_profit = runtime_state.get('max_profit') or 0
 
         if max_profit <= 0:
             return 0.0
