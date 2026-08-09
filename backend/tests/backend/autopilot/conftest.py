@@ -3147,22 +3147,18 @@ async def test_suggestion(
     """Create a sample adjustment suggestion."""
     suggestion = AutoPilotAdjustmentSuggestion(
         strategy_id=test_strategy_active.id,
-        leg_id=test_position_leg.id,
-        suggestion_type=SuggestionType.SHIFT,
-        title="Shift profitable leg closer to ATM",
+        leg_id=test_position_leg.leg_id,
+        suggestion_type=SuggestionType.SHIFT.value,
+        trigger_reason="Shift profitable leg closer to ATM",
         description="PE leg has decayed to Rs. 120, consider shifting to 24900 strike",
-        urgency=SuggestionUrgency.MEDIUM,
-        confidence=Decimal("0.75"),
-        expected_impact={
-            "premium_captured": 65,
-            "new_delta": -0.18,
-            "cost": 15
-        },
-        one_click_params={
+        urgency=SuggestionUrgency.MEDIUM.value,
+        confidence=75,
+        category="defensive",
+        action_params={
             "target_strike": 24900,
             "execution_mode": "market"
         },
-        status=SuggestionStatus.ACTIVE,
+        status=SuggestionStatus.ACTIVE.value,
         expires_at=datetime.utcnow() + timedelta(hours=2)
     )
     db_session.add(suggestion)
@@ -3196,14 +3192,13 @@ async def test_break_trade_scenario(
     losing_leg = AutoPilotPositionLeg(
         strategy_id=test_strategy_active.id,
         leg_id="leg_losing_pe",
-        underlying="NIFTY",
         expiry=date.today() + timedelta(days=5),
         strike=25000,
-        option_type="PE",
-        transaction_type="SELL",
-        quantity=25,
+        contract_type="PE",
+        action="SELL",
+        lots=25,
         entry_price=Decimal("180.00"),
-        status=PositionLegStatus.OPEN,
+        status=PositionLegStatus.OPEN.value,
         entry_time=datetime.utcnow() - timedelta(hours=3),
         delta=Decimal("-0.38"),  # Delta has doubled from entry -0.15
         gamma=Decimal("0.004"),
@@ -3235,19 +3230,18 @@ async def test_short_strangle_entry(
     pe_leg = AutoPilotPositionLeg(
         strategy_id=test_strategy_active.id,
         leg_id="short_strangle_pe",
-        underlying="NIFTY",
         expiry=date(2024, 10, 31),  # October expiry
         strike=25000,
-        option_type="PE",
-        transaction_type="SELL",
-        quantity=25,
+        contract_type="PE",
+        action="SELL",
+        lots=25,
         entry_price=Decimal("82.00"),
         delta=Decimal("-0.15"),  # PE delta is negative
         gamma=Decimal("0.003"),
         theta=Decimal("-10.00"),
         vega=Decimal("8.00"),
         iv=Decimal("0.18"),
-        status=PositionLegStatus.OPEN,
+        status=PositionLegStatus.OPEN.value,
         entry_time=datetime.utcnow()
     )
 
@@ -3255,19 +3249,18 @@ async def test_short_strangle_entry(
     ce_leg = AutoPilotPositionLeg(
         strategy_id=test_strategy_active.id,
         leg_id="short_strangle_ce",
-        underlying="NIFTY",
         expiry=date(2024, 10, 31),  # October expiry
         strike=26800,
-        option_type="CE",
-        transaction_type="SELL",
-        quantity=25,
+        contract_type="CE",
+        action="SELL",
+        lots=25,
         entry_price=Decimal("145.00"),
         delta=Decimal("0.15"),  # CE delta is positive
         gamma=Decimal("0.003"),
         theta=Decimal("-10.00"),
         vega=Decimal("8.00"),
         iv=Decimal("0.18"),
-        status=PositionLegStatus.OPEN,
+        status=PositionLegStatus.OPEN.value,
         entry_time=datetime.utcnow()
     )
 
@@ -3289,14 +3282,13 @@ async def test_shift_leg_scenario(
     profitable_leg = AutoPilotPositionLeg(
         strategy_id=test_strategy_active.id,
         leg_id="leg_profitable_ce",
-        underlying="NIFTY",
         expiry=date.today() + timedelta(days=6),
         strike=25500,
-        option_type="CE",
-        transaction_type="SELL",
-        quantity=25,
+        contract_type="CE",
+        action="SELL",
+        lots=25,
         entry_price=Decimal("185.00"),
-        status=PositionLegStatus.OPEN,
+        status=PositionLegStatus.OPEN.value,
         entry_time=datetime.utcnow() - timedelta(hours=4),
         delta=Decimal("0.08"),  # Delta has halved from entry 0.15
         gamma=Decimal("0.001"),
@@ -3320,12 +3312,11 @@ def get_sample_position_leg_data(strategy_id: int, **overrides) -> Dict[str, Any
     data = {
         "strategy_id": strategy_id,
         "leg_id": "leg_1",
-        "underlying": "NIFTY",
         "expiry": (date.today() + timedelta(days=7)).isoformat(),
         "strike": 25000,
-        "option_type": "PE",
-        "transaction_type": "SELL",
-        "quantity": 25,
+        "contract_type": "PE",
+        "action": "SELL",
+        "lots": 25,
         "entry_price": 180.00,
         "status": "open",
         "delta": -0.15,
@@ -3344,15 +3335,12 @@ def get_sample_suggestion_data(strategy_id: int, leg_id: Optional[int] = None, *
         "strategy_id": strategy_id,
         "leg_id": leg_id,
         "suggestion_type": "shift",
-        "title": "Consider shifting leg",
+        "trigger_reason": "Consider shifting leg",
         "description": "Leg has moved favorably, shift closer to ATM",
         "urgency": "medium",
-        "confidence": 0.75,
-        "expected_impact": {
-            "premium_captured": 50,
-            "new_delta": -0.18
-        },
-        "one_click_params": {
+        "confidence": 75,
+        "category": "defensive",
+        "action_params": {
             "target_strike": 24900
         }
     }
