@@ -289,10 +289,11 @@ class TestSettingsConnectInitiation:
         """GET /api/settings/upstox/connect returns Upstox OAuth URL."""
         from httpx import AsyncClient, ASGITransport
 
-        async with AsyncClient(
-            transport=ASGITransport(app=app_with_overrides), base_url="http://test"
-        ) as client:
-            resp = await client.get("/api/settings/upstox/connect")
+        with patch("app.api.routes.settings_credentials.settings.UPSTOX_API_KEY", "test-upstox-api-key"):
+            async with AsyncClient(
+                transport=ASGITransport(app=app_with_overrides), base_url="http://test"
+            ) as client:
+                resp = await client.get("/api/settings/upstox/connect")
 
         assert resp.status_code == 200
         data = resp.json()
