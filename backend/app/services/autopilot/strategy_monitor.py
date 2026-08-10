@@ -1261,7 +1261,7 @@ class StrategyMonitor:
             # Phase 5B #51: Track Theta Burn Rate
             current_theta = float(strategy.net_theta or 0.0)
             dte = strategy.dte or 1
-            entry_premium = float(strategy.entry_premium or 0.0)
+            entry_premium = float(runtime_state.get('entry_premium', 0.0))
 
             # Expected daily theta decay = total premium / days to expiry
             expected_daily_theta = entry_premium / dte if dte > 0 and entry_premium > 0 else 0

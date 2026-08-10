@@ -6,9 +6,10 @@ Tests for /api/v1/autopilot/suggestions endpoints.
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import select
 from unittest.mock import patch, AsyncMock, MagicMock
 from decimal import Decimal
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 from app.models.users import User
 from app.models.autopilot import (
@@ -28,7 +29,7 @@ class TestGetSuggestions:
     ):
         """Test getting suggestions list."""
         test_position_leg.strategy_id = test_strategy_active.id
-        test_position_leg.status = PositionLegStatus.OPEN
+        test_position_leg.status = PositionLegStatus.OPEN.value
 
         # Mock the suggestion engine
         with patch('app.api.v1.autopilot.suggestions.SuggestionEngine') as MockEngine:
@@ -36,13 +37,20 @@ class TestGetSuggestions:
                 MagicMock(
                     id=1,
                     strategy_id=test_strategy_active.id,
-                    suggestion_type=SuggestionType.SHIFT,
-                    priority=SuggestionPriority.CRITICAL,
-                    title="Test suggestion",
+                    leg_id="leg_2",
+                    suggestion_type=SuggestionType.SHIFT.value,
+                    urgency=SuggestionPriority.CRITICAL.value,
+                    trigger_reason="Test suggestion",
                     description="Test description",
-                    reasoning="Test reasoning",
+                    details={},
+                    confidence=50,
+                    category="defensive",
+                    one_click_action=False,
                     action_params={},
-                    estimated_impact={}
+                    status="active",
+                    created_at=datetime.utcnow(),
+                    expires_at=None,
+                    responded_at=None
                 )
             ]
             MockEngine.return_value.generate_suggestions = AsyncMock(return_value=mock_suggestions)
@@ -81,7 +89,7 @@ class TestGetSuggestions:
         assert response.status_code == 200
         data = response.json()
         assert data["id"] == test_suggestion.id
-        assert data["title"] == test_suggestion.title
+        assert data["trigger_reason"] == test_suggestion.trigger_reason
 
     @pytest.mark.asyncio
     async def test_get_suggestion_not_found(
@@ -98,12 +106,13 @@ class TestGetSuggestions:
     async def test_get_suggestions_unauthorized_strategy(
         self, client: AsyncClient
     ):
-        """Test unauthorized access to another user's strategy."""
+        """Test accessing a non-existent strategy returns an empty list (no leak of other users' data)."""
         response = await client.get("/api/v1/autopilot/suggestions/strategies/99999")
 
-        # Should fail when trying to access non-existent strategy or unauthorized
-        # Depending on implementation, could be 403 or 404
-        assert response.status_code in [400, 404, 500]
+        # SuggestionEngine.generate_suggestions() returns [] for a missing/inactive
+        # strategy rather than raising — this is the documented behavior (suggestion_engine.py:127-129).
+        assert response.status_code == 200
+        assert response.json() == []
 
 
 class TestDismissSuggestion:
@@ -125,7 +134,12 @@ class TestDismissSuggestion:
         assert data["success"] is True
 
         # Verify suggestion is deleted
-        await db_session.refresh(test_suggestion, attribute_names=['id'])
+        result = await db_session.execute(
+            select(AutoPilotAdjustmentSuggestion).where(
+                AutoPilotAdjustmentSuggestion.id == test_suggestion.id
+            )
+        )
+        assert result.scalar_one_or_none() is None
 
     @pytest.mark.asyncio
     async def test_dismiss_suggestion_not_found(
@@ -252,7 +266,7 @@ class TestRefreshSuggestions:
     ):
         """Test refreshing suggestions."""
         test_position_leg.strategy_id = test_strategy_active.id
-        test_position_leg.status = PositionLegStatus.OPEN
+        test_position_leg.status = PositionLegStatus.OPEN.value
 
         with patch('app.api.v1.autopilot.suggestions.SuggestionEngine') as MockEngine:
             mock_suggestions = [
@@ -278,7 +292,7 @@ class TestRefreshSuggestions:
     ):
         """Test refresh clears old suggestions."""
         test_position_leg.strategy_id = test_strategy_active.id
-        test_position_leg.status = PositionLegStatus.OPEN
+        test_position_leg.status = PositionLegStatus.OPEN.value
         await db_session.commit()
 
         # Get initial count

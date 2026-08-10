@@ -19,9 +19,10 @@ class TestStrikeFinderService:
     @pytest.mark.asyncio
     async def test_find_strike_by_delta_exact_match(self):
         """Test finding strike with exact delta match."""
-        service = StrikeFinderService(db_session=MagicMock())
+        service = StrikeFinderService(MagicMock(), MagicMock())
 
-        with patch.object(service, 'option_chain_service') as mock_chain:
+        with patch.object(service, 'option_chain_service', new_callable=MagicMock) as mock_chain:
+            mock_chain.get_option_chain = AsyncMock()
             mock_chain.get_option_chain.return_value = get_mock_option_chain_response()
 
             result = await service.find_strike_by_delta(
@@ -40,9 +41,10 @@ class TestStrikeFinderService:
     @pytest.mark.asyncio
     async def test_find_strike_by_delta_closest_match(self):
         """Test finding closest strike when exact match unavailable."""
-        service = StrikeFinderService(db_session=MagicMock())
+        service = StrikeFinderService(MagicMock(), MagicMock())
 
-        with patch.object(service, 'option_chain_service') as mock_chain:
+        with patch.object(service, 'option_chain_service', new_callable=MagicMock) as mock_chain:
+            mock_chain.get_option_chain = AsyncMock()
             mock_chain.get_option_chain.return_value = get_mock_option_chain_response()
 
             result = await service.find_strike_by_delta(
@@ -59,9 +61,10 @@ class TestStrikeFinderService:
     @pytest.mark.asyncio
     async def test_find_strike_by_delta_round_preference(self):
         """Test preferring round strikes (multiples of 100)."""
-        service = StrikeFinderService(db_session=MagicMock())
+        service = StrikeFinderService(MagicMock(), MagicMock())
 
-        with patch.object(service, 'option_chain_service') as mock_chain:
+        with patch.object(service, 'option_chain_service', new_callable=MagicMock) as mock_chain:
+            mock_chain.get_option_chain = AsyncMock()
             mock_chain.get_option_chain.return_value = get_mock_option_chain_response()
 
             result = await service.find_strike_by_delta(
@@ -79,9 +82,10 @@ class TestStrikeFinderService:
     @pytest.mark.asyncio
     async def test_find_strike_by_delta_tolerance(self):
         """Test delta tolerance is respected."""
-        service = StrikeFinderService(db_session=MagicMock())
+        service = StrikeFinderService(MagicMock(), MagicMock())
 
-        with patch.object(service, 'option_chain_service') as mock_chain:
+        with patch.object(service, 'option_chain_service', new_callable=MagicMock) as mock_chain:
+            mock_chain.get_option_chain = AsyncMock()
             mock_chain.get_option_chain.return_value = get_mock_option_chain_response()
 
             # Strict tolerance - should still find something
@@ -98,9 +102,10 @@ class TestStrikeFinderService:
     @pytest.mark.asyncio
     async def test_find_strike_by_premium_exact(self):
         """Test finding strike by exact premium."""
-        service = StrikeFinderService(db_session=MagicMock())
+        service = StrikeFinderService(MagicMock(), MagicMock())
 
-        with patch.object(service, 'option_chain_service') as mock_chain:
+        with patch.object(service, 'option_chain_service', new_callable=MagicMock) as mock_chain:
+            mock_chain.get_option_chain = AsyncMock()
             mock_chain.get_option_chain.return_value = get_mock_option_chain_response()
 
             result = await service.find_strike_by_premium(
@@ -119,9 +124,10 @@ class TestStrikeFinderService:
     @pytest.mark.asyncio
     async def test_find_strike_by_premium_closest(self):
         """Test finding closest premium when exact unavailable."""
-        service = StrikeFinderService(db_session=MagicMock())
+        service = StrikeFinderService(MagicMock(), MagicMock())
 
-        with patch.object(service, 'option_chain_service') as mock_chain:
+        with patch.object(service, 'option_chain_service', new_callable=MagicMock) as mock_chain:
+            mock_chain.get_option_chain = AsyncMock()
             mock_chain.get_option_chain.return_value = get_mock_option_chain_response()
 
             result = await service.find_strike_by_premium(
@@ -137,9 +143,10 @@ class TestStrikeFinderService:
     @pytest.mark.asyncio
     async def test_find_strike_by_premium_range(self):
         """Test finding strike within premium range."""
-        service = StrikeFinderService(db_session=MagicMock())
+        service = StrikeFinderService(MagicMock(), MagicMock())
 
-        with patch.object(service, 'option_chain_service') as mock_chain:
+        with patch.object(service, 'option_chain_service', new_callable=MagicMock) as mock_chain:
+            mock_chain.get_option_chain = AsyncMock()
             mock_chain.get_option_chain.return_value = get_mock_option_chain_response()
 
             result = await service.find_strike_by_premium(
@@ -156,11 +163,15 @@ class TestStrikeFinderService:
     @pytest.mark.asyncio
     async def test_find_atm_strike(self):
         """Test finding ATM strike."""
-        service = StrikeFinderService(db_session=MagicMock())
+        service = StrikeFinderService(MagicMock(), MagicMock())
 
-        with patch.object(service, 'option_chain_service') as mock_chain:
+        with patch.object(service, 'option_chain_service', new_callable=MagicMock) as mock_chain:
+            mock_chain.get_option_chain = AsyncMock()
             chain_data = get_mock_option_chain_response()
             mock_chain.get_option_chain.return_value = chain_data
+            mock_chain.get_strikes_list = AsyncMock(
+                return_value=sorted({opt['strike'] for opt in chain_data['options']})
+            )
 
             atm = await service.find_atm_strike("NIFTY", "2024-01-25")
 
@@ -172,9 +183,10 @@ class TestStrikeFinderService:
     @pytest.mark.asyncio
     async def test_find_strikes_by_delta_range(self):
         """Test finding all strikes within delta range."""
-        service = StrikeFinderService(db_session=MagicMock())
+        service = StrikeFinderService(MagicMock(), MagicMock())
 
-        with patch.object(service, 'option_chain_service') as mock_chain:
+        with patch.object(service, 'option_chain_service', new_callable=MagicMock) as mock_chain:
+            mock_chain.get_option_chain = AsyncMock()
             mock_chain.get_option_chain.return_value = get_mock_option_chain_response()
 
             results = await service.find_strikes_in_range(
@@ -194,9 +206,10 @@ class TestStrikeFinderService:
     @pytest.mark.asyncio
     async def test_find_strikes_in_premium_range(self):
         """Test finding all strikes within premium range."""
-        service = StrikeFinderService(db_session=MagicMock())
+        service = StrikeFinderService(MagicMock(), MagicMock())
 
-        with patch.object(service, 'option_chain_service') as mock_chain:
+        with patch.object(service, 'option_chain_service', new_callable=MagicMock) as mock_chain:
+            mock_chain.get_option_chain = AsyncMock()
             mock_chain.get_option_chain.return_value = get_mock_option_chain_response()
 
             results = await service.find_strikes_in_range(
@@ -215,9 +228,10 @@ class TestStrikeFinderService:
     @pytest.mark.asyncio
     async def test_no_strikes_found_error(self):
         """Test error when no strikes match criteria."""
-        service = StrikeFinderService(db_session=MagicMock())
+        service = StrikeFinderService(MagicMock(), MagicMock())
 
-        with patch.object(service, 'option_chain_service') as mock_chain:
+        with patch.object(service, 'option_chain_service', new_callable=MagicMock) as mock_chain:
+            mock_chain.get_option_chain = AsyncMock()
             # Return empty strikes
             mock_chain.get_option_chain.return_value = {
                 "underlying": "NIFTY",
@@ -236,13 +250,16 @@ class TestStrikeFinderService:
 
     @pytest.mark.asyncio
     async def test_all_strikes_filtered_error(self):
-        """Test when all strikes are filtered out by criteria."""
-        service = StrikeFinderService(db_session=MagicMock())
+        """Test that the best available match is still returned (with a
+        logged warning) when no candidate is within tolerance — the service
+        only returns None when there are no candidates at all."""
+        service = StrikeFinderService(MagicMock(), MagicMock())
 
-        with patch.object(service, 'option_chain_service') as mock_chain:
+        with patch.object(service, 'option_chain_service', new_callable=MagicMock) as mock_chain:
+            mock_chain.get_option_chain = AsyncMock()
             mock_chain.get_option_chain.return_value = get_mock_option_chain_response()
 
-            # Very narrow tolerance that won't match anything
+            # Very narrow tolerance that won't match anything within bounds
             result = await service.find_strike_by_delta(
                 underlying="NIFTY",
                 expiry="2024-01-25",
@@ -251,4 +268,5 @@ class TestStrikeFinderService:
                 tolerance=0.001  # Very tight tolerance
             )
 
-            assert result is None
+            assert result is not None
+            assert abs(abs(result["delta"]) - 0.99) > 0.001

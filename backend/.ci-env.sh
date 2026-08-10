@@ -1,0 +1,10 @@
+export DATABASE_URL="postgresql+asyncpg://postgres:postgres@localhost:5432/algochanakya_test"
+export REDIS_URL="redis://localhost:6379"
+export SECRET_KEY="test-secret-key-for-ci"
+export JWT_SECRET="test-jwt-secret-for-ci"
+export KITE_API_KEY="test-kite-api-key"
+export KITE_API_SECRET="test-kite-api-secret"
+export KITE_REDIRECT_URL="http://localhost:8001/api/auth/zerodha/callback"
+export FRONTEND_URL="http://localhost:3000"
+export ANTHROPIC_API_KEY="test-anthropic-api-key"
+export PYTHONPATH=.

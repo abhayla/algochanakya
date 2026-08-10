@@ -10,6 +10,7 @@ on:
     branches: [main, develop]
     paths:
       - 'backend/**'
+      - '.github/workflows/backend-tests.yml'
 
 env:
   DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/algochanakya_test
@@ -59,7 +60,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.12'
           cache: 'pip'
 
       - name: Validate folder structure

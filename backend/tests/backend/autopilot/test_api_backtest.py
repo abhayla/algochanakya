@@ -438,7 +438,7 @@ class TestCancelBacktest:
     @pytest.mark.asyncio
     async def test_cancel_running_backtest(self, db_session, test_user, test_backtest_in_db):
         """Test cancelling a running backtest."""
-        test_backtest_in_db.status = BacktestStatus.running.value
+        test_backtest_in_db.status = BacktestStatus.RUNNING.value
         await db_session.commit()
 
         async def override_get_db():
@@ -666,7 +666,7 @@ class TestBacktestResults:
     @pytest.mark.asyncio
     async def test_pending_backtest_no_results(self, db_session, test_user, test_backtest_in_db):
         """Test that pending backtest has no results yet."""
-        test_backtest_in_db.status = BacktestStatus.pending.value
+        test_backtest_in_db.status = BacktestStatus.PENDING.value
         test_backtest_in_db.results = None
         await db_session.commit()
 

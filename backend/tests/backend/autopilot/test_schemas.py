@@ -172,13 +172,13 @@ class TestCondition:
             id="cond_1",
             enabled=True,
             variable="TIME.CURRENT",
-            operator=ConditionOperator.greater_than,
+            operator=ConditionOperator.GREATER_THAN,
             value="09:20"
         )
         assert cond.id == "cond_1"
         assert cond.enabled is True
         assert cond.variable == "TIME.CURRENT"
-        assert cond.operator == ConditionOperator.greater_than
+        assert cond.operator == ConditionOperator.GREATER_THAN
         assert cond.value == "09:20"
 
     def test_condition_numeric_value(self):
@@ -186,7 +186,7 @@ class TestCondition:
         cond = Condition(
             id="cond_vix",
             variable="VIX.VALUE",
-            operator=ConditionOperator.less_than,
+            operator=ConditionOperator.LESS_THAN,
             value=20
         )
         assert cond.value == 20
@@ -196,7 +196,7 @@ class TestCondition:
         cond = Condition(
             id="cond_spot",
             variable="SPOT.NIFTY.CHANGE_PCT",
-            operator=ConditionOperator.between,
+            operator=ConditionOperator.BETWEEN,
             value=[-1.5, 1.5]
         )
         assert cond.value == [-1.5, 1.5]
@@ -207,7 +207,7 @@ class TestCondition:
             id="cond_disabled",
             enabled=False,
             variable="TIME.CURRENT",
-            operator=ConditionOperator.equals,
+            operator=ConditionOperator.EQUALS,
             value="10:00"
         )
         assert cond.enabled is False
@@ -217,7 +217,7 @@ class TestCondition:
         cond = Condition(
             id="cond_default",
             variable="VIX.VALUE",
-            operator=ConditionOperator.less_than,
+            operator=ConditionOperator.LESS_THAN,
             value=25
         )
         assert cond.enabled is True
@@ -225,13 +225,13 @@ class TestCondition:
     def test_condition_all_operators(self):
         """Test all operator values are valid."""
         operators = [
-            ConditionOperator.equals,
-            ConditionOperator.not_equals,
-            ConditionOperator.greater_than,
-            ConditionOperator.less_than,
-            ConditionOperator.between,
-            ConditionOperator.crosses_above,
-            ConditionOperator.crosses_below
+            ConditionOperator.EQUALS,
+            ConditionOperator.NOT_EQUALS,
+            ConditionOperator.GREATER_THAN,
+            ConditionOperator.LESS_THAN,
+            ConditionOperator.BETWEEN,
+            ConditionOperator.CROSSES_ABOVE,
+            ConditionOperator.CROSSES_BELOW
         ]
         for op in operators:
             cond = Condition(
@@ -255,8 +255,8 @@ class TestEntryConditions:
         ec = EntryConditions(
             logic=ConditionLogic.AND,
             conditions=[
-                Condition(id="c1", variable="TIME.CURRENT", operator=ConditionOperator.greater_than, value="09:20"),
-                Condition(id="c2", variable="VIX.VALUE", operator=ConditionOperator.less_than, value=20)
+                Condition(id="c1", variable="TIME.CURRENT", operator=ConditionOperator.GREATER_THAN, value="09:20"),
+                Condition(id="c2", variable="VIX.VALUE", operator=ConditionOperator.LESS_THAN, value=20)
             ]
         )
         assert ec.logic == ConditionLogic.AND
@@ -267,8 +267,8 @@ class TestEntryConditions:
         ec = EntryConditions(
             logic=ConditionLogic.OR,
             conditions=[
-                Condition(id="c1", variable="VIX.VALUE", operator=ConditionOperator.less_than, value=15),
-                Condition(id="c2", variable="SPOT.NIFTY.CHANGE_PCT", operator=ConditionOperator.between, value=[-0.5, 0.5])
+                Condition(id="c1", variable="VIX.VALUE", operator=ConditionOperator.LESS_THAN, value=15),
+                Condition(id="c2", variable="SPOT.NIFTY.CHANGE_PCT", operator=ConditionOperator.BETWEEN, value=[-0.5, 0.5])
             ]
         )
         assert ec.logic == ConditionLogic.OR
@@ -307,7 +307,7 @@ class TestOrderSettings:
         """Test all order settings fields."""
         os = OrderSettings(
             order_type=OrderType.LIMIT,
-            execution_style=ExecutionStyle.sequential,
+            execution_style=ExecutionStyle.SEQUENTIAL,
             leg_sequence=["leg_2", "leg_3", "leg_1", "leg_4"],
             delay_between_legs=3,
             slippage_protection=SlippageProtection(
@@ -320,7 +320,7 @@ class TestOrderSettings:
             on_leg_failure="exit_all"
         )
         assert os.order_type == OrderType.LIMIT
-        assert os.execution_style == ExecutionStyle.sequential
+        assert os.execution_style == ExecutionStyle.SEQUENTIAL
         assert os.leg_sequence == ["leg_2", "leg_3", "leg_1", "leg_4"]
         assert os.delay_between_legs == 3
         assert os.slippage_protection.enabled is True
@@ -331,7 +331,7 @@ class TestOrderSettings:
         """Test default values."""
         os = OrderSettings()
         assert os.order_type == OrderType.MARKET
-        assert os.execution_style == ExecutionStyle.sequential
+        assert os.execution_style == ExecutionStyle.SEQUENTIAL
         assert os.leg_sequence == []
         assert os.delay_between_legs == 2
         assert os.on_leg_failure == "stop"
@@ -348,18 +348,18 @@ class TestOrderSettings:
     def test_order_settings_simultaneous(self):
         """Test simultaneous execution style."""
         os = OrderSettings(
-            execution_style=ExecutionStyle.simultaneous,
+            execution_style=ExecutionStyle.SIMULTANEOUS,
             delay_between_legs=0
         )
-        assert os.execution_style == ExecutionStyle.simultaneous
+        assert os.execution_style == ExecutionStyle.SIMULTANEOUS
 
     def test_order_settings_with_delay(self):
         """Test with_delay execution style."""
         os = OrderSettings(
-            execution_style=ExecutionStyle.with_delay,
+            execution_style=ExecutionStyle.WITH_DELAY,
             delay_between_legs=5
         )
-        assert os.execution_style == ExecutionStyle.with_delay
+        assert os.execution_style == ExecutionStyle.WITH_DELAY
         assert os.delay_between_legs == 5
 
 
@@ -489,7 +489,7 @@ class TestStrategyCreateRequest:
             entry_conditions=EntryConditions(
                 logic=ConditionLogic.AND,
                 conditions=[
-                    Condition(id="c1", variable="TIME.CURRENT", operator=ConditionOperator.greater_than, value="09:20")
+                    Condition(id="c1", variable="TIME.CURRENT", operator=ConditionOperator.GREATER_THAN, value="09:20")
                 ]
             ),
             adjustment_rules=[],

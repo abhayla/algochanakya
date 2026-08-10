@@ -25,10 +25,14 @@ def sample_strategy():
         user_id="user-123",
         name="Test Iron Condor",
         underlying="NIFTY",
-        entry_premium=Decimal("5000"),  # Collected ₹5000 premium
-        max_profit=Decimal("5000"),
-        max_loss=Decimal("10000"),
-        runtime_state={}
+        # entry_premium / max_profit / max_loss are not columns on
+        # AutoPilotStrategy -- they live in runtime_state, which is where
+        # AdjustmentCostTracker reads them from.
+        runtime_state={
+            "entry_premium": "5000",  # Collected Rs 5000 premium
+            "max_profit": "5000",
+            "max_loss": "10000",
+        }
     )
     return strategy
 

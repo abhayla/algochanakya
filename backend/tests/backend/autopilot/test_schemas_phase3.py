@@ -126,50 +126,50 @@ class TestAdjustmentSchemas:
     def test_adjustment_trigger_pnl_based(self):
         """Test AdjustmentTrigger with PNL-based trigger."""
         trigger = AdjustmentTrigger(
-            type=AdjustmentTriggerType.pnl_based,
+            type=AdjustmentTriggerType.PNL_BASED,
             condition="loss_exceeds",
             value=5000
         )
-        assert trigger.type == AdjustmentTriggerType.pnl_based
+        assert trigger.type == AdjustmentTriggerType.PNL_BASED
         assert trigger.condition == "loss_exceeds"
         assert trigger.value == 5000
 
     def test_adjustment_trigger_delta_based(self):
         """Test AdjustmentTrigger with delta-based trigger."""
         trigger = AdjustmentTrigger(
-            type=AdjustmentTriggerType.delta_based,
+            type=AdjustmentTriggerType.DELTA_BASED,
             condition="exceeds",
             value=0.3
         )
-        assert trigger.type == AdjustmentTriggerType.delta_based
+        assert trigger.type == AdjustmentTriggerType.DELTA_BASED
         assert trigger.value == 0.3
 
     def test_adjustment_trigger_time_based(self):
         """Test AdjustmentTrigger with time-based trigger."""
         trigger = AdjustmentTrigger(
-            type=AdjustmentTriggerType.time_based,
+            type=AdjustmentTriggerType.TIME_BASED,
             condition="after",
             value="15:15"
         )
-        assert trigger.type == AdjustmentTriggerType.time_based
+        assert trigger.type == AdjustmentTriggerType.TIME_BASED
         assert trigger.value == "15:15"
 
     def test_adjustment_action_exit_all(self):
         """Test AdjustmentAction for exit all."""
         action = AdjustmentAction(
-            type=AdjustmentActionType.exit_all,
+            type=AdjustmentActionType.EXIT_ALL,
             params={"order_type": "MARKET"}
         )
-        assert action.type == AdjustmentActionType.exit_all
+        assert action.type == AdjustmentActionType.EXIT_ALL
         assert action.params["order_type"] == "MARKET"
 
     def test_adjustment_action_add_hedge(self):
         """Test AdjustmentAction for add hedge."""
         action = AdjustmentAction(
-            type=AdjustmentActionType.add_hedge,
+            type=AdjustmentActionType.ADD_HEDGE,
             params={"hedge_type": "both", "hedge_delta": 0.5}
         )
-        assert action.type == AdjustmentActionType.add_hedge
+        assert action.type == AdjustmentActionType.ADD_HEDGE
         assert action.params["hedge_type"] == "both"
 
     def test_adjustment_rule_complete(self):
@@ -179,22 +179,22 @@ class TestAdjustmentSchemas:
             enabled=True,
             name="Stop Loss Rule",
             trigger=AdjustmentTrigger(
-                type=AdjustmentTriggerType.pnl_based,
+                type=AdjustmentTriggerType.PNL_BASED,
                 condition="loss_exceeds",
                 value=5000
             ),
             action=AdjustmentAction(
-                type=AdjustmentActionType.exit_all,
+                type=AdjustmentActionType.EXIT_ALL,
                 params={"order_type": "MARKET"}
             ),
-            execution_mode=ExecutionMode.auto,
+            execution_mode=ExecutionMode.AUTO,
             max_executions=1,
             cooldown_seconds=0
         )
         assert rule.id == "adj_1"
         assert rule.enabled is True
-        assert rule.trigger.type == AdjustmentTriggerType.pnl_based
-        assert rule.action.type == AdjustmentActionType.exit_all
+        assert rule.trigger.type == AdjustmentTriggerType.PNL_BASED
+        assert rule.action.type == AdjustmentActionType.EXIT_ALL
 
     def test_adjustment_rule_semi_auto(self):
         """Test AdjustmentRule with semi-auto execution."""
@@ -203,19 +203,19 @@ class TestAdjustmentSchemas:
             enabled=True,
             name="Profit Target",
             trigger=AdjustmentTrigger(
-                type=AdjustmentTriggerType.pnl_based,
+                type=AdjustmentTriggerType.PNL_BASED,
                 condition="profit_exceeds",
                 value=10000
             ),
             action=AdjustmentAction(
-                type=AdjustmentActionType.exit_all,
+                type=AdjustmentActionType.EXIT_ALL,
                 params={"order_type": "LIMIT"}
             ),
-            execution_mode=ExecutionMode.semi_auto,
+            execution_mode=ExecutionMode.SEMI_AUTO,
             max_executions=1,
             cooldown_seconds=0
         )
-        assert rule.execution_mode == ExecutionMode.semi_auto
+        assert rule.execution_mode == ExecutionMode.SEMI_AUTO
 
 
 # =============================================================================
@@ -236,14 +236,14 @@ class TestConfirmationSchemas:
             action_data={"rule_id": "adj_1"},
             rule_id="adj_1",
             rule_name="Stop Loss Rule",
-            status=ConfirmationStatus.pending,
+            status=ConfirmationStatus.PENDING,
             timeout_seconds=30,
             expires_at=datetime.now(timezone.utc) + timedelta(seconds=30),
             time_remaining_seconds=25,
             created_at=datetime.now(timezone.utc)
         )
         assert response.id == 1
-        assert response.status == ConfirmationStatus.pending
+        assert response.status == ConfirmationStatus.PENDING
         assert response.time_remaining_seconds == 25
 
     def test_confirmation_action_request_confirm(self):
@@ -308,11 +308,11 @@ class TestTrailingStopSchemas:
             enabled=True,
             activation_profit=Decimal("5000"),
             trail_distance=Decimal("2000"),
-            trail_type=TrailType.fixed,
+            trail_type=TrailType.FIXED,
             min_profit_lock=Decimal("1000")
         )
         assert config.enabled is True
-        assert config.trail_type == TrailType.fixed
+        assert config.trail_type == TrailType.FIXED
         assert config.activation_profit == Decimal("5000")
         assert config.trail_distance == Decimal("2000")
 
@@ -322,10 +322,10 @@ class TestTrailingStopSchemas:
             enabled=True,
             activation_profit=Decimal("5000"),
             trail_distance=Decimal("20"),  # 20%
-            trail_type=TrailType.percentage,
+            trail_type=TrailType.PERCENTAGE,
             min_profit_lock=Decimal("1000")
         )
-        assert config.trail_type == TrailType.percentage
+        assert config.trail_type == TrailType.PERCENTAGE
 
     def test_trailing_stop_status_inactive(self):
         """Test TrailingStopStatus when inactive."""
@@ -557,31 +557,31 @@ class TestEnumSchemas:
 
     def test_confirmation_status_values(self):
         """Test ConfirmationStatus enum values."""
-        assert ConfirmationStatus.pending == "pending"
-        assert ConfirmationStatus.confirmed == "confirmed"
-        assert ConfirmationStatus.rejected == "rejected"
-        assert ConfirmationStatus.expired == "expired"
-        assert ConfirmationStatus.cancelled == "cancelled"
+        assert ConfirmationStatus.PENDING == "pending"
+        assert ConfirmationStatus.CONFIRMED == "confirmed"
+        assert ConfirmationStatus.REJECTED == "rejected"
+        assert ConfirmationStatus.EXPIRED == "expired"
+        assert ConfirmationStatus.CANCELLED == "cancelled"
 
     def test_trail_type_values(self):
         """Test TrailType enum values."""
-        assert TrailType.fixed == "fixed"
-        assert TrailType.percentage == "percentage"
+        assert TrailType.FIXED == "fixed"
+        assert TrailType.PERCENTAGE == "percentage"
 
     def test_adjustment_trigger_type_values(self):
         """Test AdjustmentTriggerType enum values."""
-        assert AdjustmentTriggerType.pnl_based == "pnl_based"
-        assert AdjustmentTriggerType.delta_based == "delta_based"
-        assert AdjustmentTriggerType.time_based == "time_based"
+        assert AdjustmentTriggerType.PNL_BASED == "pnl_based"
+        assert AdjustmentTriggerType.DELTA_BASED == "delta_based"
+        assert AdjustmentTriggerType.TIME_BASED == "time_based"
 
     def test_adjustment_action_type_values(self):
         """Test AdjustmentActionType enum values."""
-        assert AdjustmentActionType.exit_all == "exit_all"
-        assert AdjustmentActionType.add_hedge == "add_hedge"
-        assert AdjustmentActionType.roll_strike == "roll_strike"
+        assert AdjustmentActionType.EXIT_ALL == "exit_all"
+        assert AdjustmentActionType.ADD_HEDGE == "add_hedge"
+        assert AdjustmentActionType.ROLL_STRIKE == "roll_strike"
 
     def test_execution_mode_values(self):
         """Test ExecutionMode enum values."""
-        assert ExecutionMode.auto == "auto"
-        assert ExecutionMode.semi_auto == "semi_auto"
-        assert ExecutionMode.manual == "manual"
+        assert ExecutionMode.AUTO == "auto"
+        assert ExecutionMode.SEMI_AUTO == "semi_auto"
+        assert ExecutionMode.MANUAL == "manual"

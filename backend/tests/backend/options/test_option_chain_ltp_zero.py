@@ -149,32 +149,37 @@ class TestSmartAPIAdapterEmptyTokens:
         """
         adapter = self._make_adapter(token_value=49159, instrument_token_str=None)
 
-        # Mock SmartAPI returning valid quote data for token 49159
-        raw_quote_data = {
+        # adapter._market_data is the legacy SmartAPIMarketData layer, whose real
+        # get_quote() -> _normalize_quotes() already returns prices in RUPEES
+        # (the SmartAPI getMarketData FULL-mode REST response is in rupees, not
+        # paise — see smartapi_adapter.py _convert_to_unified_quote comment).
+        # Mocking this layer with raw paise values double-scales and does not
+        # match the real contract.
+        normalized_quote_data = {
             "49159": {
-                "ltp": 25000,        # paise → 250.00 rupees after ÷100
-                "open": 24000,
-                "high": 26000,
-                "low": 23000,
-                "close": 24500,
+                "ltp": Decimal("250.00"),
+                "open": Decimal("240.00"),
+                "high": Decimal("260.00"),
+                "low": Decimal("230.00"),
+                "close": Decimal("245.00"),
                 "oi": 1000000,
                 "volume": 50000,
                 "buyQty": 100,
-                "buyPrice": 24900,
+                "buyPrice": 249.00,
                 "sellQty": 150,
-                "sellPrice": 25100,
+                "sellPrice": 251.00,
             }
         }
-        adapter._market_data.get_quote.return_value = raw_quote_data
+        adapter._market_data.get_quote.return_value = normalized_quote_data
 
         result = await adapter.get_quote(["NIFTY26MAR24250CE"])
 
         assert len(result) == 1, "Should return quote for 1 symbol when token is found"
         assert "NIFTY26MAR24250CE" in result
         quote = result["NIFTY26MAR24250CE"]
-        # SmartAPI NFO prices are in paise; adapter divides by 100
+        # SmartAPI REST quotes arrive already normalized to rupees — no further scaling
         assert quote.last_price == Decimal("250.00"), (
-            f"LTP should be 250.00 rupees (25000 paise ÷ 100), got {quote.last_price}"
+            f"LTP should pass through as 250.00 rupees unchanged, got {quote.last_price}"
         )
 
 

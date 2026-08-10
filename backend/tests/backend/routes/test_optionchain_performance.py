@@ -123,6 +123,10 @@ class TestOptionChainAPIPerformance:
         BUG-PERF-4: GET /api/optionchain/chain must respond in < 20 seconds.
         Currently takes ~37 seconds (5 SmartAPI batches).
         After fix (filtered strikes): should take < 15 seconds (1-2 batches).
+
+        Requires a live backend on localhost:8001 (see backend/tests/live/CLAUDE.md —
+        "server not running" is an infrastructure-limitation skip, same category as
+        missing broker credentials).
         """
         import httpx
         from datetime import date, timedelta
@@ -133,15 +137,20 @@ class TestOptionChainAPIPerformance:
         expiry = today + timedelta(days=days_until_thursday)
         expiry_str = expiry.strftime("%Y-%m-%d")
 
-        start = time.time()
         async with httpx.AsyncClient(base_url="http://localhost:8001", timeout=25.0) as client:
+            try:
+                await client.get("/api/health")
+            except httpx.ConnectError:
+                pytest.skip("Live backend not running on localhost:8001")
+
+            start = time.time()
             # Would need real auth token here
             response = await client.get(
                 f"/api/optionchain/chain",
                 params={"underlying": "NIFTY", "expiry": expiry_str},
                 headers={"Authorization": "Bearer TEST_TOKEN"}
             )
-        elapsed = time.time() - start
+            elapsed = time.time() - start
 
         # BUG: Currently fails because it takes 37s (exceeds 25s test timeout)
         assert elapsed < 20, (

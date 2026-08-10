@@ -119,7 +119,7 @@ class TestScenario1FindDeltaStrikes:
         When: Finding PUT strike with delta 0.15
         Then: Should return 25000 PE with premium ~₹82
         """
-        service = StrikeFinderService(kite=MagicMock(), db=MagicMock())
+        service = StrikeFinderService(MagicMock(), MagicMock())
 
         # Mock option chain with transcript values
         with patch.object(service, 'option_chain_service') as mock_chain:
@@ -171,7 +171,7 @@ class TestScenario1FindDeltaStrikes:
         When: Finding CALL strike with delta 0.15
         Then: Should return 26800 CE with premium ~₹145
         """
-        service = StrikeFinderService(kite=MagicMock(), db=MagicMock())
+        service = StrikeFinderService(MagicMock(), MagicMock())
 
         # Mock option chain with transcript values
         with patch.object(service, 'option_chain_service') as mock_chain:
@@ -223,7 +223,7 @@ class TestScenario1FindDeltaStrikes:
         When: Exact match not available
         Then: Should accept strikes with delta in range 0.14-0.16
         """
-        service = StrikeFinderService(kite=MagicMock(), db=MagicMock())
+        service = StrikeFinderService(MagicMock(), MagicMock())
 
         with patch.object(service, 'option_chain_service') as mock_chain:
             mock_chain.get_option_chain = AsyncMock(return_value={
@@ -608,7 +608,7 @@ class TestScenario5FindStrikesByPremium:
         When: Searching for exact premium
         Then: Should find 24400 PE @ ₹160
         """
-        service = StrikeFinderService(kite=MagicMock(), db=MagicMock())
+        service = StrikeFinderService(MagicMock(), MagicMock())
 
         with patch.object(service, 'option_chain_service') as mock_chain:
             mock_chain.get_option_chain = AsyncMock(return_value={
@@ -642,7 +642,7 @@ class TestScenario5FindStrikesByPremium:
         When: Exact match not available
         Then: Should find closest strike (25300 CE @ ₹207)
         """
-        service = StrikeFinderService(kite=MagicMock(), db=MagicMock())
+        service = StrikeFinderService(MagicMock(), MagicMock())
 
         with patch.object(service, 'option_chain_service') as mock_chain:
             mock_chain.get_option_chain = AsyncMock(return_value={
@@ -709,7 +709,7 @@ class TestScenario6RoundStrikePreference:
         When: 25000 and 24950 both available
         Then: Should prefer 25000 (round strike)
         """
-        service = StrikeFinderService(kite=MagicMock(), db=MagicMock())
+        service = StrikeFinderService(MagicMock(), MagicMock())
 
         with patch.object(service, 'option_chain_service') as mock_chain:
             mock_chain.get_option_chain = AsyncMock(return_value={
@@ -743,7 +743,7 @@ class TestScenario6RoundStrikePreference:
         When: Both 24400 (₹160) and 24450 (₹162) available
         Then: Should prefer 24400 (round strike)
         """
-        service = StrikeFinderService(kite=MagicMock(), db=MagicMock())
+        service = StrikeFinderService(MagicMock(), MagicMock())
 
         with patch.object(service, 'option_chain_service') as mock_chain:
             mock_chain.get_option_chain = AsyncMock(return_value={

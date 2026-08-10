@@ -117,7 +117,8 @@ class AdjustmentCostTracker:
             AdjustmentCostSummary with all cost analytics
         """
         # Get original premium collected (entry premium)
-        original_premium = strategy.entry_premium or Decimal("0")
+        runtime_state = strategy.runtime_state or {}
+        original_premium = Decimal(str(runtime_state.get("entry_premium") or 0))
 
         if original_premium == 0:
             # If no entry premium, can't calculate percentages
@@ -144,9 +145,9 @@ class AdjustmentCostTracker:
             adjustments_list.append({
                 "timestamp": order.created_at.isoformat(),
                 "order_id": order.id,
-                "action_type": order.action_type,
+                "action_type": self._action_type(order),
                 "cost": float(cost),
-                "reason": order.notes or "Adjustment",
+                "reason": order.rule_name or "Adjustment",
                 "status": order.status
             })
 
@@ -168,13 +169,28 @@ class AdjustmentCostTracker:
         query = select(AutoPilotOrder).where(
             and_(
                 AutoPilotOrder.strategy_id == strategy_id,
-                AutoPilotOrder.order_type == "adjustment",
+                AutoPilotOrder.purpose == "adjustment",
                 AutoPilotOrder.status.in_(["completed", "executed"])
             )
         ).order_by(AutoPilotOrder.created_at)
 
         result = await self.db.execute(query)
         return result.scalars().all()
+
+    @staticmethod
+    def _action_type(order: AutoPilotOrder) -> Optional[str]:
+        """
+        Resolve the fine-grained adjustment action (roll_strike, add_hedge, ...).
+
+        AutoPilotOrder only records the coarse `purpose` (entry/exit/adjustment);
+        the specific action lives on the AutoPilotAdjustmentLog row that produced
+        the order. Where the log has not been eager-loaded, fall back to the rule
+        name so callers still get a non-null label.
+        """
+        log = getattr(order, "adjustment_log", None)
+        if log is not None and getattr(log, "action_type", None):
+            return log.action_type
+        return order.rule_name
 
     def _calculate_order_cost(self, order: AutoPilotOrder) -> Decimal:
         """
@@ -184,8 +200,8 @@ class AdjustmentCostTracker:
         For debit adjustments (buying protection), cost is positive (we pay)
         """
         # Get order details
-        filled_qty = order.filled_quantity or 0
-        avg_price = order.average_price or Decimal("0")
+        filled_qty = order.executed_quantity or 0
+        avg_price = order.executed_price or Decimal("0")
 
         if filled_qty == 0 or avg_price == 0:
             return Decimal("0")

@@ -32,7 +32,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.12'
 
       - name: Validate folder structure
         run: python .github/scripts/validate-structure.py
@@ -47,13 +47,14 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pytest pytest-asyncio httpx
+          pip install pytest pytest-asyncio pytest-cov allure-pytest httpx
 
       - name: Run backend tests
         if: steps.changes.outputs.backend == 'true'
         working-directory: backend
         env:
           DATABASE_URL: "sqlite+aiosqlite:///:memory:"
+          REDIS_URL: "redis://localhost:6379"
           SECRET_KEY: test-secret-key-for-ci
           JWT_SECRET: test-jwt-secret-for-ci
           KITE_API_KEY: test-kite-api-key
