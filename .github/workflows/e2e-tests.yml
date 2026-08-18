@@ -3,8 +3,14 @@ name: E2E Tests
 on:
   push:
     branches: [main, develop]
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
   pull_request:
     branches: [main, develop]
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
   workflow_dispatch:
     inputs:
       browser:
@@ -16,6 +22,10 @@ on:
           - chromium
           - firefox
           - all
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 env:
   CI: true
@@ -61,12 +71,16 @@ jobs:
         with:
           python-version: '3.11'
           cache: 'pip'
+          cache-dependency-path: 'backend/requirements.txt'
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            frontend/package-lock.json
 
       - name: Install backend dependencies
         working-directory: backend
@@ -131,18 +145,12 @@ jobs:
           path: test-results/
           retention-days: 7
 
-  allure-report:
-    needs: e2e-tests
-    runs-on: ubuntu-latest
-    if: always()
-
-    steps:
-      - name: Download Allure results
-        uses: actions/download-artifact@v4
-        with:
-          name: e2e-allure-results
-          path: allure-results
-
+      # Job consolidation (T-190): Allure reporting used to be a separate
+      # `allure-report` job that only downloaded the artifact this job just
+      # uploaded (plus a checkout of gh-pages for history). Generating it here
+      # reuses the local allure-results/ directly, saving a second runner
+      # boot + artifact round-trip. `if: always()` reproduces the old
+      # job-level `if: always()` so the report still generates on failure.
       - name: Get Allure history
         uses: actions/checkout@v4
         if: always()
@@ -161,7 +169,7 @@ jobs:
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
-        if: github.ref == 'refs/heads/main'
+        if: always() && github.ref == 'refs/heads/main'
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: allure-history
