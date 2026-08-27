@@ -104,3 +104,157 @@ head, which now shows:
 
 **Final verdict: PASS.** The fix is correct AND now verifiably checkable —
 PR #99's head has a passing PR Gate check that merge-on-green can gate on.
+
+---
+
+# T-392 Status
+
+## Root cause (confirmed)
+
+`backend/app/config.py`'s `Settings.REDIS_URL` has been a **required field with no
+default** since the very first commit (`163d1325`, 2025-12-03, "Initial Setup") —
+this predates T-268, predates the PR Gate workflow itself (added 2026-07-16 in #92),
+and is NOT a regression introduced by any recent change. The PR Gate workflow's
+backend test `env:` block (`.github/workflows/pr-gate.yml`) has simply never included
+`REDIS_URL`, alongside `DATABASE_URL`, `SECRET_KEY`, `JWT_SECRET`, etc. — a latent gap
+since PR Gate's inception.
+
+`Settings()` instantiates at import time in `app/config.py`. `tests/conftest.py` does
+`from app.database import Base, get_db`, which imports `app/config.py`, which fails
+pydantic validation with `REDIS_URL / Field required` before a single test collects —
+matching the exact repro in the contract's `data_source`.
+
+`get_redis()` (`app/database.py:54-63`) is a **lazy connector** — it only opens a
+connection on first call. No backend test currently exercises it. This makes a
+sensible default the narrower, correct fix (option a) over adding a CI env var for a
+dependency tests don't need — confirmed by grepping all `REDIS_URL` usages
+(`database.py`, two `legacy/` services, none reached by the test suite).
+
+## Fix
+
+`backend/app/config.py`:
+```diff
+-    REDIS_URL: str
++    REDIS_URL: str = "redis://localhost:6379/1"
+```
+Default matches the value already documented in `backend/.env.example`.
+
+## Verification
+
+- **Direct repro**: reproduced the exact CI `ValidationError` locally by instantiating
+  `Settings()` with the identical PR Gate env vars (no `REDIS_URL`) — got the identical
+  `pydantic_core.ValidationError: REDIS_URL / Field required`. Applied the fix, re-ran
+  the identical repro — `Settings()` now loads successfully with
+  `REDIS_URL = "redis://localhost:6379/1"`.
+- **Full local pytest run**: blocked by unrelated local Windows/Python-3.13 venv
+  artifacts (this machine's Python is 3.13; CI runs 3.11/3.12) — not pursued further
+  once the targeted repro above proved the fix; chasing full local parity would have
+  required rebuilding an unrelated pinned toolchain for no additional signal.
+- **Live PR CI (PR #100, https://github.com/abhayla/algochanakya/pull/100,
+  head `48f80fc`)**: `PR Gate — validate` still FAILS, but for a **different, unrelated,
+  pre-existing reason** — see "Second, orthogonal defect discovered" below. The
+  REDIS_URL error does NOT appear anywhere in this run's log (`grep -c REDIS_URL` = 0),
+  confirming this fix's change is not implicated in the new failure.
+
+## Second, orthogonal defect discovered (NOT fixed by this task — out of scope)
+
+While watching PR #100's CI, `PR Gate — validate` failed at the `pip install -r
+requirements.txt` step (before ever reaching pytest) with:
+```
+ERROR: Could not find a version that satisfies the requirement upstox-totp==1.0.8 (from versions: none)
+ERROR: No matching distribution found for upstox-totp==1.0.8
+```
+Root cause: `.github/workflows/pr-gate.yml` (main, and my branch which forked from
+main) pins `python-version: '3.11'`, but `upstox-totp==1.0.8` requires Python `>=3.12`.
+This is **NOT caused by this task's change** (confirmed: zero REDIS_URL references in
+the failing run's log) and **NOT new** — it is a pre-existing gap on main.
+
+**This is already fixed, but only on PR #98's own branch** (`fix/ci-red-main-t385`,
+commit `4d66c2c "fix(ci): bump backend CI to Python 3.12 for upstox-totp
+compatibility"`), which bumps the same line to `python-version: '3.12'`. That fix has
+not yet been merged to main. I did NOT cherry-pick or merge that commit into my
+branch/PR — doing so would silently expand T-392's scope beyond REDIS_URL and
+duplicate work already owned by T-385/PR #98.
+
+**Sequencing implication**: main is confirmed currently red (no PR-Gate push-triggered
+run on main since 2026-08-18; any fresh branch off main today reproduces the
+`upstox-totp` failure). This REDIS_URL fix is correct and will go green as soon as it
+is rebased onto (or merged after) whichever PR lands the Python 3.11→3.12 bump —
+almost certainly PR #98/#99's landing sequence, per this contract's `related` field.
+Recommend the checker/dispatcher land the Python-version fix (already committed on
+#98's branch) before or together with this PR, OR merge this PR first and let #98's
+branch pick up both fixes on its next rebase from main (already its stated plan).
+
+## PR #98 (T-385) collateral check
+
+Per DoD item 4: PR #98's branch already carries its own `python-version: '3.12'` fix,
+so once it merges main (or main merges it), #98 will have BOTH fixes. Confirmed via
+`git diff origin/main origin/fix/ci-red-main-t385 -- .github/workflows/pr-gate.yml` —
+the only diff is the Python version bump; #98's branch does not yet have my REDIS_URL
+default (since that lives only on my unmerged PR #100). Once #100 merges to main and
+#98 rebases/merges main again, #98 should go fully green. Not verified end-to-end
+since I do not merge or push to #98's branch per the standing mandate.
+
+---
+
+# T-394 Status Report
+
+**Task:** Land T-392's REDIS_URL fix (PR #100), then rebase T-385's CI-red fix (PR #98) onto it.
+
+## PR #100 rebase
+
+Rebased `fix/ci-redis-url-required-t392` onto latest `main` (`3aff089`, which now
+includes PR #99's allure-pytest fix). The only conflict was this file, `STATUS.md` —
+a worker-written scratch doc, not code. Resolved by keeping both the T-386/T-386C
+section and the T-392 section (this file is append-only across tasks that touch it),
+rather than discarding either worker's evidence trail.
+
+## Why the earlier T-385C PASS verdict doesn't apply to PR #98's rebased head
+
+T-385C's "PASS" verdict for PR #98 was issued against a CI run that predates this
+fix: at that time, `main` (and any branch forked from it) still had `REDIS_URL: str`
+with no default in `backend/app/config.py`, so every backend-test collection failed
+at import time with `pydantic_core.ValidationError: REDIS_URL / Field required` —
+regardless of whether PR #98's own changes were correct. T-385C's verdict evaluated
+PR #98's *own* diff/intent, not the REDIS_URL-red state of the CI it was actually
+running against. Once PR #100 lands (or PR #98 rebases onto it), PR #98's branch runs
+under a different, previously-untested precondition — so the old PASS is not evidence
+for the rebased head; only a fresh CI run is. This is why T-394 step 3 explicitly
+requires watching PR #98's CI live post-rebase rather than reusing T-385C's verdict.
+
+(Lesson for the fleet: a checker's PASS verdict is scoped to the CI run it observed;
+it does not automatically carry forward across a rebase onto a dependency fix that
+changes the CI environment itself, even when the PR's own code diff is unchanged.)
+
+## PR #100 CI result post-rebase: RED, but NOT on REDIS_URL — confirms T-392's own finding
+
+`PR Gate — validate` on the rebased head (`cf73513`) fails in ~18s at the
+`pip install -r requirements.txt` step:
+```
+ERROR: Could not find a version that satisfies the requirement upstox-totp==1.0.8 (from versions: none)
+ERROR: No matching distribution found for upstox-totp==1.0.8
+```
+(run https://github.com/abhayla/algochanakya/actions/runs/33087280186 —
+`upstox-totp==1.0.8` `Requires-Python >=3.12`; this branch still pins
+`python-version: '3.11'` in `.github/workflows/pr-gate.yml:35`, inherited unchanged
+from `main`.) `grep -c REDIS_URL` on the failed step's log = 0 — this is exactly the
+"Second, orthogonal defect" T-392's own STATUS.md section above already identified
+and explicitly declined to fix (fixing it would have silently expanded T-392's scope
+into T-385/PR #98's territory).
+
+**Root cause of why PR #100 alone cannot go green:** the Python 3.11→3.12 bump lives
+ONLY on PR #98's branch (`fix/ci-red-main-t385`, commit `4d66c2c`), not on `main` and
+not on PR #100. PR #100's own diff (the REDIS_URL default) is correct and complete for
+its stated scope — it simply cannot reach the REDIS_URL-validating pytest step because
+an earlier, unrelated pip-install step fails first for a reason PR #100 was never
+responsible for fixing.
+
+**Decision:** per the contract's step 2 ("rebase PR #98 onto PR #100's branch directly
+if #100 hasn't merged yet"), proceeding to rebase PR #98 onto PR #100's branch now,
+since PR #98 already carries the Python 3.12 fix independently. This gets PR #98 BOTH
+fixes at once and is the fastest path to a real green signal without expanding PR
+#100's scope. PR #100 remains open, unmerged, with its own CI still red on the
+orthogonal upstox-totp issue — that is expected and is dispatcher/checker's call to
+land in whichever order they prefer (their own Python-version fix could equally be
+cherry-picked into #100, or #100 could simply wait to rebase onto #98/main once #98's
+fix lands). Not this worker's call — no merge authority per mandate.
