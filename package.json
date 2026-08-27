@@ -69,6 +69,6 @@
     "@playwright/test": "^1.61.1",
     "allure-playwright": "^3.9.0",
     "dotenv": "^17.4.1",
-    "otplib": "^13.4.0"
+    "otplib": "^13.4.1"
   }
 }
