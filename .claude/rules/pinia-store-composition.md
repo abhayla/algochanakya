@@ -2,7 +2,7 @@
 description: >
   Enforces consistent Pinia store composition patterns across all Vue stores.
   All stores MUST use the loading/error/data triple pattern and expose named action functions.
-globs: ["frontend/src/stores/**/*.js", "frontend/src/stores/**/*.ts"]
+paths: ["frontend/src/stores/**/*.js", "frontend/src/stores/**/*.ts"]
 synthesized: true
 private: false
 version: "1.1.0"

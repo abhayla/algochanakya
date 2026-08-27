@@ -2,7 +2,7 @@
 description: >
   All E2E tests MUST use page objects extending BasePage. Page objects provide getByTestId,
   navigate, waitForTestId helpers. Specs MUST NOT use raw Playwright locators.
-globs: ["tests/e2e/**/*.{js,spec.js}"]
+paths: ["tests/e2e/**/*.{js,spec.js}"]
 synthesized: true
 private: false
 ---

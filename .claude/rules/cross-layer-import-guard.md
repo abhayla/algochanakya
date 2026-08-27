@@ -2,7 +2,7 @@
 description: >
   Backend MUST NOT import from frontend, frontend MUST NOT import from backend.
   Enforced by guard_cross_feature_imports.py hook and CI validation.
-globs: ["backend/**/*.py", "frontend/**/*.{js,vue}"]
+paths: ["backend/**/*.py", "frontend/**/*.{js,vue}"]
 synthesized: true
 private: false
 ---

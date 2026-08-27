@@ -2,7 +2,7 @@
 description: >
   E2E tests MUST use data-testid selectors only ([screen]-[component]-[element] convention),
   import from auth.fixture.js, and use authenticatedPage fixture.
-globs: ["tests/e2e/**/*.{js,spec.js}", "frontend/**/*.vue"]
+paths: ["tests/e2e/**/*.{js,spec.js}", "frontend/**/*.vue"]
 synthesized: true
 private: false
 ---

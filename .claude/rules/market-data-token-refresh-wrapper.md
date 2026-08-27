@@ -4,7 +4,7 @@ description: >
   Transparent reactive token refresh for market-data adapters: get_ltp/get_quote
   are dynamically wrapped at __init__ for refreshable brokers; callers never
   write retry/refresh logic at call sites.
-globs: ["backend/app/services/brokers/market_data/**/*.py"]
+paths: ["backend/app/services/brokers/market_data/**/*.py"]
 synthesized: true
 version: "1.0.0"
 private: true

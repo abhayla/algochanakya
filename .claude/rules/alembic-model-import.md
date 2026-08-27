@@ -2,7 +2,7 @@
 description: >
   New SQLAlchemy models MUST be imported in both models/__init__.py AND alembic/env.py,
   or alembic autogenerate will silently skip them.
-globs: ["backend/app/models/**/*.py", "backend/alembic/**/*.py"]
+paths: ["backend/app/models/**/*.py", "backend/alembic/**/*.py"]
 synthesized: true
 private: false
 ---

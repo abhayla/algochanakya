@@ -2,7 +2,7 @@
 description: >
   All broker interactions MUST go through factory adapters (get_broker_adapter, get_market_data_adapter),
   never direct SDK imports like KiteConnect or SmartAPI client.
-globs: ["backend/**/*.py"]
+paths: ["backend/**/*.py"]
 synthesized: true
 private: false
 ---

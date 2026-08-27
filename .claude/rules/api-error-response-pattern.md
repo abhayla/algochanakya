@@ -2,7 +2,7 @@
 description: >
   Routes catch domain exceptions and return HTTPException; services raise only domain exceptions,
   never HTTPException. Enforces clean separation between HTTP transport and business logic.
-globs: ["backend/app/api/**/*.py", "backend/app/services/**/*.py"]
+paths: ["backend/app/api/**/*.py", "backend/app/services/**/*.py"]
 synthesized: true
 private: false
 ---

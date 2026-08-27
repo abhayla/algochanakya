@@ -3,7 +3,7 @@ description: >
   E2E spec files MUST follow {feature}.{type}.spec.js naming with type suffixes:
   .happy, .edge, .api, .audit, .visual, .isolated, .bugs, .consistency.
   Enables filtered test runs by category.
-globs: ["tests/e2e/specs/**/*.spec.js"]
+paths: ["tests/e2e/specs/**/*.spec.js"]
 synthesized: true
 private: false
 ---

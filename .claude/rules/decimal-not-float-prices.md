@@ -2,7 +2,7 @@
 description: >
   Financial prices MUST use Decimal (not float) to prevent floating-point precision errors.
   Enforced in NormalizedTick, UnifiedQuote, and position P&L calculations.
-globs: ["backend/**/*.py"]
+paths: ["backend/**/*.py"]
 synthesized: true
 private: false
 ---

@@ -3,7 +3,7 @@ description: >
   5-component WebSocket ticker architecture: TickerPool manages adapter lifecycle,
   TickerRouter fans out ticks, HealthMonitor tracks adapter health, FailoverController
   switches primary/secondary, broker Adapters handle connections.
-globs: ["backend/app/services/brokers/market_data/ticker/**/*.py"]
+paths: ["backend/app/services/brokers/market_data/ticker/**/*.py"]
 synthesized: true
 private: false
 ---

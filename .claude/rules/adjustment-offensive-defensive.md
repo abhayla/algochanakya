@@ -2,7 +2,7 @@
 description: >
   Autopilot adjustments are categorized as OFFENSIVE/DEFENSIVE/NEUTRAL.
   DEGRADED risk state MUST disable offensive adjustments. Misclassification is a safety bug.
-globs: ["backend/app/services/autopilot/**/*.py"]
+paths: ["backend/app/services/autopilot/**/*.py"]
 synthesized: true
 private: false
 ---

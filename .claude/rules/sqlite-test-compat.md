@@ -2,7 +2,7 @@
 description: >
   Tests use SQLite in-memory. PostgreSQL types (JSONB, ARRAY, UUID, PgEnum, BigInteger)
   need @compiles dialect adapters in conftest.py or tests silently fail.
-globs: ["backend/tests/**/*.py"]
+paths: ["backend/tests/**/*.py"]
 synthesized: true
 private: false
 ---

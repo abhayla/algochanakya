@@ -1,7 +1,7 @@
 ---
 description: >
   Nudges Claude to invoke the appropriate broker expert skill when editing broker files.
-globs:
+paths:
   - "backend/app/services/brokers/**/*.py"
   - "backend/app/api/routes/*_auth.py"
   - "backend/app/websocket/**/*.py"

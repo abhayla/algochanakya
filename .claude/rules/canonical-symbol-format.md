@@ -2,7 +2,7 @@
 description: >
   All internal symbol references MUST use Kite canonical format. Use SymbolConverter and TokenManager
   for broker-specific conversions. Never hardcode broker-specific symbol formats.
-globs: ["backend/**/*.py"]
+paths: ["backend/**/*.py"]
 synthesized: true
 private: false
 ---

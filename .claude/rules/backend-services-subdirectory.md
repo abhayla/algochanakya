@@ -2,7 +2,7 @@
 description: >
   Backend services MUST live in subdirectories (autopilot/, ai/, brokers/, options/, legacy/).
   Only 4 named files allowed at services/ root. Enforced by CI and hooks.
-globs: ["backend/app/services/**/*.py"]
+paths: ["backend/app/services/**/*.py"]
 synthesized: true
 private: false
 ---

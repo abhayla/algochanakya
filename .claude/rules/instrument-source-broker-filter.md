@@ -4,7 +4,7 @@ description: >
   The instruments table holds duplicate rows per symbol from multiple
   source_brokers (kite + smartapi, different exchange tokens). Every instrument
   query MUST filter by source_broker via instrument_query.py — never raw selects.
-globs: ["backend/app/services/brokers/market_data/instrument_query.py", "backend/app/api/routes/options.py"]
+paths: ["backend/app/services/brokers/market_data/instrument_query.py", "backend/app/api/routes/options.py"]
 synthesized: true
 version: "1.0.0"
 private: false

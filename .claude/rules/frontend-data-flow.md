@@ -2,7 +2,7 @@
 description: >
   Frontend data flow convention: views import stores and composables only, stores handle
   all API calls via the api service, components never import api.js directly.
-globs: ["frontend/src/**/*.{vue,js}"]
+paths: ["frontend/src/**/*.{vue,js}"]
 synthesized: true
 private: false
 ---
