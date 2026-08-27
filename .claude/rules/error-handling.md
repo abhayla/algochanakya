@@ -1,4 +1,9 @@
-# Scope: global
+---
+paths:
+  - "**/*.py"
+  - "**/*.js"
+  - "**/*.vue"
+---
 
 # Error Handling & Defensive Coding
 

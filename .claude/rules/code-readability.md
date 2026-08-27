@@ -1,4 +1,9 @@
-# Scope: global
+---
+paths:
+  - "**/*.py"
+  - "**/*.js"
+  - "**/*.vue"
+---
 
 # Code Readability & Maintainability
 
