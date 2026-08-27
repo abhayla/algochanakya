@@ -258,3 +258,86 @@ orthogonal upstox-totp issue — that is expected and is dispatcher/checker's ca
 land in whichever order they prefer (their own Python-version fix could equally be
 cherry-picked into #100, or #100 could simply wait to rebase onto #98/main once #98's
 fix lands). Not this worker's call — no merge authority per mandate.
+
+## PR #98 rebased onto PR #100's branch — CI result: RED, two NEW unrelated failures
+
+Rebased `fix/ci-red-main-t385` onto `fix/ci-redis-url-required-t392` (PR #100's
+branch) — clean, no conflicts. Confirmed both fixes present on the rebased head
+(`0e38330`): `REDIS_URL: str = "redis://localhost:6379/1"` in
+`backend/app/config.py:15`, and `python-version: '3.12'` in
+`.github/workflows/pr-gate.yml:35`. Pushed (force-with-lease, since this rewrites
+history the branch already had upstream). Watched CI live
+(`gh pr checks 98 --watch`, then polled `gh pr checks 98` directly after the watch
+process was auto-backgrounded past its shell timeout — never treated as an idle
+wait, only as re-issuing the same non-blocking status check).
+
+**Result: RED — but on two NEW, unrelated failures, not REDIS_URL and not
+upstox-totp/Python-version (both of those are now confirmed fixed).**
+
+### Failure 1 — `PR Gate — validate` / "Run backend tests" step (job run
+[33087643130](https://github.com/abhayla/algochanakya/actions/runs/33087643130/job/98571586869), 50s)
+
+```
+ERROR: usage: pytest [options] [file_or_dir] [file_or_dir] [...]
+pytest: error: unrecognized arguments: --cov=app --cov-report=html:coverage-report --cov-report=term-missing
+  inifile: /home/runner/work/algochanakya/algochanakya/backend/pytest.ini
+  rootdir: /home/runner/work/algochanakya/algochanakya/backend
+##[error]Process completed with exit code 4.
+```
+
+Root cause (log-evidenced, not guessed): `backend/pytest.ini`'s `addopts` includes
+`--cov=app --cov-report=html:coverage-report --cov-report=term-missing`, which
+requires the `pytest-cov` plugin. `.github/workflows/pr-gate.yml:50` installs
+`pip install pytest pytest-asyncio httpx allure-pytest` — `pytest-cov` is in
+neither this line nor `backend/requirements.txt` (confirmed:
+`grep -i pytest-cov backend/requirements.txt` → no match). The env block printed in
+this run's log shows NO `REDIS_URL` validation error and the Python interpreter is
+`3.12.14` — both prior blockers (REDIS_URL, upstox-totp/py3.11) are confirmed
+cleared on this head. This is a pre-existing gap in the workflow's manual pip-install
+list, unrelated to T-392, T-385, or T-394's own diffs, first surfaced now because
+this is the first time this branch has reached the actual pytest invocation step.
+
+### Failure 2 — `e2e-tests` / "Start backend server" step (job run
+[33087643085](https://github.com/abhayla/algochanakya/actions/runs/33087643085/job/98571586714), 2m42s)
+
+```
+pydantic_core._pydantic_core.ValidationError: 6 validation errors for Settings
+JWT_SECRET / KITE_API_KEY / KITE_API_SECRET / KITE_REDIRECT_URL / FRONTEND_URL / ANTHROPIC_API_KEY
+  Field required [type=missing, input_value={'DATABASE_URL': 'postgre...redis://localhost:6379'}, input_type=dict]
+##[error]Process completed with exit code 1.
+```
+
+Root cause (log-evidenced): the `e2e-tests` job's own env block only sets
+`DATABASE_URL`, `REDIS_URL` (present — confirms T-392's fix propagates correctly),
+and `SECRET_KEY`. It is missing 6 other required `Settings` fields that
+`pr-gate.yml`'s OTHER job (`PR Gate — validate`) does set. This is a separate,
+pre-existing gap specific to the `e2e-tests` job's env block — unrelated to
+REDIS_URL, unrelated to upstox-totp/Python version, unrelated to any T-392/T-385/
+T-394 diff.
+
+### Why T-385C's earlier PASS verdict does not apply here (contract step 5)
+
+T-385C verified PR #98 against a run that predates BOTH of today's fixes landing
+together on one head — at that time `main` still had `REDIS_URL` unset entirely and
+`upstox-totp` incompatible with Python 3.11, so CI never got past dependency
+install/collection far enough to exercise pytest's actual `addopts` or the
+`e2e-tests` job's env block. Today's rebase is the FIRST time this branch's code has
+run against a CI environment where both known blockers are cleared — and doing so
+immediately surfaced two more, previously-unreached failures. T-385C's PASS
+evaluated PR #98's own diff intent against an environment that never got far enough
+to exercise these paths; it was accurate for what it observed, but that observation
+was upstream of where today's failures live. This is exactly the fleet lesson
+already recorded above: a PASS verdict is scoped to the run it observed, and does
+not carry forward across an environment change even when the PR's own code is
+unchanged.
+
+### Outcome
+
+Per contract step 4: PR #98 is left OPEN, NOT merged, with the two failures above
+captured verbatim (job name + log excerpt, no guessing) in this file and in the PR
+body. Both are pre-existing CI-config gaps (missing `pytest-cov` in the manual pip
+install list; missing 6 env vars in the `e2e-tests` job's env block) — neither is
+caused by T-392's REDIS_URL default, T-385's dependency/Python-version fixes, or any
+change made in this T-394 run. Fixing them is out of this task's stated scope
+(landing #100 + rebasing/re-verifying #98); flagging for dispatcher to open follow-up
+tasks.
