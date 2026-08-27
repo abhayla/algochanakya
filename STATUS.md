@@ -36,3 +36,54 @@
 - `.github/workflows/pr-gate.yml` (+1 line: added `allure-pytest` to pip install)
 
 All work is committed and pushed. No further action required from this worker.
+
+---
+
+# T-386C Checker Report
+
+**Checker task:** Independently verify T-386 / PR #99 actually fixes the `allure` ModuleNotFoundError blocking PR #98 (T-385).
+
+## Findings (evidence-based)
+
+1. **The fix content is correct.** Commit `7c198d2` adds `allure-pytest` to the
+   `pip install pytest pytest-asyncio httpx allure-pytest` line in
+   `.github/workflows/pr-gate.yml` (the "Set up Python deps (backend)" step).
+   This directly addresses `backend/tests/conftest.py:15: import allure`.
+
+2. **The fix DID pass CI when it ran.** `gh run view 33071054529` (PR Gate,
+   `pull_request` event) shows `headSha: 7c198d2..., conclusion: success`.
+
+3. **PR #99's current HEAD has ZERO check-runs — this is a real defect, not a
+   fabrication.** The maker's second commit `9080316 docs: T-386 completion
+   status [skip ci]` (adding this STATUS.md) carries `[skip ci]` and is the
+   PR's current head SHA. `gh api repos/.../commits/9080316/check-runs` and
+   `.../status` both confirm **zero check-runs, state=pending, total_count=0**.
+   `gh pr checks 99` correctly reports "no checks reported" — it is not stale
+   or wrong, it is accurately describing that GitHub never ran CI against the
+   PR's current head.
+   - Root cause: the maker pushed the `[skip ci]`-tagged docs commit AS THE
+     LAST PUSH, violating worker-mandate #3 (intermediate commits may carry
+     `[skip ci]`, but the FINAL push of a run must be marker-free so the PR
+     head always has something for merge-on-green to gate on).
+
+4. **Causal proof the fix unblocks PR #98.** PR #98's latest "PR Gate —
+   validate" run against `main` (run `33056865360`, still failing because the
+   fix lives on an unmerged branch) fails with the EXACT same error:
+   `tests/conftest.py:15: import allure` / `ModuleNotFoundError: No module
+   named 'allure'`. Once PR #99 merges to `main`, PR #98's next CI run against
+   `main` will pick up the fixed `pr-gate.yml` and this failure should clear.
+
+## Verdict
+
+The underlying code change is correct and proven (by its own passing run at
+`7c198d2`) to fix the collection failure. However, **PR #99 in its current
+state is NOT in a mergeable/checkable state** — its head commit has no CI
+results at all, so merge-on-green has nothing to gate on. This is a real,
+current defect (not a stale-check illusion), caused by a `[skip ci]` marker on
+the trailing commit, exactly the failure mode worker-mandate #3 warns against.
+
+**Required remediation (maker/dispatcher, not this checker):** push one more
+non-`[skip ci]` commit (even a trivial no-op/rebase) to PR #99's branch so
+GitHub runs CI against a checkable head, or re-run the existing workflows
+against SHA `9080316` via `gh run rerun` / re-trigger, and confirm the new
+head shows PR Gate = success before merge.
