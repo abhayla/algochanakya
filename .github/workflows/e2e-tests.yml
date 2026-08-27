@@ -64,7 +64,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -152,7 +152,7 @@ jobs:
       # boot + artifact round-trip. `if: always()` reproduces the old
       # job-level `if: always()` so the report still generates on failure.
       - name: Get Allure history
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         if: always()
         continue-on-error: true
         with:
