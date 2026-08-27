@@ -225,3 +225,36 @@ requires watching PR #98's CI live post-rebase rather than reusing T-385C's verd
 (Lesson for the fleet: a checker's PASS verdict is scoped to the CI run it observed;
 it does not automatically carry forward across a rebase onto a dependency fix that
 changes the CI environment itself, even when the PR's own code diff is unchanged.)
+
+## PR #100 CI result post-rebase: RED, but NOT on REDIS_URL — confirms T-392's own finding
+
+`PR Gate — validate` on the rebased head (`cf73513`) fails in ~18s at the
+`pip install -r requirements.txt` step:
+```
+ERROR: Could not find a version that satisfies the requirement upstox-totp==1.0.8 (from versions: none)
+ERROR: No matching distribution found for upstox-totp==1.0.8
+```
+(run https://github.com/abhayla/algochanakya/actions/runs/33087280186 —
+`upstox-totp==1.0.8` `Requires-Python >=3.12`; this branch still pins
+`python-version: '3.11'` in `.github/workflows/pr-gate.yml:35`, inherited unchanged
+from `main`.) `grep -c REDIS_URL` on the failed step's log = 0 — this is exactly the
+"Second, orthogonal defect" T-392's own STATUS.md section above already identified
+and explicitly declined to fix (fixing it would have silently expanded T-392's scope
+into T-385/PR #98's territory).
+
+**Root cause of why PR #100 alone cannot go green:** the Python 3.11→3.12 bump lives
+ONLY on PR #98's branch (`fix/ci-red-main-t385`, commit `4d66c2c`), not on `main` and
+not on PR #100. PR #100's own diff (the REDIS_URL default) is correct and complete for
+its stated scope — it simply cannot reach the REDIS_URL-validating pytest step because
+an earlier, unrelated pip-install step fails first for a reason PR #100 was never
+responsible for fixing.
+
+**Decision:** per the contract's step 2 ("rebase PR #98 onto PR #100's branch directly
+if #100 hasn't merged yet"), proceeding to rebase PR #98 onto PR #100's branch now,
+since PR #98 already carries the Python 3.12 fix independently. This gets PR #98 BOTH
+fixes at once and is the fastest path to a real green signal without expanding PR
+#100's scope. PR #100 remains open, unmerged, with its own CI still red on the
+orthogonal upstox-totp issue — that is expected and is dispatcher/checker's call to
+land in whichever order they prefer (their own Python-version fix could equally be
+cherry-picked into #100, or #100 could simply wait to rebase onto #98/main once #98's
+fix lands). Not this worker's call — no merge authority per mandate.
