@@ -1,4 +1,10 @@
-# Scope: global
+---
+paths:
+  - "backend/app/main.py"
+  - "backend/app/config.py"
+  - "backend/run.py"
+  - "**/settings*.py"
+---
 
 # Environment Variable Validation — fail fast at boot, reject placeholders
 
