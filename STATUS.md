@@ -341,3 +341,31 @@ caused by T-392's REDIS_URL default, T-385's dependency/Python-version fixes, or
 change made in this T-394 run. Fixing them is out of this task's stated scope
 (landing #100 + rebasing/re-verifying #98); flagging for dispatcher to open follow-up
 tasks.
+
+### Re-verification on the STATUS.md-update head — confirms this is not a flake
+
+After pushing the STATUS.md update above (commit `9ddc749`), a fresh CI run
+triggered on that head (`gh pr checks 98 --watch`, run
+[33088954299](https://github.com/abhayla/algochanakya/actions/runs/33088954299)):
+`PR Gate — validate` failed again at 46s, `e2e-tests` failed again at 2m49s — same
+two failures, same job names, same timing profile as the first run. This confirms
+the failures are deterministic (pre-existing config gaps), not flaky/transient CI
+noise. `test` job was still pending when this worker stopped watching (per headless
+mandate against waiting on external events indefinitely) — `PR Gate — validate`
+(the check this contract names explicitly) was already conclusively red, which is
+sufficient evidence per contract step 4.
+
+## Final state (this T-394 run)
+
+- **PR #100**: rebased onto `main` (post #99), pushed, OPEN, not merged.
+  `PR Gate — validate` RED on the pre-existing `upstox-totp`/Python-3.11 issue
+  (owned by #98's Python-3.12 fix, not #100's scope) — NOT green, contrary to the
+  contract's step-1 target, because that target assumed #100 could reach green
+  independently, which turned out to require a fix that lives only on #98's branch.
+  Flagging this precondition-mismatch for dispatcher.
+- **PR #98**: rebased onto PR #100's branch (has both REDIS_URL + Python-3.12
+  fixes), pushed, OPEN, not merged. `PR Gate — validate` and `e2e-tests` both RED,
+  confirmed reproducible across two independent CI runs, on two NEW pre-existing
+  gaps unrelated to REDIS_URL/upstox-totp (missing `pytest-cov`; missing 6 env vars
+  in `e2e-tests`'s env block). Full evidence above and in PR #98's body.
+- Neither PR was merged or closed by this worker, per standing mandate.
