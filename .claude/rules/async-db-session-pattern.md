@@ -2,7 +2,7 @@
 description: >
   All database operations use async SQLAlchemy with AsyncSession, dependency injection via
   Depends(get_db), and expire_on_commit=False. Services accept db:AsyncSession parameter.
-globs: ["backend/app/**/*.py"]
+paths: ["backend/app/**/*.py"]
 synthesized: true
 private: false
 ---

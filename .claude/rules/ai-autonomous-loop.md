@@ -4,7 +4,7 @@ description: >
   Sense→Decide→Act→Learn closed loop for AI trading with a FIXED safety-gate
   order in ai_monitor.py: circuit breaker → extreme events → risk state, only
   then position sync, regime checks, and adjustment execution.
-globs: ["backend/app/services/ai/**/*.py", "backend/app/api/v1/ai/**/*.py"]
+paths: ["backend/app/services/ai/**/*.py", "backend/app/api/v1/ai/**/*.py"]
 synthesized: true
 version: "1.0.0"
 private: false

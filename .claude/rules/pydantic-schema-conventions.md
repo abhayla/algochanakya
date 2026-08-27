@@ -2,7 +2,7 @@
 description: >
   Pydantic schema conventions: from_attributes=True for ORM mapping, Decimal for financial fields,
   str+Enum for serializable enums, and separate Create/Update/Response schema pattern.
-globs: ["backend/app/schemas/**/*.py"]
+paths: ["backend/app/schemas/**/*.py"]
 synthesized: true
 private: false
 ---

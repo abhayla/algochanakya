@@ -2,7 +2,7 @@
 description: >
   Lot sizes, strike steps, index tokens MUST come from app.constants.trading, never hardcoded.
   Frontend uses centralized getLotSize() from constants/trading.js.
-globs: ["backend/**/*.py", "frontend/**/*.{js,vue}"]
+paths: ["backend/**/*.py", "frontend/**/*.{js,vue}"]
 synthesized: true
 private: false
 ---

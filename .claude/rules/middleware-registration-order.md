@@ -2,7 +2,7 @@
 description: >
   Enforces correct middleware registration order in the FastAPI application.
   CORS middleware MUST be registered before any routers to prevent blocking legitimate cross-origin requests.
-globs: ["backend/app/main.py"]
+paths: ["backend/app/main.py"]
 synthesized: true
 private: false
 version: "1.0.0"

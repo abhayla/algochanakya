@@ -2,7 +2,7 @@
 description: >
   DB stores zerodha/angelone but BrokerType enum uses kite/angel.
   Always use the broker name mapping utility when converting between formats.
-globs: ["backend/**/*.py"]
+paths: ["backend/**/*.py"]
 synthesized: true
 private: false
 ---

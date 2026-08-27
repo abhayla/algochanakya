@@ -2,7 +2,7 @@
 description: >
   E2E auth convention: import test/expect from auth.fixture.js (not @playwright/test), use
   authenticatedPage fixture. Test files follow .happy/.edge/.api/.audit/.visual/.isolated naming.
-globs: ["tests/e2e/**/*.{js,spec.js}"]
+paths: ["tests/e2e/**/*.{js,spec.js}"]
 synthesized: true
 private: false
 ---

@@ -3,7 +3,7 @@ name: store-action-result-objects
 description: >
   Store actions serving per-call or modal-scoped data MUST return
   {success, data, error} result objects instead of mutating store refs.
-globs: ["frontend/src/stores/*.js"]
+paths: ["frontend/src/stores/*.js"]
 synthesized: true
 version: "1.0.0"
 private: false

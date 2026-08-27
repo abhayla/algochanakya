@@ -2,7 +2,7 @@
 description: >
   Frontend API interceptor distinguishes auth endpoint 401 (triggers logout) from broker
   endpoint 401 (preserves app session). Prevents false logouts on stale broker credentials.
-globs: ["frontend/src/services/**/*.js", "frontend/src/stores/auth.js"]
+paths: ["frontend/src/services/**/*.js", "frontend/src/stores/auth.js"]
 synthesized: true
 private: true
 ---

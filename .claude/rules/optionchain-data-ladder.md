@@ -4,7 +4,7 @@ description: >
   Option-chain serving ladder: Redis cache with market-aware TTL and request
   coalescing, live-engine fast path, lazy EOD snapshots, and the
   live → broker → EOD → 503 exhaustion order. One subsystem, four invariant groups.
-globs: ["backend/app/services/options/**/*.py", "backend/app/api/routes/optionchain.py"]
+paths: ["backend/app/services/options/**/*.py", "backend/app/api/routes/optionchain.py"]
 synthesized: true
 version: "1.0.0"
 private: false

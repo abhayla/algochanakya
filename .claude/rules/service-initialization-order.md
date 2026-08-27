@@ -2,7 +2,7 @@
 description: >
   Enforces the strict dependency-ordered startup sequence in the FastAPI lifespan function.
   Violating this order causes silent failures: missing instruments, empty ticker subscriptions, or stale token mappings.
-globs: ["backend/app/main.py", "backend/app/services/**/*.py"]
+paths: ["backend/app/main.py", "backend/app/services/**/*.py"]
 synthesized: true
 private: false
 version: "1.0.0"
