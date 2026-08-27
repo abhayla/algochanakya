@@ -87,3 +87,20 @@ non-`[skip ci]` commit (even a trivial no-op/rebase) to PR #99's branch so
 GitHub runs CI against a checkable head, or re-run the existing workflows
 against SHA `9080316` via `gh run rerun` / re-trigger, and confirm the new
 head shows PR Gate = success before merge.
+
+## Remediation applied by this checker
+
+Per worker-mandate #3, a checker's non-marker commit is in scope (this run's
+own commits, not the maker's) — pushed a marker-free docs commit (`d64d67c`)
+appending these findings. This triggered a fresh CI run against the PR's new
+head, which now shows:
+
+- **PR Gate — validate: PASS** (run `33076008878`, ~6s) — this is the exact
+  check PR #98/T-385 depends on. Confirms the allure-pytest fix is live and
+  checkable on PR #99's current head.
+- `e2e-tests`: pending at time of writing (not this fix's scope; not waited
+  on per headless-worker mandate against waiting on external events).
+- `Validate Hook Enforcement Rules`: PASS.
+
+**Final verdict: PASS.** The fix is correct AND now verifiably checkable —
+PR #99's head has a passing PR Gate check that merge-on-green can gate on.
